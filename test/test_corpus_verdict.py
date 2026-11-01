@@ -736,6 +736,16 @@ class TestDashGeometry:
         assert g["x_labels"] == [] and g["x_ticks"] == []
         assert g["y_labels"] == ["10", "20", "30", "40"]
 
+    def test_a_hidden_y_axis_is_still_read(self):
+        # WP-41 VF-6: a by() row's y labels are drawn in the outer y-axis
+        # cell beside the first panel, whose own y axis (the same labels)
+        # is hidden; it stands for the cell, as before BY-32.
+        v = _view()
+        v["figures"][0]["axes"][1]["visible"] = False
+        g = verdict.dash_geometry(v)
+        assert g["y_labels"] == ["10", "20", "30", "40"]
+        assert g["x_labels"] == ["2,000", "3,000", "4,000", "5,000"]
+
     def test_axes_titles_legend_glyphs(self):
         g = verdict.dash_geometry(_view([_rdr(n=52, marker="circle"),
                                          _rdr(n=22, marker="cross", fill="#d41159",
