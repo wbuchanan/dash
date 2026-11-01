@@ -1,8 +1,8 @@
 {
   "_meta": {
     "born_date": "14 Oct 2026",
-    "dash_commit": "509eb5106b49bb24f3d23399d6732bd2ab4b0bb0",
-    "extracted": " 1 Nov 2026 06:03:22",
+    "dash_commit": "1b8060ef964faa6ba333ad2a74421db9c70e5c97",
+    "extracted": " 1 Nov 2026 14:18:50",
     "ledger": "test/fixtures/corpus_ledger.json",
     "rules": "test/fixtures/corpus_verdict_rules.json",
     "source": "scripts/extract_corpus_guard_truth.do",
@@ -11,15 +11,12 @@
   "examples": {
     "help-added_text_options-0a48288d": {
       "checks": [
-        "margins",
-        "text_size"
+        "frame_aspect",
+        "margins"
       ],
       "first_dash": "(note:  dash: text() draws no width(); see help dash##added_text)",
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -46,22 +43,18 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.72,
-      "summary": "text size, margins",
+      "ssim": 0.7117,
+      "summary": "margins, plot region shape",
       "verdict": "Close"
     },
     "help-added_text_options-60798f5e": {
       "checks": [
-        "frame_aspect",
         "line_width",
-        "margins",
-        "marker_size",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
       "ledger": [
-        "GW-6",
         "VF-4"
       ],
       "rc_dash": 0,
@@ -93,15 +86,13 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7691,
-      "summary": "text size, margins, marker size, line width, plot region shape",
+      "ssim": 0.7689,
+      "summary": "margins, line width",
       "verdict": "Close"
     },
     "help-axis_label_options-045ec53a": {
       "checks": [
-        "frame_aspect",
         "margins",
-        "marker_size",
         "text_size",
         "y_labels",
         "y_ticks"
@@ -109,7 +100,6 @@
       "first_dash": null,
       "first_twoway": null,
       "ledger": [
-        "GW-6",
         "VF-4"
       ],
       "rc_dash": 0,
@@ -138,23 +128,17 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.8104,
-      "summary": "y-axis ticks, y-axis labels, text size, margins, marker size, plot region shape",
+      "ssim": 0.8108,
+      "summary": "y-axis ticks, y-axis labels, text size, margins",
       "verdict": "Differs"
     },
     "help-axis_label_options-21f6f276": {
       "checks": [
-        "frame_aspect",
-        "margins",
-        "marker_size",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -181,23 +165,18 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.8463,
-      "summary": "text size, margins, marker size, plot region shape",
+      "ssim": 0.8753,
+      "summary": "margins",
       "verdict": "Close"
     },
     "help-clegend_option-2779567d": {
       "checks": [
-        "frame_aspect",
         "margins",
-        "text_size",
         "texts"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -226,22 +205,17 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.5434,
-      "summary": "text, text size, margins, plot region shape",
+      "ssim": 0.522,
+      "summary": "text, margins",
       "verdict": "Differs"
     },
     "help-graph_intro-724684a2": {
       "checks": [
-        "frame_aspect",
-        "margins",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -272,22 +246,17 @@
         ]
       },
       "size_matched": true,
-      "ssim": 0.7638,
-      "summary": "text size, margins, plot region shape",
+      "ssim": 0.7717,
+      "summary": "margins",
       "verdict": "Close"
     },
     "help-graph_text-a2e86192": {
       "checks": [
-        "frame_aspect",
-        "margins",
-        "text_size"
+        "margins"
       ],
       "first_dash": "(note:  dash: graph '': {sup:} or {sub:} around a character with no raised or lowered form in a title, subtitle, note or caption is drawn on the line (help dash, Text in graphs).)",
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -314,23 +283,17 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.8356,
-      "summary": "text size, margins, plot region shape",
+      "ssim": 0.8413,
+      "summary": "margins",
       "verdict": "Close"
     },
     "help-graph_twoway-30a8a3a3": {
       "checks": [
-        "frame_aspect",
-        "margins",
-        "marker_size",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -357,23 +320,19 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7883,
-      "summary": "text size, margins, marker size, plot region shape",
+      "ssim": 0.794,
+      "summary": "margins",
       "verdict": "Close"
     },
     "help-legend_options-50fe8709": {
       "checks": [
         "frame_aspect",
         "legend",
-        "margins",
-        "marker_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -402,22 +361,17 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.7874,
-      "summary": "legend keys, margins, marker size, plot region shape",
+      "ssim": 0.7781,
+      "summary": "legend keys, margins, plot region shape",
       "verdict": "Differs"
     },
     "help-tsline-16ade7ec": {
       "checks": [
-        "frame_aspect",
-        "margins",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -448,21 +402,19 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.6926,
-      "summary": "text size, margins, plot region shape",
+      "ssim": 0.7122,
+      "summary": "margins",
       "verdict": "Close"
     },
     "help-twoway_area-17337f6e": {
       "checks": [
         "frame_aspect",
         "line_width",
-        "margins",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
       "ledger": [
-        "GW-6",
         "VF-4"
       ],
       "rc_dash": 0,
@@ -491,22 +443,18 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.5611,
-      "summary": "text size, margins, line width, plot region shape",
+      "ssim": 0.5713,
+      "summary": "margins, line width, plot region shape",
       "verdict": "Close"
     },
     "help-twoway_bar-129aaf18": {
       "checks": [
         "frame_aspect",
-        "margins",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -535,21 +483,19 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.6052,
-      "summary": "text size, margins, plot region shape",
+      "ssim": 0.5887,
+      "summary": "margins, plot region shape",
       "verdict": "Close"
     },
     "help-twoway_dot-11245001": {
       "checks": [
         "glyphs",
         "margins",
-        "marker_size",
-        "text_size"
+        "marker_size"
       ],
       "first_dash": null,
       "first_twoway": null,
       "ledger": [
-        "GW-6",
         "VF-4"
       ],
       "rc_dash": 0,
@@ -578,22 +524,17 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.334,
-      "summary": "number of markers, text size, margins, marker size",
+      "ssim": 0.3655,
+      "summary": "number of markers, margins, marker size",
       "verdict": "Differs"
     },
     "help-twoway_dropline-bff26da0": {
       "checks": [
-        "margins",
-        "marker_size",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -620,20 +561,17 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7455,
-      "summary": "text size, margins, marker size",
+      "ssim": 0.7632,
+      "summary": "margins",
       "verdict": "Close"
     },
     "help-twoway_kdensity-d3ba423b": {
       "checks": [
-        "frame_aspect",
         "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "GW-6"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -662,22 +600,17 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.8004,
-      "summary": "margins, plot region shape",
+      "ssim": 0.8318,
+      "summary": "margins",
       "verdict": "Close"
     },
     "help-twoway_lfitci-0dd9d812": {
       "checks": [
-        "frame_aspect",
-        "margins",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -704,22 +637,17 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.824,
-      "summary": "text size, margins, plot region shape",
+      "ssim": 0.822,
+      "summary": "margins",
       "verdict": "Close"
     },
     "help-twoway_lowess-1410d0d5": {
       "checks": [
-        "margins",
-        "marker_size",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -746,23 +674,18 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.8158,
-      "summary": "text size, margins, marker size",
+      "ssim": 0.8105,
+      "summary": "margins",
       "verdict": "Close"
     },
     "help-twoway_lpoly-5dd7635f": {
       "checks": [
         "frame_aspect",
-        "margins",
-        "marker_size",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -789,20 +712,18 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7922,
-      "summary": "text size, margins, marker size, plot region shape",
+      "ssim": 0.8001,
+      "summary": "margins, plot region shape",
       "verdict": "Close"
     },
     "help-twoway_rarea-2d21b873": {
       "checks": [
         "line_width",
-        "margins",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
       "ledger": [
-        "GW-6",
         "VF-4"
       ],
       "rc_dash": 0,
@@ -831,21 +752,17 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7776,
-      "summary": "text size, margins, line width",
+      "ssim": 0.7721,
+      "summary": "margins, line width",
       "verdict": "Close"
     },
     "help-twoway_rcap-db1390e4": {
       "checks": [
-        "margins",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -872,21 +789,17 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.766,
-      "summary": "text size, margins",
+      "ssim": 0.7652,
+      "summary": "margins",
       "verdict": "Close"
     },
     "help-twoway_spike-6cc28eef": {
       "checks": [
-        "margins",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "GW-6",
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -915,8 +828,8 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.6764,
-      "summary": "text size, margins",
+      "ssim": 0.6975,
+      "summary": "margins",
       "verdict": "Close"
     }
   }
