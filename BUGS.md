@@ -5960,3 +5960,9 @@
   - Suggested fix: Tick a style(combine) panel at the scheme's count, as graph combine draws a graph.
   - Resolution: Fixed 01nov2026 (WP-41, 41-05): _dash_by_numticks keeps the scheme's count under style(combine); the five panels now draw twoway's x ticks. Pinned by test/test_by_tick_count.py::TestTheCount::test_style_combine_keeps_the_schemes_count.
 
+- [x] Title: by(, style(combine)) drew a shared x title under the panels besides each panel's own; graph combine draws none
+  - File Names and Line Numbers: dash_render.py _dash_by_side
+  - Description: WP-41 41-05 checkpoint pair 2, measured: twoway's SVG (figure_geometry_truth.json P2) holds five "Weight (lbs.)", one per panel, and no shared title; by(foreign, ixtitle) without combine keeps the shared one (three in all, measured 01nov2026), so it is combine's, not ixtitle's. dash drew the shared x title cell as well.
+  - Suggested fix: Draw no shared axis title under style(combine) unless b1title()/l1title() asks.
+  - Resolution: Fixed 01nov2026 (WP-41, 41-05). Pinned by test/test_by_layout.py::TestCombine::test_no_outer_axis_titles. Measured with it: twoway's per-panel graph regions and legend box are filled and outlined white under stcolor (P2: #ffffff on #ffffff), so they do not show; their sizes differ from dash's (open).
+

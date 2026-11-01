@@ -59269,7 +59269,11 @@ def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
         own = edge.get({"y": "l1title", "x": "b1title"}[d])
         if own:
             titles[d] = own
-        if (fl.get(flag) or own) and titles[d]:
+        # WP-41 41-05: style(combine) draws no shared axis title, as
+        # graph combine draws none (P2: the five panels' own x titles
+        # alone); by()'s l1title()/b1title() still draw.
+        if (fl.get(flag) or own) and titles[d] and (
+                own or not _dash_by_is_combine(go.get("by"))):
             prim = _dash_primary_axes(getattr(figs[0], d + "axis"),
                                       d + "_range_name")
             cell = _dash_by_title_cell(scheme, name, titles[d], where,

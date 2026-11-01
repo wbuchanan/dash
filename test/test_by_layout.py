@@ -288,6 +288,18 @@ class TestCombine:
         assert abs(got - 2 * dr._DASH_BY_COMBINE_PANEL_MARGIN_RS * unit) <= 2, (
             got, gap)
 
+    def test_no_outer_axis_titles(self, mode):
+        """WP-41 41-05 pair 2: style(combine) draws each panel's own x
+        title and no shared one, as graph combine draws its graphs
+        (figure_geometry_truth.json P2: five "Weight (lbs.)", one per
+        panel; by(foreign, ixtitle) alone keeps the shared title, three
+        in all, measured 01nov2026)."""
+        g0, roots, _n = _built(mode, {"by": "rep78, style(combine)"},
+                               plots=tk._TWO)
+        names = {str(getattr(c[0], "name", "") or "") for c in g0.children}
+        assert "dash_by_xtitle" not in names and \
+            "dash_by_ytitle" not in names, names
+
     def test_no_note(self, mode):
         _g, _r, notes = _built(mode, {"by": "rep78, style(combine)"},
                                plots=tk._TWO)
