@@ -54,6 +54,20 @@ class TestTheCount:
         assert dr._dash_by_numticks(sch, {}) == {
             "x": 5, "y": 5, "x2": 5, "y2": 5}
 
+    def test_style_combine_keeps_the_schemes_count(self):
+        """WP-41 41-05 pair 2: by(rep78, style(combine)) draws each panel
+        as graph combine draws a graph, at the scheme's count (twoway's
+        SVG, figure_geometry_truth P2: panel 1's x 2,800(200)3,600, Stata's
+        _natscale 2730 3470 5; #4 is 2,800(200)3,400; panel 4's x
+        1,500(500)4,000, #5's, where #4 is 2,000(1,000)4,000)."""
+        sch = dr.SchemeParser("stcolor")
+        routed = dr._dash_bystyle_route({"graphs": [{"graph_options": {
+            "by": "rep78, style(combine)"}}]})
+        go = routed["graphs"][0]["graph_options"]
+        assert dr._dash_by_is_combine(go["by"])
+        assert dr._dash_by_numticks(sch, go) == {
+            "x": 5, "y": 5, "x2": 5, "y2": 5}
+
 
 class TestAgainstStata:
     @pytest.mark.parametrize("mode", _MODES)

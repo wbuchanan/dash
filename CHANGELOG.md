@@ -1003,6 +1003,7 @@ and now matches Stata.
 
 ### Fixed in WP-41
 
+- by(, style(combine)) ticks each panel as graph combine ticks a graph: (scatter mpg weight) (lfit mpg weight), by(rep78, style(combine)) drew panel 1's x as 2,800(200)3,400 and cut its markers, now 2,800(200)3,600 as twoway (WP-41, 41-05)
 - A by() graph's panels, strips, x title and note sit where twoway's do: scatter mpg weight, by(foreign) drew its plot regions 580 px tall and 37 px apart at 1,400 x 840, now 620 px and 59 px (twoway's 618 and 59) (WP-41, 41-05)
 - by(, compact) draws its panels touching and outlined at the axis lines' width, as twoway does; scatter mpg weight, by(foreign, compact) scheme(s2color) left its plot regions 10 px apart with 0.8 px outlines at 1,400 px, now touching with 1.73 px outlines (WP-41, 41-05)
 - A by() graph's y tick labels are drawn at the panels' size, as its x tick labels are; scatter mpg weight, by(foreign) drew them at 10pt beside 8.5pt x labels, now 8.5pt (WP-41, VF-6)

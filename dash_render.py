@@ -42310,7 +42310,14 @@ def _dash_by_numticks(scheme, graph_opts):
     nx = getattr(scheme, "numticks_x", 5) or 5
     ny = getattr(scheme, "numticks_y", 5) or 5
     out = {"x": nx, "y": ny, "x2": nx, "y2": ny}
-    if str((graph_opts or {}).get("by", "") or "").strip():
+    _by = str((graph_opts or {}).get("by", "") or "")
+    if _dash_by_is_combine(_by):
+        # WP-41 41-05: style(combine) draws each panel as graph combine
+        # draws a graph, at the scheme's count (figure_geometry_truth.json
+        # P2: panel 1's x 2,800(200)3,600, Stata's _natscale 2730 3470 5;
+        # #4 is 2,800(200)3,400).
+        return out
+    if _by.strip():
         out["x"] = max(1, nx - 1)
         out["y"] = max(1, ny - 1)
     return out
