@@ -54,7 +54,11 @@ _RING0 = {"r0p5": "bottom_right", "r0p12": "bottom_center",
 _WANT = {"p12": ("above", "center"), "p11": ("above", "left"),
          "p1": ("above", "right"), "p6": ("below", "center"),
          "p7": ("below", "left"), "p5": ("below", "right"),
-         "p9": ("below", "left"), "p3": ("below", "right"),
+         # Flipped (WP-41 BY-18): ("below", "left") and ("below",
+         # "right") were wrong because twoway draws 9 and 3 o'clock in a
+         # narrow box beside the plot region, the label centred on it
+         # (by_layout_truth.json Y11, Y12; by_remainder_truth sub_pos3/9).
+         "p9": ("left", "center"), "p3": ("right", "center"),
          "r1p12": ("above", "center"), "r2p6": ("below", "center")}
 
 

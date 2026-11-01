@@ -1337,12 +1337,16 @@ def test_the_graph_keeps_its_size(mode):
     assert (a["nr"], a["ncols"]) == (2, 3)
     assert {id(p) for p in a["panels"]} == {id(p) for p in panels}
     assert a["base"] == [p.aspect_ratio for p in a["panels"]]
+    # Flipped (WP-41 BY-18): no callback under aspectratio() was wrong
+    # because twoway shapes each panel's plot region (by_layout_truth.json
+    # Y14): the callback holds the frames at the ratio (frame_ar).
     spec = _spec([_graph("g1", _TWO, {"by": "foreign",
                                       "aspectratio": "1"})])
     roots, _n, _o = _build(mode, spec)
     (grid,) = _grids(roots).values()
-    assert not [c for c in _panels(grid)[0].js_property_callbacks.get(
+    (cb,) = [c for c in _panels(grid)[0].js_property_callbacks.get(
         "change:inner_width", []) if c.code == dr._DASH_BY_FIT_JS]
+    assert cb.args["frame_ar"] == 1.0
 
 
 @pytest.mark.parametrize("mode", _MODES)

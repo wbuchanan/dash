@@ -3022,6 +3022,9 @@ CORPUS = [
     # WP-41 BY-4: compact's outlines, in both modes.
     _case("by() compact outlines", [_sc()],
           go={"by": "foreign, compact"}),
+    # WP-41 BY-18: aspectratio()'s plot regions, in both modes.
+    _case("by() aspectratio(1)", [_sc()],
+          go={"by": "foreign", "aspectratio": "1"}),
 ]
 
 

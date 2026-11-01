@@ -64,13 +64,6 @@ _TRUTH = None
 #: whose corner offset does
 #: (test_legend_span_browser.py::TestByTitlesAtPosition, ":offset").
 BY_POSITION_KNOWN = {
-    # BY-18 (41-05): at clocks 3 and 9 dash draws by()'s title above and
-    # its note below the panels, aligned right or left; twoway draws them
-    # beside the panels, centred.
-    "bp64": "BY-18",
-    "bp65": "BY-18",
-    "bp66": "BY-18",
-    "bp67": "BY-18",
 }
 #: Differences a ruling keeps (D-33-10.a's companion dict; empty).
 BY_POSITION_DELIBERATE = {}
@@ -158,11 +151,21 @@ def _draw(mode, spec):
         extra = doc
     panels, head, foot = [], None, None
     gridded = [r for r in roots if _has_panel_grid(r)]
+    beside = []
     if gridded:
         p, head, foot = by_grid(gridded[0])
         panels = [f for _, _, f in p]
+        # WP-41 BY-18: by()'s texts beside the panels, (text, side).
+        for m in gridded[0].references():
+            if getattr(m, "name", None) in ("dash_by_rtext",
+                                            "dash_by_ltext"):
+                for ax in list(m.right) + list(m.left):
+                    for v in (ax.major_label_overrides or {}).values():
+                        beside.append((str(v), "right" if m.name ==
+                                       "dash_by_rtext" else "left"))
     return types.SimpleNamespace(panels=panels, head=head, foot=foot,
-                                 notes=notes, roots=roots, extra=extra)
+                                 notes=notes, roots=roots, extra=extra,
+                                 beside=beside)
 
 
 def _has_panel_grid(root):
@@ -300,6 +303,8 @@ class TestOverallTextMatchesTwoway:
             r = _draw(mode, _probe_spec(p))
             got = sum((chrome_texts(c) for c in (r.head, r.foot)
                        if c is not None), [])
+            # WP-41 BY-18: a text beside the panels is an overall text.
+            got += [x for x, _s in r.beside]
             # Flipped (WP-41 BY-12): by()'s edge titles are not its
             # overall texts; TestEdgeTitles compares them.
             for c in (r.head, r.foot):
@@ -379,6 +384,18 @@ class TestPlacementMatchesTwoway:
                     if side != want_side or got_align != align_of[t["anchor"]]:
                         bad.append((pid, first, (side, got_align),
                                     (want_side, t["anchor"])))
+            # WP-41 BY-18: a text beside the panels is right of every
+            # panel label in twoway's SVG (rtext) or left of them (ltext).
+            lab_x = [t["x"] for t in svg if t["text"] in labels]
+            for text, sd in r.beside:
+                t = next((t for t in svg if t["text"] == text), None)
+                if t is None or not lab_x:
+                    bad.append((pid, text, "not in the SVG", ""))
+                    continue
+                want = ("right" if t["x"] > max(lab_x) else
+                        "left" if t["x"] < min(lab_x) else "between")
+                if want != sd:
+                    bad.append((pid, text, sd, want))
             res[pid] = "; ".join("%r: dash %r, twoway %r" % b[1:]
                                  for b in bad) if bad else None
         assert known_problems(res, known_in(_known(), group),

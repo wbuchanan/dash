@@ -141,3 +141,265 @@ class TestCompact:
                 for p in tk._panels(grid)} == {"#000000"}
         assert {str(b.bar_line_color).lower()
                 for b in _label_boxes(roots)} == {"#000000"}
+
+
+# ---------------------------------------------------------------------------
+# Headless Chrome: each figure's box, frame and label-box strip (page px)
+# and the by() grid's box, at load (both modes' pages, as
+# test_by_axes_keys_browser.py draws them).
+# ---------------------------------------------------------------------------
+_LAYOUT_JS = r"""
+<script>
+function rect(el){const r=el.getBoundingClientRect();return [r.left,r.top,r.right,r.bottom];}
+function state() {
+  const figs = [];
+  let grid = null;
+  const visit = (v, gb) => {
+    if (!v) return;
+    if (v.model && v.model.type === 'GridBox') gb = v;
+    if (v.frame && v.renderer_views && v.canvas_view) {
+      const cr = v.canvas_view.el.getBoundingClientRect();
+      const f = v.frame.bbox;
+      const strips = [], titles = [];
+      for (const [m, rv] of v.renderer_views) {
+        if (!m.visible) continue;
+        if (m.type === 'ColorBar' && m.name === 'dash_by_label_box' && rv.bbox) {
+          const b = rv.bbox;
+          strips.push({orient: m.orientation,
+                       box: [cr.left + b.x0, cr.top + b.y0, cr.left + b.x1, cr.top + b.y1]});
+        }
+        if (m.type === 'Title' && m.text) {
+          rv.compute_geometry();
+          const r = rv._rect; if (!r) continue;
+          const a = r.angle || 0, ca = Math.cos(a), sa = Math.sin(a);
+          const xs = [], ys = [];
+          for (const lx of [-r.anchor.x * r.width, (1 - r.anchor.x) * r.width])
+            for (const ly of [-r.anchor.y * r.height, (1 - r.anchor.y) * r.height]) {
+              xs.push(r.sx + lx * ca - ly * sa + cr.left);
+              ys.push(r.sy + lx * sa + ly * ca + cr.top);
+            }
+          titles.push({text: m.text, box: [Math.min(...xs), Math.min(...ys),
+                                           Math.max(...xs), Math.max(...ys)]});
+        }
+      }
+      const axes = [];
+      for (const [m, rv] of v.renderer_views) {
+        if (!m.visible || !(m.type || '').endsWith('Axis') || !rv.bbox) continue;
+        const b = rv.bbox;
+        if (!(b.width > 0)) continue;
+        axes.push([cr.left + b.x0, cr.top + b.y0, cr.left + b.x1, cr.top + b.y1]);
+      }
+      let gp = v.parent;
+      while (gp != null && !(gp.model != null && gp.model.type === 'GridPlot')) gp = gp.parent;
+      figs.push({name: v.model.name || '', el: rect(v.el),
+                 gridplot: gp ? rect(gp.el) : null,
+                 frame: [cr.left + f.x0, cr.top + f.y0, cr.left + f.x1, cr.top + f.y1],
+                 strips, titles, axes,
+                 grid: gb ? rect(gb.el) : null});
+    }
+    for (const c of (v.child_views || [])) visit(c, gb);
+  };
+  for (const v of Object.values(Bokeh.index)) visit(v, null);
+  return figs;
+}
+addEventListener('load', () => setTimeout(() => {
+  parent.postMessage('DASHPROBE' + JSON.stringify(
+    {W: innerWidth, wide: state()}), '*');
+}, 3000));
+</script>
+"""
+
+
+def _measure(mode, go, plots=None, widths=(1400,), scheme="stcolor"):
+    """``{width: [figure records]}`` of one by() graph in Chrome."""
+    import test_by_axes_keys_browser as kb
+    spec = tk._spec([tk._graph("g1", plots or tk._ONE, go, title=False)],
+                    scheme=scheme)
+    got = kb._measure(mode, spec, _LAYOUT_JS, widths)
+    return {w: got[w]["wide"] for w in widths}
+
+
+def _panels_of(figs):
+    """The panel records (unnamed figures)."""
+    return [f for f in figs if not f["name"]]
+
+
+# ---------------------------------------------------------------------------
+# BY-18: style(combine)'s regions, labels and titles beside the panels,
+# aspectratio()'s plot regions and a smaller graph margin.
+# Measured (by_layout_truth.json, stcolor 5400 x 3240, 1 unit = 32.4):
+# Y10 draws combine's array 2.2 units in from the graph (71.21) and each
+# panel's graph region 1.76 units outside its plot region on the side no
+# axis takes (57.04); Y11/Y12 a strip 33.07 units wide (the label box's
+# two margins, 138.38 less the 105.13 font) as tall as the plot region,
+# the label horizontal at its middle; Y13 the title T right of the
+# panels, centred on their plot regions; Y14 square plot regions
+# (2196.62 x 2196.62); Y15 margin(small) and Y16 margin(zero) an array
+# 2.3 and 3.5 units larger on every side.
+# ---------------------------------------------------------------------------
+_U = 32.4
+
+
+def _combine_figs(mode, width=1400):
+    return _panels_of(_measure(mode, {"by": "rep78, style(combine)"},
+                               tk._TWO, (width,))[width])
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestCombine:
+    def test_fixture(self, mode):
+        rects = _probe("Y10")["rects"]
+        assert abs(rects[3]["x"] / _U - dr._DASH_BY_COMBINE_INSET_RS) < 0.01
+        right = 5400 - 57.04
+        assert abs(57.04 / _U - dr._DASH_BY_COMBINE_PANEL_MARGIN_RS) < 0.01
+        assert right > 0
+
+    @pytest.mark.release
+    def test_regions(self, mode):
+        """The array is inset by combine's 2.2 units plus a panel's own
+        1.76 (a share of the cell's width, units of its short side; the
+        grid's padding on every side), and neighbouring panels are two
+        panel margins apart."""
+        g0, _r, _n = _built(mode, {"by": "rep78, style(combine)"},
+                            plots=tk._TWO)
+        pct = (dr._DASH_BY_COMBINE_INSET_RS
+               + dr._DASH_BY_COMBINE_PANEL_MARGIN_RS) * 0.6
+        assert g0.styles["padding"] == " ".join(["%.4g%%" % pct] * 4)
+        figs = _combine_figs(mode)
+        g = figs[0]["gridplot"]
+        W = g[2] - g[0]
+        share = 4.5 / 7.5
+        want = (dr._DASH_BY_COMBINE_INSET_RS
+                + dr._DASH_BY_COMBINE_PANEL_MARGIN_RS) * share / 100.0 * W
+        left = min(f["el"][0] for f in figs) - g[0]
+        assert abs(left - want) <= 2, (left, want)
+        unit = dr.OptionTranslator.PT_PER_RS * dr.OptionTranslator.PX_PER_PT
+        gap = sorted(f["el"][0] for f in figs if abs(f["el"][1] - figs[0]["el"][1]) < 1)
+        row = [f for f in figs if abs(f["el"][1] - figs[0]["el"][1]) < 1]
+        row.sort(key=lambda f: f["el"][0])
+        got = row[1]["el"][0] - row[0]["el"][2]
+        assert abs(got - 2 * dr._DASH_BY_COMBINE_PANEL_MARGIN_RS * unit) <= 2, (
+            got, gap)
+
+    def test_no_note(self, mode):
+        _g, _r, notes = _built(mode, {"by": "rep78, style(combine)"},
+                               plots=tk._TWO)
+        assert [n for n in notes if "style(combine)" in n] == []
+
+
+def _strip(fig):
+    from bokeh.models import ColorBar
+    for side in ("left", "right", "above", "below"):
+        for m in getattr(fig, side):
+            if isinstance(m, ColorBar) and m.name == "dash_by_label_box":
+                return side, m
+    return None, None
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestBeside:
+    @pytest.mark.parametrize("pid,where", [("Y11", "right"), ("Y12", "left")])
+    def test_labels_beside(self, mode, pid, where):
+        """A vertical one-colour strip on the panel's right (3 o'clock)
+        or left (9), as wide as the box's two margins (Y11: 33.07 of the
+        box's 138.38 against its 105.13 font), the label centred on it."""
+        clock = {"Y11": 3, "Y12": 9}[pid]
+        grid, _r, _n = _built(mode, {"by": "foreign",
+                                     "subtitle": ", position(%d)" % clock})
+        plain, _r, _n = _built(mode, {"by": "foreign"})
+        _s0, top = _strip(tk._panels(plain)[0])
+        font = float(str(top.major_label_text_font_size).rstrip("px"))
+        for p in tk._panels(grid):
+            side, box = _strip(p)
+            assert side == where and box.orientation == "vertical"
+            assert abs(box.width - (top.height - font)) <= 1, (box.width,
+                                                               top.height)
+            assert list(box.ticker.ticks) == [0.5]
+            assert box.major_label_text_align == "center"
+
+    def test_title_beside(self, mode):
+        for pos, name, where in (("3", "dash_by_rtext", "right"),
+                                 ("9", "dash_by_ltext", "left")):
+            grid, _r, _n = _built(mode, {
+                "by": 'foreign, title("T", position(%s))' % pos})
+            cell = tk._cell(grid, name)
+            assert cell is not None, name
+            assert tk._cell_side(grid, cell) == where
+            assert int(cell[3]) == 1
+            axis = (cell[0].right if where == "right" else cell[0].left)[0]
+            assert list(axis.major_label_overrides.values()) == ["T"]
+            # A renderer, so the build logs no W-1000 for the cell.
+            assert [m.name for m in cell[0].center
+                    if type(m).__name__ == "Span"] == ["dash_by_anchor"]
+            assert tk._cell(grid, "dash_by_head") is None or not str(
+                tk._cell(grid, "dash_by_head")[0].title.text or "")
+
+    @pytest.mark.release
+    def test_title_centred_on_the_plot_regions(self, mode):
+        figs = _measure(mode, {"by": 'foreign, title("T", position(3))'})[1400]
+        panels = _panels_of(figs)
+        (cell,) = [f for f in figs if f["name"] == "dash_by_rtext"]
+        (ax,) = cell["axes"]
+        mid = (panels[0]["frame"][1] + panels[0]["frame"][3]) / 2.0
+        assert ax[0] >= max(p["el"][2] for p in panels) - 1
+        assert abs((ax[1] + ax[3]) / 2.0 - mid) <= 2, (ax, mid)
+        # The text's column is as wide as the text, not a panel's share
+        # (twoway's panels narrow by 71.6 of 2196.6 units for T: Y13
+        # against Y11d); the two panels keep most of the width.
+        W = panels[0]["grid"][2] - panels[0]["grid"][0]
+        assert sum(p["el"][2] - p["el"][0] for p in panels) > 0.8 * W
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestFrameAspect:
+    def test_the_hook(self, mode):
+        grid, _r, _n = _built(mode, {"by": "foreign", "aspectratio": "1"})
+        p = tk._panels(grid)[0]
+        cbs = [c for c in p.js_property_callbacks.get("change:inner_width", [])
+               if c.code == dr._DASH_BY_FIT_JS]
+        assert len(cbs) == 1 and cbs[0].args["frame_ar"] == 1.0
+
+
+#: The default tier keeps one Chrome case per item, saved at 1000 px
+#: (REVIEW R3-39); the rest are release.
+_SQUARE_CASES = [pytest.param(m, w, marks=() if (m, w) == ("saved", 1000)
+                              else pytest.mark.release)
+                 for m in _MODES for w in (1400, 1000, 760)]
+
+
+class TestFrameAspectInChrome:
+    @pytest.mark.parametrize("mode,width", _SQUARE_CASES)
+    def test_plot_regions_square(self, mode, width):
+        """Y14: twoway's plot regions are square at aspectratio(1)."""
+        a = _probe("Y14")["rects"][3]
+        assert a["w"] == a["h"]
+        figs = _panels_of(_measure(mode, {"by": "foreign",
+                                          "aspectratio": "1"},
+                                   widths=(width,))[width])
+        assert len(figs) == 2
+        for f in figs:
+            fr = f["frame"]
+            assert abs((fr[2] - fr[0]) - (fr[3] - fr[1])) <= 1, fr
+
+
+@pytest.mark.release
+@pytest.mark.parametrize("mode", _MODES)
+class TestSmallMargin:
+    @pytest.mark.parametrize("pid,margin,units", [
+        ("Y15", "small", 2.3), ("Y16", "zero", 3.5)])
+    def test_array_grows(self, mode, pid, margin, units):
+        """The array is larger on every side by the scheme's graph margin
+        (3.5) less the one given (small 1.2, zero 0)."""
+        base = _probe("Y11d")["rects"][3]
+        got = _probe(pid)["rects"][3]
+        assert abs((base["x"] - got["x"]) / _U - units) < 0.02
+        plain = _panels_of(_measure(mode, {"by": "foreign"})[1400])
+        small = _panels_of(_measure(mode, {
+            "by": "foreign, graphregion(margin(%s))" % margin})[1400])
+        W = plain[0]["grid"][2] - plain[0]["grid"][0]
+        want = units * 0.6 / 100.0 * W
+        dl = min(f["frame"][0] for f in plain) - min(f["frame"][0] for f in small)
+        dr_ = max(f["frame"][2] for f in small) - max(f["frame"][2] for f in plain)
+        dt = min(f["frame"][1] for f in plain) - min(f["frame"][1] for f in small)
+        for d in (dl, dr_, dt):
+            assert abs(d - want) <= 2, (dl, dr_, dt, want)

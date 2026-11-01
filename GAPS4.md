@@ -432,7 +432,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-14 Tracked:** Closed in WP-41, BUGS.md "coloruseplegend under by(): plegend(on) draws nothing, and clegend(on) draws a discrete Legend with '(missing)' where twoway draws a colour-bar key", commit a75f477.
 - **BY-10 Tracked:** Partly closed in WP-41 (section 41-06, commit 2e58498): justification(), nobexpand, lwidth(), lpattern(), span, alignment(), linegap(), bmargin() and placement() are drawn on the panel label row; open: orientation() is named, not drawn (BUGS.md "A by() panel label's orientation() is named, not drawn").
 - **BY-16 Tracked:** Closed in WP-41, BUGS.md "by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line", commit 653b1bb.
-- **BY-18 Tracked:** Open (WP-41 section 41-05).
+- **BY-18 Tracked:** Closed in WP-41, BUGS.md "Documented by() layout differences: style(combine) on by()'s grid; clock 3/9 labels and titles below instead of beside; aspectratio() shapes each panel figure, not its plot region; a smaller graph margin insets nothing", commit pending.
 - **VF-6 Tracked:** Open (WP-41 section 41-05).
 - **GW-5 Tracked:** Open (WP-41 section 41-05).
 - **sil:SD-7 Tracked:** Closed in WP-41, BUGS.md "A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198)", commit 2fb5c6e.

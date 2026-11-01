@@ -21,13 +21,18 @@ SIDE_NAMES = ("dash_by_ytitle", "dash_by_xtitle", "dash_by_legend",
               # WP-41 BY-14: by(, plegend())'s cell.
               "dash_by_plegend",
               # WP-41 BY-12: by()'s edge-title columns.
-              "dash_by_l2title", "dash_by_r1title", "dash_by_r2title")
+              "dash_by_l2title", "dash_by_r1title", "dash_by_r2title",
+              # WP-41 BY-18: by()'s texts beside the panels.
+              "dash_by_rtext", "dash_by_ltext")
 
 
 def panel_label_title(fig):
-    """The panel's label ``Title``, or None."""
+    """The panel's label ``Title``, or None (WP-41 BY-18: at 2-4 and
+    8-10 o'clock it is on the panel's right or left)."""
     for m in list(getattr(fig, "above", []) or []) + \
-            list(getattr(fig, "below", []) or []):
+            list(getattr(fig, "below", []) or []) + \
+            list(getattr(fig, "right", []) or []) + \
+            list(getattr(fig, "left", []) or []):
         if type(m).__name__ == "Title" and \
                 getattr(m, "name", None) == "dash_by_label":
             return m

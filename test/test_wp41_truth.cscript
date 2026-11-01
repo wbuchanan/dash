@@ -971,6 +971,36 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w41_run' {
 }
 * ==== end S05 ====
 
+* ==== S05 BY-18: by() layout regions ====
+local only : env WP41_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w41_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4105-4: by(rep78, style(combine)) is laid out in graph combine's
+    // regions, as twoway lays it out (by_layout_truth.json Y10): the
+    // build no longer names them.  The note would come from the
+    // renderer's route at build, so the page is built.
+    // ------------------------------------------------------------
+    dash clear
+    sysuse auto, clear
+    capture erase "`w41_work'/q4.html"
+    quietly log using "`w41_work'/q4.log", text replace name(_q4105)
+    capture noisily dash (scatter mpg weight) (lfit mpg weight), by(rep78, style(combine)) saving("`w41_work'/q4.html", replace)
+    local q4rc = _rc
+    quietly log close _q4105
+    _w41_expect Q4105-4 "(`q4rc' == 0)" "dash ... by(rep78, style(combine)) rc `q4rc'"
+    cert_log_has "`w41_work'/q4.log", needle("graph combine's regions")
+    _w41_expect Q4105-4 "(r(found) == 0)" "the build named combine's regions"
+    _w41_done Q4105-4 "style(combine) builds with no note on its regions"
+    capture erase "`w41_work'/q4.log"
+    capture erase "`w41_work'/q4.html"
+    dash clear
+
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
 // S06 helper (BY-16): the text of every Title named dash_by_label in the
 // saved page $W41_Q2_PAGE, sorted, into $W41_Q2_GOT (each
 // <script type="application/json"> block loaded as a Bokeh document, as

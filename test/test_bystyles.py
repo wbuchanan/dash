@@ -75,7 +75,12 @@ class TestTheExpansion:
         out = dr._dash_bystyle_route(spec)
         go = out["graphs"][0]["graph_options"]
         words = dr._dash_by_tokens(go["by"].partition(",")[2])
-        assert words == rec["by_words"].split(), words
+        # Flipped (WP-41 BY-18): combine's words were its bygraphstyle
+        # file's alone, which was wrong because its regions are drawn now,
+        # through the internal word __combine (_DASH_BYSTYLE_EXPAND).
+        want = rec["by_words"].split() + (["__combine"]
+                                          if style == "combine" else [])
+        assert words == want, words
         for k, v in _drawn_opts(style).items():
             assert go.get(k) == v, (k, go.get(k), v)
 
@@ -152,11 +157,15 @@ class TestDrawn:
             [n for n in nb if "not implemented" in n]
 
     def test_combine_names_its_regions(self, mode):
+        # Flipped (WP-41 BY-18): the note was wrong because combine's
+        # regions are drawn now, as twoway lays them out
+        # (by_layout_truth.json Y10).
         spec = tk._spec([tk._graph("g", tk._TWO,
                                    {"by": "rep78, style(combine)"})],
                         scheme="s2color")
         _r, notes, _ = tk._build(mode, spec, data=tr._data())
-        assert [n for n in notes if "style(combine)" in n] == [_COMBINE_NOTE]
+        assert [n for n in notes if "style(combine)" in n] == []
+        assert _COMBINE_NOTE not in notes
 
 
 def _boxes(roots):

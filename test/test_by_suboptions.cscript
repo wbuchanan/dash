@@ -268,15 +268,16 @@ assert `_bys_n' == 0
 // Flipped (WP-31 D10c): style(rescale) is drawn as its bygraphstyle
 // file's options (bystyle_truth.json); its own note names only the label
 // box's astextbox and outline (the follow-up draws those: silent).
-// style(combine) names its regions (M17).
+// Flipped (WP-41 BY-18): style(combine) named its regions, which was
+// wrong because they are drawn now, as twoway lays them out
+// (by_layout_truth.json Y10): no note.
 _bys_render "foreign, style(rescale)"
 _bys_take
 assert `_bys_n' == 0
 _bys_render "foreign, style(combine)"
 _bys_take
-assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "graph combine's regions") > 0
-display "BSC-08 PASS: yrescale, xrescale, rescale, r, norescale and noyrescale are honoured, not named; style(rescale) has its own note"
+assert `_bys_n' == 0
+display "BSC-08 PASS: yrescale, xrescale, rescale, r, norescale and noyrescale are honoured, not named; style(rescale) and style(combine) have no note"
 
 // BSC-09: the saved build says once that range() is not applied.
 tempfile out9

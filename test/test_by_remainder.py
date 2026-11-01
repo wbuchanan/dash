@@ -412,7 +412,8 @@ class TestSubtitleFormat:
 
 def _box(fig):
     from bokeh.models import ColorBar
-    for s in ("above", "below"):
+    # WP-41 BY-18: at 2-4 and 8-10 o'clock the box is beside the region.
+    for s in ("above", "below", "left", "right"):
         for m in getattr(fig, s):
             if isinstance(m, ColorBar) and m.name == "dash_by_label_box":
                 return m

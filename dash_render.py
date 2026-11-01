@@ -37037,9 +37037,12 @@ def _dash_parse_by(by_raw, warn=True):
         name = tok.split("(", 1)[0].strip()
         arg = tok[len(name) + 1:-1] if "(" in tok and tok.endswith(")") else ""
         _row = _dash_by_word(tok)[0]
-        if _row in ("rows", "colfirst", "holes", "compact", "iscale",
-                    "imargin") or (_row == "style" and arg.strip() in
-                                   ("compact", "default")):
+        if tok == "__combine":
+            # WP-41 BY-18: style(combine)'s regions (_dash_bystyle_route).
+            pass
+        elif _row in ("rows", "colfirst", "holes", "compact", "iscale",
+                      "imargin") or (_row == "style" and arg.strip() in
+                                     ("compact", "default")):
             # laid out by `_dash_layout_cell` (WP-30 P1.15b).
             pass
         elif name in _DASH_BY_SUPPORTED["cols"] and "(" in tok:
@@ -37133,20 +37136,36 @@ _DASH_BYSTYLE_EXPAND = {
     "rescale": (("rescale", "individual", "imargin(medsmall)"),
                 {"subtitle": ", box astextbox blstyle(foreground)",
                  "ylabel": "#3", "xlabel": "#3"}, ""),
-    # combine (bystyle_truth.json: 600 SVG lines differ from these): its
-    # words and its unboxed labels; twoway lays its panels in graph
-    # combine's regions, by()'s grid here (M17), named once.
     # WP-41 BY-4: compact (bygraphstyle-compact.style:39) zeroes the
     # spacing and edge labels and draws the plot region and the label box
     # in the foreground line.
     "compact": (("compact",), {"subtitle": ", box astextbox "
                                            "blstyle(foreground)",
                                "plotregion": "lstyle(foreground)"}, ""),
+    # combine (bystyle_truth.json: 600 SVG lines differ from these): its
+    # words and its unboxed labels, and its regions (WP-41 BY-18): the
+    # internal word __combine (never syntax: dash.ado refuses it as
+    # twoway does) lays the panels in graph combine's regions
+    # (_DASH_BY_COMBINE_INSET_RS, _DASH_BY_COMBINE_PANEL_MARGIN_RS).
     "combine": (("rescale", "individual", "ixtitle", "iytitle",
-                 "imargin(medsmall)"), {"subtitle": ", nobox"},
-                "its panels are laid out on by()'s grid, not in graph "
-                "combine's regions."),
+                 "imargin(medsmall)", "__combine"), {"subtitle": ", nobox"},
+                ""),
 }
+
+#: WP-41 BY-18: graph combine's regions under by(, style(combine)),
+#: measured (by_layout_truth.json Y10, stcolor 5400 x 3240, 32.4 units a
+#: relative unit): the array 2.2 units in from the graph (71.21), each
+#: panel's graph region 1.76 units outside its plot region on the side no
+#: axis takes (57.04), the panels' regions touching.
+_DASH_BY_COMBINE_INSET_RS = 2.2
+_DASH_BY_COMBINE_PANEL_MARGIN_RS = 1.76
+
+
+def _dash_by_is_combine(by_raw):
+    """Whether a routed by() string holds style(combine)'s internal word
+    ``__combine`` (WP-41 BY-18, :data:`_DASH_BYSTYLE_EXPAND`)."""
+    _v, comma, subs = str(by_raw or "").partition(",")
+    return bool(comma) and "__combine" in _dash_by_tokens(subs.strip())
 
 
 def _dash_bystyle_rescale_words(words, toks):
@@ -37313,7 +37332,8 @@ def _dash_by_grid_options(by_raw):
     dropped silently -- dash.ado refused it in twoway's words.  Never
     raises; linear in the text."""
     out = {"rows": 0, "cols": 0, "holes": (), "colfirst": False,
-           "compact": False, "style": "", "iscale": "", "imargin": ""}
+           "compact": False, "style": "", "iscale": "", "imargin": "",
+           "combine": False}
     try:
         text = by_raw if isinstance(by_raw, str) else str(by_raw or "")
     except Exception:  # noqa: BLE001 -- any object at all
@@ -37321,6 +37341,8 @@ def _dash_by_grid_options(by_raw):
     _, comma, subs = text.partition(",")
     if not comma:
         return out
+    # WP-41 BY-18: style(combine)'s regions (_dash_by_spacing).
+    out["combine"] = _dash_by_is_combine(text)
     seen = set()
     for tok in _dash_by_tokens(subs.strip()):
         row, _typed, _paren, arg = _dash_by_word(tok)
@@ -37615,6 +37637,10 @@ def _dash_by_spacing(fig0, opts):
         sides = [0.0] * 4
     if opts.get("imargin"):
         sides, _noted = _dash_margin_sides(opts["imargin"], sides)
+    if opts.get("combine"):
+        # WP-41 BY-18: graph combine's panels touch, each with its own
+        # graph-region margin (by_layout_truth.json Y10).
+        sides = [_DASH_BY_COMBINE_PANEL_MARGIN_RS] * 4
     unit = OptionTranslator.PT_PER_RS * OptionTranslator.PX_PER_PT
     out = []
     for a, b in ((sides[2], sides[3]), (sides[0], sides[1])):
@@ -52274,7 +52300,9 @@ def _dash_reflow(grid, stack=True):
             if nm in ("dash_by_ytitle", "dash_by_legend",
                       "dash_by_clegend", "dash_by_plegend",
                       "dash_by_l2title",
-                      "dash_by_r1title", "dash_by_r2title") and span == 1:
+                      "dash_by_r1title", "dash_by_r2title",
+                      # WP-41 BY-18: by()'s texts beside the panels.
+                      "dash_by_rtext", "dash_by_ltext") and span == 1:
                 side_cols.add(col)
             elif nm == "dash_by_ruler":
                 ruler_cols.add(col)
@@ -52896,6 +52924,11 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
         # panel stopped at the bound, leaving the row's rest empty.
         from bokeh.models import InlineStyleSheet
         for f in figs:
+            if own_ar:
+                # WP-41 BY-18: the plot region square at the panel's width
+                # (twoway keeps the region's width, by_layout_truth.json
+                # Y14), so no height bound holds the panel short of it.
+                f.max_height = None
             mh = getattr(f, "max_height", None)
             if isinstance(mh, (int, float)) and mh > 0:
                 f.stylesheets = list(f.stylesheets) + [InlineStyleSheet(
@@ -52908,6 +52941,11 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
         # twoway shortens the panels"), set as the grid is laid out.
         if not own_ar and figs[0]._dash_array_ar:
             _dash_by_fit_hook(figs, float(figs[0]._dash_array_ar), nr, nc)
+        elif own_ar:
+            # WP-41 BY-18: aspectratio(#) shapes each panel's plot region,
+            # as twoway does.
+            _dash_by_fit_hook(figs, float(figs[0]._dash_array_ar or 1.0),
+                              nr, nc, frame_ar=own_ar)
         grid.spacing = _dash_by_spacing(figs[0], opts)
         # The axis titles, legend and colour key beside the panels (WP-30
         # P1.15c); the overall text then spans every column.
@@ -56259,6 +56297,12 @@ def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
             # nobexpand: the box only round the text, at the compass point
             # (measured: position(1) ring(0) nobexpand at the top right).
             inside = dict(place, expand="nobexpand" not in opts)
+        elif place.get("clock") in (2, 3, 4, 8, 9, 10):
+            # WP-41 BY-18: beside the plot region, a narrow upright box
+            # as tall as it (by_layout_truth.json Y11, Y12;
+            # _dash_by_label_box).
+            side = "right" if place["clock"] <= 4 else "left"
+            align = "center"
         else:
             side, align = place["side"], place["align"]
     if "margin" in opts and inside is not None:
@@ -56463,6 +56507,42 @@ def _dash_by_text_cell(scheme, name):
     return cell
 
 
+def _dash_by_beside_cell(scheme, name, title, side):
+    """A by() text beside the panels (WP-41 BY-18): a bare ``Plot`` named
+    *name*, one pixel of frame, as tall as the panel rows it spans, whose
+    one axis on *side* (``"right"`` or ``"left"``) writes *title*'s text
+    horizontally at the middle of its frame in *title*'s font, size and
+    colour (frames aligned, so the text is centred on the panels' plot
+    regions, as twoway centres it)."""
+    from bokeh.models import FixedTicker, LinearAxis, Plot, Range1d
+    cell = Plot(name=name, frame_width=1, width_policy="min",
+                height_policy="max", toolbar_location=None,
+                outline_line_color=None, min_border=0,
+                x_range=Range1d(0, 1), y_range=Range1d(0, 1))
+    if scheme is not None:
+        scheme.apply_to_figure(cell)
+    cell.outline_line_color = None
+    cell.background_fill_color = cell.border_fill_color
+    ax = LinearAxis(ticker=FixedTicker(ticks=[0.5]),
+                    major_label_overrides={0.5: str(title.text or "")},
+                    axis_line_color=None, major_tick_line_color=None,
+                    minor_tick_line_color=None, major_tick_in=0,
+                    major_tick_out=0, major_label_standoff=0,
+                    major_label_text_font_size=title.text_font_size,
+                    major_label_text_color=title.text_color,
+                    major_label_text_font_style=title.text_font_style,
+                    major_label_text_font=title.text_font,
+                    major_label_text_baseline="middle")
+    cell.add_layout(ax, side)
+    cell.grid.visible = False
+    # One invisible renderer, as _dash_by_text_cell's: a Plot with none
+    # logs W-1000 (MISSING_RENDERERS) at build.
+    from bokeh.models import Span
+    cell.add_layout(Span(location=0, dimension="width", visible=False,
+                         name="dash_by_anchor"))
+    return cell
+
+
 def _dash_by_chrome(graph_opts, by_vars, var_labels, scheme=None, seen=None,
                     key=""):
     """``{"head": cell or None, "foot": cell or None}``: a by() graph's
@@ -56486,6 +56566,7 @@ def _dash_by_chrome(graph_opts, by_vars, var_labels, scheme=None, seen=None,
     defaults = {"note": "Graphs by " + _dash_by_note_list(by_vars, var_labels)}
     head = _dash_by_text_cell(scheme, "dash_by_head")
     foot = _dash_by_text_cell(scheme, "dash_by_foot")
+    beside = {}
     if o["title"]:
         # WP-41 BY-24a: at clocks 5, 6 and 7 twoway draws by()'s title
         # below the panels, outermost, under the note (by_text_truth.json
@@ -56493,15 +56574,79 @@ def _dash_by_chrome(graph_opts, by_vars, var_labels, scheme=None, seen=None,
         # takes it there, its ring placing it last.
         _tt, _to = _dash_textbox(o["title"], "title", seen, key)
         cell = head
+        _clock = None
         if _to and "position" in _to:
             _pl = _dash_textbox_position(
                 _to, scheme.text_clock["title"] if scheme is not None
                 else 12, scheme.text_ring["title"] if scheme is not None
                 else 7, "center", "title", note=False)
-            if _pl.get("mode") == "side" and _pl.get("clock") in (5, 6, 7):
+            if _pl.get("mode") == "side":
+                _clock = _pl.get("clock")
+            if _clock in (5, 6, 7):
                 cell = foot
-        cell.title.text = _tt
-        _dash_figure_title(cell, {"title": o["title"]}, seen, key)
+        if _clock in (2, 3, 4, 8, 9, 10):
+            # WP-41 BY-18: at 2-4 and 8-10 o'clock twoway draws by()'s
+            # title right or left of the panels, centred on their plot
+            # regions (by_layout_truth.json Y13: T at x 5215 of 5400,
+            # y 1530.8 on regions 290.6 .. 2674.2; Y13b at x 185): a cell
+            # of its own beside the array, in the title's style.
+            sd = "right" if _clock <= 4 else "left"
+            tmp = _dash_by_text_cell(scheme, "dash_by_tmp")
+            _t = tmp.title
+            _t.text = _tt
+            _dash_textbox_style(
+                _t, {k: v for k, v in _to.items()
+                     if k not in ("position", "ring")}, tmp, scheme,
+                "title", base_size=_t.text_font_size,
+                base_color=_t.text_color)
+            beside[sd] = _dash_by_beside_cell(
+                scheme, "dash_by_%stext" % sd[0], _t, sd)
+        else:
+            cell.title.text = _tt
+            _dash_figure_title(cell, {"title": o["title"]}, seen, key)
+    # WP-41 BY-18: by()'s subtitle(), note() and caption() at 2-4 or 8-10
+    # o'clock beside the panels too (by_text_truth.json bp66, bp67: the
+    # note X at x 5236.5 and 163.5 of 5400, centred on the plot regions),
+    # one text a side, the title first.
+    for k in ("subtitle", "note", "caption"):
+        raw = boxes.get(k)
+        if not raw:
+            continue
+        _kt, _ko = _dash_textbox(raw, k, seen, key)
+        if not _kt or not _ko or "position" not in _ko or \
+                "prefix" in _ko or "suffix" in _ko:
+            continue
+        _pl = _dash_textbox_position(
+            _ko, scheme.text_clock[k] if scheme is not None else 12,
+            scheme.text_ring[k] if scheme is not None else 1, "center", k,
+            note=False)
+        _clock = _pl.get("clock") if _pl.get("mode") == "side" else None
+        if _clock not in (2, 3, 4, 8, 9, 10):
+            continue
+        sd = "right" if _clock <= 4 else "left"
+        if sd in beside:
+            continue
+        tmp = _dash_by_text_cell(scheme, "dash_by_tmp")
+        _t = tmp.title
+        if scheme is not None:
+            _t.text_font_size, _t.text_color = {
+                "subtitle": (scheme.subheading_font_size,
+                             scheme.subheading_color),
+                "caption": (scheme.body_font_size, scheme.body_color),
+                "note": (scheme.note_text_font_size,
+                         scheme.note_text_color)}[k]
+        _t.text_font_style = "normal"
+        _t.text = _kt
+        _dash_textbox_style(
+            _t, {q: v for q, v in _ko.items()
+                 if q not in ("position", "ring")}, tmp, scheme, k,
+            base_size=_t.text_font_size, base_color=_t.text_color)
+        beside[sd] = _dash_by_beside_cell(
+            scheme, "dash_by_%stext" % sd[0], _t, sd)
+        boxes = dict(boxes, **{k: ""})
+        if k == "note":
+            # The text given replaces "Graphs by", as a note() does.
+            defaults = {}
     _dash_text_annotations(head, boxes, seen, key, scheme, defaults=defaults,
                            sides=("above",), ring0=True)
     _dash_text_annotations(foot, boxes, seen, key, scheme, defaults=defaults,
@@ -56586,7 +56731,8 @@ def _dash_by_chrome(graph_opts, by_vars, var_labels, scheme=None, seen=None,
                         it[6] = float(rel[0 if it[3] == "left" else 1])
                 items.append(it)
             cb.args = dict(cb.args, items=items)
-    out = {}
+    out = {("rtext" if sd == "right" else "ltext"): c
+           for sd, c in beside.items()}
     for part, cell in (("head", head), ("foot", foot)):
         # A cell that holds no text is None.
         texts = bool(str(getattr(cell.title, "text", "") or "")) or any(
@@ -57047,6 +57193,18 @@ if (vs.length > 1 && lefts.size === 1 && ncols > 1) {
   });
   return;
 }
+if (frame_ar != null && frame_ar > 0) {
+  for (const [p, v] of vs) {
+    if (v.frame == null || v.frame.bbox == null || v.bbox == null) { continue; }
+    const fw = v.frame.bbox.width, fh = v.frame.bbox.height;
+    if (!(fw > 0) || !(fh > 0) || !(v.bbox.width > 0)) { continue; }
+    const ar = v.bbox.width / (fw * frame_ar + (v.bbox.height - fh));
+    if (ar > 0 && !(Math.abs((p.aspect_ratio || 0) - ar) < 0.002)) {
+      p.aspect_ratio = ar;
+    }
+  }
+  return;
+}
 const ph = rects[0].height, pw = rects[0].width;
 if (!(ph > 0) || !(pw > 0)) { return; }
 const want = g.width / ratio;
@@ -57058,18 +57216,29 @@ for (const [p, v] of vs) {
 """
 
 
-def _dash_by_fit_hook(figs, ratio, nr, nc):
+def _dash_by_fit_hook(figs, ratio, nr, nc, frame_ar=None):
     """Keep a by() graph's size as twoway does (:data:`_DASH_BY_FIT_JS`):
     one ``CustomJS`` on the first panel's laid-out size holding every
     panel, the graph's width/height *ratio*, the *nr* panel rows and *nc*
     columns and each panel's own proportion (restored when the panels
-    stack); returns it, or None for no panel or no ratio."""
+    stack); returns it, or None for no panel or no ratio.  With
+    *frame_ar* (WP-41 BY-18: aspectratio(#) under by()), each panel's
+    plot region is held at height/width # instead, as twoway shapes it
+    (by_layout_truth.json Y14: 2196.62 x 2196.62 at aspectratio(1)):
+    its proportion from its laid-out frame width and borders."""
     from bokeh.models import CustomJS
     if not figs or not ratio or ratio <= 0:
         return None
+    try:
+        far = float(frame_ar) if frame_ar is not None else None
+    except (TypeError, ValueError):
+        far = None
+    if far is not None and not (math.isfinite(far) and far > 0):
+        far = None
     cb = CustomJS(args={"panels": list(figs), "ratio": float(ratio),
                         "nr": max(1, int(nr)), "ncols": max(1, int(nc)),
-                        "base": [float(f.aspect_ratio or 0.0) for f in figs]},
+                        "base": [float(f.aspect_ratio or 0.0) for f in figs],
+                        "frame_ar": far},
                   code=_DASH_BY_FIT_JS)
     for k in _DASH_SPAN_KEYS:
         figs[0].js_on_change(k, cb)
@@ -57750,6 +57919,40 @@ def _dash_by_label_box(fig, scheme, mult=1.0):
         title._dash_boxed = True
         return title
     fpx = "%gpx" % round(font, 2)
+    if where in ("left", "right"):
+        # WP-41 BY-18: a label at 2-4 or 8-10 o'clock is a strip beside
+        # the plot region, as tall as it and as wide as the box's two
+        # margins, the label horizontal at its middle, centred on it
+        # (by_layout_truth.json Y11: 33.07 wide of the box's 138.38 at a
+        # 105.13 font; the text overruns the strip, as twoway's does).
+        w = max(1, int(round((float(top) + float(bottom)) * unit * mult)))
+        box = ColorBar(
+            name="dash_by_label_box", orientation="vertical", padding=0,
+            margin=0, width=w,
+            color_mapper=LinearColorMapper(palette=[fill], low=0, high=1),
+            bar_line_color=outline, bar_line_width=round(line, 3),
+            border_line_color=None, background_fill_alpha=0,
+            major_tick_line_color=None, minor_tick_line_color=None,
+            ticker=FixedTicker(ticks=[0.5]),
+            major_label_overrides={0.5: str(title.text)},
+            major_label_text_align="center",
+            major_label_text_baseline="middle",
+            major_label_text_font_size=fpx,
+            major_label_text_color=title.text_color,
+            major_label_text_font_style=title.text_font_style,
+            major_label_text_font=title.text_font,
+            label_standoff=-int(round(w / 2.0)))
+        if title.text_alpha is not None:
+            box.major_label_text_alpha = title.text_alpha
+        if dash is not None:
+            box.bar_line_dash = dash
+        setattr(box, _DASH_GRAPH_TEXT_DONE, True)
+        lst = list(getattr(fig, where))
+        idx = next(i for i, m in enumerate(lst) if m is title)
+        lst.insert(idx, box)
+        setattr(fig, where, lst)
+        title.visible = False
+        return box
     just = _dash_by_label_just(lo)
     text = str(title.text)
     placed = just in ("left", "right") or "span" in lo
@@ -58116,8 +58319,12 @@ def _dash_by_array_styles(by_raw, scheme=None, graph_opts=None):
 
     graphregion(margin()) insets by the margin less the scheme's graph
     margin (medium): large is 4.5 units, l+5 is 5 on the left; a smaller
-    margin, which twoway draws as a larger array, is no inset (a
-    dashboard cell has no room to give).  plotregion(margin()) insets by
+    margin, which twoway draws as a larger array (WP-41 BY-18,
+    by_layout_truth.json Y15 small 2.3 units, Y16 zero 3.5 on every
+    side), is that much negative CSS margin with ``overflow: visible``.
+    style(combine) insets the array by graph combine's regions
+    (:data:`_DASH_BY_COMBINE_INSET_RS` plus a panel's own
+    :data:`_DASH_BY_COMBINE_PANEL_MARGIN_RS`).  plotregion(margin()) insets by
     the margin itself (large 8, small 1.2).  A unit is 1% of the graph's
     smaller side, as in twoway, so the padding is a CSS percentage of the
     cell's width, the units times min(W, H) / W by the graph's ratio
@@ -58127,7 +58334,8 @@ def _dash_by_array_styles(by_raw, scheme=None, graph_opts=None):
     reg = _dash_by_region_options(by_raw)
     sch = scheme if scheme is not None else SchemeParser.fallback()
     out = {}
-    if reg["margin"]:
+    combine = _dash_by_is_combine(by_raw)
+    if reg["margin"] or combine:
         try:
             gstart = [float(v) for v in sch.graph_margin_sides()]
         except Exception:  # noqa: BLE001 -- the shipped default
@@ -58151,13 +58359,26 @@ def _dash_by_array_styles(by_raw, scheme=None, graph_opts=None):
             except (TypeError, ValueError):
                 return 0.0
             return v if math.isfinite(v) else 0.0
-        side = [max(0.0, _num(g[i]) - _num(gstart[i])) + max(0.0, _num(p[i]))
+        side = [_num(g[i]) - _num(gstart[i]) + max(0.0, _num(p[i]))
                 for i in range(4)]
+        if combine:
+            side = [v + _DASH_BY_COMBINE_INSET_RS
+                    + _DASH_BY_COMBINE_PANEL_MARGIN_RS for v in side]
         k = _dash_short_side_share(graph_opts, sch)
-        pct = [min(1e4, v) * k for v in side]
+        pct = [max(-1e4, min(1e4, v)) * k for v in side]
         if any(v >= 5e-5 for v in pct):
             # CSS order: top right bottom left; sides are l r b t.
-            out["padding"] = " ".join("%.4g%%" % pct[i] for i in (3, 1, 2, 0))
+            out["padding"] = " ".join("%.4g%%" % max(0.0, pct[i])
+                                      for i in (3, 1, 2, 0))
+        if any(v <= -5e-5 for v in pct):
+            out["margin"] = " ".join("%.4g%%" % min(0.0, pct[i])
+                                     for i in (3, 1, 2, 0))
+            out["overflow"] = "visible"
+            # The array widens by the two sides (a stretched grid keeps
+            # its parent's width under a negative margin alone).
+            out["max-width"] = "none"
+            out["width"] = "calc(100%% + %.4g%%)" % (
+                -min(0.0, pct[0]) - min(0.0, pct[1]))
     if reg["outline"]:
         base = {"fill": None, "fill_alpha": None, "line": None,
                 "line_alpha": None,
@@ -58320,6 +58541,10 @@ def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
         side["hook"] = _dash_by_stack_hook(figs, titles["hidden"],
                                            titles["restore"], tcells, ruler)
     chrome = getattr(figs[0], "_dash_by_chrome", None) or {}
+    for k in ("rtext", "ltext"):
+        # WP-41 BY-18: by()'s title beside the panels (_dash_by_chrome).
+        if chrome.get(k) is not None:
+            side["cells"].append((k, chrome[k], ""))
     _dash_by_apply_regions(
         figs, [chrome.get("head"), chrome.get("foot")]
         + [c for _k, c, _w in side["cells"]], go, scheme, seen, key)
@@ -58412,6 +58637,17 @@ def _dash_by_side_grid(grid, side, nrows, ncols):
         else:
             out.append((cell, row, 0, 1, -1))
             row += 1
+    # WP-41 BY-18: by()'s title at 8-10 o'clock left of everything and
+    # at 2-4 right of everything, over the panel rows (by_layout_truth.json
+    # Y13, Y13b).
+    if "ltext" in kinds:
+        out = [c if (len(c) >= 5 and c[4] == -1) else
+               (c[0], c[1], int(c[2]) + 1) + tuple(c[3:]) for c in out]
+        out.append((kinds["ltext"][0], p0r, 0, nrows, 1))
+        total += 1
+    if "rtext" in kinds:
+        out.append((kinds["rtext"][0], p0r, total, nrows, 1))
+        total += 1
     grid.children = [c if len(c) < 5 or c[4] != -1 else
                      (c[0], c[1], c[2], c[3], total) for c in out]
     return total
@@ -69577,6 +69813,9 @@ class ServerAppBuilder:
                       "_DASH_GRAPH_MARGIN_JS",
                       "_DASH_SPAN_JS", "_DASH_SPAN_KEYS",
                       "_DASH_BY_HOLE_PLACE", "_DASH_BY_FIT_JS",
+                      # WP-41 BY-18: combine's regions.
+                      "_DASH_BY_COMBINE_INSET_RS",
+                      "_DASH_BY_COMBINE_PANEL_MARGIN_RS",
                       "_DASH_CVAR_LINE_POOL",
                       "_DASH_ADDED_TEXT_PLACE", "_DASH_ADDED_TEXT_ORIENT",
                       "_DASH_ADDED_TEXT_HONOURED",
@@ -70010,6 +70249,7 @@ class ServerAppBuilder:
                          "_dash_by_rescale",
                          # by() grid and size (WP-30 P1.15b).
                          "_dash_by_word", "_dash_by_grid_options",
+                         "_dash_by_is_combine",
                          "_dash_by_positions", "_dash_by_size_mult",
                          "_dash_by_hole_ats", "_dash_has_colour_key",
                          "_dash_by_scale_mult", "_dash_by_scale_arg",
@@ -70023,6 +70263,7 @@ class ServerAppBuilder:
                          "_dash_by_note_list",
                          "_dash_by_panel_label", "_dash_by_label_just",
                          "_dash_by_text_cell",
+                         "_dash_by_beside_cell",
                          "_dash_by_chrome",
                          "_dash_by_frame_grid", "_dash_by_chrome_figures",
                          # The Stata display-format writer (WP-28 S04).

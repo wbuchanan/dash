@@ -1351,6 +1351,8 @@ FUNCTIONS = {
  '_dash_zyx2_derive': 'test/test_user_scheme_rule.py::TestUserSchemes::test_default',
  '_dash_zyx2_derive.<locals>.colour': 'test/test_user_scheme_rule.py::TestUserSchemes::test_default',
  '_dash_zyx2_derive.<locals>.get': 'test/test_user_scheme_rule.py::TestUserSchemes::test_default',
+ '_dash_by_is_combine': 'test/test_by_layout.py::TestCombine::test_no_note',
+ '_dash_by_beside_cell': 'test/test_by_layout.py::TestBeside::test_title_beside',
  '_dash_by_is_compact': 'test/test_by_layout.py::TestTheCompactWord::test_spellings',
  '_dash_bystyle_rescale_words': 'test/test_bystyles.py::TestTheExpansion::test_a_no_word_beside_the_style_still_wins',
  '_dash_bystyle_route': 'test/test_bystyles.py::TestTheExpansion::test_measured',

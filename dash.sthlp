@@ -3643,8 +3643,8 @@ included, as in {cmd:twoway} -- are left out unless {cmd:missing} is given.
     {cmd:r}, and {cmd:noyrescale}, {cmd:noxrescale} and {cmd:norescale}
     ({cmd:noyr}, {cmd:noxr}, {cmd:nor}) to keep one scale; when both are
     given, the rescale wins, as in {cmd:twoway}{p_end}
-{synopt:{opt by(varlist, style(rescale))}}and style(combine): only
-    their separate scales are drawn, with a note{p_end}
+{synopt:{opt by(varlist, style(rescale))}}and style(combine): drawn as
+    {cmd:twoway} draws them{p_end}
 {synopt:{opt by(varlist, iyaxes ixaxes)}}draw every panel's y or x axis;
     {cmd:iylabels}, {cmd:iyticks}, {cmd:iytitles} and their x and
     {cmd:no} forms, {cmd:individual}{p_end}
@@ -3830,8 +3830,9 @@ panel's border and its outline ({cmd:lcolor()}, {cmd:lwidth()},
 {cmd:twoway} does: {cmd:plotregion(margin())} by the margin
 ({cmd:large}, 8 units), {cmd:graphregion(margin())} by the margin less the
 scheme's graph margin ({cmd:large} 4.5 units, {cmd:l+5} 5 on the left); a
-graph margin smaller than the scheme's, which {cmd:twoway} draws as a
-larger array, insets nothing, a dashboard cell having no room to give.
+graph margin smaller than the scheme's draws a larger array, by the
+scheme's margin less the one given ({cmd:small} 2.3 units on every side,
+{cmd:zero} 3.5), as {cmd:twoway} draws it.
 A unit is 1% of the graph's smaller side, by the graph's
 {cmd:xsize()}/{cmd:ysize()} or the scheme's size, so the inset follows a
 resize of the page.  {cmd:subtitleformat()} writes an
@@ -3840,8 +3841,9 @@ own), and is ignored, as in {cmd:twoway}, when it is not a numeric format.
 The graph's own {cmd:subtitle(, fcolor() lcolor() nobox)} restyle every
 panel label's box, and its {cmd:position()} and {cmd:ring()} place every
 label as {cmd:twoway} does: above the plot region at 12, 11 and 1 o'clock,
-below it at 6, 7 and 5, at its bottom corners at 9 and 3 (below the
-region, where {cmd:twoway} draws a narrow box beside it), and, with
+below it at 6, 7 and 5, beside it at 2, 3 and 4 (right) and 8, 9 and 10
+(left), in a narrow upright box as tall as the region, the label across
+its middle, and, with
 {cmd:ring(0)}, inside the region, which takes the label box's fill, at its
 bottom; {cmd:by()}'s {cmd:subtitle()} is the overall subtitle.
 Each panel's plot-region margin is {cmd:twoway}'s, times the panels' size
@@ -3856,11 +3858,12 @@ axes and scales with three labels, its label boxes outlined in the
 foreground line); econ's {cmd:subtitle(, margin(small))} label box and
 stata7's major-length minor ticks are drawn too.  {cmd:style(combine)}
 draws its words -- separate scales, each panel's own axes and titles,
-unboxed labels -- but {cmd:twoway} lays its panels out as
-{cmd:graph combine} does, the array 2.2 units in from the graph's edge and
-each panel in a graph region of its own (measured: 600 lines of the
-exported SVG differ from any {cmd:by()} spelling), which {cmd:dash}'s grid
-of panels does not; that is named once.  Any other sub-option of
+unboxed labels -- and is laid out in {cmd:graph combine}'s regions, as
+{cmd:twoway} does: the array 2.2 units in from the graph's edge and each
+panel in a graph region of its own, 1.76 units round its contents, the
+regions touching.  {cmd:by()}'s {cmd:title()} at 2, 3 or 4 o'clock is drawn
+right of the panels and at 8, 9 or 10 left of them, centred on their plot
+regions, as in {cmd:twoway}.  Any other sub-option of
 Stata's {cmd:by()} -- for example {cmd:spacers()} -- is accepted, named in
 a warning, and ignored.
 {cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group
@@ -6200,7 +6203,7 @@ in a cell narrower than it, which then scrolls sideways.  Without {cmd:xsize()} 
 its cell, so {it:#} shapes the whole figure instead (the plot region's
 own ratio then differs from {it:#} by the room the axes take), and
 {it:placement} has no slack to use.  Under {cmd:by()} {it:#} shapes
-each panel as a figure.{p_end}
+each panel's plot region, as in {cmd:twoway}.{p_end}
 
 {phang2}{opt scale(#)} multiplies every text size, marker size and line
 width of the graph -- titles, axis titles, tick labels and tick lengths,
