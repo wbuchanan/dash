@@ -846,6 +846,7 @@ FUNCTIONS = {
  '_dash_server_transforms': 'test/test_csp.py::TestTheHeaderTransform::test_tornados_own_transforms_are_kept',
  '_dash_server_transforms.<locals>._DashSecurityHeaders.transform_first_chunk': 'test/test_csp.py::TestTheHeaderTransform::test_it_leaves_the_status_and_later_chunks_alone',
  '_dash_source_of': 'test/test_helper_source_cache.py::TestItIsReadOnce::test_a_second_read_does_not_ask_inspect',
+ '_dash_source_lines_of': 'test/test_helper_source_cache.py::TestTheSplitIsKeptWithItsText::test_the_lines_are_the_texts_and_split_once',
  '_dash_sel_snapshot': 'test/test_served_build.py::TestTheSelectionHelpers::test_an_unchanged_selection_is_not_held',
  '_dash_sel_held': 'test/test_served_build.py::TestTheSelectionHelpers::test_a_brush_since_the_plan_is_held_by_label_and_restored',
  '_dash_sel_restore': 'test/test_served_build.py::TestTheSelectionHelpers::test_a_brush_since_the_plan_is_held_by_label_and_restored',

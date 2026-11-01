@@ -70304,6 +70304,27 @@ def _dash_source_of(obj) -> str:
     return text
 
 
+def _dash_source_lines_of(obj) -> "list[str]":
+    """``_dash_source_of(obj).splitlines()``, split once per text.
+
+    ``_shared_stat_lines`` slices ``_KERNELS`` out of this module's whole
+    text, twice per app build; splitting the 3 MB text was a fifth of a
+    build.  The split is kept with the text it came from and reused only
+    while ``_dash_source_of`` hands back that same text object, so a text
+    read anew is split anew.  Returns a new list each call.
+    """
+    text = _dash_source_of(obj)
+    hit = _DASH_SOURCE_LINES.get(id(obj))
+    if hit is None or hit[0] is not text:
+        hit = (text, tuple(text.splitlines()))
+        _DASH_SOURCE_LINES[id(obj)] = hit
+    return list(hit[1])
+
+
+#: ``_dash_source_lines_of``'s splits: id(obj) -> (text, lines).
+_DASH_SOURCE_LINES: dict = {}
+
+
 #: The stubs' compiled code an app build collects while it is written from
 #: a renderer with no source file (``_dash_stub_source``); None outside a
 #: build, so ``_dash_source_of`` raises as ``inspect.getsource`` does.  A
@@ -71887,7 +71908,7 @@ class ServerAppBuilder:
 
         # _KERNELS is a module-level dict of lambdas, so repr() cannot carry
         # it; the assignment's own source is sliced out of the file instead.
-        _src_lines = _dash_source_of(_sys.modules[__name__]).splitlines()
+        _src_lines = _dash_source_lines_of(_sys.modules[__name__])
         _start = next(i for i, l in enumerate(_src_lines)
                       if l.startswith("_KERNELS: dict = {"))
         _end = next(i for i in range(_start, len(_src_lines))

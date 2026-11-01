@@ -105,6 +105,32 @@ class TestItIsReadOnce:
         assert calls == []
 
 
+class TestTheSplitIsKeptWithItsText:
+    """``_dash_source_lines_of``: the text's lines, split once per text."""
+
+    def test_the_lines_are_the_texts_and_split_once(self, monkeypatch):
+        want = dr._dash_source_of(dr).splitlines()
+        dr._DASH_SOURCE_LINES.pop(id(dr), None)
+        first = dr._dash_source_lines_of(dr)
+        held = dr._DASH_SOURCE_LINES[id(dr)][1]
+        second = dr._dash_source_lines_of(dr)
+        assert first == second == want
+        assert dr._DASH_SOURCE_LINES[id(dr)][1] is held
+        first.append("x")
+        assert dr._dash_source_lines_of(dr) == want
+
+    def test_a_text_read_anew_is_split_anew(self, tmp_path):
+        path = tmp_path / "dash_probe_lines.py"
+        _write_module(path, "X = 1\n")
+        mod = _import_from(str(path), "dash_probe_lines")
+        try:
+            assert dr._dash_source_lines_of(mod) == ["X = 1"]
+            _write_module(path, "X = 1\nY = 2\n")
+            assert dr._dash_source_lines_of(mod) == ["X = 1", "Y = 2"]
+        finally:
+            sys.modules.pop("dash_probe_lines", None)
+
+
 class TestItIsReadAgainWhenItCouldDiffer:
 
     def test_a_replaced_function_is_read_anew(self, tmp_path, monkeypatch):
