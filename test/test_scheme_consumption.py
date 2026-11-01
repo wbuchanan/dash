@@ -123,7 +123,7 @@ def _served(*, scheme="", layout="auto", kpis=None, title="",
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dash_render.ServerAppBuilder(sp, dp).build(ap)
-        mod = load_app(ap, "_css_served_%s_%s" % (layout, os.getpid()))
+        mod = load_app(ap, "_css_served_%s_%s" % (layout, os.getpid()), draw=False)
         doc = Document()
         mod.make_document(doc)
     return doc, mod

@@ -105,7 +105,7 @@ def _srv(spec, data):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        mod = load_app(ap, "_webgl_app_%d" % id(spec))
+        mod = load_app(ap, "_webgl_app_%d" % id(spec), draw=False)
         doc = Document()
         mod.make_document(doc)
     out, seen = [], set()

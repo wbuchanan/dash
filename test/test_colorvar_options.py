@@ -96,7 +96,7 @@ def _figs(tmp, mode, plots, go=None):
         else:
             ap = tmp / f"cvo_app_{tag}.py"
             dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
-            mod = load_app(str(ap), f"_cvo_{tag}")
+            mod = load_app(str(ap), f"_cvo_{tag}", draw=False)
             doc = Document()
             mod.make_document(doc)
             figs = _figures_of(doc)

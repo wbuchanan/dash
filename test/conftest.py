@@ -572,16 +572,39 @@ def render_models(renderer):
     return renderer
 
 
-def load_app(path, name):
+#: The generated app's own draw at import, into curdoc(), and the same
+#: lines with the draw turned off (same line count, so every line number
+#: is the file's).
+_APP_IMPORT_DRAW = "\nif __name__ != '__main__':\n    make_document(curdoc())\n"
+_APP_NO_IMPORT_DRAW = "\nif False:\n    make_document(curdoc())\n"
+
+
+def undrawn_app(source):
+    """*source*, a generated app's text, with its import-time
+    ``make_document(curdoc())`` turned off and nothing else changed.  A
+    test that builds its own document draws it once, not twice.  Raises
+    ValueError when the text has no such draw, or more than one."""
+    if source.count(_APP_IMPORT_DRAW) != 1:
+        raise ValueError("the app's import-time draw was not found once")
+    return source.replace(_APP_IMPORT_DRAW, _APP_NO_IMPORT_DRAW)
+
+
+def load_app(path, name, draw=True):
     """Import the generated app at *path* as module *name*, as
     ``spec.loader.exec_module`` would -- the same module attributes and the
     same text, read and decoded as the import system reads it -- with its
     blocks compiled once per process (see above).  Like ``exec_module`` it
-    does not enter the module in ``sys.modules``."""
+    does not enter the module in ``sys.modules``.
+
+    ``draw=False`` skips the app's import-time ``make_document(curdoc())``
+    (``undrawn_app``) for a caller that builds its own document and never
+    reads ``curdoc()``: every served document was otherwise built twice."""
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     with open(spec.origin, "rb") as fh:
         source = importlib.util.decode_source(fh.read())
+    if not draw:
+        source = undrawn_app(source)
     exec_app(source, spec.origin, module.__dict__)
     return module
 

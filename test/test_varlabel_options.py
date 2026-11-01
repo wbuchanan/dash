@@ -93,7 +93,7 @@ def figs(mode, tmp_path, plots, df=DF, vl=VL, bo=None, go=None):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        mod = load_app(ap, "_s34_app_%d" % _N[0])
+        mod = load_app(ap, "_s34_app_%d" % _N[0], draw=False)
     from bokeh.io import curdoc
     curdoc().clear()
     with warnings.catch_warnings(record=True) as caught:

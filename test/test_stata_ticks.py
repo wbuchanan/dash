@@ -947,7 +947,7 @@ def _served_main(tmp_path, monkeypatch, spec, fake):
     b64 = re.search(r'^_SPEC_B64 = "([^"]*)"', src, re.M).group(1)
     app_spec = json.loads(base64.b64decode(b64).decode("utf-8"))
     with _quiet():
-        mod = load_app(ap, "_ax3_app_%d" % _tag)
+        mod = load_app(ap, "_ax3_app_%d" % _tag, draw=False)
         doc = Document()
         mod.make_document(doc)
     return doc, app_spec, src

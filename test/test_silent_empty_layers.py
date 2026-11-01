@@ -100,7 +100,7 @@ def _served(tmp_path, plot):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(str(ap))
-        mod = load_app(str(ap), f"_wp32_silent_{tag}")
+        mod = load_app(str(ap), f"_wp32_silent_{tag}", draw=False)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()

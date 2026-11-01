@@ -135,7 +135,7 @@ def _both(plots, go=None):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        mod = load_app(ap, f"_twp_{tag}")
+        mod = load_app(ap, f"_twp_{tag}", draw=False)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()

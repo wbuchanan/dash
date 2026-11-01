@@ -79,7 +79,7 @@ def _root(mode, spec):
             from bokeh.document import Document
             ap = os.path.join(_TMP, "app_%d.py" % tag)
             dr.ServerAppBuilder(sp, dp).build(ap)
-            mod = load_app(ap, "_tabs_edges_app_%d" % tag)
+            mod = load_app(ap, "_tabs_edges_app_%d" % tag, draw=False)
             doc = Document()
             mod.make_document(doc)
             roots = list(doc.roots)

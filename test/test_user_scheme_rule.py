@@ -130,7 +130,7 @@ class TestDrawn:
             else:
                 ap = tmp_path / "app.py"
                 dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
-                mod = load_app(str(ap), f"_uc2_{mode}")
+                mod = load_app(str(ap), f"_uc2_{mode}", draw=False)
                 doc = Document()
                 mod.make_document(doc)
                 figs = _figures_of(doc)

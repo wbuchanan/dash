@@ -127,7 +127,7 @@ def _build(mode, wd, plots, scheme="s2color", go=None, bo=None, patch=None):
             # the document's (test_option_validation._both loads it so).
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                mod = load_app(ap, "_su_app_%d" % tag)
+                mod = load_app(ap, "_su_app_%d" % tag, draw=False)
             # The import's own render leaves its models in the global
             # document; clear them so a loop of builds stays as fast as one.
             from bokeh.io import curdoc

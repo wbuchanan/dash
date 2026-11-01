@@ -358,7 +358,7 @@ def test_make_document_callable(dr_module, auto_df):
         builder.build(out_f.name, port=5006)
 
         # Load and execute the generated module
-        app_mod = load_app(out_f.name, "_test_app")
+        app_mod = load_app(out_f.name, "_test_app", draw=False)
 
         doc = Document()
         app_mod.make_document(doc)
@@ -413,7 +413,7 @@ def _served_layer(dr_module, df, plot, key, filter_move=None, mod="_srv_layer"):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-            app = load_app(out_f.name, mod)
+            app = load_app(out_f.name, mod, draw=False)
             doc = Document()
             app.make_document(doc)
 
@@ -627,7 +627,7 @@ def test_xss_title_escaped(dr_module, auto_df):
     try:
         builder = dr_module.ServerAppBuilder(spec_path, data_path)
         builder.build(out_f.name, port=5006)
-        app_mod = load_app(out_f.name, "_test_xss_app")
+        app_mod = load_app(out_f.name, "_test_xss_app", draw=False)
         doc = Document()
         app_mod.make_document(doc)
         # --- Layer 2: the PAGE.  doc.title used to be set to the already
@@ -855,7 +855,7 @@ def test_compute_kdensity_constant_data_returns_empty(dr_module, auto_df):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-                mod = load_app(out_f.name, mod_name)
+                mod = load_app(out_f.name, mod_name, draw=False)
                 doc = Document()
                 mod.make_document(doc)
             figs = [m for m in doc.select({"type": object})
@@ -1528,7 +1528,7 @@ class TestServerLineWidthAllTypes:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_ta")
+            app_mod = load_app(out_f.name, "_ta", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             # Recursively collect all glyph renderers from the document tree
@@ -1567,7 +1567,7 @@ class TestServerLineWidthAllTypes:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_tawa")
+            app_mod = load_app(out_f.name, "_tawa", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             renderers = []
@@ -1852,7 +1852,7 @@ class TestServerRconnectedRcapsymMarkers:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, mod_name)
+            app_mod = load_app(out_f.name, mod_name, draw=False)
             doc = Document()
             app_mod.make_document(doc)
             renderers = []
@@ -1974,7 +1974,7 @@ class TestServerNamedColors:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_ta2")
+            app_mod = load_app(out_f.name, "_ta2", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             renderers = []
@@ -2061,7 +2061,7 @@ class TestServerNamedColors:
             try:
                 dr_module.ServerAppBuilder(spec_path, data_path).build(
                     out_f.name)
-                app_mod = load_app(out_f.name, "_ta2_bg_" + (bg or "none"))
+                app_mod = load_app(out_f.name, "_ta2_bg_" + (bg or "none"), draw=False)
                 doc = Document()
                 app_mod.make_document(doc)
                 borders[bg] = [p.border_fill_color for p in doc.models
@@ -2087,7 +2087,7 @@ class TestServerMfcolorNamed:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_tm4")
+            app_mod = load_app(out_f.name, "_tm4", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             renderers = []
@@ -2149,7 +2149,7 @@ class TestServerMlabel:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_tm3")
+            app_mod = load_app(out_f.name, "_tm3", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             return doc
@@ -2220,7 +2220,7 @@ class TestServerMlabelNonScatter:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, mod_name)
+            app_mod = load_app(out_f.name, mod_name, draw=False)
             doc = Document()
             app_mod.make_document(doc)
             all_objs = []
@@ -2354,7 +2354,7 @@ class TestServerPerGraphFilter:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_tmfilt")
+            app_mod = load_app(out_f.name, "_tmfilt", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             return doc
@@ -2597,7 +2597,7 @@ class TestServerFitCIBand:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, mod_name)
+            app_mod = load_app(out_f.name, mod_name, draw=False)
             doc = Document()
             app_mod.make_document(doc)
             vareas = []
@@ -2943,7 +2943,7 @@ class TestServerFitCIFilterRecompute:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-                mod = load_app(out_f.name, "_bf_" + ptype)
+                mod = load_app(out_f.name, "_bf_" + ptype, draw=False)
                 doc = Document()
                 mod.make_document(doc)
 
@@ -3000,7 +3000,7 @@ def _exec_doc(dr_module, df, spec, mod_name):
     try:
         builder = dr_module.ServerAppBuilder(spec_path, data_path)
         builder.build(out_f.name)
-        app_mod = load_app(out_f.name, mod_name)
+        app_mod = load_app(out_f.name, mod_name, draw=False)
         doc = Document()
         app_mod.make_document(doc)
         renderers = []
@@ -3261,7 +3261,7 @@ class TestServerByFaceting:
         out_f.close()
         try:
             dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-            app_mod = load_app(out_f.name, tag)
+            app_mod = load_app(out_f.name, tag, draw=False)
             doc = Document()
             app_mod.make_document(doc)
             return {_panel_name(p): [max((len(v) for v in r.data_source.data.values()),
@@ -3315,7 +3315,7 @@ class TestServerByFaceting:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_by_test")
+            app_mod = load_app(out_f.name, "_by_test", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             assert len(doc.roots) == 1, doc.roots
@@ -3562,7 +3562,7 @@ class TestServerRconnectedMlabel:
         out_f.close()
         builder = dr_module.ServerAppBuilder(spec_path, data_path)
         builder.build(out_f.name)
-        app_mod = load_app(out_f.name, "_tmrconn_mlab")
+        app_mod = load_app(out_f.name, "_tmrconn_mlab", draw=False)
         doc = Document()
         app_mod.make_document(doc)
         all_objs = []
@@ -3762,7 +3762,7 @@ class TestServerLpolyFpfit:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-                    mod = load_app(out_f.name, "_lpf_bwidth")
+                    mod = load_app(out_f.name, "_lpf_bwidth", draw=False)
                     doc = Document()
                     mod.make_document(doc)
                 out = []
@@ -3815,7 +3815,7 @@ class TestServerLpolyFpfit:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-                    mod = load_app(out_f.name, "_lpf_degree")
+                    mod = load_app(out_f.name, "_lpf_degree", draw=False)
                     doc = Document()
                     mod.make_document(doc)
                 out = []
@@ -3992,7 +3992,7 @@ class TestServerAxisAngle:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_tm_axangle")
+            app_mod = load_app(out_f.name, "_tm_axangle", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             figs = [m for m in doc.select({"type": Plot})]
@@ -4205,7 +4205,7 @@ class TestServerLegendColsRows:
             try:
                 builder = dr_module.ServerAppBuilder(spec_path, data_path)
                 builder.build(out_f.name)
-                app_mod = load_app(out_f.name, tag)
+                app_mod = load_app(out_f.name, tag, draw=False)
                 doc = Document()
                 app_mod.make_document(doc)
                 return [(lg.ncols, lg.nrows) for lg in doc.select({"type": Legend})]
@@ -4261,7 +4261,7 @@ class TestServerMsangle:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_tm_msangle")
+            app_mod = load_app(out_f.name, "_tm_msangle", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             layers = _glyph_layers(doc.roots)
@@ -4709,7 +4709,7 @@ def _exec_function_app(dr_module, expr, accepted=None):
     try:
         builder = dr_module.ServerAppBuilder(spec_path, data_path)
         builder.build(out_f.name)
-        app_mod = load_app(out_f.name, "_tfe")
+        app_mod = load_app(out_f.name, "_tfe", draw=False)
         if accepted is not None:
             _real = app_mod._stata_fn_eval
 
@@ -4973,7 +4973,7 @@ def _assert_served_layer_refits(dr_module, df, ptype):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-            mod = load_app(out_f.name, "_refit_" + ptype)
+            mod = load_app(out_f.name, "_refit_" + ptype, draw=False)
             doc = Document()
             mod.make_document(doc)
             figs = [m for m in doc.select({"type": object})
@@ -5041,7 +5041,7 @@ def _panel_rows_both_modes(dr_module, df, if_expr, in_expr):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-            mod = load_app(out_f.name, "_prb")
+            mod = load_app(out_f.name, "_prb", draw=False)
             doc = Document()
             mod.make_document(doc)
             # In DOCUMENT order, walking the layout.  doc.select() yields
@@ -6146,7 +6146,7 @@ class TestFacetedAggregatePerFacetData:
                     out_f.name)
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                mod = load_app(out_f.name, "_facetagg")
+                mod = load_app(out_f.name, "_facetagg", draw=False)
                 doc = Document()
                 mod.make_document(doc)
             out = []
@@ -7301,7 +7301,7 @@ class TestBug21ExcludeSemantics:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name, port=5006)
 
-            app_mod = load_app(out_f.name, "_bug21_app")
+            app_mod = load_app(out_f.name, "_bug21_app", draw=False)
 
             doc = Document()
             app_mod.make_document(doc)
@@ -7432,7 +7432,7 @@ class TestBug22MultiLayerSources:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name, port=5006)
 
-            app_mod = load_app(out_f.name, "_bug22e_app")
+            app_mod = load_app(out_f.name, "_bug22e_app", draw=False)
 
             doc = Document()
             app_mod.make_document(doc)
@@ -7621,7 +7621,7 @@ class TestServerFilterPreservesDerivedColumns:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name, port=5006)
-            app_mod = load_app(out_f.name, "_bug32_app")
+            app_mod = load_app(out_f.name, "_bug32_app", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             (_fig, r), = _glyph_layers(doc.roots)
@@ -7653,7 +7653,7 @@ class TestServerFilterPreservesDerivedColumns:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name, port=5006)
-            app_mod = load_app(out_f.name, "_bug32e_app")
+            app_mod = load_app(out_f.name, "_bug32e_app", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             # Find filter widget and trigger it
@@ -7773,7 +7773,7 @@ class TestServerFilterReappliesGraphQualifiers:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name, port=5006)
-            app_mod = load_app(out_f.name, "_bug33_app")
+            app_mod = load_app(out_f.name, "_bug33_app", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             (_fig, r), = _glyph_layers(doc.roots)
@@ -7818,7 +7818,7 @@ class TestServerFilterReappliesGraphQualifiers:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name, port=5006)
-            app_mod = load_app(out_f.name, "_bug33d_app")
+            app_mod = load_app(out_f.name, "_bug33d_app", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             all_models = list(doc.models)
@@ -8904,7 +8904,7 @@ class TestServerSliderStringFallback:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_path)
-            mod = load_app(out_path, "_test_slider_app")
+            mod = load_app(out_path, "_test_slider_app", draw=False)
             from bokeh.document import Document
             doc = Document()
             try:
@@ -9126,7 +9126,7 @@ class TestServerByFacetingRespectsQualifiers:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_b36c")
+            app_mod = load_app(out_f.name, "_b36c", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             n_renderers = _count_glyph_renderers(doc)
@@ -9169,7 +9169,7 @@ class TestServerByFacetingRespectsQualifiers:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_b36d")
+            app_mod = load_app(out_f.name, "_b36d", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             n_renderers = _count_glyph_renderers(doc)
@@ -9203,7 +9203,7 @@ class TestServerByFacetingRespectsQualifiers:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_b36e")
+            app_mod = load_app(out_f.name, "_b36e", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             n_renderers = _count_glyph_renderers(doc)
@@ -9387,7 +9387,7 @@ class TestDropdownSentinelCollision:
         out_f.close()
         try:
             dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name, port=5006)
-            app_mod = load_app(out_f.name, "_bug37_app")
+            app_mod = load_app(out_f.name, "_bug37_app", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             selects = [m for m in doc.select({"type": Select})]
@@ -9497,7 +9497,7 @@ class TestServerByTotalFullDispatch:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_b38a")
+            app_mod = load_app(out_f.name, "_b38a", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             n_renderers = _count_glyph_renderers(doc)
@@ -9528,7 +9528,7 @@ class TestServerByTotalFullDispatch:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_b38b")
+            app_mod = load_app(out_f.name, "_b38b", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             n_renderers = _count_glyph_renderers(doc)
@@ -9573,7 +9573,7 @@ class TestServerByTotalFullDispatch:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-                    mod = load_app(out_f.name, "_tot_fit")
+                    mod = load_app(out_f.name, "_tot_fit", draw=False)
                     doc = Document()
                     mod.make_document(doc)
                 out = []
@@ -9611,7 +9611,7 @@ class TestServerByTotalFullDispatch:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_b38d")
+            app_mod = load_app(out_f.name, "_b38d", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             n_renderers = _count_glyph_renderers(doc)
@@ -9641,7 +9641,7 @@ class TestServerByTotalFullDispatch:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_b38e")
+            app_mod = load_app(out_f.name, "_b38e", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             n_renderers = _count_glyph_renderers(doc)
@@ -9750,7 +9750,7 @@ class TestQualifierMissingColumnGraceful:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_b39d")
+            app_mod = load_app(out_f.name, "_b39d", draw=False)
             doc = Document()
             # Must not raise — should render with unfiltered data
             with warnings.catch_warnings(record=True):
@@ -10654,7 +10654,7 @@ class TestServerNaNBoundsSlider:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_b46c")
+            app_mod = load_app(out_f.name, "_b46c", draw=False)
             doc = Document()
             with warnings.catch_warnings(record=True):
                 warnings.simplefilter("always")
@@ -10681,7 +10681,7 @@ class TestServerNaNBoundsSlider:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_b46d")
+            app_mod = load_app(out_f.name, "_b46d", draw=False)
             doc = Document()
             with warnings.catch_warnings(record=True):
                 warnings.simplefilter("always")
@@ -10719,7 +10719,7 @@ class TestServerNaNBoundsSlider:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_mod = load_app(out_f.name, "_b46e")
+            app_mod = load_app(out_f.name, "_b46e", draw=False)
             doc = Document()
             app_mod.make_document(doc)
             # Should have a RangeSlider widget in the layout
@@ -10881,7 +10881,7 @@ class TestServeUniqueAppPath:
         sp, dp = _write_temp_files(auto_df, spec)
         try:
             dr_module.ServerAppBuilder(sp, dp).build(out.name)
-            mod = load_app(out.name, "_dash_bug47_test")
+            mod = load_app(out.name, "_dash_bug47_test", draw=False)
             doc = _Doc()
             mod.make_document(doc)
             (_fig, r), = _glyph_layers(doc.roots)

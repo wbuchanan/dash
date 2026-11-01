@@ -227,7 +227,7 @@ class TestGraphSetFonts:
                 from bokeh.document import Document
                 ap = tmp_path / "a.py"
                 dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
-                mod = load_app(str(ap), "_s43_font_app")
+                mod = load_app(str(ap), "_s43_font_app", draw=False)
                 mod.make_document(Document())
                 mapper = mod._DASH_MAPPER
         assert mapper._dash_gt_fonts["stSans"].startswith("Courier")

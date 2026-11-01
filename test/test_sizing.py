@@ -94,7 +94,7 @@ def _figure(mode, wd, go=None, plots=None):
         else:
             ap = str(wd / ("a%d.py" % tag))
             dr.ServerAppBuilder(str(sp), str(dp)).build(ap)
-            mod = load_app(ap, "_sz_app_%d" % tag)
+            mod = load_app(ap, "_sz_app_%d" % tag, draw=False)
             from bokeh.io import curdoc
             curdoc().clear()
             doc = Document()
@@ -470,7 +470,7 @@ def _fixed_build(mode, wd, go):
                 from bokeh.document import Document
                 ap = str(wd / ("a%d.py" % tag))
                 dr.ServerAppBuilder(str(sp), str(dp)).build(ap)
-                mod = load_app(ap, "_sz_fixed_%d" % tag)
+                mod = load_app(ap, "_sz_fixed_%d" % tag, draw=False)
                 doc = Document()
                 mod.make_document(doc)
                 doc.validate()

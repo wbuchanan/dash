@@ -172,7 +172,7 @@ def served(tmp_path, spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(str(ap))
-        mod = load_app(str(ap), f"_wp10_{tag}")
+        mod = load_app(str(ap), f"_wp10_{tag}", draw=False)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -738,7 +738,7 @@ class TestEveryFigureCarriesTheSameHover:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
-            mod = load_app(str(ap), f"_hv_{tag}")
+            mod = load_app(str(ap), f"_hv_{tag}", draw=False)
             doc = Document()
             mod.make_document(doc)
         assert drawn_rows(_figures_of(doc)) == [("Scatter", 3)], (

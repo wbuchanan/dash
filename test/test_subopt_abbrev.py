@@ -161,7 +161,7 @@ def _figure(mode, tmp_path, go, plots=None, record=None):
         dr.ServerAppBuilder(str(sp), str(dp)).build(ap)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            mod = load_app(ap, "_soa_app_%d" % tag)
+            mod = load_app(ap, "_soa_app_%d" % tag, draw=False)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         if mode == "saved":

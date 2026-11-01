@@ -263,7 +263,7 @@ def _figure(mode, wd, plots, scheme, legend=""):
             return list(r._build_figures().values())[0]
         ap = str(wd / ("app_%d.py" % tag))
         dr.ServerAppBuilder(str(sp), str(dp)).build(ap)
-        mod = load_app(ap, "_ci_app_%d" % tag)
+        mod = load_app(ap, "_ci_app_%d" % tag, draw=False)
         doc = Document()
         mod.make_document(doc)
     figs = [m for root in doc.roots for m in root.references()

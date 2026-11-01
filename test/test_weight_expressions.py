@@ -134,7 +134,7 @@ def _figs(mode, spec):
             return list(r.figures.values())
         ap = os.path.join(_TMP, "app_%d.py" % tag)
         dr.ServerAppBuilder(sp, dp).build(ap)
-        mod = load_app(ap, "_wexp_app_%d" % tag)
+        mod = load_app(ap, "_wexp_app_%d" % tag, draw=False)
         doc = Document()
         mod.make_document(doc)
     return [m for root in doc.roots for m in root.select({"type": Plot})]
@@ -303,7 +303,7 @@ def _said_and_drawn(mode, spec):
         else:
             ap = os.path.join(_TMP, "app_%d.py" % tag)
             dr.ServerAppBuilder(sp, dp).build(ap)
-            mod = load_app(ap, "_a5b_app_%d" % tag)
+            mod = load_app(ap, "_a5b_app_%d" % tag, draw=False)
             doc = Document()
             mod.make_document(doc)
             figs = [m for root in doc.roots
@@ -402,7 +402,7 @@ def _notes(mode, spec, df):
         else:
             ap = os.path.join(_TMP, "app_%d.py" % tag)
             dr.ServerAppBuilder(sp, dp).build(ap)
-            mod = load_app(ap, "_a5bn_app_%d" % tag)
+            mod = load_app(ap, "_a5bn_app_%d" % tag, draw=False)
             mod.make_document(Document())
     return sorted({str(x.message) for x in w})
 

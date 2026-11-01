@@ -104,7 +104,7 @@ def served(tmp_path, spec, df=_DF):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(str(ap))
-        mod = load_app(str(ap), f"_wp11_{tag}")
+        mod = load_app(str(ap), f"_wp11_{tag}", draw=False)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()

@@ -126,7 +126,7 @@ def _served_doc(spec, df=None, labels=None):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        mod = load_app(ap, "_axis2_app_%d" % tag)
+        mod = load_app(ap, "_axis2_app_%d" % tag, draw=False)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()

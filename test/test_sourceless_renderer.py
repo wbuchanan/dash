@@ -77,7 +77,7 @@ def _document(path, tag):
     doc = Document()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        load_app(str(path), "_sourceless_app_%s" % tag).make_document(doc)
+        load_app(str(path), "_sourceless_app_%s" % tag, draw=False).make_document(doc)
     return doc
 
 

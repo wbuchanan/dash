@@ -81,7 +81,7 @@ def _served_doc(tmp, spec, dp, tag):
         dr.ServerAppBuilder(sp, dp).build(ap)
     # The import is outside the warning capture: the app attaches itself
     # to curdoc() at import time.
-    mod = load_app(ap, f"_sl_app_{tag}")
+    mod = load_app(ap, f"_sl_app_{tag}", draw=False)
     doc = Document()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")

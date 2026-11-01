@@ -612,7 +612,7 @@ class TestTheTsColumnNamesNeverReachTheUser:
             else:
                 ap = os.path.join(_TMP, "notes_%d.py" % next(_SEQ))
                 dr.ServerAppBuilder(sp, dp).build(ap)
-                mod = load_app(ap, "_tso_notes_%d" % next(_SEQ))
+                mod = load_app(ap, "_tso_notes_%d" % next(_SEQ), draw=False)
                 mod.make_document(Document())
         msgs = [str(w.message) for w in caught]
         assert any("variable 'D.y2' has display format" in m for m in msgs), msgs

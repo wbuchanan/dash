@@ -100,7 +100,7 @@ def _served(spec, df=_DF):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        mod = load_app(ap, f"_table_app_{tag}")
+        mod = load_app(ap, f"_table_app_{tag}", draw=False)
         doc = Document()
         mod.make_document(doc)
     return doc

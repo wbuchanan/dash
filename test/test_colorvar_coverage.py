@@ -110,7 +110,7 @@ def _figs(tmp, mode, plots):
         else:
             ap = tmp / f"cvc_app_{tag}.py"
             dr.ServerAppBuilder(sp, dp).build(str(ap))
-            mod = load_app(str(ap), f"_cvc_{tag}")
+            mod = load_app(str(ap), f"_cvc_{tag}", draw=False)
             doc = Document()
             mod.make_document(doc)
             figs = _figures_of(doc)

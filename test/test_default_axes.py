@@ -109,7 +109,7 @@ def _served(spec, which="auto"):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-    mod = tb.load_app(ap, "_ns_app_%d" % tag)
+    mod = tb.load_app(ap, "_ns_app_%d" % tag, draw=False)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         doc = Document()

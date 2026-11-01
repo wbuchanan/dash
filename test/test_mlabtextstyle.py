@@ -234,7 +234,7 @@ class TestTheLabels:
                 ap = os.path.join(_mv._TMP, f"app_ts_{tag}.py")
                 dr.ServerAppBuilder(sp, dp).build(ap)
                 doc = Document()
-                load_app(ap, f"_mlabts_{tag}").make_document(doc)
+                load_app(ap, f"_mlabts_{tag}", draw=False).make_document(doc)
                 ms = [m for r in doc.roots for m in r.references()]
         body = _parser("stcolor").textbox_style("body")
         drawn = {(_pt(ls.text_font_size), _col(ls.text_color))

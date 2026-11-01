@@ -1030,7 +1030,7 @@ def _served_doc(spec, df):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        mod = load_app(ap, f"_served_jit_{next(_SEQ)}")
+        mod = load_app(ap, f"_served_jit_{next(_SEQ)}", draw=False)
         doc = Document()
         mod.make_document(doc)
     return doc

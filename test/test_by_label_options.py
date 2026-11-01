@@ -128,7 +128,7 @@ def _build(mode, spec, data="bl"):
         from bokeh.document import Document
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            mod = load_app(ap, "_blo_app_%d" % tag)
+            mod = load_app(ap, "_blo_app_%d" % tag, draw=False)
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             owner = Document()

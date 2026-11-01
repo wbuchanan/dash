@@ -112,7 +112,7 @@ def _figures(mode, tmp_path, df, plots, go, formats=None, notes=None):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr.ServerAppBuilder(str(sp), str(dp)).build(ap)
-            mod = load_app(ap, "_ext_app_%d" % tag)
+            mod = load_app(ap, "_ext_app_%d" % tag, draw=False)
         # What the served session says: its own document build.
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")

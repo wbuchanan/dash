@@ -105,7 +105,7 @@ def _served(spec, df=_DATA):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        mod = load_app(ap, f"_mlabvpos_{tag}")
+        mod = load_app(ap, f"_mlabvpos_{tag}", draw=False)
         doc = Document()
         mod.make_document(doc)
     return [m for root in doc.roots for m in root.references()]
@@ -567,7 +567,7 @@ class TestAfterAFilterMove:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr.ServerAppBuilder(sp, dp).build(ap)
-            mod = load_app(ap, f"_mlabvpos_mv_{tag}")
+            mod = load_app(ap, f"_mlabvpos_mv_{tag}", draw=False)
             doc = Document()
             mod.make_document(doc)
             sfm._move(doc, "Select", "1")

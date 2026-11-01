@@ -122,7 +122,7 @@ def _page(mode, command, k, wd):
             from bokeh.resources import INLINE
             ap = stem + "_app.py"
             dr.ServerAppBuilder(sp, dp).build(ap)
-            mod = load_app(ap, "_sf_app_%s_%s" % (command, k.replace(".", "_")))
+            mod = load_app(ap, "_sf_app_%s_%s" % (command, k.replace(".", "_")), draw=False)
             curdoc().clear()
             doc = Document()
             mod.make_document(doc)

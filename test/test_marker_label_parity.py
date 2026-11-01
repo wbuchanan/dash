@@ -161,7 +161,7 @@ def _both(plots, df=_DF, value_labels=None, label_names=None, formats=None,
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        mod = load_app(ap, f"_mlp_{tag}")
+        mod = load_app(ap, f"_mlp_{tag}", draw=False)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -840,7 +840,7 @@ def _served_after_filter(ptype, df, label, value):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        mod = load_app(ap, f"_mlpf_{tag}")
+        mod = load_app(ap, f"_mlpf_{tag}", draw=False)
         doc = Document()
         mod.make_document(doc)
         w = [m for m in doc.select({"type": Select})][0]

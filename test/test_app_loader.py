@@ -118,6 +118,39 @@ class TestTheBlocksAreTheFile:
         assert "_loader_a" not in sys.modules
 
 
+class TestTheImportTimeDrawIsTheCallers:
+    """``load_app(draw=False)``: the app's import-time
+    ``make_document(curdoc())`` is skipped and nothing else changes."""
+
+    def test_draw_false_leaves_curdoc_empty_and_the_rest_whole(self,
+                                                               tmp_path):
+        from bokeh.document import Document
+        from bokeh.io import curdoc
+        path, text = _built(tmp_path, [plot_for("scatter")], "app")
+        undrawn = C.undrawn_app(text)
+        assert undrawn.count("\n") == text.count("\n")
+        assert undrawn != text
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            curdoc().clear()
+            drawn = C.load_app(path, "_loader_d")
+            assert len(curdoc().roots) == 1
+            curdoc().clear()
+            got = C.load_app(path, "_loader_n", draw=False)
+            assert curdoc().roots == []
+            assert sorted(_public(vars(got))) == sorted(_public(vars(drawn)))
+            mine, theirs = Document(), Document()
+            got.make_document(mine)
+            drawn.make_document(theirs)
+        assert ([type(r).__name__ for r in mine.roots]
+                == [type(r).__name__ for r in theirs.roots])
+        assert len(mine.models) == len(theirs.models)
+
+    def test_a_text_without_the_draw_is_refused(self):
+        with pytest.raises(ValueError):
+            C.undrawn_app("x = 1\n")
+
+
 class TestASecondAppReusesTheBlocks:
 
     def test_a_second_spec_compiles_only_what_differs(self, tmp_path):

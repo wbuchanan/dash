@@ -82,7 +82,7 @@ def _build(mode, spec, df=_US, labels=False):
         from bokeh.document import Document
         ap = os.path.join(_TMP, "app_%d.py" % tag)
         dr.ServerAppBuilder(sp, dp).build(ap)
-        mod = load_app(ap, "_area_outline_app_%d" % tag)
+        mod = load_app(ap, "_area_outline_app_%d" % tag, draw=False)
         doc = Document()
         mod.make_document(doc)
         return doc.roots[0], doc

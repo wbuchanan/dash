@@ -88,7 +88,7 @@ def _served(spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        mod = load_app(ap, f"_review_{tag}")
+        mod = load_app(ap, f"_review_{tag}", draw=False)
         doc = Document()
         mod.make_document(doc)
     curdoc().clear()

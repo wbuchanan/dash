@@ -98,7 +98,7 @@ def _figures(mode, tmp_path, df, plots, go, formats=None, value_labels=None,
         else:
             ap = str(tmp_path / ("app_%d.py" % tag))
             dr.ServerAppBuilder(str(sp), str(dp)).build(ap)
-            mod = load_app(ap, "_alg_app_%d" % tag)
+            mod = load_app(ap, "_alg_app_%d" % tag, draw=False)
             doc = Document()
             mod.make_document(doc)
             seen, out = set(), []

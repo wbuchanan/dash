@@ -73,7 +73,7 @@ def _figure(mode, plots, go=None, scheme=""):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        mod = load_app(ap, "_lw_units_%d_%d" % (tag, next(_SEQ)))
+        mod = load_app(ap, "_lw_units_%d_%d" % (tag, next(_SEQ)), draw=False)
     with warnings.catch_warnings(record=True) as c:
         warnings.simplefilter("always")
         doc = Document()

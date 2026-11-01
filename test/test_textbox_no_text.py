@@ -102,7 +102,7 @@ def _document(mode, tmp_path, spec, data=None):
             render_models(obj)
         else:
             dr.ServerAppBuilder(sp, dp).build(ap)
-            mod = load_app(ap, f"_tnt_app_{next(_SEQ)}")
+            mod = load_app(ap, f"_tnt_app_{next(_SEQ)}", draw=False)
             obj = Document()
             mod.make_document(obj)
     return obj, [str(w.message) for w in caught]

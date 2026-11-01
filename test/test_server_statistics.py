@@ -77,7 +77,7 @@ def _server_sources(tmp_path, spec):
     dr.ServerAppBuilder(sp, dp).build(str(ap))
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        mod = load_app(str(ap), f"_stat_app_{tag}")
+        mod = load_app(str(ap), f"_stat_app_{tag}", draw=False)
         doc = Document()
         mod.make_document(doc)
     return [m.data for m in doc.select({"type": ColumnDataSource})]

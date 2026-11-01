@@ -123,7 +123,7 @@ def _page(mode, wd, gos, layout="auto"):
             from bokeh.resources import INLINE
             ap = os.path.join(wd, "a%d.py" % tag)
             ts.dr.ServerAppBuilder(sp, dp).build(ap)
-            mod = ts.load_app(ap, "_szb_app_%d" % tag)
+            mod = ts.load_app(ap, "_szb_app_%d" % tag, draw=False)
             doc = Document()
             mod.make_document(doc)
             html = file_html(doc, INLINE, "served")
@@ -242,7 +242,7 @@ class TestTheThreeCasesInChrome:
                 return ts.dr.DashRenderer(sp, dp).render()
             ap = os.path.join(str(tmp_path), "a%d.py" % tag)
             ts.dr.ServerAppBuilder(sp, dp).build(ap)
-            mod = ts.load_app(ap, "_szs_app_%d" % tag)
+            mod = ts.load_app(ap, "_szs_app_%d" % tag, draw=False)
             doc = Document()
             mod.make_document(doc)
             return file_html(doc, INLINE, "served")

@@ -162,7 +162,7 @@ def _build(mode, spec, data=None):
         # session's, which test_by_text's reader leaves out too.
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            mod = load_app(ap, "_bak_app_%d" % tag)
+            mod = load_app(ap, "_bak_app_%d" % tag, draw=False)
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             owner = Document()

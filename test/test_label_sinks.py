@@ -526,7 +526,7 @@ def _build(root, mode, pid, layout="auto", inputs=None):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
-        mod = load_app(str(ap), f"_label_sinks_app_{n}")
+        mod = load_app(str(ap), f"_label_sinks_app_{n}", draw=False)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()

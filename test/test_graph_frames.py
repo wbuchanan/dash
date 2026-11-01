@@ -240,7 +240,7 @@ class TestTheFramePage:
         sp, dp = _frames_files(_frames_spec("foreign"))
         ap = os.path.join(os.path.dirname(sp), "app.py")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        mod = load_app(ap, "_frames_served_app")
+        mod = load_app(ap, "_frames_served_app", draw=False)
         doc = Document()
         mod.make_document(doc)
         texts = [sorted(set(m.source.data[m.text])) for m in doc.models
@@ -260,7 +260,7 @@ class TestTheFramePage:
         sp, dp = _frames_files(_frames_spec("foreign, type(dropdown)"))
         ap = os.path.join(os.path.dirname(sp), "app.py")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        mod = load_app(ap, "_frames_served_move")
+        mod = load_app(ap, "_frames_served_move", draw=False)
         doc = Document()
         mod.make_document(doc)
         w = [x for x in _widgets_of(doc) if isinstance(x, Select)][0]
@@ -291,7 +291,7 @@ class TestTheFramePage:
         ap = os.path.join(os.path.dirname(sp), "app.py")
         dr.ServerAppBuilder(sp, dp).build(ap)
         doc = Document()
-        load_app(ap, "_frames_served_plot").make_document(doc)
+        load_app(ap, "_frames_served_plot", draw=False).make_document(doc)
         drawn = sorted(list(m.data_source.data.get("foreign", []))
                        for m in doc.models if isinstance(m, GlyphRenderer))
         assert [1.0, 0.0, 1.0, 0.0, 1.0] in drawn
@@ -314,7 +314,7 @@ class TestTheFramePage:
         ap = os.path.join(os.path.dirname(sp), "app.py")
         dr.ServerAppBuilder(sp, dp).build(ap)
         doc = Document()
-        load_app(ap, "_frames_served_table").make_document(doc)
+        load_app(ap, "_frames_served_table", draw=False).make_document(doc)
         texts = [set(m.source.data.get("__dash_tbl_foreign", []))
                  for m in doc.models if isinstance(m, DataTable)]
         assert {"Abroad", "US"} in texts and {"Domestic", "Foreign"} in texts

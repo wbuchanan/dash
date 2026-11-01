@@ -115,7 +115,7 @@ def _figs(mode, tmp_path, spec, df):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        mod = load_app(ap, "_bg_app_%d" % _N[0])
+        mod = load_app(ap, "_bg_app_%d" % _N[0], draw=False)
     # The import's own render fills the global document; clear it so a
     # loop of builds stays as fast as one.
     from bokeh.io import curdoc
@@ -816,7 +816,7 @@ class TestTheBaseAfterAMove:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     dr.ServerAppBuilder(sp, dp).build(ap)
-                    mod = load_app(ap, "_db_app_%d" % _N[0])
+                    mod = load_app(ap, "_db_app_%d" % _N[0], draw=False)
                     doc = Document()
                     mod.make_document(doc)
                 for v in ((1.0, 3.0), (1.0, 5.0)):

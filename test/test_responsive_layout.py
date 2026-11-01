@@ -191,7 +191,7 @@ def _served_doc(spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        mod = load_app(ap, "_resp_app_%d" % tag)
+        mod = load_app(ap, "_resp_app_%d" % tag, draw=False)
         doc = Document()
         mod.make_document(doc)
     return doc

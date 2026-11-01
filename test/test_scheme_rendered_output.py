@@ -230,7 +230,7 @@ def _served_with_module(spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        mod = load_app(ap, f"_rendered_{tag}")
+        mod = load_app(ap, f"_rendered_{tag}", draw=False)
         doc = Document()
         mod.make_document(doc)
     curdoc().clear()

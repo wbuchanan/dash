@@ -65,7 +65,7 @@ def _figs(mode, tmp_path, ptype, z, y, x, rows):
         _N[0] += 1
         ap = os.path.join(str(tmp_path), "app_%d.py" % _N[0])
         dr.ServerAppBuilder(sp, dp).build(ap)
-        mod = load_app(ap, "_ckd_app_%d" % _N[0])
+        mod = load_app(ap, "_ckd_app_%d" % _N[0], draw=False)
         doc = Document()
         mod.make_document(doc)
     return [m for m in tp._walk_models(doc) if type(m).__name__ == "figure"]
