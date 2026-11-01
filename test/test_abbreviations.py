@@ -922,8 +922,10 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # no longer takes.
     # 182 -> 184 and 79 -> 81: WP-41 BY-5 the note on the aspect() and
     # shrink refusal (two in each parser).
-    assert comments == {"_dash_parse_plot_opts": 184,
-                        "_dash_parse_graph_opts": 81}, comments
+    # 184 -> 186 and 81 -> 83: WP-41 41-05 why that refusal reads by() in
+    # Mata alone (two in each parser).
+    assert comments == {"_dash_parse_plot_opts": 186,
+                        "_dash_parse_graph_opts": 83}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --
     # rewritten in a third form -- would leave the fold checks below

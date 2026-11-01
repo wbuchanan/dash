@@ -1314,6 +1314,9 @@ def _dash_columns_frame(sj):
 #: data hold.
 _DASH_RP_DEFAULT = "__dash"
 _DASH_RP = globals().get("_DASH_RP_SEED") or _DASH_RP_DEFAULT
+# WP-41 BY-18: the internal by() word style(combine) expands to (never
+# syntax: dash.ado refuses it as twoway does), built on the reserved prefix.
+_DASH_BY_COMBINE_WORD = _DASH_RP + "_combine"
 
 #: The text column an extended missing value's letter travels in beside its
 #: variable (WP-31 G1): ``__dashm_<var>``, "" or "a" to "z" in each row.
@@ -37437,7 +37440,7 @@ def _dash_parse_by(by_raw, warn=True):
         name = tok.split("(", 1)[0].strip()
         arg = tok[len(name) + 1:-1] if "(" in tok and tok.endswith(")") else ""
         _row = _dash_by_word(tok)[0]
-        if tok == "__dash_combine":
+        if tok == _DASH_BY_COMBINE_WORD:
             # WP-41 BY-18: style(combine)'s regions (_dash_bystyle_route).
             pass
         elif _row in ("rows", "colfirst", "holes", "compact", "iscale",
@@ -37548,7 +37551,7 @@ _DASH_BYSTYLE_EXPAND = {
     # twoway does) lays the panels in graph combine's regions
     # (_DASH_BY_COMBINE_INSET_RS, _DASH_BY_COMBINE_PANEL_MARGIN_RS).
     "combine": (("rescale", "individual", "ixtitle", "iytitle",
-                 "imargin(medsmall)", "__dash_combine"),
+                 "imargin(medsmall)", _DASH_BY_COMBINE_WORD),
                 {"subtitle": ", nobox"}, ""),
 }
 
@@ -37565,7 +37568,7 @@ def _dash_by_is_combine(by_raw):
     """Whether a routed by() string holds style(combine)'s internal word
     ``__dash_combine`` (WP-41 BY-18, :data:`_DASH_BYSTYLE_EXPAND`)."""
     _v, comma, subs = str(by_raw or "").partition(",")
-    return bool(comma) and "__dash_combine" in _dash_by_tokens(subs.strip())
+    return bool(comma) and _DASH_BY_COMBINE_WORD in _dash_by_tokens(subs.strip())
 
 
 def _dash_bystyle_rescale_words(words, toks):
