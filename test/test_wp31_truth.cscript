@@ -9318,9 +9318,19 @@ def _u37_regions(sp, dp, app, svg, svg0):
     a, b = m._u03_docs(sp, dp, app)
     g, p, gaps = _u37_tw(svg)
     g0 = _u37_tw(svg0)[2] if svg0 else gaps
+    # Flipped (WP-45 VF-4): dash adds the margin's change in px of the
+    # graph's own box at 96 px an inch (twoway's graph size, the SVG's
+    # width and height in inches), not of the figure's unused Bokeh
+    # width and height (600 x 600); the width scale (D66) draws it at
+    # the drawn width.
+    import re as _re
+    with open(svg, encoding="utf-8") as fh:
+        _hd = fh.read(4000)
+    _wh = [float(_re.search(k + r'="([0-9.]+)in"', _hd).group(1))
+           for k in ("width", "height")]
+    short = min(_wh) * 96.0
     for figs, sfx in ((a, "s"), (b, "v")):
         f = figs[0]
-        short = min(f.width, f.height)
         bord = []
         want = []
         for i, attr in enumerate(("min_border_left", "min_border_right",
