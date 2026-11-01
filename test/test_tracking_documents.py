@@ -99,6 +99,8 @@ RESOLVED and named nothing; the dead-code gap N carried no status; and
 TODO.md and PLAN.md were present.
 """
 import ast
+import atexit
+import functools
 import os
 import re
 import subprocess
@@ -949,7 +951,7 @@ class TestGapsAndRoadmapAgree:
         if _git("rev-parse", "--git-dir").returncode != 0:
             pytest.skip("not a git working tree")
         bad = sorted("%s names %s" % (g, s) for g, s in shas
-                     if _git("cat-file", "-e", s + "^{commit}").returncode)
+                     if not _sha_exists(s))
         assert not bad, "gaps naming a commit git does not have:\n" + \
             "\n".join(bad)
 
@@ -1268,9 +1270,8 @@ class TestGaps2AndRoadmapAgree:
                     bad.append(
                         "%s: BUGS.md entry %r's Resolution lacks (%s, %s)"
                         % (gid, title, wp, gid))
-            if re.fullmatch(r"[0-9a-f]{7,40}", sha) and \
-                    _git("rev-parse", "--git-dir").returncode == 0:
-                if _git("cat-file", "-e", sha + "^{commit}").returncode:
+            if re.fullmatch(r"[0-9a-f]{7,40}", sha) and _in_git_tree():
+                if not _sha_exists(sha):
                     bad.append(
                         "%s names commit %s, which git does not have" %
                         (gid, sha))
@@ -2477,8 +2478,55 @@ def _gaps3_problems(rows, tracked, dupes, open_ids, entries, sha_exists):
     return bad
 
 
+#: One ``git cat-file --batch-check`` for the whole run: a tracking check
+#: names a commit per entry, and one ``git`` per name was most of this
+#: file's time (143 for GAPS3.md alone, 5.5 s).  name -> exists.
+_SHA_SEEN = {}
+_SHA_BATCH = []
+
+
 def _sha_exists(sha):
-    return _git("cat-file", "-e", sha + "^{commit}").returncode == 0
+    """Whether *sha* names a commit git has: ``git cat-file -e
+    <sha>^{commit}``, asked of one long-lived ``--batch-check``."""
+    if sha in _SHA_SEEN:
+        return _SHA_SEEN[sha]
+    if not sha or any(c.isspace() for c in sha):
+        ok = _git("cat-file", "-e", sha + "^{commit}").returncode == 0
+    else:
+        if not _SHA_BATCH or _SHA_BATCH[0].poll() is not None:
+            _SHA_BATCH[:] = [subprocess.Popen(
+                ["git", "-C", _ROOT, "cat-file", "--batch-check"],
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)]
+            atexit.register(_SHA_BATCH[0].communicate)
+        proc = _SHA_BATCH[0]
+        proc.stdin.write(sha + "^{commit}\n")
+        proc.stdin.flush()
+        parts = proc.stdout.readline().split()
+        ok = len(parts) == 3 and parts[1] == "commit"
+    _SHA_SEEN[sha] = ok
+    return ok
+
+
+class TestTheCommitLookup:
+    """``_sha_exists`` answers as ``git cat-file -e <sha>^{commit}``."""
+
+    def test_it_agrees_with_cat_file(self):
+        if not _in_git_tree():
+            pytest.skip("not a git working tree")
+        head = _git("rev-parse", "HEAD").stdout.strip()
+        tree = _git("rev-parse", "HEAD^{tree}").stdout.strip()
+        for name in (head, head[:7], tree, "0" * 40, "deadbee", "HEAD"):
+            _SHA_SEEN.pop(name, None)
+            want = _git("cat-file", "-e", name + "^{commit}").returncode == 0
+            assert _sha_exists(name) is want, name
+            assert _sha_exists(name) is want, name
+        assert _sha_exists(head) and not _sha_exists("0" * 40)
+
+
+@functools.lru_cache(maxsize=None)
+def _in_git_tree():
+    """``git rev-parse --git-dir`` succeeds: this copy has its history."""
+    return _git("rev-parse", "--git-dir").returncode == 0
 
 
 class TestWp31Tracking:
