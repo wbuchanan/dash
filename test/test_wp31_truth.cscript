@@ -9979,12 +9979,19 @@ def _u39_array(sp, dp, app, svg0, svg1, svg2):
         # of the graph's smaller side, so the inset follows a resize.
         pct = want_inset * 100.0 * dr._dash_short_side_share(
             {}, dr.SchemeParser("s2color")) / 100.0
-        got = [float(v.rstrip("%")) if v.endswith("%") else None
-               for v in str(st.get("padding") or "").split()]
-        if len(got) != 4 or any(v is None or abs(v - pct) > 0.01
-                                for v in got):
-            bad.append("%s padding %s twoway %.2f units" % (
-                mode, st.get("padding"), want_inset))
+        def pads(g):
+            return [float(v.rstrip("%")) if v.endswith("%") else None
+                    for v in str(dict(g.styles or {}).get("padding") or "").split()]
+        # Flipped (WP-45 GW-6, 999ec28; WP-41 41-05, d536b03): the padding
+        # now holds the whole graph margin (and the first row's top
+        # margin), so margin(large)'s inset is its padding less the
+        # default by(foreign)'s, as twoway's is t1's region less t0's.
+        got, base = pads(grids["u39s"]), pads(grids["u39p"])
+        if len(got) != 4 or len(base) != 4 or None in got + base \
+                or any(abs(g - b - pct) > 0.01 for g, b in zip(got, base)):
+            bad.append("%s padding %s over %s, twoway %.2f units" % (
+                mode, st.get("padding"),
+                dict(grids["u39p"].styles or {}).get("padding"), want_inset))
         if nred != 1 or "#ff0000" not in str(st.get("border", "")):
             bad.append("%s border %s, twoway outlines %d" % (
                 mode, st.get("border"), nred))
