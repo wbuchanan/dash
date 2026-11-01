@@ -3863,7 +3863,9 @@ unboxed labels -- and is laid out in {cmd:graph combine}'s regions, as
 panel in a graph region of its own, 1.76 units round its contents, the
 regions touching.  {cmd:by()}'s {cmd:title()} at 2, 3 or 4 o'clock is drawn
 right of the panels and at 8, 9 or 10 left of them, centred on their plot
-regions, as in {cmd:twoway}.  Any other sub-option of
+regions, as in {cmd:twoway}.  Every panel in a row has a plot region of
+the same width, the shared y labels drawn beside the row, as in
+{cmd:twoway}; stacked, each panel shows its own.  Any other sub-option of
 Stata's {cmd:by()} -- for example {cmd:spacers()} -- is accepted, named in
 a warning, and ignored.
 {cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group

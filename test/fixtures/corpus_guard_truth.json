@@ -1,8 +1,8 @@
 {
   "_meta": {
     "born_date": "14 Oct 2026",
-    "dash_commit": "ad3c524a6b0605f705358ddd335d8c583cb3f82b",
-    "extracted": "26 Oct 2026 08:02:18",
+    "dash_commit": "509eb5106b49bb24f3d23399d6732bd2ab4b0bb0",
+    "extracted": " 1 Nov 2026 06:03:22",
     "ledger": "test/fixtures/corpus_ledger.json",
     "rules": "test/fixtures/corpus_verdict_rules.json",
     "source": "scripts/extract_corpus_guard_truth.do",
@@ -181,7 +181,7 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.848,
+      "ssim": 0.8463,
       "summary": "text size, margins, marker size, plot region shape",
       "verdict": "Close"
     },
@@ -226,7 +226,7 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.6357,
+      "ssim": 0.5434,
       "summary": "text, text size, margins, plot region shape",
       "verdict": "Differs"
     },
@@ -366,8 +366,7 @@
         "frame_aspect",
         "legend",
         "margins",
-        "marker_size",
-        "text_size"
+        "marker_size"
       ],
       "first_dash": null,
       "first_twoway": null,
@@ -403,8 +402,8 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.7893,
-      "summary": "legend keys, text size, margins, marker size, plot region shape",
+      "ssim": 0.7874,
+      "summary": "legend keys, margins, marker size, plot region shape",
       "verdict": "Differs"
     },
     "help-tsline-16ade7ec": {
@@ -628,14 +627,12 @@
     "help-twoway_kdensity-d3ba423b": {
       "checks": [
         "frame_aspect",
-        "margins",
-        "text_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
       "ledger": [
-        "GW-6",
-        "VF-4"
+        "GW-6"
       ],
       "rc_dash": 0,
       "rc_twoway": 0,
@@ -665,8 +662,8 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.7984,
-      "summary": "text size, margins, plot region shape",
+      "ssim": 0.8004,
+      "summary": "margins, plot region shape",
       "verdict": "Close"
     },
     "help-twoway_lfitci-0dd9d812": {
@@ -749,7 +746,7 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.8109,
+      "ssim": 0.8158,
       "summary": "text size, margins, marker size",
       "verdict": "Close"
     },

@@ -1014,6 +1014,7 @@ and now matches Stata.
 - by(, compact) beside another style() draws that style, and compact draws its black outlines, as twoway does (WP-41, BY-4)
 - by(, total) without variables is refused r(100) "varlist required in by()", as twoway refuses it; it was refused r(198) in dash's words; a do-file testing _rc == 198 there needs 100 (WP-41, BY-6)
 - style(combine), labels and texts at 2-4 and 8-10 o'clock, aspectratio() and a smaller graph margin are laid out under by() as twoway lays them out (WP-41, BY-18)
+- every by() panel in a row has the same plot-region width, the shared y labels drawn beside the row, as twoway draws them (WP-41, VF-6)
 
 ### Fixed in WP-40
 

@@ -514,20 +514,27 @@ class TestEdgeTitles:
             assert below == ["T2", "T1"], below
             assert [m.name for m in r.head.below] == \
                 ["dash_by_t2title", "dash_by_t1title"]
-            assert kids["dash_by_head"] == (0, 0, 1, 4)
+            # WP-41 VF-6: every column one right of the outer y axis
+            # column (dash_by_yaxis_0); was one fewer.
+            assert kids["dash_by_head"] == (0, 0, 1, 5)
         elif pid == "bp75":
             # No head: the panels are row 0, the foot row 2.
-            assert kids["dash_by_r1title"] == (0, 3, 1, 1)
-            assert kids["dash_by_r2title"] == (0, 4, 1, 1)
-            assert kids["dash_by_ruler"] == (0, 5, 1, 1)
-            assert kids["dash_by_foot"] == (2, 0, 1, 6)
+            # WP-41 VF-6: every column one right of the outer y axis
+            # column (dash_by_yaxis_0); was one fewer.
+            assert kids["dash_by_r1title"] == (0, 4, 1, 1)
+            assert kids["dash_by_r2title"] == (0, 5, 1, 1)
+            assert kids["dash_by_ruler"] == (0, 6, 1, 1)
+            assert kids["dash_by_foot"] == (2, 0, 1, 7)
             assert got["dash_by_r1title"] == ["R1"]
             assert got["dash_by_r2title"] == ["R2"]
         else:
+            # WP-41 VF-6: every column one right of the outer y axis
+            # column (dash_by_yaxis_0); was one fewer.
             assert kids["dash_by_l2title"] == (0, 0, 1, 1)
             assert kids["dash_by_ytitle"] == (0, 1, 1, 1)
-            assert kids["dash_by_xtitle"] == (1, 2, 1, 2)
-            assert kids["dash_by_foot"] == (2, 0, 1, 5)
+            assert kids["dash_by_yaxis_0"] == (0, 2, 1, 1)
+            assert kids["dash_by_xtitle"] == (1, 2, 1, 3)
+            assert kids["dash_by_foot"] == (2, 0, 1, 6)
             assert got["dash_by_l2title"] == ["L2"]
             assert [m.text for m in r.foot.above
                     if type(m).__name__ == "Title"] == ["B2"]
@@ -694,11 +701,14 @@ class TestTheGrid:
         # in a row under them (twoway's l1title and b1title, probe p01), so
         # the head and foot span four columns (the stacked view's
         # one-pixel ruler takes the last) and the foot is one row lower.
-        assert kids["dash_by_head"] == (0, 0, 1, 4)
+        # WP-41 VF-6: the row's outer y axis (dash_by_yaxis_0) takes a
+        # column between the y title and the panels: 4 -> 5 columns.
+        assert kids["dash_by_head"] == (0, 0, 1, 5)
         assert kids["dash_by_ytitle"] == (1, 0, 1, 1)
-        assert kids["dash_by_xtitle"] == (2, 1, 1, 2)
-        assert kids["dash_by_ruler"] == (1, 3, 1, 1)
-        assert kids["dash_by_foot"] == (3, 0, 1, 4)
+        assert kids["dash_by_yaxis_0"] == (1, 1, 1, 1)
+        assert kids["dash_by_xtitle"] == (2, 1, 1, 3)
+        assert kids["dash_by_ruler"] == (1, 4, 1, 1)
+        assert kids["dash_by_foot"] == (3, 0, 1, 5)
         assert type(r.head).__name__ == "Plot"
         saves = [t for t in grid.toolbar.tools if isinstance(t, SaveTool)]
         assert len(saves) == 1

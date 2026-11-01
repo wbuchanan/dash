@@ -240,7 +240,9 @@ def _axis_drawn(fig, which):
                                      which + "_range_name")
     if not axes:
         return None
-    return any(a.visible for a in axes)
+    # WP-41 VF-6: an axis moved into its row's outer cell is drawn there.
+    return any(a.visible or "dash_by_outer_yaxis" in (a.tags or [])
+               for a in axes)
 
 
 def _title_drawn(fig, which):
@@ -513,7 +515,9 @@ class TestTheUnitFunctions:
         side = dr._dash_by_side(figs, {"by": "g"}, dr.SchemeParser("s2color"))
         assert figs[0]._dash_by_side is side
         names = sorted(c.name for _k, c, _w in side["cells"])
-        assert names == ["dash_by_xtitle", "dash_by_ytitle"]
+        # WP-41 VF-6: the row's outer y axis cell joins them.
+        assert names == ["dash_by_xtitle", "dash_by_yaxis_0",
+                         "dash_by_ytitle"]
         assert side["hook"].name == "dash_by_stack"
 
     def test__dash_by_side_grid(self):

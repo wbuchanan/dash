@@ -403,3 +403,72 @@ class TestSmallMargin:
         dt = min(f["frame"][1] for f in plain) - min(f["frame"][1] for f in small)
         for d in (dl, dr_, dt):
             assert abs(d - want) <= 2, (dl, dr_, dt, want)
+
+
+# ---------------------------------------------------------------------------
+# VF-6: every panel in a row has the same plot-region width.  Measured
+# (by_layout_truth.json Y17, scatter price weight, ylabel(, format(%15.2fc))
+# by(rep78)): twoway's plot regions are equally wide in every column, the
+# shared y labels outside the first column's region.
+# ---------------------------------------------------------------------------
+# The test data hold no price, so mpg stands in: the formatted labels
+# ("40.00") still widen the first column's left side.
+_Y17 = ([tk._p("scatter")],
+        {"by": "rep78", "ylabel": ", format(%15.2fc)"})
+
+_EQUAL_CASES = [pytest.param(m, w, marks=() if (m, w) == ("saved", 1000)
+                             else pytest.mark.release)
+                for m in _MODES for w in (1400, 1000, 760)]
+
+
+def _rows_of(panels):
+    rows = {}
+    for f in panels:
+        rows.setdefault(round(f["frame"][1]), []).append(f)
+    return list(rows.values())
+
+
+class TestEqualPanels:
+    def test_fixture(self):
+        ws = sorted({r["w"] for r in _probe("Y17")["rects"][3:]
+                     if r["fill"] == "#ffffff" and r["h"] > 500})
+        assert ws and max(ws) - min(ws) < 1, ws
+
+    @pytest.mark.parametrize("mode,width", _EQUAL_CASES)
+    def test_frames_equal_across_a_row(self, mode, width):
+        plots, go = _Y17
+        figs = _panels_of(_measure(mode, go, plots, (width,))[width])
+        assert len(figs) == 5
+        for row in _rows_of(figs):
+            w = [f["frame"][2] - f["frame"][0] for f in row]
+            assert max(w) - min(w) <= 1, w
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_axis_cells(self, mode):
+        """One dash_by_yaxis_<r> cell per panel row, on the row's shared
+        y range, left of the panels; no panel draws its own y axis."""
+        plots, go = _Y17
+        grid, _r, _n = _built(mode, go, plots)
+        panels = tk._panels(grid)
+        cells = [tk._cell(grid, "dash_by_yaxis_%d" % r) for r in (0, 1)]
+        assert all(c is not None for c in cells), cells
+        for r, c in enumerate(cells):
+            assert tk._cell_side(grid, c) == "left"
+            row = [p for p in panels if tk._axis_drawn(p, "x") is not None]
+            assert c[0].y_range is panels[3 * r].y_range
+            (ax,) = c[0].left
+            assert ax.formatter is not None
+        assert not any(a.visible for p in panels for a in p.yaxis)
+
+    @pytest.mark.release
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_stacked_view_restores(self, mode):
+        """Stacked (400 px), each panel shows its own y axis again and the
+        axis cells hide."""
+        plots, go = _Y17
+        figs = _measure(mode, go, plots, (400,))[400]
+        panels = _panels_of(figs)
+        assert all(f["axes"] for f in panels)
+        assert not [f for f in figs if f["name"].startswith("dash_by_yaxis")
+                    and f["el"][2] - f["el"][0] > 0]
+

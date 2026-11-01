@@ -48,13 +48,17 @@ def panel_label(fig):
 def is_chrome(model):
     """Whether *model* is a by() grid's chrome cell: its head or foot, or
     (WP-30 P1.15c) a title, legend or key cell beside the panels."""
-    return getattr(model, "name", None) in CHROME_NAMES + SIDE_NAMES
+    name = getattr(model, "name", None)
+    # WP-41 VF-6: each panel row's outer y axis, dash_by_yaxis_<r>.
+    return name in CHROME_NAMES + SIDE_NAMES or str(name or "").startswith(
+        "dash_by_yaxis_")
 
 
 def is_side(model):
     """Whether *model* is a by() grid's title, legend or key cell
-    (WP-30 P1.15c)."""
-    return getattr(model, "name", None) in SIDE_NAMES
+    (WP-30 P1.15c); WP-41 VF-6: or a panel row's outer y axis."""
+    name = getattr(model, "name", None)
+    return name in SIDE_NAMES or str(name or "").startswith("dash_by_yaxis_")
 
 
 def side_title(cell):

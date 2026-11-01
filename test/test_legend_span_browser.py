@@ -307,7 +307,8 @@ function state() {
   if (gv) {
     for (const k of gv.child_views || []) {
       const nm = (k.model && k.model.name) || '';
-      if (nm.startsWith('dash_by_')) continue;
+      // WP-41 VF-6: a row's outer y axis cell is the panels' own axis.
+      if (nm.startsWith('dash_by_') && !nm.startsWith('dash_by_yaxis_')) continue;
       const r = rect(k.el);
       if (!(r[2] > r[0])) continue;
       panels = panels == null ? r : [Math.min(panels[0], r[0]),
@@ -641,12 +642,15 @@ class TestByLegendInAHole:
                 assert abs(box[2] - (c[2] - mg)) <= 1.5, st
                 assert abs(box[1] - (c[1] + mg)) <= 1.5, st
             # The hole's cell is its column's width, and the panel above
-            # it keeps its frame (the first column's are narrower by their
-            # y axis).
+            # it keeps its frame.  Flipped (WP-41 VF-6): "<= 20" let the
+            # first column's frames be narrower by their y axis, which was
+            # wrong because twoway draws every panel's plot region equally
+            # wide (by_layout_truth.json Y17); the y labels are a cell of
+            # their own now.
             assert abs(c[2] - st["panels"][2]) <= 1.5, st
             assert c[2] - c[0] > 300, st
             f = st["pframes"]
-            assert max(f) - min(f) <= 20, st
+            assert max(f) - min(f) <= 2, st
 
 
 @pytest.mark.parametrize("mode", ("saved", "served"))

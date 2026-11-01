@@ -163,13 +163,15 @@ class TestInChrome:
         both = _measure(mode, spec, _STACK_JS, (1400, 375))
         got = both[1400]
         # A phone-width page loads stacked.
-        assert both[375]["wide"]["vis"] == 4 and both[375]["V"] == []
+        # WP-41 VF-6: the row's outer y axis cell adds one Axis model
+        # (5 where 4 were), visible though its cell hides when stacked.
+        assert both[375]["wide"]["vis"] == 5 and both[375]["V"] == []
         assert both[375]["wide"]["cells"] == [False, False]
         assert got["V"] == []
         wide, narrow, again = got["wide"], got["narrow"], got["again"]
-        assert wide["axes"] == 4 and wide["vis"] == 3
+        assert wide["axes"] == 5 and wide["vis"] == 3
         assert wide["titled"] == 0 and wide["cells"] == [True, True]
-        assert narrow["vis"] == 4 and narrow["titled"] == 4
+        assert narrow["vis"] == 5 and narrow["titled"] == 4
         assert narrow["cells"] == [False, False]
         assert again == wide
 

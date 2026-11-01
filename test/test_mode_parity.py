@@ -3025,6 +3025,9 @@ CORPUS = [
     # WP-41 BY-18: aspectratio()'s plot regions, in both modes.
     _case("by() aspectratio(1)", [_sc()],
           go={"by": "foreign", "aspectratio": "1"}),
+    # WP-41 VF-6: each row's outer y axis cell, in both modes.
+    _case("by() equal panels", [_sc()],
+          go={"by": "rep78", "ylabel": ", format(%15.2fc)"}),
 ]
 
 

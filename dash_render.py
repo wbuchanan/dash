@@ -39672,7 +39672,9 @@ const region = (ref) => {
   let p = null;
   for (const k of (a.child_views || [])) {
     const nm = (k.model != null && k.model.name) || "";
-    if (nm.startsWith("dash_by_") || k.el == null) { continue; }
+    // WP-41 VF-6: a row's outer y axis cell is the panels' own axis.
+    if ((nm.startsWith("dash_by_") && !nm.startsWith("dash_by_yaxis_"))
+        || k.el == null) { continue; }
     const b = k.el.getBoundingClientRect();
     if (!(b.width > 0) || !(b.height > 0)) { continue; }
     p = p == null ? {L: b.left, R: b.right, T: b.top, B: b.bottom}
@@ -52304,6 +52306,9 @@ def _dash_reflow(grid, stack=True):
                       # WP-41 BY-18: by()'s texts beside the panels.
                       "dash_by_rtext", "dash_by_ltext") and span == 1:
                 side_cols.add(col)
+            elif nm.startswith("dash_by_yaxis_") and span == 1:
+                # WP-41 VF-6: a row's outer y axis, as wide as its labels.
+                side_cols.add(col)
             elif nm == "dash_by_ruler":
                 ruler_cols.add(col)
             elif not nm.startswith("dash_by_"):
@@ -57059,6 +57064,52 @@ def _dash_by_title_cell(scheme, name, text, side, axis):
     return cell
 
 
+#: The properties a by() panel's y axis keeps when it moves into its
+#: row's outer axis cell (WP-41 VF-6): everything it was drawn with but
+#: its title, visibility, name, range and callbacks.
+_DASH_BY_YAXIS_SKIP = frozenset({
+    "axis_label", "visible", "name", "y_range_name", "x_range_name",
+    "js_property_callbacks", "js_event_callbacks", "subscribed_events",
+    "tags", "syncable"})
+
+
+def _dash_by_yaxis_cell(scheme, name, panel, axis):
+    """The outer y axis of one by() panel row (WP-41 VF-6): a bare
+    ``Plot`` named *name* on *panel*'s own y range and scale, one pixel
+    of frame wide, whose one left axis is a copy of *axis* (*panel*'s
+    primary left y axis: its ticker, formatter, label overrides, fonts,
+    colours and tick lengths), its frame aligned with the row's frames,
+    so the row's panels all keep one plot-region width as twoway's do
+    (by_layout_truth.json Y17)."""
+    from bokeh.models import Plot, Range1d
+    cell = Plot(name=name, frame_width=1, width_policy="min",
+                height_policy="max", toolbar_location=None,
+                outline_line_color=None, min_border=0,
+                x_range=Range1d(0, 1), y_range=panel.y_range,
+                y_scale=type(panel.y_scale)())
+    if scheme is not None:
+        scheme.apply_to_figure(cell)
+    cell.outline_line_color = None
+    cell.background_fill_color = cell.border_fill_color
+    for side in ("min_border_top", "min_border_bottom"):
+        setattr(cell, side, getattr(panel, side, None))
+    kw = {k: v for k, v in axis.properties_with_values(
+        include_defaults=False).items() if k not in _DASH_BY_YAXIS_SKIP}
+    try:
+        new = type(axis)(**kw)
+    except Exception:  # noqa: BLE001 -- the panel keeps its axis
+        return None
+    cell.add_layout(new, "left")
+    # One invisible renderer, as _dash_by_text_cell's: a Plot with none
+    # logs W-1000 (MISSING_RENDERERS) at build.
+    from bokeh.models import Span
+    cell.add_layout(Span(location=0, dimension="width", visible=False,
+                         name="dash_by_anchor"))
+    if cell.title is not None:
+        setattr(cell.title, _DASH_GRAPH_TEXT_DONE, True)
+    return cell
+
+
 def _dash_by_glyph_fields(glyph):
     """The data fields *glyph*'s own dataspecs name (never user input)."""
     out = []
@@ -58480,6 +58531,44 @@ def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
                                        prim[0] if prim else None)
             side["cells"].append((d + "title", cell, ""))
             tcells.append(cell)
+    # WP-41 VF-6: a row whose first panel alone draws the shared y axis
+    # takes it out into a cell of its own left of the row, so every panel
+    # of the row keeps one plot-region width, as twoway's do
+    # (by_layout_truth.json Y17); the stacked view gives it back.
+    _rows = {}
+    for i, fig in enumerate(figs):
+        if i in positions:
+            _rows.setdefault(int(positions[i][0]), []).append(
+                (int(positions[i][1]), fig))
+
+    _lefts = {id(fig): [a for a in _dash_primary_axes(fig.yaxis,
+                                                      "y_range_name")
+                        if a.visible and _dash_by_axis_side(fig, a) == "left"]
+              for fig in figs}
+    for r in sorted(_rows):
+        row = sorted(_rows[r], key=lambda t: t[0])
+        first = _lefts[id(row[0][1])]
+        if not first or any(_lefts[id(f)] for _c, f in row[1:]):
+            continue
+        ax = first[0]
+        cell = _dash_by_yaxis_cell(scheme, "dash_by_yaxis_%d" % r,
+                                   row[0][1], ax)
+        if cell is None:
+            continue
+        if any(a is ax for a in titles["hidden"]):
+            k = next(j for j, a in enumerate(titles["hidden"]) if a is ax)
+            titles["restore"][k][0] = False
+        else:
+            titles["hidden"].append(ax)
+            titles["restore"].append(
+                [False, ax.axis_label,
+                 None if ax.axis_label is None else str(ax.axis_label),
+                 True])
+        ax.visible = False
+        # Drawn, in the row's cell: the tag says so to every reader.
+        ax.tags = list(ax.tags or []) + ["dash_by_outer_yaxis"]
+        side["cells"].append(("yaxis%d" % r, cell, ""))
+        tcells.append(cell)
     yprim = _dash_primary_axes(figs[0].yaxis, "y_range_name")
     for k, where in (("l2title", "left"), ("r1title", "right"),
                      ("r2title", "right")):
@@ -58571,7 +58660,11 @@ def _dash_by_side_grid(grid, side, nrows, ncols):
     kids = [tuple(c) for c in (grid.children or [])]
     kinds = {k: (cell, where) for k, cell, where in side["cells"]}
     at_cells = side.get("at_cells") or {}
-    left_cols = int("ytitle" in kinds) + int("l2title" in kinds)
+    # WP-41 VF-6: each row's outer y axis cell, right of the y title.
+    yax = {int(k[5:]): cell for k, (cell, _w) in kinds.items()
+           if k.startswith("yaxis") and k[5:].isdigit()}
+    ny = int(bool(yax))
+    left_cols = int("ytitle" in kinds) + int("l2title" in kinds) + ny
     # WP-41 BY-14: by(, plegend())'s cell is placed as the legend's.
     keyk = ("legend", "plegend", "clegend")
     for k in keyk:
@@ -58595,22 +58688,34 @@ def _dash_by_side_grid(grid, side, nrows, ncols):
             r, c = at_cells[k]
             out.append((kinds[k][0], p0r + int(r), p0c + int(c), 1, 1))
     inner_left = inner and kinds["legend"][1] == "left"
+    sp = grid.spacing
+    col_sp = int(sp[1] if isinstance(sp, (tuple, list)) else (sp or 0))
+    for r, cell in sorted(yax.items()):
+        # Against its row's first panel, across the panels' spacing, as
+        # the axis was drawn on the panel's own edge.
+        if col_sp > 0:
+            cell.styles = {**dict(cell.styles or {}),
+                           "margin-right": "-%dpx" % col_sp,
+                           "min-width": "max-content"}
+        out.append((cell, p0r + r, p0c - 1, 1, 1))
     if "ytitle" in kinds:
         out.append((kinds["ytitle"][0], p0r,
-                    p0c - 1 - int(inner_left), nrows, 1))
+                    p0c - 1 - ny - int(inner_left), nrows, 1))
     if "l2title" in kinds:
         # WP-41 BY-12: left of the y title, inside a left legend.
         out.append((kinds["l2title"][0], p0r,
-                    p0c - 1 - int(inner_left) - int("ytitle" in kinds),
+                    p0c - 1 - ny - int(inner_left) - int("ytitle" in kinds),
                     nrows, 1))
     if inner_left:
-        out.append((kinds["legend"][0], p0r, p0c - 1, nrows, 1))
+        out.append((kinds["legend"][0], p0r, p0c - 1 - ny, nrows, 1))
     row = p0r + nrows
     if inner and not inner_left:
         out.append((kinds["legend"][0], row, 0, 1, -1))
         row += 1
     if "xtitle" in kinds:
-        out.append((kinds["xtitle"][0], row, p0c, 1, ncols))
+        # WP-41 VF-6: under the panels and their outer y axis, as twoway
+        # centres b1title on the panels plus their axes.
+        out.append((kinds["xtitle"][0], row, p0c - ny, 1, ncols + ny))
         row += 1
     total = p0c + ncols
     # WP-41 BY-12: r1title then r2title right of the panels, inside a
@@ -69813,6 +69918,8 @@ class ServerAppBuilder:
                       "_DASH_GRAPH_MARGIN_JS",
                       "_DASH_SPAN_JS", "_DASH_SPAN_KEYS",
                       "_DASH_BY_HOLE_PLACE", "_DASH_BY_FIT_JS",
+                      # WP-41 VF-6: what a moved y axis keeps.
+                      "_DASH_BY_YAXIS_SKIP",
                       # WP-41 BY-18: combine's regions.
                       "_DASH_BY_COMBINE_INSET_RS",
                       "_DASH_BY_COMBINE_PANEL_MARGIN_RS",
@@ -70264,6 +70371,7 @@ class ServerAppBuilder:
                          "_dash_by_panel_label", "_dash_by_label_just",
                          "_dash_by_text_cell",
                          "_dash_by_beside_cell",
+                         "_dash_by_yaxis_cell",
                          "_dash_by_chrome",
                          "_dash_by_frame_grid", "_dash_by_chrome_figures",
                          # The Stata display-format writer (WP-28 S04).
