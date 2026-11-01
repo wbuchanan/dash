@@ -131,6 +131,33 @@ class TestTheSplitIsKeptWithItsText:
             sys.modules.pop("dash_probe_lines", None)
 
 
+class TestTheConstantScan:
+    """``_dash_scan_constants`` finds what the two regexes find over the
+    joined text, an assignment spanning lines included."""
+
+    @staticmethod
+    def _joined(lines):
+        import re
+        src = "\n".join(lines)
+        return (set(re.findall(r"\b_[A-Z][A-Z0-9_]*\b", src)),
+                set(re.findall(r"^([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=\n]+)?=",
+                               src, re.MULTILINE)))
+
+    @pytest.mark.parametrize("lines", [
+        ["_A = 1", "x = _B + _C", "    y = _D", "def f(): return _E"],
+        ["z", "= _F"], ["w\n", "", ": int = _G"], ["a: int = 1\nb=2", "_H"],
+        ["pass", "_I"], ["  v", "= 1"], [],
+    ], ids=["plain", "split", "split-blank", "multi", "bare", "indent",
+            "empty"])
+    def test_it_is_the_joined_scan(self, lines):
+        assert dr._dash_scan_constants(lines) == self._joined(lines)
+        assert dr._dash_scan_constants(lines) == self._joined(lines)
+
+    def test_a_built_app(self, tmp_path):
+        lines = _build(tmp_path).split("\n")
+        assert dr._dash_scan_constants(lines) == self._joined(lines)
+
+
 class TestItIsReadAgainWhenItCouldDiffer:
 
     def test_a_replaced_function_is_read_anew(self, tmp_path, monkeypatch):

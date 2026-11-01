@@ -70568,6 +70568,43 @@ def _dash_trial_render(source):
     return notes
 
 
+_DASH_USED_RE = re.compile(r"\b_[A-Z][A-Z0-9_]*\b")
+_DASH_ASSIGNED_RE = re.compile(
+    r"^([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=\n]+)?=", re.MULTILINE)
+#: A text whose last line is a bare name: the assignment regex's ``\s*``
+#: could carry it into the next text, so its lines are scanned joined.
+_DASH_OPEN_NAME_RE = re.compile(r"(?m)^[A-Za-z_][A-Za-z0-9_]*\s*\Z")
+#: text -> (names used, names assigned, whether it ends in a bare name).
+_DASH_SCAN_CACHE: dict = {}
+
+
+def _dash_scan_constants(lines):
+    """``(used, assigned)``: the ``_UPPERCASE`` names ``"\\n".join(lines)``
+    uses and the names it assigns at the start of a line, as
+    ``ServerAppBuilder._supply_missing_constants`` finds them.  A generated
+    app is about 55,000 lines, nearly all the same from one build to the
+    next, and the two regexes over its 3 MB were three fifths of a build;
+    each line's names are kept, and the whole text is scanned only when a
+    line ends in a bare name, where an assignment could span lines."""
+    used, assigned = set(), set()
+    for text in lines:
+        hit = _DASH_SCAN_CACHE.get(text)
+        if hit is None:
+            hit = (frozenset(_DASH_USED_RE.findall(text)),
+                   frozenset(_DASH_ASSIGNED_RE.findall(text)),
+                   _DASH_OPEN_NAME_RE.search(text) is not None)
+            if len(_DASH_SCAN_CACHE) >= 200000:
+                _DASH_SCAN_CACHE.clear()
+            _DASH_SCAN_CACHE[text] = hit
+        if hit[2]:
+            src = "\n".join(lines)
+            return (set(_DASH_USED_RE.findall(src)),
+                    set(_DASH_ASSIGNED_RE.findall(src)))
+        used |= hit[0]
+        assigned |= hit[1]
+    return used, assigned
+
+
 class ServerAppBuilder:
     """Generates a self-contained Bokeh Server application Python source file.
 
@@ -76402,10 +76439,7 @@ class ServerAppBuilder:
         import re as _re_sup
         import sys as _sys_sup
 
-        src = "\n".join(lines)
-        used = set(_re_sup.findall(r"\b_[A-Z][A-Z0-9_]*\b", src))
-        assigned = set(_re_sup.findall(
-            r"^([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=\n]+)?=", src, _re_sup.MULTILINE))
+        used, assigned = _dash_scan_constants(lines)
         mod = _sys_sup.modules[__name__]
 
         missing = []
