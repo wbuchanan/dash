@@ -5618,6 +5618,12 @@
   - Suggested fix: size the title's text box from twoway's textbox geometry (its margins scale, its line height does not grow by 1.3) and give the by() fit hook a vertical inset.
   - Resolution: Not fixed because neither VF-4's shape work nor D66's one-picture scale (WP-45, brought into WP-41 41-05) reaches the title box's height under scale() or by()'s vertical placement. Graded S3 (WP-45): a few px per unit of scale(), and fysize() under by().
 
+- [ ] Title: by(, subtitle(, position(3))) panel labels sit right of their strips and the two plot regions are narrower and unequal
+  - File Names and Line Numbers: dash_render.py _dash_by_title_cell, _dash_layout_cell (the clock-3 label column)
+  - Description: Found in WP-41 section 41-05's screenshot pair 3 (`scatter mpg weight, by(foreign, subtitle(, position(3)))`, stcolor, 1400 x 840), measured in both programs. twoway centres each panel's label on the strip beside its plot region and draws both plot regions 561 px wide (x 143 and 772); dash draws the labels to the right of their strips and the plot regions 477 and 499 px wide (x 143 and 770), with a right margin of 34 px against twoway's 18. The maintainer accepted the 41-05 pairs on 01nov2026 with this pair left for later.
+  - Suggested fix: give the clock-3 label column the label's own width, centred on the strip, outside each panel's plot region, so every panel keeps the same plot width.
+  - Resolution: Not fixed because the maintainer deferred pair 3 when accepting the 41-05 pairs (01nov2026). Graded S3 (WP-41): a by() layout option, the plots still read correctly.
+
 - [ ] Title: xsize()/ysize() with units (10cm, 3in, 200pt) are ignored with a note that leaks 'None'
   - File Names and Line Numbers: region_options.sthlp:155-170; dash.ado:3753; float() at dash_render.py:27374, 27437, 27742
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids GW-1; confirmed; tracked: untracked. Registered as GAPS4 GW-1 (WP-45, section 45-04, Fix).

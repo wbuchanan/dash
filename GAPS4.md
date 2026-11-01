@@ -423,18 +423,18 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-2 Tracked:** Closed in WP-41, BUGS.md "A scale() written outside by() scales every panel, where twoway ignores it on a by() graph; by(, scale()), which twoway applies, is named and ignored", commit 44ce04b.
 - **BY-27 Tracked:** Closed in WP-41, BUGS.md "function range(varname) under by() spans the whole data in every panel; twoway uses each panel's own range (kdensity range(varname) likely the same, unprobed)", commit eb75675.
 - **BY-3 Tracked:** Closed in WP-41, BUGS.md "An at() hole for a legend or colour key that is not drawn is not reserved in the grid", commit ff6707d.
-- **BY-4 Tracked:** Closed in WP-41, BUGS.md "compact: beside an explicit style() it is drawn compact (twoway lets style() win), and its black plot-region and label-box outlines are not drawn", commit pending.
-- **BY-5 Tracked:** Closed in WP-41, BUGS.md "aspectratio() with by(, shrink) is accepted; twoway refuses it ('options aspect() and shrink may not be combined')", commit pending.
-- **BY-6 Tracked:** Closed in WP-41, BUGS.md "by(, total) with no variables gives r(198) in dash's words; twoway gives r(100) 'varlist required in by()'", commit pending.
+- **BY-4 Tracked:** Closed in WP-41, BUGS.md "compact: beside an explicit style() it is drawn compact (twoway lets style() win), and its black plot-region and label-box outlines are not drawn", commit a7c89f9.
+- **BY-5 Tracked:** Closed in WP-41, BUGS.md "aspectratio() with by(, shrink) is accepted; twoway refuses it ('options aspect() and shrink may not be combined')", commit dba1f74.
+- **BY-6 Tracked:** Closed in WP-41, BUGS.md "by(, total) with no variables gives r(198) in dash's words; twoway gives r(100) 'varlist required in by()'", commit a2d1e27.
 - **BY-32 Tracked:** Open (WP-41 section 41-05).
 - **BY-12 Tracked:** Closed in WP-41, BUGS.md "by(, l1title() b1title() t1title() ...) are named and ignored; in twoway l1title/b1title replace the shared axis titles", commit 5918789.
 - **BY-13 Tracked:** Closed in WP-41, BUGS.md "by(, legloc() clegloc() plegend() plegloc()) are named and ignored", commit 9300f24.
 - **BY-14 Tracked:** Closed in WP-41, BUGS.md "coloruseplegend under by(): plegend(on) draws nothing, and clegend(on) draws a discrete Legend with '(missing)' where twoway draws a colour-bar key", commit a75f477.
 - **BY-10 Tracked:** Partly closed in WP-41 (section 41-06, commit 2e58498): justification(), nobexpand, lwidth(), lpattern(), span, alignment(), linegap(), bmargin() and placement() are drawn on the panel label row; open: orientation() is named, not drawn (BUGS.md "A by() panel label's orientation() is named, not drawn").
 - **BY-16 Tracked:** Closed in WP-41, BUGS.md "by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line", commit 653b1bb.
-- **BY-18 Tracked:** Closed in WP-41, BUGS.md "Documented by() layout differences: style(combine) on by()'s grid; clock 3/9 labels and titles below instead of beside; aspectratio() shapes each panel figure, not its plot region; a smaller graph margin insets nothing", commit pending.
-- **VF-6 Tracked:** Closed in WP-41, BUGS.md "by() panels in the first column have narrower plot regions (y labels inside their canvas), so pixels per unit differ across a row", commit pending.
-- **GW-5 Tracked:** Closed in WP-41, BUGS.md "xoverhangs/yoverhangs move panel borders under by() (twoway ignores them there) and use every label, not only the end labels, raising both sides equally", commit pending.
+- **BY-18 Tracked:** Closed in WP-41, BUGS.md "Documented by() layout differences: style(combine) on by()'s grid; clock 3/9 labels and titles below instead of beside; aspectratio() shapes each panel figure, not its plot region; a smaller graph margin insets nothing", commit b17deeb.
+- **VF-6 Tracked:** Closed in WP-41, BUGS.md "by() panels in the first column have narrower plot regions (y labels inside their canvas), so pixels per unit differ across a row", commit 6527063.
+- **GW-5 Tracked:** Closed in WP-41, BUGS.md "xoverhangs/yoverhangs move panel borders under by() (twoway ignores them there) and use every label, not only the end labels, raising both sides equally", commit d6aec16.
 - **sil:SD-7 Tracked:** Closed in WP-41, BUGS.md "A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198)", commit 2fb5c6e.
 - **PIC-13 Tracked:** Closed in WP-41, BUGS.md "A legend in a by() at() hole keeps full-size text; twoway scales it (0.85x)", commit f62bb34.
 - **BY-7 Tracked:** Closed in WP-41, BUGS.md "by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor", commit 5497cfa.
@@ -512,9 +512,9 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **ST-17 Tracked:** Open (WP-45 section 45-03).
 - **ST-10 Tracked:** Open (WP-45 section 45-03).
 - **ST-16 Tracked:** Open (WP-45 section 45-03).
-- **GW-6 Tracked:** Partly closed in WP-45 (section 45-04, commit pending): the scheme's graph margin is drawn round every stretched graph, a by() array included, in the graph region's fill; open: the outline stroke unasked and the margin of a graph at its xsize()/ysize() box (BUGS.md "The graph region's outline is not stroked unasked, and a graph drawn at its xsize()/ysize() box has no scheme graph margin").
+- **GW-6 Tracked:** Partly closed in WP-45 (section 45-04, commit 999ec28): the scheme's graph margin is drawn round every stretched graph, a by() array included, in the graph region's fill; open: the outline stroke unasked and the margin of a graph at its xsize()/ysize() box (BUGS.md "The graph region's outline is not stroked unasked, and a graph drawn at its xsize()/ysize() box has no scheme graph margin").
 - **ST-21 Tracked:** Open (WP-45 section 45-04).
-- **VF-4 Tracked:** Partly closed in WP-45 (section 45-04, commit pending): every graph, by() included, keeps twoway's shape with no height band, xsize()/ysize() draw the exact box, aspectratio() alone shapes the plot region and fxsize()/fysize() keep a lone graph's size; the graph drawn as one picture at twoway's unit (DECISIONS D66, 01nov2026); open: the title's top inset under scale() and by()'s fysize() centring (BUGS.md "Under scale() the title's room above the plot region grows faster than twoway's, and by()'s fysize() array is not centred").
+- **VF-4 Tracked:** Partly closed in WP-45 (section 45-04, commit 868682a): every graph, by() included, keeps twoway's shape with no height band, xsize()/ysize() draw the exact box, aspectratio() alone shapes the plot region and fxsize()/fysize() keep a lone graph's size; the graph drawn as one picture at twoway's unit (DECISIONS D66, 01nov2026); open: the title's top inset under scale() and by()'s fysize() centring (BUGS.md "Under scale() the title's room above the plot region grows faster than twoway's, and by()'s fysize() array is not centred").
 - **GW-1 Tracked:** Open (WP-45 section 45-04).
 - **ST-22 Tracked:** Open (WP-45 section 45-05).
 - **GW-10 Tracked:** Open (WP-45 section 45-05).
