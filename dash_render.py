@@ -58914,9 +58914,11 @@ def _dash_walked(models):
     stand-in per root whose ``references()`` is the root's own, collected
     here, so ``_dash_by_stack_hooks`` and ``_dash_arrow_head_hooks`` (or
     ``_dash_tabs_keys_hook`` and ``_dash_slider_names_hook``) share one
-    walk of the whole graph rather than making one each.  Valid only while
-    no model is added under a root: both pairs only read, or add
-    callbacks to models already there."""
+    walk of the whole graph rather than making one each; one walk serves
+    all four.  The models found are those of the walk: what the
+    composites and the print layout add between the two pairs is a
+    stylesheet or a callback, never a ``Tabs`` or a slider, the only
+    models the second pair looks for."""
     from types import SimpleNamespace
     out = []
     for root in models or ():
@@ -68021,7 +68023,6 @@ class DashRenderer:
         _hooks = [*_by_hooks, *_err_hooks]
         _hooks += [_print_hook]
         # WP-31 K6: the tab strips' keyboard and slider names scripts.
-        _walk = _dash_walked(all_models)
         _hooks += (_dash_tabs_keys_hook(_walk)
                    + _dash_slider_names_hook(_walk))
         if _hooks:
@@ -70038,7 +70039,6 @@ class DashRenderer:
         _hooks = [*_by_hooks, *_err_hooks]
         _hooks += [_print_hook]
         # WP-31 K6: the tab strips' keyboard and slider names scripts.
-        _walk = _dash_walked([layout_root])
         _hooks += (_dash_tabs_keys_hook(_walk)
                    + _dash_slider_names_hook(_walk))
         if _hooks:
@@ -76017,7 +76017,6 @@ class ServerAppBuilder:
             "    _hooks = [*_by_hooks, *_err_hooks]",
             "    _hooks += [_print_hook]",
             "    # WP-31 K6: the tab strips' keyboard and slider names scripts.",
-            "    _walk = _dash_walked([layout])",
             "    _hooks += (_dash_tabs_keys_hook(_walk)",
             "               + _dash_slider_names_hook(_walk))",
             "    if _hooks:",
