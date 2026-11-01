@@ -31,7 +31,7 @@ sys.path.insert(0, _HERE)
 import json
 
 import dash_render as dr
-from conftest import make_data_json
+from conftest import exec_app, make_data_json
 
 _DF = pd.DataFrame({"mpg": [22.0, 18.0, 25.0],
                     "weight": [2930.0, 3350.0, 2200.0]})
@@ -91,7 +91,7 @@ def _bound_port(source: str, monkeypatch, argv=("app.py",)) -> int:
     monkeypatch.setattr(sys, "argv", list(argv))
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(source, "app.py", "exec"), {"__name__": "__main__"})
+        exec_app(source, "app.py", {"__name__": "__main__"})
     assert "kw" in seen, "the launcher never built a server"
     return int(seen["kw"]["port"])
 

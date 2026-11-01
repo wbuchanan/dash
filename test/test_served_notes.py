@@ -30,6 +30,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
+from conftest import exec_app  # noqa: E402
 import dash_render as dr
 from test_server_layer_defects import (make_spec, plot_for, served,
                                        standalone, _write)
@@ -229,7 +230,7 @@ class TestTheGeneratedApp:
             hook = warnings.showwarning
             doc = Document()  # patch_curdoc holds it by weak reference
             with patch_curdoc(doc):
-                exec(compile(src, ap, "exec"), {"__name__": "_probe_import"})
+                exec_app(src, ap, {"__name__": "_probe_import"})
             assert warnings.showwarning is hook
         assert "_dash_app_notes" not in sys.modules
 
@@ -255,8 +256,7 @@ class TestTheGeneratedApp:
             warnings.simplefilter("always")
             hook = warnings.showwarning
             with patch_curdoc(throwaway):
-                exec(compile(src, ap, "exec"),
-                     {"__name__": "bokeh_app_probe", "_DASH_TRIAL": True})
+                exec_app(src, ap, {"__name__": "bokeh_app_probe", "_DASH_TRIAL": True})
             assert warnings.showwarning is hook
         assert [list(logging.getLogger(n).filters) for n in _TORNADO] == before
         assert "_dash_app_notes" not in sys.modules

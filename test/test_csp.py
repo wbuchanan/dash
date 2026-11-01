@@ -71,7 +71,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json, make_spec  # noqa: E402
+from conftest import exec_app, make_data_json, make_spec  # noqa: E402
 from test_server_serves import (  # noqa: E402
     _Launched, _Served, _build_app, _free_port)
 
@@ -456,7 +456,7 @@ def app(tmp_path_factory):
     # Named: patch_curdoc holds the document by weak reference only.
     throwaway = Document()
     with patch_curdoc(throwaway):
-        exec(compile(src, path, "exec"), ns)
+        exec_app(src, path, ns)
     # WP-29 P0.12a: a key installed, as dash serve's is, so building a
     # Server here makes and announces none.
     ns["_DASH_SERVE_TOKEN"] = "dashTestKey_0123456789abcdefghijklmnopqrstuvwxyz"

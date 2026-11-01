@@ -28,7 +28,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
-from conftest import load_app  # noqa: E402
+from conftest import exec_app, load_app  # noqa: E402
 from test_date_axis_residuals import _digest  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
@@ -105,7 +105,7 @@ class TestASourcelessRendererWritesTheApp:
         other = src.replace("_DASH_STUB_PYTHON = %r" % (
             tuple(sys.version_info[:2]),), "_DASH_STUB_PYTHON = (3, 1)", 1)
         with pytest.raises(SystemExit, match="Python 3.1"):
-            exec(compile(other, "<app>", "exec"), {"__name__": "_ver_probe"})
+            exec_app(other, "<app>", {"__name__": "_ver_probe"})
 
     def test_a_renderer_with_its_source_writes_text(self, tmp_path):
         src = _app(dr, tmp_path, "plain").read_text(encoding="utf-8")

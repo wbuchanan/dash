@@ -56,7 +56,7 @@ sys.path.insert(0, _HERE)
 import dash_render
 from dash_render import DashRenderer, _sanitize_css_color
 
-from conftest import make_spec, make_data_json
+from conftest import exec_app, make_spec, make_data_json
 
 
 from conftest import render_models  # noqa: E402
@@ -467,7 +467,7 @@ def _served_doc(tmp_path, spec):
             src = fh.read()
         assert _CURDOC_ATTACH in src, "the generated app's curdoc attach moved"
         ns = {"__name__": "kpi_security_app"}
-        exec(compile(src.replace(_CURDOC_ATTACH, "pass"), op, "exec"), ns)
+        exec_app(src.replace(_CURDOC_ATTACH, "pass"), op, ns)
         doc = Document()
         ns["make_document"](doc)
     return doc

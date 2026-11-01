@@ -51,7 +51,7 @@ sys.path.insert(0, _HERE)
 
 from dash_render import ServerAppBuilder
 
-from conftest import make_spec, make_data_json
+from conftest import exec_app, make_spec, make_data_json
 
 
 def _build(plots, tmpdir):
@@ -75,7 +75,7 @@ def _module(app_path):
     with open(app_path, encoding="utf-8") as fh:
         src = fh.read()
     ns = {"__name__": "dash_app_under_test"}
-    exec(compile(src.split("if __name__ !=")[0], app_path, "exec"), ns)
+    exec_app(src.split("if __name__ !=")[0], app_path, ns)
     return ns
 
 

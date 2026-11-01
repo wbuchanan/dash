@@ -44,6 +44,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
+from conftest import exec_app  # noqa: E402
 import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 import test_served_filter_move as sfm  # noqa: E402
@@ -259,8 +260,7 @@ class TestBothModesSelectByTheColumn:
         ns = {"__name__": "_qc_app"}
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            exec(compile(src.replace(attach, "pass"), "_qc_app.py", "exec"),
-                 ns)
+            exec_app(src.replace(attach, "pass"), "_qc_app.py", ns)
         ns["_stata_if_to_pandas"] = _boom
         ns["_validate_if_expr"] = _boom
         from bokeh.document import Document

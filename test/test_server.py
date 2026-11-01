@@ -54,6 +54,7 @@ _HERE = os.path.dirname(__file__)
 _DASH_DIR = os.path.dirname(_HERE)
 sys.path.insert(0, os.path.abspath(_HERE))
 from serve_token_probe import TEST_TOKEN, token_args  # noqa: E402  (P0.12a)
+from conftest import exec_app  # noqa: E402
 from conftest import load_app  # noqa: E402  (WP-30 A3)
 import dash_render as _dr_mod  # noqa: E402  (WP-30 P1.3a)
 from by_panel_probe import is_chrome, panel_label  # noqa: E402  (WP-30 P1.15a)
@@ -5666,7 +5667,7 @@ def _ql_served(dr, tmp_path, spec, df=None, labels=None):
     ns = {"__name__": "_ql_app"}
     with _w.catch_warnings():
         _w.simplefilter("ignore")
-        exec(compile(src.replace(attach, "pass"), "_ql_app.py", "exec"), ns)
+        exec_app(src.replace(attach, "pass"), "_ql_app.py", ns)
     with _w.catch_warnings(record=True) as caught:
         _w.simplefilter("always")
         doc = Document()
@@ -5690,7 +5691,7 @@ def _ql_app_ns(dr, tmp_path, spec, df=None):
     ns = {"__name__": "_ql_app_ns"}
     with _w.catch_warnings():
         _w.simplefilter("ignore")
-        exec(compile(src.replace(attach, "pass"), "_ql_app_ns.py", "exec"), ns)
+        exec_app(src.replace(attach, "pass"), "_ql_app_ns.py", ns)
     # WP-29 P0.12a: the key Gate B checks, as _dash_server_app installs it.
     ns["_DASH_SERVE_TOKEN"] = TEST_TOKEN
     return ns
@@ -9905,7 +9906,7 @@ class TestProxiedRateLimiterBucket:
         """
         src = self._build_source(dr_module, auto_df)
         mod = types.ModuleType("_b41_mod")
-        exec(compile(src, "<test>", "exec"), mod.__dict__)
+        exec_app(src, "<test>", mod.__dict__)
         helper = getattr(mod, "_client_ip_from_request")
 
         class _FakeReq:
@@ -9930,7 +9931,7 @@ class TestProxiedRateLimiterBucket:
         """BUG-41-1c: _client_ip_from_request returns remote_ip when XFF absent."""
         src = self._build_source(dr_module, auto_df)
         mod = types.ModuleType("_b41c_mod")
-        exec(compile(src, "<test>", "exec"), mod.__dict__)
+        exec_app(src, "<test>", mod.__dict__)
         helper = getattr(mod, "_client_ip_from_request")
 
         class _FakeReq:
@@ -9949,7 +9950,7 @@ class TestProxiedRateLimiterBucket:
         """BUG-41-1d: helper returns '0.0.0.0' when remote_ip and XFF both absent."""
         src = self._build_source(dr_module, auto_df)
         mod = types.ModuleType("_b41d_mod")
-        exec(compile(src, "<test>", "exec"), mod.__dict__)
+        exec_app(src, "<test>", mod.__dict__)
         helper = getattr(mod, "_client_ip_from_request")
 
         class _FakeReq:
@@ -10980,7 +10981,7 @@ class TestSeparateRateLimitBuckets:
         """Exhausting _SESSION_LIMITER for an IP must not affect _HEALTH_LIMITER."""
         src = self._build_source(dr_module, auto_df)
         mod = types.ModuleType("_b48e_mod")
-        exec(compile(src, "<test>", "exec"), mod.__dict__)
+        exec_app(src, "<test>", mod.__dict__)
         session_lim = getattr(mod, "_SESSION_LIMITER")
         health_lim = getattr(mod, "_HEALTH_LIMITER")
         ip = "10.0.0.1"

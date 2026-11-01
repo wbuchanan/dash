@@ -57,7 +57,7 @@ import serve_token_probe  # noqa: E402
 from serve_token_probe import (TEST_TOKEN, FakeStdin, LINK_RE,  # noqa: E402
                                drop_holder, link_path_in, read_link,
                                token_args)
-from conftest import make_spec  # noqa: E402
+from conftest import exec_app, make_spec  # noqa: E402
 from test_adversarial_matrix import (_SCATTER, _LiveApp,  # noqa: E402
                                      _SessionDoc, _app_source,
                                      _launcher_said, _load_app)
@@ -985,7 +985,7 @@ def _run_main(src, argv, monkeypatch, seen):
     monkeypatch.setattr(sys, "argv", argv)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src, "app.py", "exec"), {"__name__": "__main__"})
+        exec_app(src, "app.py", {"__name__": "__main__"})
 
 
 def _main_text(src):
@@ -1198,7 +1198,7 @@ class TestTheGeneratedAppIsGated:
         monkeypatch.setattr(sys, "argv", ["app.py", "--port", "5123"])
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            exec(compile(app_src, "app.py", "exec"), {"__name__": "__main__"})
+            exec_app(app_src, "app.py", {"__name__": "__main__"})
         mode, dmode, host, port, path, key = seen["during"]
         assert (mode, dmode, host, port, path) == ("600", "700", "127.0.0.1",
                                                   5123, "/")

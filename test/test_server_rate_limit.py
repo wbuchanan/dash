@@ -60,7 +60,7 @@ sys.path.insert(0, _HERE)
 
 from dash_render import ServerAppBuilder
 
-from conftest import make_spec, make_data_json
+from conftest import exec_app, make_spec, make_data_json
 from serve_token_probe import TEST_TOKEN, token_args
 
 
@@ -91,7 +91,7 @@ def app_module():
     with open(op, encoding="utf-8") as fh:
         src = fh.read()
     ns: dict = {"__name__": "dash_app_under_test"}
-    exec(compile(src.split("if __name__ !=")[0], op, "exec"), ns)
+    exec_app(src.split("if __name__ !=")[0], op, ns)
     # WP-29 P0.12a: the key Gate B checks, as _dash_server_app installs it.
     ns["_DASH_SERVE_TOKEN"] = TEST_TOKEN
     # The launcher tests read the whole file and run it as a script.
@@ -143,7 +143,7 @@ def _launch_as_script(src, monkeypatch, *flags):
     ns = {"__name__": "__main__"}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src, "app.py", "exec"), ns)
+        exec_app(src, "app.py", ns)
     return ns
 
 

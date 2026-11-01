@@ -61,7 +61,7 @@ _FIXTURE = os.path.join(_HERE, "fixtures", "kpi_pctile_truth.json")
 _SEQ = count()
 
 
-from conftest import render_models  # noqa: E402
+from conftest import exec_app, render_models  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -1713,7 +1713,7 @@ class TestTheLauncherOpensABrowserOnlyWhenAsked:
             monkeypatch.setattr(sys, "argv", argv)
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                exec(compile(src, "app.py", "exec"), {"__name__": "__main__"})
+                exec_app(src, "app.py", {"__name__": "__main__"})
             runs[len(argv)] = dict(seen)
         plain, asked = runs[1], runs[4]
         assert plain["started"] and plain["stopped"]

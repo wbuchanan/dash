@@ -44,7 +44,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 from serve_token_probe import FakeStdin  # noqa: E402  (WP-29 P0.12a)
-from conftest import make_data_json  # noqa: E402
+from conftest import exec_app, make_data_json  # noqa: E402
 from test_serve_launcher import _DF, _SPEC, _free_port  # noqa: E402
 
 _RENDER = os.path.join(_ROOT, "dash_render.py")
@@ -468,7 +468,7 @@ class TestNoCopyOfTheDataWhileServing:
               "__file__": out}
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            exec(compile(src, out, "exec"), ns)
+            exec_app(src, out, ns)
             doc = Document()
             ns["make_document"](doc)
         sliders = [m for m in doc.select({"type": dr.RangeSlider})]

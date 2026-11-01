@@ -42,7 +42,7 @@ sys.path.insert(0, _HERE)
 
 from dash_render import DashRenderer, ServerAppBuilder
 
-from conftest import make_spec, make_data_json
+from conftest import exec_app, make_spec, make_data_json
 
 
 from conftest import render_models  # noqa: E402
@@ -82,7 +82,7 @@ def _server_frame(payload, tmpdir):
     ns: dict = {}
     # Everything up to the attach line: defining the module is enough, and
     # attaching a document needs a Bokeh session this test does not have.
-    exec(compile(src.split("if __name__ !=")[0], op, "exec"), ns)
+    exec_app(src.split("if __name__ !=")[0], op, ns)
     _spec, df, _meta = ns["_load_spec_and_data"]()
     return df
 
@@ -185,6 +185,6 @@ class TestVariableLabelsSurviveToo:
         with open(op, encoding="utf-8") as fh:
             src = fh.read()
         ns: dict = {}
-        exec(compile(src.split("if __name__ !=")[0], op, "exec"), ns)
+        exec_app(src.split("if __name__ !=")[0], op, ns)
         _spec, _df, meta = ns["_load_spec_and_data"]()
         assert meta["var_labels"].get("mpg") == "Mileage (mpg)"

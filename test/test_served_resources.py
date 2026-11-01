@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_spec  # noqa: E402
+from conftest import exec_app, make_spec  # noqa: E402
 from serve_token_probe import TEST_TOKEN  # noqa: E402
 from test_adversarial_matrix import (_SCATTER, _app_source,  # noqa: E402
                                      _kpi, _load_app, _unthrottled)
@@ -441,7 +441,7 @@ class TestTheLauncherFlags:
                 "dash_render.py", "--spec", "s.json", "--data", "d.json",
                 "--output", str(tmp_path / "app.py"), "--mode", "server",
                 "--launch", "--no-browser"] + list(flags))
-            exec(compile(block, dr.__file__, "exec"), ns)
+            exec_app(block, dr.__file__, ns)
         run("--max-sessions", "7", "--idle-timeout", "0")
         assert (rec["max_sessions"], rec["idle_timeout"]) == (7, 0)
         run()

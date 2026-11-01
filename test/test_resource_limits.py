@@ -436,7 +436,7 @@ from bokeh.document import Document
 from bokeh.models import RangeSlider, Select
 
 sys.path.insert(0, _HERE)
-from conftest import make_data_json  # noqa: E402
+from conftest import exec_app, make_data_json  # noqa: E402
 
 _SEQ = itertools.count(1)
 
@@ -1357,8 +1357,7 @@ class TestTheBoundsThatAlreadyWorkedAreKept:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             with pytest.raises(SystemExit) as ei:
-                exec(compile(src, "app.py", "exec"),
-                     {"__name__": "__main__"})
+                exec_app(src, "app.py", {"__name__": "__main__"})
         assert ei.value.code == 2
         assert "port" not in seen, (
             "a Server was built with an unbound port: %r" % seen)

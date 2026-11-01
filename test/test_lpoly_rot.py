@@ -42,7 +42,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import exec_app, make_data_json  # noqa: E402
 
 _FIX = os.path.join(_HERE, "fixtures", "lpoly_rot_truth.json")
 _SEQ = itertools.count()
@@ -776,7 +776,7 @@ class TestTheServedAppCarriesTheRule:
         ns = {"__name__": "_lprot_exec"}
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            exec(compile(text, ap, "exec"), ns)
+            exec_app(text, ap, ns)
         r = _row("auto-mpg-weight--biweight-d2-n74")
         x, y, _ = _sample(r)
         h = ns["GlyphMapper"]._default_lpoly_bwidth(x, y, None, 2, "biweight")
