@@ -385,6 +385,15 @@ elif len(_c3cells) != len(_c3reg):
     _c4bad.append("%d grid cells for %d registered names"
                   % (len(_c3cells), len(_c3reg)))
 for _c3name, _c3cell in zip(_c3reg, _c3cells):
+    # Flipped (WP-45 VF-4, landed in WP-41 41.4): the cell as the figure
+    # was wrong for a graph at its xsize()/ysize() box, which sits in a
+    # Column of its own that scrolls sideways (with its data table, if
+    # any): the figure is that Column's Plot child.
+    if not isinstance(_c3cell, (Plot, GridPlot)):
+        _c3in = [c for c in (getattr(_c3cell, "children", None) or [])
+                 if isinstance(c, Plot)]
+        if len(_c3in) == 1:
+            _c3cell = _c3in[0]
     if isinstance(_c3cell, Plot):
         _c3figs = [_c3cell]
     elif isinstance(_c3cell, GridPlot):
