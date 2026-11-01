@@ -460,7 +460,10 @@ def _assert_drawn_as_text(html: str, payload: str, model: str,
     want = [(model, "text", payload)]
     if named:
         want.insert(0, (named, "html_attributes:aria-label", payload))
-    assert homes == want, homes
+    # Flipped (WP-41 41-05, DECISIONS D66): the homes in document order
+    # was wrong once the width scale's CustomJS args name the Title before
+    # its figure is written; the homes, each exactly once, are what count.
+    assert sorted(homes) == sorted(want), homes
     markup = _outside_document(html)
     # What is read is the page's own markup: its Bokeh root element is here.
     assert re.search(r'<div id="[^"]+" data-root-id="[^"]+"', markup), \
