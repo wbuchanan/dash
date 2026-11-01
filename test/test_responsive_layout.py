@@ -226,6 +226,10 @@ def _chrome():
     return chrome
 
 
+#: bs_facet's xsize(10) graph: its box at 96 px an inch (WP-45 VF-4).
+FIXED_W = 960
+
+
 def _check(name, results):
     bad = []
     counts = {r["canvases"] for r in results.values()}
@@ -235,7 +239,18 @@ def _check(name, results):
             bad.append("%d: the iframe reported %r" % (w, r["W"]))
         if r["sw"] > w:
             bad.append("%d: the page is %d px wide" % (w, r["sw"]))
-        if r["offscreen"]:
+        # Flipped (WP-45 VF-4): bs_facet's xsize(10) ysize(2) graph was
+        # stretched inside the 160-560 px band; twoway draws the exact box
+        # (960 x 192 px at 96 px an inch, DECISIONS A-1), which keeps its
+        # size in a narrower cell that scrolls sideways (the page does not:
+        # "sw" above).  Only that box's layers may lie past the edge.
+        past = [tuple(int(v) for v in p.rsplit(":", 1)[1].split("+"))
+                for p in r.get("past", [])]
+        box = [x for x, wd in past if wd == FIXED_W]
+        inside = bool(box) and all(x + wd <= box[0] + FIXED_W
+                                   for x, wd in past)
+        if r["offscreen"] and (name.split()[-1] != "bs_facet"
+                               or not inside):
             bad.append("%d: %d item(s) offscreen" % (w, r["offscreen"]))
         if r["overlap"]:
             bad.append("%d: %d overlapping pair(s)" % (w, r["overlap"]))

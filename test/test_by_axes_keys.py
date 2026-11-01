@@ -1166,18 +1166,23 @@ class TestTheSchemesByLegendRing:
 
 @pytest.mark.parametrize("mode", _MODES)
 def test_the_panels_fill_their_row(mode):
-    """BUGS.md "A by() panel row was taller than its panels": each panel
-    carries its height bound as a plain max-height, which a grid row can
-    size by, and the axis title cells are not aligned with the panels'
-    frames, so their titles are centred on the panels, as twoway's are."""
+    """BUGS.md "A by() panel row was taller than its panels": no panel
+    carries a height bound (a grid row of auto height cannot resolve one),
+    and the axis title cells are not aligned with the panels' frames, so
+    their titles are centred on the panels, as twoway's are.
+
+    Flipped (WP-45 VF-4): each panel carried its height bound as a plain
+    max-height; the figure was held in a 160-560 px band, and twoway draws
+    its graph's shape at any size (VF-4, DECISIONS A-1): no panel carries
+    a bound."""
     spec = _spec([_graph("g1", _TWO, {"by": "foreign",
                                       "ytitle": '"Price"'})])
     roots, _n, _o = _build(mode, spec)
     (grid,) = _grids(roots).values()
     for f in _panels(grid):
         css = " ".join(getattr(s, "css", "") for s in f.stylesheets)
-        assert ":host { max-height: %dpx !important; }" % f.max_height \
-            in css
+        assert f.max_height is None and f.min_height is None
+        assert "max-height" not in css
     for name in ("dash_by_ytitle", "dash_by_xtitle"):
         assert _cell(grid, name)[0].frame_align is False
 

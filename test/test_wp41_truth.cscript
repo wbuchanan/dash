@@ -1001,6 +1001,97 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w41_run' {
 }
 * ==== end S05 ====
 
+// S05 helper (VF-4): twoway's page in inches from each probe's SVG and
+// the saved page's figure sizing, into $W41_Q5_BAD (empty when all agree).
+python:
+def _w41_s05_geometry():
+    import re as _re, json as _json, os as _os
+    from sfi import Macro as _M
+    from bokeh.document import Document as _Doc
+    from bokeh.models import GridPlot as _Grid
+    from bokeh.plotting import figure as _Fig
+    _dir = _M.getGlobal("W41_Q5_DIR")
+    _bad = []
+
+    def _models(path):
+        with open(path, encoding="utf-8") as _fh:
+            _page = _fh.read()
+        _out = []
+        for _blob in _re.findall(r'<script type="application/json" id="[^"]*">\s*(.*?)\s*</script>', _page, _re.S):
+            for _dd in _json.loads(_blob).values():
+                _doc = _Doc.from_json(_dd)
+                for _r in _doc.roots:
+                    _out += list(_r.references())
+        return _out
+
+    for _k in (1, 2, 3):
+        with open(_os.path.join(_dir, "q5_%d.svg" % _k), encoding="utf-8") as _fh:
+            _m = _re.search(r'width="([\d.]+)in" height="([\d.]+)in"', _fh.read(4000))
+        _w, _h = float(_m.group(1)), float(_m.group(2))
+        _ms = _models(_os.path.join(_dir, "q5_%d.html" % _k))
+        _figs = [_x for _x in _ms if isinstance(_x, _Fig)]
+        if any(_f.max_height is not None or _f.min_height is not None for _f in _figs):
+            _bad.append("probe %d: a figure carries a height bound" % _k)
+        if _k == 1:
+            _f = _figs[0]
+            if (_f.sizing_mode, _f.width, _f.height) != ("fixed", round(_w * 96), round(_h * 96)):
+                _bad.append("xsize(4) ysize(4): %s %s x %s, twoway %s x %s in" % (_f.sizing_mode, _f.width, _f.height, _w, _h))
+        elif _k == 2:
+            _f = _figs[0]
+            if _f.sizing_mode != "stretch_width" or abs((_f.aspect_ratio or 0) - _w / _h) > 0.01:
+                _bad.append("default: %s ratio %s, twoway %s" % (_f.sizing_mode, _f.aspect_ratio, _w / _h))
+        else:
+            _grids = [_g for _g in _ms if isinstance(_g, _Grid) and any(_c[0] in _figs for _c in _g.children)]
+            _st = dict(_grids[0].styles or {}) if _grids else {}
+            if _st.get("width") != "%dpx" % round(_w * 96):
+                _bad.append("by() xsize(8) ysize(4): array width %s, twoway %s in" % (_st.get("width"), _w))
+    _M.setGlobal("W41_Q5_BAD", "; ".join(_bad))
+end
+
+* ==== S05 BY-18: twoway's figure shape, by() included ====
+local only : env WP41_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w41_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4105-5 (WP-45 VF-4, brought forward into 41-05): every graph keeps
+    // twoway's shape with no height band.  twoway's graph is measured
+    // live (graph export, the SVG's inches): xsize(4) ysize(4) is 4 x 4
+    // and dash's figure is fixed at 384 x 384 px; the default stcolor
+    // graph is 7.5 x 4.5 and dash's figure stretches at that ratio with
+    // no height bound; by(foreign) xsize(8) ysize(4) holds its array at
+    // 768 px.  The saved pages' figures are read in a python block.
+    // ------------------------------------------------------------
+    local o1 "xsize(4) ysize(4)"
+    local o2 ""
+    local o3 "by(foreign) xsize(8) ysize(4)"
+    forvalues k = 1/3 {
+        local o "`o`k''"
+        sysuse auto, clear
+        capture erase "`w41_work'/q5_`k'.svg"
+        quietly twoway scatter mpg weight, scheme(stcolor) `o' name(q5g, replace)
+        quietly graph export "`w41_work'/q5_`k'.svg", name(q5g) replace
+        graph drop q5g
+        dash clear
+        capture erase "`w41_work'/q5_`k'.html"
+        capture noisily dash scatter mpg weight, scheme(stcolor) `o' saving("`w41_work'/q5_`k'.html", replace)
+        _w41_expect Q4105-5 "(_rc == 0)" `"dash scatter mpg weight, `o' rc `=_rc'"'
+        dash clear
+    }
+    global W41_Q5_DIR "`w41_work'"
+    capture noisily python: _w41_s05_geometry()
+    _w41_expect Q4105-5 "(_rc == 0)" "the geometry reader failed"
+    _w41_expect Q4105-5 `"("${W41_Q5_BAD}" == "")"' "${W41_Q5_BAD}"
+    _w41_done Q4105-5 "xsize(4) ysize(4) is 384 x 384 px, the default stretches at 7.5:4.5 with no height bound, by() xsize(8) ysize(4) is 768 px wide"
+    forvalues j = 1/3 {
+        capture erase "`w41_work'/q5_`j'.svg"
+        capture erase "`w41_work'/q5_`j'.html"
+    }
+
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
 // S06 helper (BY-16): the text of every Title named dash_by_label in the
 // saved page $W41_Q2_PAGE, sorted, into $W41_Q2_GOT (each
 // <script type="application/json"> block loaded as a Bokeh document, as

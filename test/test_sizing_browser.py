@@ -170,3 +170,102 @@ class TestFixedFrameInChrome:
             hw, _hh, fw, _fh, fx0, _fy0 = rec
             assert abs((fx0 + fw) - (hw - f._dash_frame_est["right"])) <= 2, \
                 (w, rec, f._dash_frame_est)
+
+
+#: Every Plot view's host size and frame box, and the innermost GridBox's
+#: drawn size (a by() graph's array of panels), posted once the page has laid out.
+_SHAPE_JS = r"""
+<script>
+addEventListener('load', () => setTimeout(() => {
+  const plots = [];
+  let grid = null, deep = -1;
+  const visit = (v, d) => {
+    if (!v) return;
+    if (v.frame && v.model) {
+      const f = v.frame.bbox;
+      plots.push([v.el.offsetWidth, v.el.offsetHeight, f.width, f.height]);
+    }
+    if (d > deep && v.model && v.model.type === "GridBox" && v.el) {
+      const r = v.el.getBoundingClientRect();
+      grid = [r.width, r.height];
+      deep = d;
+    }
+    for (const c of (v.child_views || [])) visit(c, d + 1);
+  };
+  for (const v of Object.values(Bokeh.index)) { if (!v.parent) visit(v, 0); }
+  parent.postMessage('DASHPROBE' + JSON.stringify({W: innerWidth, plots,
+                                                   grid}), '*');
+}, 3000));
+</script>
+"""
+
+
+def _shape_probe(page, widths):
+    mp = pytest.MonkeyPatch()
+    mp.setattr(responsive_probe, "PROBE_JS", _SHAPE_JS)
+    try:
+        return responsive_probe.measure_many(page, widths)
+    finally:
+        mp.undo()
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestTheThreeCasesInChrome:
+    """WP-45 VF-4 (DECISIONS A-1): a graph keeps twoway's shape at any
+    width with no height band -- 7.5:4.5 under stcolor at 600, 1200 and
+    1920 px, a by() graph's array too; aspectratio(1) alone draws a square
+    plot region; by(foreign) xsize(8) ysize(4) is 768 x 384."""
+
+    @staticmethod
+    def _page(mode, go, tmp_path):
+        """*mode*'s page of ``scatter mpg weight, <go>`` under stcolor."""
+        import test_by_axes_keys as tbk
+        from bokeh.document import Document
+        from bokeh.embed import file_html
+        from bokeh.resources import INLINE
+        spec = tbk._spec([tbk._graph("g1", tbk._ONE, go, title=False)],
+                         scheme="stcolor")
+        tag = next(ts._SEQ)
+        sp = os.path.join(str(tmp_path), "s%d.json" % tag)
+        dp = os.path.join(str(tmp_path), "d%d.json" % tag)
+        with open(sp, "w", encoding="utf-8") as fh:
+            json.dump(spec, fh)
+        with open(dp, "w", encoding="utf-8") as fh:
+            json.dump(tbk.tg._data(), fh)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if mode == "saved":
+                return ts.dr.DashRenderer(sp, dp).render()
+            ap = os.path.join(str(tmp_path), "a%d.py" % tag)
+            ts.dr.ServerAppBuilder(sp, dp).build(ap)
+            mod = ts.load_app(ap, "_szs_app_%d" % tag)
+            doc = Document()
+            mod.make_document(doc)
+            return file_html(doc, INLINE, "served")
+
+    def test_shape(self, mode, tmp_path):
+        r = 7.5 / 4.5
+        html = self._page(mode, {}, tmp_path)
+        for w, rec in _shape_probe(html, (600, 1200, 1920)).items():
+            hw, hh = rec["plots"][0][:2]
+            assert hw / hh == pytest.approx(r, rel=0.01), (w, rec)
+        html = self._page(mode, {"by": "foreign"}, tmp_path)
+        for w, rec in _shape_probe(html, (600, 1200, 1920)).items():
+            gw, gh = rec["grid"]
+            assert gw / gh == pytest.approx(r, rel=0.01), (w, rec)
+
+    def test_aspectratio_alone(self, mode, tmp_path):
+        html = self._page(mode, {"aspectratio": "1"}, tmp_path)
+        for w, rec in _shape_probe(html, (600, 1200)).items():
+            hw, hh, fw, fh = rec["plots"][0]
+            assert hw / hh == pytest.approx(7.5 / 4.5, rel=0.01), (w, rec)
+            assert abs(fw - fh) <= 2, (w, rec)
+
+    def test_by_box(self, mode, tmp_path):
+        html = self._page(mode, {"by": "foreign", "xsize": "8",
+                                 "ysize": "4"}, tmp_path)
+        for w, rec in _shape_probe(html, (1200,)).items():
+            gw, gh = rec["grid"]
+            assert gw == pytest.approx(768, rel=0.01), (w, rec)
+            assert gh == pytest.approx(384, rel=0.01), (w, rec)
+

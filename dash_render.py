@@ -511,13 +511,6 @@ _DASH_KPI_CELL_MIN_PX = (("sm", 130), ("md", 150), ("lg", 170))
 # (_DASH_GRID_CSS `@media(max-width:767px)`).
 _DASH_KPI_CELL_MIN_NARROW_PX = 120
 
-# The band within which a figure's aspect ratio is honoured, in pixels.
-# Outside it the ratio yields, so that one square panel cannot fill an entire
-# screen and a 10x2in panel on a phone does not collapse to a 73px sliver.
-# Measured at 375px: without the floor, xsize(10) ysize(2) rendered 367x74.
-_MAX_FIGURE_HEIGHT = 560
-_MIN_FIGURE_HEIGHT = 160
-
 # Stata's fit-line grid: n() defaults to 100 and the points run from the
 # observed minimum to the observed maximum --
 # x_i = min + (i-1)*(max-min)/(n-1), from ado/base/_/_gs_x_create.ado.
@@ -27899,6 +27892,11 @@ def _dash_figure_aspect(graph_opts, scheme_x=None, scheme_y=None):
     modes -- the saved renderer used to name a bad aspectratio() twice and
     the served app not at all.
 
+    WP-45 VF-4 (DECISIONS A-1): aspectratio() alone no longer sets the
+    figure's ratio -- twoway keeps the graph's shape and draws the plot
+    region at ratio # inside it (``_dash_frame_slack``); a bad value is
+    still named here.
+
     Returns:
         The ratio, or None when neither option is usable; the caller may
         then fall back on the scheme's own proportions.
@@ -27931,8 +27929,9 @@ def _dash_figure_aspect(graph_opts, scheme_x=None, scheme_y=None):
                 f"dash: aspectratio({_dash_display(raw_ar)}) must be a "
                 f"positive number; ignoring it.", UserWarning,
             )
-        elif ar is not None:
-            return 1.0 / float(ar)
+    # WP-45 VF-4 (DECISIONS A-1): aspectratio() alone shapes the plot
+    # region inside a figure of the scheme's shape (_dash_frame_slack),
+    # not the figure; it is read here only to name a bad value.
     return None
 
 
@@ -28169,26 +28168,159 @@ def _dash_frame_sizes(fig, ar, placement, width, height):
 
 def _dash_apply_frame_aspect(fig, graph_opts, scheme_x=None, scheme_y=None):
     """aspectratio() on the plot region when xsize() or ysize() is given
-    (WP-31 D5): the figure is drawn at that size (96 px an inch, held to
-    the page's height bound) and ``_dash_frame_sizes`` shapes its frame.
-    Without either size nothing is done: the figure keeps 1/# as its own
-    ratio (``_dash_figure_aspect``), documented."""
+    (WP-31 D5): the figure is drawn at exactly that size (96 px an inch;
+    WP-45 VF-4 removed the page's height bound, DECISIONS A-1) and
+    ``_dash_frame_sizes`` shapes its frame.  Without either size nothing
+    is done here: ``_dash_apply_figure_size`` shapes the frame inside the
+    stretched figure (``_dash_frame_slack``)."""
     ar = _dash_frame_aspect(graph_opts)
     if ar is None or fig is None:
         return
     go = graph_opts or {}
-    xs = _dash_frame_aspect({"aspectratio": go.get("xsize", "")})
-    ys = _dash_frame_aspect({"aspectratio": go.get("ysize", "")})
-    if xs is None and ys is None:
+    box = _dash_graph_box_in(go, scheme_x or 5.5, scheme_y or 4.0)
+    if box is None:
         return
-    w_in = xs if xs is not None else (scheme_x or 5.5)
-    h_in = ys if ys is not None else (scheme_y or 4.0)
-    k = min(1.0, _MAX_FIGURE_HEIGHT / (h_in * 96.0))
-    width = w_in * 96.0 * k
-    height = h_in * 96.0 * k
+    width = box[0] * 96.0
+    height = box[1] * 96.0
     fig._dash_frame_box = (int(round(width)), int(round(height)))
     _dash_frame_sizes(fig, ar, go.get("aspectplacement", "") or "c",
                       width, height)
+
+
+def _dash_graph_box_in(graph_opts, scheme_x=None, scheme_y=None):
+    """The graph's box ``(w_in, h_in)`` in inches when xsize() or ysize()
+    is a positive number, else None (WP-45 VF-4, D-45-04.a): the side not
+    given is the scheme's graphsize (*scheme_x*, *scheme_y*), as twoway
+    draws xsize(9) under stcolor 9 x 4.5.  Each side is read as
+    ``_dash_ref_in`` reads it: a word or a value that is not a positive
+    finite number counts as absent, and nothing is printed."""
+    go = graph_opts or {}
+    sides = []
+    for raw in (go.get("xsize"), go.get("ysize")):
+        v = None
+        try:
+            v = float(str(raw).strip()[:64]) if raw not in (None, "") \
+                else None
+        except (TypeError, ValueError):
+            v = None
+        sides.append(v if v is not None and math.isfinite(v) and v > 0
+                     else None)
+    if sides[0] is None and sides[1] is None:
+        return None
+    w = sides[0] if sides[0] is not None else scheme_x
+    h = sides[1] if sides[1] is not None else scheme_y
+    try:
+        w, h = float(w), float(h)
+    except (TypeError, ValueError):
+        return None
+    if not (math.isfinite(w) and math.isfinite(h) and w > 0 and h > 0):
+        return None
+    return (w, h)
+
+
+def _dash_graph_follow(fig, part, value):
+    """Register *part* (``"sides"``, ``"slack"`` or ``"fxy"``) of *fig*'s
+    one size follow, :data:`_DASH_GRAPH_MARGIN_JS`, as *value*; returns
+    the follow's item (WP-45 VF-4, D-45-04.d).  One ``CustomJS`` per
+    figure on its drawn ``outer_width``/``outer_height``, made on the
+    first call; it returns at once for a size it has seen and writes a
+    border only when its value changes.  (Section 43-01's per-figure
+    dispatcher has not landed; this one guarded callback is what its
+    ``graph_margin`` kind will take over.)"""
+    from bokeh.models import CustomJS
+    item = getattr(fig, "_dash_gm_item", None)
+    if item is None:
+        item = {"sides": [], "slack": None, "fxy": None, "w": 0, "h": 0}
+        fig._dash_gm_item = item
+    item[part] = value
+    cb = getattr(fig, "_dash_gm_cb", None)
+    if cb is None:
+        cb = CustomJS(args={"fig": fig, "item": item},
+                      code=_DASH_GRAPH_MARGIN_JS)
+        fig._dash_gm_cb = cb
+        fig.js_on_change("outer_width", cb)
+        fig.js_on_change("outer_height", cb)
+    else:
+        cb.args = {"fig": fig, "item": item}
+    return item
+
+
+def _dash_border_base(fig, est):
+    """Each border of *fig* as ``[left, right, top, bottom]`` px: its
+    ``min_border_*``, at least the estimate *est*
+    (``_dash_frame_borders``)."""
+    base = fig.min_border if isinstance(fig.min_border, (int, float)) else 5
+    out = []
+    for side, key in (("left", "left"), ("right", "right"),
+                      ("top", "above"), ("bottom", "below")):
+        cur = getattr(fig, "min_border_" + side, None)
+        cur = cur if isinstance(cur, (int, float)) else base
+        out.append(max(float(cur), float(est[key])))
+    return out
+
+
+def _dash_frame_slack(fig, ar, placement, width, height):
+    """aspectratio(*ar*) alone on a stretched figure (WP-45 VF-4,
+    D-45-04.a case 2): the plot region of height/width *ar* inside the
+    figure's nominal *width* x *height* px less its borders, its slack
+    added to ``min_border_*`` where ``placement()`` puts it
+    (``_dash_frame_sizes``' arithmetic without fixing the frame), and kept
+    at every drawn size by the figure's follow (part ``"slack"``)."""
+    if fig is None or not ar or ar <= 0 or not width or not height:
+        return
+    b = _dash_frame_borders(fig)
+    fig._dash_frame_est = b
+    base = _dash_border_base(fig, b)
+    iw = max(1.0, float(width) - base[0] - base[1])
+    ih = max(1.0, float(height) - base[2] - base[3])
+    fw = min(iw, ih / ar)
+    fh = fw * ar
+    sx, sy = max(0.0, iw - fw), max(0.0, ih - fh)
+    p = str(placement or "c")
+    xl = sx if "e" in p else (0.0 if "w" in p else sx / 2.0)
+    yt = sy if "s" in p else (0.0 if "n" in p else sy / 2.0)
+    adds = [int(round(v)) for v in (xl, sx - xl, yt, sy - yt)]
+    for side, v, a in zip(("left", "right", "top", "bottom"), base, adds):
+        setattr(fig, "min_border_" + side, int(round(v + a)))
+    _dash_graph_follow(fig, "slack", {"ar": float(ar), "place": p,
+                                      "added": adds})
+
+
+def _dash_apply_figure_size(fig, graph_opts, scheme_x=None, scheme_y=None):
+    """twoway's shape on a figure that is not a by() panel (WP-45 VF-4,
+    D-45-04.a, DECISIONS A-1).  xsize() or ysize() given: the figure is
+    the exact box at 96 px an inch (``_dash_graph_box_in``), its frame
+    shaped by ``_dash_frame_sizes`` when aspectratio() is given too.
+    Neither: the figure keeps its stretched width at the scheme's ratio
+    (set in the constructor, no height band) and aspectratio() alone
+    shapes the plot region inside it (``_dash_frame_slack`` over the
+    nominal box, the scheme's graphsize at 96 px an inch).  Records the
+    nominal box as ``fig._dash_nominal_px`` for fxsize()/fysize()."""
+    go = graph_opts or {}
+    if fig is None or _dash_parse_by(str(go.get("by", "") or ""),
+                                     warn=False)[0]:
+        return  # a by() panel: the array is sized in _dash_layout_cell
+    gx = scheme_x or 5.5
+    gy = scheme_y or 4.0
+    box = _dash_graph_box_in(go, gx, gy)
+    ar = _dash_frame_aspect(go)
+    if box is not None:
+        w, h = int(round(box[0] * 96.0)), int(round(box[1] * 96.0))
+        fig._dash_nominal_px = (w, h)
+        if ar is not None:
+            _dash_apply_frame_aspect(fig, go, gx, gy)
+            return
+        fig.sizing_mode = "fixed"
+        fig.width, fig.height = w, h
+        fig.min_height = None
+        fig.max_height = None
+        fig.aspect_ratio = None
+        return
+    w, h = int(round(float(gx) * 96.0)), int(round(float(gy) * 96.0))
+    fig._dash_nominal_px = (w, h)
+    if ar is not None:
+        _dash_frame_slack(fig, ar, go.get("aspectplacement", "") or "c",
+                          w, h)
 
 
 def _dash_overhangs(fig, graph_opts):
@@ -41689,10 +41821,14 @@ def _dash_graph_margin(fig, scheme, graph_opts):
                 "default attributes used")
     if sides == start:
         return  # no margin() change: every min_border_* stays (A18)
-    w = getattr(fig, "width", None) or 0
-    h = getattr(fig, "height", None) or 0
-    short = float(min(w, h)) if w and h else 0.0
-    if short <= 0:
+    # WP-45 VF-4: the graph's box -- xsize()/ysize()'s, else the scheme's
+    # graphsize -- at 96 px an inch; the follow redraws it at the size the
+    # page draws.
+    _gx = getattr(sch, "graphsize_x", None) or 5.5
+    _gy = getattr(sch, "graphsize_y", None) or 4.0
+    _box = _dash_graph_box_in(go, _gx, _gy) or (float(_gx), float(_gy))
+    short = min(_box) * 96.0
+    if not (short > 0):
         return
     follow = []
     for name, i in (("min_border_left", 0), ("min_border_right", 1),
@@ -41710,29 +41846,79 @@ def _dash_graph_margin(fig, scheme, graph_opts):
     if follow:
         # D39 D-37.a: the side follows a resize of the page -- twoway's
         # margin is the change times min(W, H) at any size -- through the
-        # figure's drawn size (outer_width/outer_height, which BokehJS sets).
-        from bokeh.models import CustomJS
-        cb = CustomJS(args={"fig": fig, "sides": follow},
-                      code=_DASH_GRAPH_MARGIN_JS)
-        fig.js_on_change("outer_width", cb)
-        fig.js_on_change("outer_height", cb)
+        # figure's one size follow (WP-45 VF-4: its "sides" part).
+        _dash_graph_follow(fig, "sides", follow)
 
 
-#: graphregion(margin()) after a resize (D39 D-37.a): each side in *sides*
-#: is ``[border name, change in relative units, px added so far]``; the
-#: side takes the change times min(outer W, outer H) / 100 in place of what
-#: was added before, so what other passes added to the border stays.
+#: A figure's one size follow (D39 D-37.a; WP-45 VF-4, D-45-04.d): run
+#: on its drawn ``outer_width``/``outer_height`` with *item*, it returns at
+#: once for a size it has seen and writes a border only when its value
+#: changes.  ``sides``: each ``[border name, change in relative units, px
+#: added so far]`` takes the change times min(W, H) / 100 in place of
+#: what it added before (graphregion(margin())).  ``slack``: aspectratio()
+#: alone, the frame of height/width ``ar`` inside the drawn size less the
+#: borders (each less what this step added), its slack placed by
+#: ``place`` as ``_dash_frame_sizes`` places it.  ``fxy``: fxsize()/
+#: fysize(), the plot and its axes in # percent of 384 px (four inches),
+#: centred.  What other passes added to a border stays.
 _DASH_GRAPH_MARGIN_JS = """
 const w = fig.outer_width, h = fig.outer_height;
 if (!(w > 0) || !(h > 0)) { return; }
+if (w === item.w && h === item.h) { return; }
+item.w = w; item.h = h;
+const cur = (n) => (fig[n] == null ? (fig.min_border == null ? 0
+                                       : fig.min_border) : fig[n]);
+let moved = false;
+const put = (n, v) => { if (fig[n] !== v) { fig[n] = v; moved = true; } };
+let view = null;
+if (typeof Bokeh !== "undefined" && Bokeh.index != null) {
+  try { view = Bokeh.index.find_one(fig); } catch (e) { view = null; }
+}
+const fb = (view != null && view.frame != null) ? view.frame.bbox : null;
 const unit = Math.min(w, h) / 100;
-for (const side of sides) {
+for (const side of (item.sides || [])) {
   const want = Math.round(side[1] * unit);
   if (!isFinite(want) || want === side[2]) { continue; }
-  const cur = fig[side[0]] == null ? 0 : fig[side[0]];
-  const next = Math.max(0, cur - side[2] + want);
+  const next = Math.max(0, cur(side[0]) - side[2] + want);
   side[2] = want;
-  fig[side[0]] = next;
+  put(side[0], next);
+}
+const names = ["min_border_left", "min_border_right", "min_border_top",
+               "min_border_bottom"];
+const shift = (part, adds) => {
+  for (let i = 0; i < 4; i++) {
+    const a = Math.round(adds[i]);
+    if (!isFinite(a) || a === part.added[i]) { continue; }
+    put(names[i], Math.max(0, cur(names[i]) - part.added[i] + a));
+    part.added[i] = a;
+  }
+};
+const s = item.slack;
+if (s != null && s.ar > 0) {
+  const B = names.map((n, i) => cur(n) - s.added[i]);
+  let iw = Math.max(1, w - B[0] - B[1]), ih = Math.max(1, h - B[2] - B[3]);
+  if (fb != null && fb.width > 0 && fb.height > 0) {
+    // The drawn frame with this step's slack given back: an axis wider
+    // than its estimate is counted as drawn.
+    iw = Math.min(iw, fb.width + s.added[0] + s.added[1]);
+    ih = Math.min(ih, fb.height + s.added[2] + s.added[3]);
+  }
+  const fw = Math.min(iw, ih / s.ar), fh = fw * s.ar;
+  const sx = Math.max(0, iw - fw), sy = Math.max(0, ih - fh);
+  const p = String(s.place || "c");
+  const xl = p.includes("e") ? sx : (p.includes("w") ? 0 : sx / 2);
+  const yt = p.includes("s") ? sy : (p.includes("n") ? 0 : sy / 2);
+  shift(s, [xl, sx - xl, yt, sy - yt]);
+}
+const x = item.fxy;
+if (x != null) {
+  const ax = x.fx != null ? Math.max(0, (w - x.fx / 100 * 384) / 2) : 0;
+  const ay = x.fy != null ? Math.max(0, (h - x.fy / 100 * 384) / 2) : 0;
+  shift(x, [ax, ax, ay, ay]);
+}
+// A border is not a layout property in BokehJS: lay the figure out again.
+if (moved && view != null && view.invalidate_layout != null) {
+  view.invalidate_layout();
 }
 """
 
@@ -52281,7 +52467,8 @@ def _dash_reflow(grid, stack=True):
     filterposition(left) row) it also stacks them below that breakpoint,
     each at its own height -- a Bokeh row child's flex basis is 0, and
     stacked without ``flex: 0 0 auto`` the grid collapsed to 0 px tall.
-    Nothing here reads user input: the CSS is built from integers.
+    A gridplot grid stacks only with *stack* (WP-45 VF-4: a by() grid at
+    its xsize()/ysize() box does not).  Nothing here reads user input: the CSS is built from integers.
 
     A by() grid's side cells (WP-30 P1.15c: ``dash_by_ytitle``,
     ``dash_by_legend``, ``dash_by_clegend``, each in a column of its own)
@@ -52345,7 +52532,9 @@ def _dash_reflow(grid, stack=True):
             ncols = len(panel_cols)
         else:
             grid.cols = _DASH_BS_TRACK
-        if ncols < 2:
+        if ncols < 2 or not stack:
+            # WP-45 VF-4: a by() grid held to its xsize() box keeps
+            # twoway's array at that size; it never stacks.
             return grid
         css = (":host { container-type: inline-size; } "
                "@container (max-width: %.2fpx) { :host > .bk-GridBox { "
@@ -52410,8 +52599,14 @@ def _dash_auto_grid_cols(n, figures=None):
     if n <= 0:
         return 1
     cols = math.ceil(math.sqrt(n))
-    ratios = [float(f.aspect_ratio) for f in (figures or {}).values()
-              if getattr(f, "aspect_ratio", None)]
+    ratios = []
+    for f in (figures or {}).values():
+        if getattr(f, "aspect_ratio", None):
+            ratios.append(float(f.aspect_ratio))
+        elif getattr(f, "sizing_mode", None) == "fixed" and \
+                getattr(f, "width", None) and getattr(f, "height", None):
+            # WP-45 VF-4: a figure at its xsize()/ysize() box.
+            ratios.append(float(f.width) / float(f.height))
     if ratios:
         widest = max(ratios)
         if widest >= 3.0:
@@ -52938,23 +53133,8 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
             _dash_by_scale_panel(f, m)
             if not own_ar and f._dash_array_ar:
                 f.aspect_ratio = float(f._dash_array_ar) * nr / nc
-        # A panel held to its height bound fills its row (BUGS.md "A by()
-        # panel row was taller than its panels"): BokehJS writes the bound
-        # as max-height: min(<n>px, 100%), whose percentage a grid row of
-        # auto height cannot resolve while it is sized, so the row took
-        # the panel's proportion's height (1.2 times its width) and the
-        # panel stopped at the bound, leaving the row's rest empty.
-        from bokeh.models import InlineStyleSheet
-        for f in figs:
-            if own_ar:
-                # WP-41 BY-18: the plot region square at the panel's width
-                # (twoway keeps the region's width, by_layout_truth.json
-                # Y14), so no height bound holds the panel short of it.
-                f.max_height = None
-            mh = getattr(f, "max_height", None)
-            if isinstance(mh, (int, float)) and mh > 0:
-                f.stylesheets = list(f.stylesheets) + [InlineStyleSheet(
-                    css=":host { max-height: %dpx !important; }" % int(mh))]
+        # WP-45 VF-4 (DECISIONS A-1): no panel carries a height bound;
+        # the array keeps the graph's shape through _dash_by_fit_hook.
         grid = gridplot([figs], sizing_mode="stretch_width")
         grid.children = [(f, r, c) for f, (r, c) in zip(figs, cells)]
         # The graph keeps its size: a legend, key or text row shortens the
@@ -52962,7 +53142,14 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
         # row was added under panels that kept their proportion, where
         # twoway shortens the panels"), set as the grid is laid out.
         if not own_ar and figs[0]._dash_array_ar:
-            _dash_by_fit_hook(figs, float(figs[0]._dash_array_ar), nr, nc)
+            # WP-45 VF-11: fxsize()/fysize() narrow or shorten the array.
+            _fxy = {}
+            for _k in ("fxsize", "fysize"):
+                _v = _dash_frame_aspect({"aspectratio": go.get(_k)})
+                if _v is not None and _v < 100:
+                    _fxy[_k[:2] + "_px"] = int(round(_v / 100.0 * 384.0))
+            _dash_by_fit_hook(figs, float(figs[0]._dash_array_ar), nr, nc,
+                              **_fxy)
         elif own_ar:
             # WP-41 BY-18: aspectratio(#) shapes each panel's plot region,
             # as twoway does.
@@ -52994,8 +53181,16 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
             for _ch in list(grid.children):
                 if id(_ch[0]) not in _own:
                     _dash_apply_scale(_ch[0], _bys, keep=_own)
+        # WP-45 VF-4: xsize()/ysize() hold the array to the box's width
+        # (its height follows through _dash_by_fit_hook's ratio).
+        _box = _dash_graph_box_in(go, *(getattr(figs[0], "_dash_gsize",
+                                                None) or (7.5, 4.5)))
+        if _box is not None:
+            _bw = int(round(_box[0] * 96.0))
+            grid.styles = {**dict(grid.styles or {}), "width": f"{_bw}px",
+                           "max-width": f"{_bw}px"}
         _dash_fxy_size(grid, gopts_of(name) or {})
-        cell = _dash_name_save(_dash_reflow(grid))
+        cell = _dash_name_save(_dash_reflow(grid, stack=_box is None))
         # A by() graph's data table, once under its grid (WP-31 H2t, D6).
         tbl = getattr(figs[0], "_dash_table", None)
         return column(cell, *tbl, sizing_mode="stretch_width") if tbl \
@@ -53004,6 +53199,13 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
         _dash_fxy_size(figures[name], gopts_of(name) or {})
         # A graph's data table under its figure (WP-31 H2t).
         tbl = getattr(figures[name], "_dash_table", None)
+        if getattr(figures[name], "sizing_mode", None) == "fixed":
+            # WP-45 VF-4: a figure at its xsize()/ysize() box keeps its
+            # size in a narrower cell, which scrolls sideways (the page
+            # does not).
+            return column(figures[name], *(tbl or ()),
+                          sizing_mode="stretch_width",
+                          styles={"overflow-x": "auto", "max-width": "100%"})
         return column(figures[name], *tbl, sizing_mode="stretch_width") \
             if tbl else figures[name]
     if name in kpi_divs:
@@ -53012,40 +53214,48 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
 
 
 def _dash_fxy_size(item, graph_opts):
-    """fysize(#) and fxsize(#) on a graph's cell (WP-31 D5).  fysize(#)
-    draws it # percent as tall: a figure kept in proportion has its ratio
-    divided and its height bound multiplied by #/100, any other its
-    height; fxsize(#) holds it to # percent of the width its cell gives it
-    (CSS ``max-width`` through the ``styles`` property, no inline style
-    text).  twoway, measured (sizing_truth.json fysize_50, fxsize_50),
-    keeps the graph's size and draws the plot in # percent of 4 inches,
-    centred; on a page the cell is what shrinks.  A value of 0 or less,
-    or 100 and over, changes nothing.  Once per item."""
+    """fysize(#) and fxsize(#) (WP-31 D5; WP-45 VF-11, GW-20, D-45-04.c):
+    twoway keeps the graph's size and draws the plot -- the plot region
+    and its axes -- in # percent of four inches, centred (measured,
+    sizing_truth.json fxsize_50/fysize_50, figure_geometry_truth.json
+    G_fx50/G_fy50: the 7.5 x 4.5 graph kept).  On a figure the rest of
+    its nominal box (``fig._dash_nominal_px``) less # percent of 384 px
+    is added to the two borders, half on each side, and the figure's
+    follow (part ``"fxy"``) keeps it at every drawn size.  On a by()
+    graph's grid the array is # percent of 384 px wide, centred
+    (fxsize), or that tall (fysize, the fit hook's target height).  A
+    value of 0 or less, or 100 and over, changes nothing.  Once per
+    item."""
     if item is None or getattr(item, "_dash_fxy_done", False):
         return
     item._dash_fxy_done = True
     fy = _dash_frame_aspect({"aspectratio": (graph_opts or {}).get("fysize")})
     fx = _dash_frame_aspect({"aspectratio": (graph_opts or {}).get("fxsize")})
-    if fy is not None and fy < 100:
-        k = fy / 100.0
-        ar = getattr(item, "aspect_ratio", None)
-        if isinstance(ar, (int, float)) and ar > 0 and \
-                getattr(item, "sizing_mode", None) != "fixed":
-            item.aspect_ratio = float(ar) / k
-            for p in ("max_height", "min_height"):
-                v = getattr(item, p, None)
-                if isinstance(v, (int, float)):
-                    setattr(item, p, max(1, int(round(v * k))))
-        else:
-            h = getattr(item, "height", None)
-            if isinstance(h, (int, float)) and h > 0:
-                item.height = max(1, int(round(h * k)))
-            fh = getattr(item, "frame_height", None)
-            if isinstance(fh, (int, float)) and fh > 0:
-                item.frame_height = max(1, int(round(fh * k)))
-    if fx is not None and fx < 100:
-        item.styles = {**dict(item.styles or {}),
-                       "max-width": f"{fx:g}%"}
+    fy = fy if fy is not None and fy < 100 else None
+    fx = fx if fx is not None and fx < 100 else None
+    if fx is None and fy is None:
+        return
+    nominal = getattr(item, "_dash_nominal_px", None)
+    if nominal is None:
+        # A by() graph's grid: the array narrowed or shortened.
+        if fx is not None:
+            px = int(round(fx / 100.0 * 384.0))
+            item.styles = {**dict(item.styles or {}), "width": f"{px}px",
+                           "max-width": f"{px}px", "margin-left": "auto",
+                           "margin-right": "auto"}
+        if fy is not None:
+            item._dash_fy_px = int(round(fy / 100.0 * 384.0))
+        return
+    w, h = nominal
+    b = getattr(item, "_dash_frame_est", None) or _dash_frame_borders(item)
+    item._dash_frame_est = b
+    base = _dash_border_base(item, b)
+    ax = max(0.0, (w - fx / 100.0 * 384.0) / 2.0) if fx is not None else 0.0
+    ay = max(0.0, (h - fy / 100.0 * 384.0) / 2.0) if fy is not None else 0.0
+    adds = [int(round(v)) for v in (ax, ax, ay, ay)]
+    for side, v, a in zip(("left", "right", "top", "bottom"), base, adds):
+        setattr(item, "min_border_" + side, int(round(v + a)))
+    _dash_graph_follow(item, "fxy", {"fx": fx, "fy": fy, "added": adds})
 
 
 def _dash_parse_tabs(tabs_str, all_names, limit=None):
@@ -53297,6 +53507,11 @@ def _dash_auto_bs_layout(all_names, kpi_names, figures=None):
                     if _a:
                         return float(_a)
             _a = getattr(_f, "aspect_ratio", None) if _f else None
+            if not _a and _f is not None and \
+                    getattr(_f, "sizing_mode", None) == "fixed" and \
+                    getattr(_f, "width", None) and getattr(_f, "height", None):
+                # WP-45 VF-4: a figure at its xsize()/ysize() box.
+                _a = float(_f.width) / float(_f.height)
             return float(_a) if _a else 0.0
 
         _wide = [n for n in graph_names if _ar_of(n) >= 2.5]
@@ -57275,7 +57490,14 @@ if (frame_ar != null && frame_ar > 0) {
 }
 const ph = rects[0].height, pw = rects[0].width;
 if (!(ph > 0) || !(pw > 0)) { return; }
-const want = g.width / ratio;
+let basis = g.width;
+if (fx_px != null) {
+  const pe = a.el.parentElement
+    || (a.el.getRootNode ? a.el.getRootNode().host : null);
+  const pr = pe ? pe.getBoundingClientRect() : null;
+  if (pr != null && pr.width > 0) { basis = pr.width; }
+}
+const want = fy_px != null ? fy_px : basis / ratio;
 const ph2 = Math.max(40, ph + (want - g.height) / Math.max(1, nr));
 const ar = pw / ph2;
 for (const [p, v] of vs) {
@@ -57284,7 +57506,8 @@ for (const [p, v] of vs) {
 """
 
 
-def _dash_by_fit_hook(figs, ratio, nr, nc, frame_ar=None):
+def _dash_by_fit_hook(figs, ratio, nr, nc, frame_ar=None, fx_px=None,
+                      fy_px=None):
     """Keep a by() graph's size as twoway does (:data:`_DASH_BY_FIT_JS`):
     one ``CustomJS`` on the first panel's laid-out size holding every
     panel, the graph's width/height *ratio*, the *nr* panel rows and *nc*
@@ -57293,7 +57516,10 @@ def _dash_by_fit_hook(figs, ratio, nr, nc, frame_ar=None):
     *frame_ar* (WP-41 BY-18: aspectratio(#) under by()), each panel's
     plot region is held at height/width # instead, as twoway shapes it
     (by_layout_truth.json Y14: 2196.62 x 2196.62 at aspectratio(1)):
-    its proportion from its laid-out frame width and borders."""
+    its proportion from its laid-out frame width and borders.  WP-45
+    VF-11: with *fx_px* (fxsize()) the array is that narrow and the
+    graph's height is its cell's width over *ratio*; with *fy_px*
+    (fysize()) the array is that tall."""
     from bokeh.models import CustomJS
     if not figs or not ratio or ratio <= 0:
         return None
@@ -57306,7 +57532,7 @@ def _dash_by_fit_hook(figs, ratio, nr, nc, frame_ar=None):
     cb = CustomJS(args={"panels": list(figs), "ratio": float(ratio),
                         "nr": max(1, int(nr)), "ncols": max(1, int(nc)),
                         "base": [float(f.aspect_ratio or 0.0) for f in figs],
-                        "frame_ar": far},
+                        "frame_ar": far, "fx_px": fx_px, "fy_px": fy_px},
                   code=_DASH_BY_FIT_JS)
     for k in _DASH_SPAN_KEYS:
         figs[0].js_on_change(k, cb)
@@ -66218,13 +66444,10 @@ class DashRenderer:
             x_axis_label=x_label,
             y_axis_label=y_label,
             output_backend=backend,
+            # WP-45 VF-4 (DECISIONS A-1): the width fills the cell at
+            # twoway's shape, with no height band; xsize()/ysize() fix
+            # the box after the build (_dash_apply_figure_size).
             sizing_mode="stretch_width",
-            # With an aspect ratio and a stretched width, a square figure in
-            # a full-width cell on a 1440px display would be 1400px tall.
-            # The ratio is honoured up to this height so a dashboard stays
-            # scrollable; documented in dash.sthlp.
-            max_height=_MAX_FIGURE_HEIGHT,
-            min_height=_MIN_FIGURE_HEIGHT,
             # The one tool list, which the generated app passes too.
             tools=_DASH_FIGURE_TOOLS,
         )
@@ -66808,13 +67031,15 @@ class DashRenderer:
             list(self.df.columns))
 
         # WP-31 D5: scale() over everything drawn, then the overhangs'
-        # borders and aspectratio()'s frame (with xsize()/ysize()), last.
+        # borders and the figure's box and plot region (WP-45 VF-4), last.
         _dash_apply_scale(fig, _dash_scale_factor(graph_opts))
+        fig._dash_gsize = (getattr(self.scheme, "graphsize_x", None) or 5.5,
+                           getattr(self.scheme, "graphsize_y", None) or 4.0)
         _dash_overhangs(fig, graph_opts)
         # WP-36 DG-14: a dashed line keeps the figure on canvas.
         _dash_dashes_on_canvas(fig)
         if facet_view is None:
-            _dash_apply_frame_aspect(
+            _dash_apply_figure_size(
                 fig, graph_opts, getattr(self.scheme, "graphsize_x", None),
                 getattr(self.scheme, "graphsize_y", None))
         return fig
@@ -71054,6 +71279,10 @@ class ServerAppBuilder:
                     _dash_scale_columns, _dash_apply_scale, _dash_frame_aspect,
                     _dash_frame_borders, _dash_frame_sizes,
                     _dash_apply_frame_aspect, _dash_overhangs, _dash_fxy_size,
+                    # WP-45 VF-4: the box, the unit and the follow.
+                    _dash_graph_box_in, _dash_graph_follow,
+                    _dash_border_base, _dash_frame_slack,
+                    _dash_apply_figure_size,
                     _dash_dashes_on_canvas,
                     _fit_grid,
                     # WP-31 C10a: range(. #) on the fits, and the t of a
@@ -73344,20 +73573,15 @@ class ServerAppBuilder:
             "            sizing_mode='stretch_width',",
             "            output_backend=backend,",
             "        )",
-            "        # xsize()/ysize()/aspectratio(): the helper the saved",
-            "        # renderer runs.  This read aspectratio() alone, uninverted,",
-            "        # and said nothing for a bad value the saved renderer named.",
-            "        # With none given, the scheme's own graphsize ratio, as the",
-            "        # saved figure (_resolve_aspect_ratio) -- a served figure",
-            "        # used to ignore the scheme's proportions entirely -- held",
-            "        # to the same height bounds so a wide page stays scrollable.",
+            "        # xsize()/ysize(): the helper the saved renderer runs, which",
+            "        # names a bad aspectratio() too.  With neither given, the",
+            "        # scheme's own graphsize ratio, as the saved figure",
+            "        # (_resolve_aspect_ratio), with no height band (WP-45 VF-4).",
             "        _ar = _dash_figure_aspect(go, _SCHEME_GRAPHSIZE_X, _SCHEME_GRAPHSIZE_Y)",
             "        if _ar is None and _SCHEME_GRAPHSIZE_X and _SCHEME_GRAPHSIZE_Y:",
             "            _ar = float(_SCHEME_GRAPHSIZE_X) / float(_SCHEME_GRAPHSIZE_Y)",
             "        if _ar is not None:",
             "            _fig_kw['aspect_ratio'] = _ar",
-            "            _fig_kw['max_height'] = _MAX_FIGURE_HEIGHT",
-            "            _fig_kw['min_height'] = _MIN_FIGURE_HEIGHT",
             "        _xsc = _dash_scale_spec(go.get('xscale', ''), 'xscale', _reported_subopts, gname)",
             "        _ysc = _dash_scale_spec(go.get('yscale', ''), 'yscale', _reported_subopts, gname)",
             "        # A date axis, by the saved renderer's rule and in its words:",
@@ -73757,14 +73981,16 @@ class ServerAppBuilder:
             "        if gname in linked_names:",
             "            _dash_dim_nonselection(fig, _BRUSH_ALPHA)",
             "            fig._dash_link_group = _shared_of[gname]._dash_link_group",
-            "        # WP-31 D5: scale(), the overhangs and aspectratio()'s",
-            "        # frame, last, as the saved renderer applies them.",
+            "        # WP-31 D5: scale(), the overhangs and the figure's box and",
+            "        # plot region (WP-45 VF-4), last, as the saved renderer",
+            "        # applies them.",
             "        _dash_apply_scale(fig, _dash_scale_factor(go))",
+            "        fig._dash_gsize = (_SCHEME_GRAPHSIZE_X or 5.5, _SCHEME_GRAPHSIZE_Y or 4.0)",
             "        _dash_overhangs(fig, go)",
             "        _dash_dashes_on_canvas(fig)",
             "        if _fac_label is None:",
-            "            _dash_apply_frame_aspect(fig, go, _SCHEME_GRAPHSIZE_X,",
-            "                                     _SCHEME_GRAPHSIZE_Y)",
+            "            _dash_apply_figure_size(fig, go, _SCHEME_GRAPHSIZE_X,",
+            "                                    _SCHEME_GRAPHSIZE_Y)",
             "            # WP-31 H2t: the graph's data table, under its figure.",
             "            _tspec = _dash_table_spec(go, _dash_lim)",
             "            if _tspec and gname in linked_names:",

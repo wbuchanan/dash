@@ -23,14 +23,14 @@ SCALE_FRAME_KNOWN = {
     "A:left:intercept": "GW-6",  # D43: twoway 13.44 / dash 5.72 px
     "A:right:intercept": "GW-6",  # D43: twoway 13.46 / dash 5.00 px
     "A:top:intercept": "GW-6",  # D43: twoway 13.44 / dash -0.96 px
-    "A:top:slope": "VF-4",  # D43: twoway 23.28 / dash 32.31 px per unit
+    "A:top:slope": "VF-4 (residual)",  # D43: twoway 23.28 / dash 32.31 px per unit
     "B:bottom:intercept": "GW-6",  # D43: twoway 13.44 / dash 6.20 px
     "B:bottom:linear": "LT-6",  # D43: twoway residual 0.01 / dash 2.93 px
     "B:left:intercept": "GW-6",  # D43: twoway 19.23 / dash 5.72 px
     "B:left:slope": "LT-6",  # D43: twoway 31.50 (legend widens) / dash 36.41
     "B:right:intercept": "GW-6",  # D43: twoway 13.46 / dash 5.00 px
     "B:top:intercept": "GW-6",  # D43: twoway 13.44 / dash -0.97 px
-    "B:top:slope": "VF-4",  # D43: twoway 42.55 / dash 59.45 px per unit
+    "B:top:slope": "VF-4 (residual)",  # D43: twoway 42.55 / dash 59.45 px per unit
 }
 
 SCALE_FRAME_DELIBERATE = {}

@@ -6161,30 +6161,35 @@ no integer (the whole {cmd:order()} is ignored).  {cmd:rows()} wins over
 {title:Figure proportions}
 
 {pstd}
-A {cmd:dash} dashboard is responsive: figures stretch to the width they are
-given rather than being drawn at a fixed pixel size.  {cmd:xsize()},
-{cmd:ysize()} and {cmd:aspectratio()} therefore set a figure's PROPORTIONS,
-and the figure fills the width available at that shape.  At phone width a
-grid too narrow for its columns stacks them, so each figure takes the whole
-width (see {help dash##layout:Layout}).
+Every graph, a {cmd:by()} graph included, keeps {helpb twoway}'s shape.
+With {cmd:xsize()} or {cmd:ysize()} it is drawn at exactly that size, 96
+pixels an inch; without them it fills the width of its cell at the shape
+of the scheme's graph -- 7.5 by 4.5 under {cmd:stcolor}, 1.667 to 1, so
+1200 pixels wide and 720 tall in a 1200-pixel cell -- with no bound on its
+height.  At phone width a grid too narrow for its columns stacks them, so
+each figure takes the whole width (see {help dash##layout:Layout}).
 
 {pstd}
-The precedence, highest first:
+The graph's size, highest first:
 
 {phang2}1. {cmd:xsize()} and {cmd:ysize()}, in inches, as in Stata.  Either
     alone keeps the other from the scheme: under {cmd:stcolor},
     {cmd:xsize(9)} gives a graph 9 inches wide and 4.5 tall, exactly as
-    {helpb twoway} does.{p_end}
-{phang2}2. {cmd:aspectratio(}{it:#}{cmd:)}, which in Stata is
-    {bf:height divided by width} -- {cmd:aspectratio(0.5)} is half as tall as
-    it is wide.{p_end}
-{phang2}3. The active scheme's {cmd:graphsize x} and {cmd:graphsize y}, so a
+    {helpb twoway} does -- 864 by 432 pixels.{p_end}
+{phang2}2. The active scheme's {cmd:graphsize x} and {cmd:graphsize y}, so a
     {cmd:dash} dashboard has the proportions of your other graphs without
     your asking.{p_end}
 
 {pstd}
+{cmd:aspectratio(}{it:#}{cmd:)}, which in Stata is
+{bf:height divided by width} -- {cmd:aspectratio(0.5)} is half as tall as
+it is wide -- shapes the plot region inside that graph, never the graph.
+
+{pstd}
 Under {cmd:by()}, as in {helpb twoway}, {cmd:xsize()} and {cmd:ysize()}
-size the whole graph, not each panel: the axis titles, a legend or colour
+size the whole graph, not each panel: {cmd:by(foreign) xsize(8) ysize(4)}
+draws the array 768 by 384 pixels, and without them the array fills its
+cell at the scheme's shape.  The axis titles, a legend or colour
 key at 6 or 12 o'clock and {cmd:by()}'s title, note and caption take their
 rows from the panels, which grow shorter, so the graph keeps its ratio;
 {cmd:layout(bs)} places a faceted graph by that ratio.
@@ -6192,8 +6197,8 @@ rows from the panels, which grow shorter, so the graph keeps its ratio;
 {phang2}{opt aspectratio(#)} shapes the {bf:plot region}, as in
 {helpb twoway}, and takes {helpb twoway}'s sub-option {it:placement}
 ({it:compassdir}) after a comma.  With {cmd:xsize()} or
-{cmd:ysize()} the figure is drawn at that size (96 pixels an inch, held to
-the page's height bound) and its plot region is the largest of ratio
+{cmd:ysize()} the figure is drawn at that size (96 pixels an inch) and
+its plot region is the largest of ratio
 {it:#} that fits, placed where {it:placement} says -- {cmd:e} against
 the right edge, {cmd:w} the left, {cmd:n} the top, {cmd:s} the bottom,
 {cmd:c} (the default) centred; a name {cmd:twoway} does not know is noted
@@ -6202,9 +6207,9 @@ the room the axes and titles take is estimated, up to 4 pixels high for
 each line of a title, so the plot region, always of ratio {it:#}, can be
 that much smaller than the largest that fits.  Such a figure keeps its size
 in a cell narrower than it, which then scrolls sideways.  Without {cmd:xsize()} or {cmd:ysize()} the figure stretches to
-its cell, so {it:#} shapes the whole figure instead (the plot region's
-own ratio then differs from {it:#} by the room the axes take), and
-{it:placement} has no slack to use.  Under {cmd:by()} {it:#} shapes
+its cell at the scheme's shape and its plot region is the largest of
+ratio {it:#} inside it, placed by {it:placement} and kept so at every
+width the page draws it.  Under {cmd:by()} {it:#} shapes
 each panel's plot region, as in {cmd:twoway}.{p_end}
 
 {phang2}{opt scale(#)} multiplies every text size, marker size and line
@@ -6218,11 +6223,10 @@ every size at 0 and a negative {it:#} is refused, r(198), in
 {cmd:twoway}'s words; a word is noted and drawn at 1.
 On a {cmd:by()} graph only {cmd:by(, scale())} acts.{p_end}
 
-{phang2}{opt fysize(#)} draws the figure {it:#} percent as tall, and
-{opt fxsize(#)} holds it to {it:#} percent of the width its cell
-gives it.  {helpb twoway} keeps a graph drawn alone at its size and draws
-the plot in {it:#} percent of four inches, centred; on a dashboard the cell
-is what shrinks.  A value of 0 or less, or of 100 and more, changes
+{phang2}{opt fxsize(#)} and {opt fysize(#)} keep the graph's size and draw
+the plot -- the plot region and its axes -- {it:#} percent of four inches
+wide or tall (192 pixels at 50), centred, as {helpb twoway} does; under
+{cmd:by()} the array of panels is that wide or tall.  A value of 0 or less, or of 100 and more, changes
 nothing; a word is refused, r(198), as {cmd:twoway} refuses it.  Both
 may be shortened to five letters, as in {cmd:twoway}.{p_end}
 
@@ -6248,9 +6252,9 @@ share of the figure it takes at four inches, as {helpb twoway} does, and
 and never moves the reference.
 
 {pstd}
-The ratio is honoured within a height band.  Outside it the ratio yields, so
-that a single square panel cannot fill an entire screen and a very wide panel
-does not collapse to an unreadable sliver on a phone.
+The shape is kept at every width, with no height band: a graph in a cell
+twice as wide is also twice as tall, as {helpb twoway}'s
+graph is a picture of one shape at any size.
 
 {pstd}
 {it:Examples:}

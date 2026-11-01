@@ -158,9 +158,16 @@ class TestAspectRatio:
         yields a plot region 542x152, i.e. height/width = 0.28.
         """
         fig = _get_figure({"aspectratio": "1.5"})
-        assert fig.aspect_ratio == pytest.approx(1.0 / 1.5), (
-            f"Expected aspect_ratio=1/1.5, got {fig.aspect_ratio}"
-        )
+        # Flipped (WP-45 VF-4): the figure took 1/1.5 as its own ratio;
+        # the figure was held in a 160-560 px band at 2.88 pt a unit;
+        # twoway draws its graph's shape at 0.72 pt per inch of its smaller
+        # side (VF-4, DECISIONS A-1): the figure keeps the scheme's shape and the plot region is
+        # 1.5 times as tall as it is wide at the nominal box.
+        assert fig.aspect_ratio == pytest.approx(5.5 / 4.0)
+        w, h = fig._dash_nominal_px
+        fw = w - fig.min_border_left - fig.min_border_right
+        fh = h - fig.min_border_top - fig.min_border_bottom
+        assert fh / fw == pytest.approx(1.5, abs=0.02)
 
     def test_aspectratio_invalid_ignored(self):
         """P6-03: invalid aspectratio does not raise; figure still created."""

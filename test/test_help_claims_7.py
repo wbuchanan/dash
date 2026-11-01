@@ -1160,18 +1160,31 @@ class TestTheSecondAxisIsItsOwn:
 # ===========================================================================
 
 class TestTheHeightBand:
-    """dash.sthlp, Figure proportions: "The ratio is honoured within a
-    height band"; the band is the figure's min_height and max_height, which
-    BokehJS holds while the aspect ratio yields outside it."""
+    """dash.sthlp, Figure proportions: "The shape is kept at every width,
+    with no height band": no figure carries a height bound; xsize()/ysize()
+    draw the exact box (96 px an inch) and otherwise the figure stretches
+    at the scheme's graphsize ratio.
+
+    Flipped (WP-45 VF-4): every proportioned figure carried the band;
+    the figure was held in a 160-560 px band at 2.88 pt a unit;
+    twoway draws its graph's shape at 0.72 pt per inch of its smaller
+    side (VF-4, DECISIONS A-1)."""
 
     @pytest.mark.parametrize("mode", _MODES)
     @pytest.mark.parametrize("go", [{"xsize": "10", "ysize": "2"},
                                     {"aspectratio": "1"}, {}])
     def test_every_proportioned_figure_carries_the_band(self, mode, go):
         fig, _ = _render(mode, [plot_for("scatter")], go)
-        assert fig.aspect_ratio is not None
-        assert (fig.min_height, fig.max_height) == (
-            dr._MIN_FIGURE_HEIGHT, dr._MAX_FIGURE_HEIGHT)
+        assert (fig.min_height, fig.max_height) == (None, None)
+        if "xsize" in go:
+            assert (fig.sizing_mode, fig.width, fig.height) == (
+                "fixed", 960, 192)
+        else:
+            assert fig.aspect_ratio == pytest.approx(5.5 / 4.0)
+        assert "The shape is kept at every width, with no height band" \
+            in " ".join(open(os.path.join(os.path.dirname(os.path.abspath(
+                __file__)), "..", "dash.sthlp"), encoding="utf-8").read()
+                .split())
 
 
 class TestColourAlphaNotation:

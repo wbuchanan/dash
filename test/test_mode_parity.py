@@ -2900,6 +2900,12 @@ CORPUS = [
     # WP-34 VF-3: the fixed figure is the xsize()/ysize() box in both modes.
     _case("aspectratio 2 xsize 8 ysize 4", [_sc()],
           go={"aspectratio": "2", "xsize": "8", "ysize": "4"}),
+    # WP-45 VF-4: twoway's shape, box and unit in both modes.
+    _case("xsize(4) ysize(4)", [_sc()], go={"xsize": "4", "ysize": "4"}),
+    _case("aspectratio(1) alone", [_sc()], go={"aspectratio": "1"}),
+    _case("fxsize(50)", [_sc()], go={"fxsize": "50"}),
+    _case("by() xsize(8) ysize(4)", [_sc()],
+          go={"by": "foreign", "xsize": "8", "ysize": "4"}),
     # WP-34 PIC-1: an area's whole outline, one ring, and its key swatch.
     _case("area default outline", [plot_for("area")]),
     _case("area cmissing outline", [plot_for("area", {"cmissing": "n"})]),

@@ -282,6 +282,7 @@ GENERATORS = {
     "by_grid_truth.json": "scripts/extract_by_grid_truth.do",
     "by_label_truth.json": "scripts/extract_by_label_truth.do",
     "by_layout_truth.json": "scripts/extract_by_layout_truth.do",
+    "figure_geometry_truth.json": "scripts/extract_figure_geometry_truth.do",
     "by_remainder_truth.json": "scripts/extract_by_remainder_truth.do",
     "by_scale_range_truth.json": "scripts/extract_by_scale_range_truth.do",
     "by_scales_truth.json": "scripts/extract_by_scales_truth.do",

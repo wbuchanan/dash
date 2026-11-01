@@ -514,7 +514,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **ST-16 Tracked:** Open (WP-45 section 45-03).
 - **GW-6 Tracked:** Open (WP-45 section 45-04).
 - **ST-21 Tracked:** Open (WP-45 section 45-04).
-- **VF-4 Tracked:** Open (WP-45 section 45-04).
+- **VF-4 Tracked:** Partly closed in WP-45 (section 45-04, commit pending): every graph, by() included, keeps twoway's shape with no height band, xsize()/ysize() draw the exact box, aspectratio() alone shapes the plot region and fxsize()/fysize() keep a lone graph's size; open: the scheme's size unit (VF-5), the title's top inset under scale() and by()'s fysize() centring (BUGS.md "Sizes are drawn at 2.88 pt a unit under every scheme (twoway: 0.72 pt per inch of the graph's smaller side, 3.24 under stcolor), the title's room above the plot region grows faster than twoway's under scale(), and by()'s fysize() array is not centred").
 - **GW-1 Tracked:** Open (WP-45 section 45-04).
 - **ST-22 Tracked:** Open (WP-45 section 45-05).
 - **GW-10 Tracked:** Open (WP-45 section 45-05).

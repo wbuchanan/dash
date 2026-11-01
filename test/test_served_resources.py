@@ -614,7 +614,11 @@ _SAVED_DIGEST = (
     # dash_contour_zfirst) and its kept-range override (filter JS text
     # only: the base's _FILTER_JS gives the old digest on the new tree);
     # the same under both Pythons.
-    "a21758fc5cf45c23d67a94bc0d78658c35e748ac8872d15c3346df1f3e5b504a")
+    # a21758fc... -> d6a94b82...: WP-45 VF-4 (brought into WP-41 41-05),
+    # the figure loses its 160-560 px height band (max_height and
+    # min_height None); twoway draws its graph's shape at any size
+    # (DECISIONS A-1); the same under both Pythons.
+    "d6a94b820dafecfbf75d2d5bae2ffab127c5004799ddc7c3d4337c1a751dbaa8")
 
 
 # ===========================================================================

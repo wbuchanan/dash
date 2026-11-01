@@ -118,6 +118,13 @@ def _name(m):
         return "facets:" + ",".join(c[0].title.text for c in m.children
                                     if c[0] is not None
                                     and not is_chrome(c[0]))
+    from bokeh.models import Column
+    if isinstance(m, Column):
+        # Flipped (WP-45 VF-4): a figure at its xsize()/ysize() box sits
+        # in a column that scrolls sideways in a narrower cell; the figure
+        # was held in a 160-560 px band, and twoway draws its graph's
+        # shape at any size (DECISIONS A-1).
+        return _name(m.children[0])
     return m.title.text
 
 
@@ -144,6 +151,18 @@ def _saved_rows(r, page):
     nor a card (a faceted graph's sub-grid) is ``"?"``."""
     names = {f.id: k for k, f in r.figures.items()}
     names.update({d.id: k for k, d in r.kpi_divs.items()})
+    # Flipped (WP-45 VF-4): a figure at its xsize()/ysize() box is the
+    # first child of the column its cell holds (the column scrolls
+    # sideways); the figure was held in a 160-560 px band, and twoway
+    # draws its graph's shape at any size (DECISIONS A-1).
+    from bokeh.document import Document as _Doc
+    from bokeh.models import Column
+    from test_embedded_rows import _page_docs
+    for docs in _page_docs(page):
+        for dd in docs.values():
+            for m in _Doc.from_json(dd).select({"type": Column}):
+                if m.children and m.children[0].id in names:
+                    names[m.id] = names[m.children[0].id]
     body = page[page.index('<div class="db-container">'):]
     rows = []
     for chunk in body.split(_ROW)[1:]:

@@ -178,7 +178,12 @@ class TestGraphMargin:
         within 1 px; an untouched side keeps None."""
         figs, _ = _cached("gm", mode, _GM)
         f = figs[case]
-        short = min(f.width, f.height)
+        # Flipped (WP-45 VF-4): min(W, H) was the stretched figure's
+        # Bokeh default 600 x 600; the figure was held in a 160-560 px band
+        # at 2.88 pt a unit, and twoway draws its graph's shape (VF-4,
+        # DECISIONS A-1): the graph's box, its xsize()/ysize() or the
+        # scheme's graphsize at 96 px an inch.
+        short = min(f._dash_nominal_px)
         bad = []
         for side, attr in _SIDES:
             d = _want_gaps(case)[side]
@@ -199,7 +204,9 @@ class TestGraphMargin:
         f.min_border_left = 20
         dr._dash_graph_margin(f, dr.SchemeParser("s2color"),
                               {"graphregion": "margin(l+5)"})
-        assert f.min_border_left == 35
+        # Flipped (WP-45 VF-4): 5% of the built 300 px; the share is of the
+        # graph's box, s2color's 5.5 x 4 in at 96 px (384 px short side).
+        assert f.min_border_left == 20 + round(0.05 * 384)
         assert (f.min_border_right, f.min_border_top,
                 f.min_border_bottom) == (None, None, None)
 
@@ -207,9 +214,14 @@ class TestGraphMargin:
     def test_a_resize_redraws_the_margin(self):
         """D39 D-37.a: twoway's margin is a share of the graph's smaller
         side whatever its size, so the borders follow a resize of the page:
-        the figure carries a callback on its outer size that sets each
-        changed side to its border before the margin plus the change times
-        min(W, H)."""
+        the figure carries its one size follow on its outer size, whose
+        "sides" part sets each changed side to its border before the
+        margin plus the change times min(W, H).
+
+        Flipped (WP-45 VF-4): the follow was a CustomJS of the margin's
+        own with ``sides`` in its args; it is the figure's one guarded
+        follow (``_dash_graph_follow``, args ``fig`` and ``item``), which
+        43-01's per-figure dispatcher will take over as a kind."""
         f = figure(width=400, height=300)
         f.min_border_left = 20
         dr._dash_graph_margin(f, dr.SchemeParser("s2color"),
@@ -219,18 +231,19 @@ class TestGraphMargin:
         assert len(cbs) == 2 and cbs[0] is cbs[1]
         cb = cbs[0]
         assert cb.code == dr._DASH_GRAPH_MARGIN_JS
+        assert cb.args["item"] is f._dash_gm_item
         from js_runner import run_js
         src = """
-const fig = {outer_width: 1000, outer_height: 500, min_border_left: 35,
-             min_border_right: null, min_border_top: 35,
-             min_border_bottom: null};
-const sides = %s;
-(function (fig, sides) { %s })(fig, sides);
+const fig = {outer_width: 1000, outer_height: 500, min_border_left: %d,
+             min_border_right: null, min_border_top: %d,
+             min_border_bottom: null, min_border: 5};
+const item = %s;
+(function (fig, item) { %s })(fig, item);
 console.log(JSON.stringify(fig));
-""" % (json.dumps(cb.args["sides"]), cb.code)
+""" % (f.min_border_left, f.min_border_top, json.dumps(cb.args["item"]),
+            cb.code)
         got = run_js(src)
-        # Built at 400 x 300: left 20 + 15, top 5 (min_border) + 30.  At
-        # 1000 x 500: left 20 + 25, top 5 + 50.
+        # At 1000 x 500: left 20 + 25, top 5 (min_border) + 50.
         assert got["min_border_left"] == 45
         assert got["min_border_top"] == 55
         assert got["min_border_right"] is None

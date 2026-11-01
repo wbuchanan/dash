@@ -213,6 +213,14 @@ class TestSchemeGraphsize:
 # aspectratio() — inverted
 # ======================================================================
 
+def _frame_ratio(fig):
+    """The plot region's height/width at the figure's nominal box (WP-45
+    VF-4: aspectratio() shapes the frame inside it)."""
+    w, h = fig._dash_nominal_px
+    return (h - fig.min_border_top - fig.min_border_bottom) / float(
+        w - fig.min_border_left - fig.min_border_right)
+
+
 class TestAspectRatio:
 
     def test_stata_aspectratio_is_height_over_width(self, truth):
@@ -225,9 +233,12 @@ class TestAspectRatio:
         assert "height / width" in truth["semantics"]["aspectratio"]
         dr, _ = _render({"aspectratio": "0.5"})
         fig = dr.figures["g1"]
-        assert _ratio(fig) == pytest.approx(2.0), (
-            f"aspectratio(0.5) means half as tall as wide, i.e. a Bokeh "
-            f"aspect_ratio of 2.0; got {_ratio(fig)}"
+        # Flipped (WP-45 VF-4): the figure took 2.0 as its own ratio; the figure was held in a 160-560 px band; twoway draws its
+        # graph's shape at any size (VF-4, DECISIONS A-1):
+        # the plot region, not the figure, is half as tall as it is wide.
+        assert _frame_ratio(fig) == pytest.approx(0.5, abs=0.02), (
+            f"aspectratio(0.5) means a plot region half as tall as wide; "
+            f"got {_frame_ratio(fig)}"
         )
 
     @pytest.mark.parametrize("stata_ar,bokeh_ratio", [
@@ -235,11 +246,19 @@ class TestAspectRatio:
     ])
     def test_the_reciprocal_is_taken(self, stata_ar, bokeh_ratio):
         dr, _ = _render({"aspectratio": stata_ar})
-        assert _ratio(dr.figures["g1"]) == pytest.approx(bokeh_ratio)
+        # Flipped (WP-45 VF-4): the figure's own ratio was 1/#; the figure was held in a 160-560 px band; twoway draws its
+        # graph's shape at any size (VF-4, DECISIONS A-1): the
+        # plot region's width/height is 1/# inside the scheme's shape.
+        assert 1.0 / _frame_ratio(dr.figures["g1"]) == pytest.approx(
+            bokeh_ratio, rel=0.03)
 
     def test_aspectratio_beats_the_scheme(self):
         dr, _ = _render({"aspectratio": "1"}, build={"scheme": "stcolor"})
-        assert _ratio(dr.figures["g1"]) == pytest.approx(1.0)
+        # Flipped (WP-45 VF-4): the figure was square; the figure was held in a 160-560 px band; twoway draws its
+        # graph's shape at any size (VF-4, DECISIONS A-1): the figure keeps
+        # stcolor's 7.5:4.5 and its plot region is square.
+        assert _ratio(dr.figures["g1"]) == pytest.approx(7.5 / 4.5)
+        assert _frame_ratio(dr.figures["g1"]) == pytest.approx(1.0, abs=0.02)
 
     def test_explicit_sizes_beat_aspectratio(self):
         """A documented precedence, so the two cannot silently fight."""
@@ -263,12 +282,17 @@ class TestResponsiveness:
     """BR-10.3: the abstract's headline claim."""
 
     def test_a_sized_figure_is_still_responsive(self):
+        """Flipped (WP-45 VF-4): a sized figure stretched; the figure was
+        held in a 160-560 px band, and twoway draws its graph's shape at
+        any size (VF-4, DECISIONS A-1): xsize()/ysize() draw the exact box,
+        which keeps its size in a narrower cell (the cell scrolls), and an
+        unsized figure is still responsive."""
         dr, _ = _render({"xsize": "6", "ysize": "4"})
         fig = dr.figures["g1"]
-        assert fig.sizing_mode in (
-            "stretch_width", "scale_width", "stretch_both", "scale_both"), (
-            f"a sized figure became fixed: sizing_mode={fig.sizing_mode!r}"
-        )
+        assert (fig.sizing_mode, fig.width, fig.height) == ("fixed", 576, 384)
+        dr, _ = _render()
+        assert dr.figures["g1"].sizing_mode in (
+            "stretch_width", "scale_width", "stretch_both", "scale_both")
 
     def test_proportions_are_carried_as_a_RATIO_not_as_pixels(self):
         """Converting inches to fixed pixels would break BR-10.3.
@@ -279,12 +303,14 @@ class TestResponsiveness:
         """
         dr, _ = _render({"xsize": "6", "ysize": "4"})
         fig = dr.figures["g1"]
-        assert fig.aspect_ratio is not None, (
-            "xsize()/ysize() did not become an aspect ratio"
-        )
-        assert fig.width in (None, 600), (
-            f"the width was pinned to {fig.width}px from the inch size"
-        )
+        # Flipped (WP-45 VF-4): the request was an aspect ratio, never
+        # pixels; the figure was held in a 160-560 px band; twoway draws its
+        # graph's shape at any size (VF-4, DECISIONS A-1): xsize()/ysize() are the exact box at 96 px an inch
+        # (the ratio 1.5 kept), and the proportions without them a ratio.
+        assert fig.aspect_ratio is None
+        assert fig.width / fig.height == pytest.approx(1.5)
+        dr, _ = _render()
+        assert dr.figures["g1"].aspect_ratio is not None
 
     def test_an_unsized_figure_is_unchanged_in_kind(self):
         dr, _ = _render()

@@ -723,10 +723,15 @@ _PLAIN_DIGESTS = {
     # WP-34 AX-1, the axis plan's byg key and the finish code's
     # default-axis condition (plan key and finish JS text only); the same
     # under both Pythons.
+    # a4bad736... -> 7b91a824... saved, 8d1ef2de... -> 945ef1ea... served:
+    # WP-45 VF-4 (brought into WP-41 41-05), the figure loses its
+    # 160-560 px height band (max_height and min_height None) and carries
+    # its nominal box; twoway draws its graph's shape at any size
+    # (DECISIONS A-1); the same under both Pythons.
     ("saved", "plain"):
-        "a4bad7369eaf1735cdb8ea64c3cff11bff9a7a87ac54ab2dee0817849a480354",
+        "7b91a824f04410c3999ab10b5bfa59271cbf4c6895bff9aa87e975f30e21fde5",
     ("saved", "yaxis2"):
-        "a4bad7369eaf1735cdb8ea64c3cff11bff9a7a87ac54ab2dee0817849a480354",
+        "7b91a824f04410c3999ab10b5bfa59271cbf4c6895bff9aa87e975f30e21fde5",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -741,9 +746,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "8d1ef2de9f34f5c41a5af7d092b93defcb3fd9b155f8688cf27da3ee9a4cadac",
+        "945ef1ea87bb18110cf231fb76c7e799cf1b473b1fd51e34b6b71057d25429a9",
     ("served", "yaxis2"):
-        "8d1ef2de9f34f5c41a5af7d092b93defcb3fd9b155f8688cf27da3ee9a4cadac",
+        "945ef1ea87bb18110cf231fb76c7e799cf1b473b1fd51e34b6b71057d25429a9",
 }
 
 

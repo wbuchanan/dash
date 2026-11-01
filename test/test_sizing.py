@@ -295,13 +295,26 @@ class TestFxFy:
     def test_fysize(self, mode, tmp_path):
         a = _figure(mode, tmp_path)
         b = _figure(mode, tmp_path, {"fysize": "50"})
-        assert b.aspect_ratio == pytest.approx(a.aspect_ratio * 2)
-        assert b.max_height == a.max_height // 2
+        # Flipped (WP-45 VF-11): the figure was drawn half as tall; the figure was held in a 160-560 px band at 2.88 pt a unit; twoway
+        # draws its graph's shape at 0.72 pt per inch of its smaller side
+        # (VF-4, DECISIONS A-1):
+        # twoway keeps the graph and draws the plot 192 px tall, centred.
+        assert b.aspect_ratio == pytest.approx(a.aspect_ratio)
+        h = b._dash_nominal_px[1]
+        assert b.min_border_top - b._dash_frame_est["above"] == \
+            pytest.approx((h - 192) / 2, abs=1)
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_fxsize(self, mode, tmp_path):
         f = _figure(mode, tmp_path, {"fxsize": "50"})
-        assert f.styles.get("max-width") == "50%"
+        # Flipped (WP-45 VF-11): the cell was held to 50% of its width; the figure was held in a 160-560 px band at 2.88 pt a unit; twoway
+        # draws its graph's shape at 0.72 pt per inch of its smaller side
+        # (VF-4, DECISIONS A-1):
+        # twoway keeps the graph and draws the plot 192 px wide, centred.
+        assert f.styles.get("max-width") is None
+        w = f._dash_nominal_px[0]
+        assert f.min_border_left - f._dash_frame_est["left"] == \
+            pytest.approx((w - 192) / 2, abs=1)
 
     def test_out_of_range_changes_nothing(self):
         from bokeh.plotting import figure
@@ -316,8 +329,16 @@ class TestAspect:
     @pytest.mark.parametrize("mode", _MODES)
     def test_alone_keeps_figure_ratio(self, mode, tmp_path):
         f = _figure(mode, tmp_path, {"aspectratio": "1"})
-        assert f.aspect_ratio == pytest.approx(1.0)
+        # Flipped (WP-45 VF-4): aspectratio(1) alone made the figure square;
+        # the figure was held in a 160-560 px band at 2.88 pt a unit; twoway
+        # draws its graph's shape at 0.72 pt per inch of its smaller side
+        # (VF-4, DECISIONS A-1): the figure keeps the scheme's shape and its plot region is
+        # square inside it (kept at every drawn size by the follow).
+        assert f.aspect_ratio == pytest.approx(5.5 / 4.0)
         assert f.frame_width is None and f.frame_height is None
+        w, h = f._dash_nominal_px
+        assert w - f.min_border_left - f.min_border_right == pytest.approx(
+            h - f.min_border_top - f.min_border_bottom, abs=1)
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_survives_sizes(self, mode, tmp_path):
@@ -530,8 +551,11 @@ class TestFixedFrameHelp:
         assert ("Such a figure keeps its size in a cell narrower than it, "
                 "which then scrolls sideways.") in para
         assert "the figure's size can differ from {cmd:xsize()}" not in para
-        # The height bound is 45-04's to remove (DECISIONS A-1).
-        assert "held to the page's height bound" in para
+        # Flipped (WP-45 VF-4): the height bound was 45-04's to remove;
+        # the figure was held in a 160-560 px band at 2.88 pt a unit; twoway
+        # draws its graph's shape at 0.72 pt per inch of its smaller side
+        # (VF-4, DECISIONS A-1).
+        assert "held to the page's height bound" not in para
 
 
 class TestOverhangs:

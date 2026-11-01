@@ -2950,7 +2950,6 @@ GAPS4_OPEN = {
     'ST-16': 'An unknown scheme() is refused r(198) where twoway notes and draws s2color',
     'GW-6': "The graph-region outline is not stroked by default, and the scheme's graph margin (3.5 units) is not drawn (Bokeh's 5 px min_border is used)",
     'ST-21': "graphregion's inner box and region lalign() are named; ifcolor() fills the whole border; the plot margin is a share of the whole graph",
-    'VF-4': 'Figure proportions: a lone graph fills the page width within a 160-560 px height band (2.14:1 at 1200 px where twoway is 1.667:1; xsize()/ysize()/aspectratio() alone change nothing); relative sizes are a fixed 2.88 pt (0.889x twoway under stcolor); fxsize()/fysize() shrink the cell',
     'GW-1': "xsize()/ysize() with units (10cm, 3in, 200pt) are ignored with a note that leaks 'None'",
     'ST-22': "Colour edges: navy*52 intensity rule, blank stylelist element refused in dash's words",
     'GW-10': 'graph set window/svg fontface for plain text is not read (only stSans/stSerif/stMono tags)',

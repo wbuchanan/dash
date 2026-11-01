@@ -412,7 +412,12 @@ class TestTheArrayRatio:
                               for c in g.children
                               if type(c[0]).__name__ == "figure")
                         for g in _grids(roots))
-        assert ratios == [(2.0, 2.0), (2.0, 2.0)]
+        # Flipped (WP-45 VF-4): aspectratio(.5) gave the panels 1/.5 as
+        # their own ratio; the figure was held in a 160-560 px band at 2.88 pt a unit; twoway
+        # draws its graph's shape at 0.72 pt per inch of its smaller side
+        # (VF-4, DECISIONS A-1): they start at the scheme's 5.5:4 and the
+        # fit hook shapes each plot region (frame_ar) as it lays out.
+        assert ratios == [(1.375, 1.375), (2.0, 2.0)]
 
 
 class TestTheAutoLayoutSeesFacets:

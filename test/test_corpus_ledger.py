@@ -55,7 +55,10 @@ class TestOwners:
     def test_bar_outlines_belong_to_pt4(self):
         # D51: an outline dash strokes where twoway strokes none is
         # basic:PT-4's (outline_extra); a line-width difference stays VF-4's
-        # on every plot type, bars included.
+        # on every plot type, bars included.  Flipped (WP-45 VF-4): VF-4 is
+        # closed in part, the size unit open, so its rows are its residual's
+        # ("VF-4 (residual)"); the figure was held in a 160-560 px band, and
+        # twoway draws its graph's shape at any size (DECISIONS A-1).
         rows = verdict.load_ledger(_FIXTURE)
         states = ledger.gaps4_states()
         extra = [{"check": "outline_extra", "twoway": False, "dash": True,
@@ -65,7 +68,8 @@ class TestOwners:
         for t in ("bar", "histogram", "rbar", "area", "line"):
             ex = {"plottype": t, "cmd": "twoway %s y x" % t}
             assert verdict.explain(extra, ex, rows, states)[0]["gaps4"] == "basic:PT-4", t
-            assert verdict.explain(width, ex, rows, states)[0]["gaps4"] == "VF-4", t
+            assert verdict.explain(width, ex, rows, states)[0]["gaps4"] == \
+                "VF-4 (residual)", t
 
     def test_clipped_marker_labels_belong_to_ms15(self):
         # D50: twoway draws a marker label past the plot region; dash clips it.

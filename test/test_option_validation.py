@@ -1339,8 +1339,11 @@ class TestGraphSizeOptionsAgreeAcrossModes:
                                      {"xsize": "6", "ysize": "4"})
         assert std_w == srv_w
         std, srv = _figures(r, doc)
-        assert float(std.aspect_ratio) == pytest.approx(1.5)
-        assert float(srv.aspect_ratio) == pytest.approx(1.5)
+        # Flipped (WP-45 VF-4): both carried aspect_ratio 1.5; the figure was held in a 160-560 px band; twoway draws its
+        # graph's shape at any size (VF-4, DECISIONS A-1): both
+        # draw the exact 6 x 4 in box at 96 px an inch.
+        for f in (std, srv):
+            assert (f.sizing_mode, f.width, f.height) == ("fixed", 576, 384)
 
     def test_aspectratio_is_inverted_in_both_modes(self):
         # Stata's aspectratio() is height/width; Bokeh's is width/height.
@@ -1349,8 +1352,14 @@ class TestGraphSizeOptionsAgreeAcrossModes:
                                      {"aspectratio": "2"})
         assert std_w == srv_w
         std, srv = _figures(r, doc)
-        assert float(std.aspect_ratio) == pytest.approx(0.5)
-        assert float(srv.aspect_ratio) == pytest.approx(0.5)
+        # Flipped (WP-45 VF-4): both figures took 0.5; the figure was held in a 160-560 px band; twoway draws its
+        # graph's shape at any size (VF-4, DECISIONS A-1): both keep the
+        # scheme's shape and draw a plot region twice as tall as wide.
+        for f in (std, srv):
+            w, h = f._dash_nominal_px
+            fw = w - f.min_border_left - f.min_border_right
+            fh = h - f.min_border_top - f.min_border_bottom
+            assert fh / fw == pytest.approx(2.0, abs=0.03)
 
     def test_a_zero_is_named_once(self):
         _, _, std_w, srv_w = _both([plot_for("scatter")], {"aspectratio": "0"})
