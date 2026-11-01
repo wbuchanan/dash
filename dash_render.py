@@ -53581,6 +53581,15 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
                 go, _sch if _sch is not None else SchemeParser.fallback())
             cell = _dash_graph_region_box(cell, _gm,
                                           figs[0].border_fill_color)
+            if own_ar:
+                # WP-41 41-05: aspectratio()'s panels leave height over;
+                # twoway centres the array in it (figure_geometry_truth
+                # .json P5: the strips 63.7 px down at 1400 x 840).
+                _gs = getattr(figs[0], "_dash_gsize", None) or (7.5, 4.5)
+                cell.styles = {**dict(cell.styles or {}),
+                               "aspect-ratio": "%.6g / %.6g" % (
+                                   float(_gs[0]), float(_gs[1])),
+                               "align-items": "center"}
             _cb = _fit_cb
             if _cb is not None and figs[0]._dash_array_ar:
                 _cb.args = dict(_cb.args, ratio=_dash_inner_ratio(

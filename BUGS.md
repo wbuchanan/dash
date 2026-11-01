@@ -5966,3 +5966,9 @@
   - Suggested fix: Draw no shared axis title under style(combine) unless b1title()/l1title() asks.
   - Resolution: Fixed 01nov2026 (WP-41, 41-05). Pinned by test/test_by_layout.py::TestCombine::test_no_outer_axis_titles. Measured with it: twoway's per-panel graph regions and legend box are filled and outlined white under stcolor (P2: #ffffff on #ffffff), so they do not show; their sizes differ from dash's (open).
 
+- [x] Title: by() with aspectratio() drew its array at the top of a graph shorter than twoway's; twoway keeps the graph's shape and centres the array
+  - File Names and Line Numbers: dash_render.py _dash_layout_cell (the graph region box under aspectratio())
+  - Description: WP-41 41-05 checkpoint pair 5 (scatter mpg weight, aspectratio(1) by(foreign), stcolor), measured at 1400 px: twoway's graph is 1400 x 840 with the strips' top at 63.7 and the square plot regions at 99.6 .. 669.1 (figure_geometry_truth.json P5); dash's graph region was 789 px tall (its content's height) with the strips at 39.2.
+  - Suggested fix: Keep the graph's shape on the region box and centre the array in it.
+  - Resolution: Fixed 01nov2026 (WP-41, 41-05): under aspectratio() the by() region box keeps the graph's xsize:ysize (CSS aspect-ratio) and centres the array (align-items); the strips now start at 65 px. Pinned by test/test_by_layout.py::TestAspectArrayCentred.
+

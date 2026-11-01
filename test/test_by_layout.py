@@ -612,3 +612,19 @@ class TestTheBandsAsTwoway:
         gap = b["frame"][0] - a["frame"][2]
         want = tw[1][0] - (tw[0][0] + tw[0][2])
         assert abs(gap - want) <= 2, (gap, want)
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestAspectArrayCentred:
+    """WP-41 41-05 pair 5: scatter mpg weight, aspectratio(1) by(foreign)
+    under stcolor at 1400 x 840.  twoway centres the array of square
+    panels in the height they leave (figure_geometry_truth.json P5: the
+    strips' top 64.1 px, the plot regions 99.9 .. 669.4)."""
+
+    def test_the_array_is_centred(self, mode):
+        figs = _panels_of(_measure(mode, {"by": "foreign",
+                                          "aspectratio": "1"})[1400])
+        strips = _fg_rects("P5", "#f0f0f0")
+        a = sorted(figs, key=lambda f: f["frame"][0])[0]
+        assert abs(a["strips"][0]["box"][1] - strips[0][1]) <= 3, (
+            a, strips)

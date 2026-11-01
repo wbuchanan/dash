@@ -1003,6 +1003,7 @@ and now matches Stata.
 
 ### Fixed in WP-41
 
+- A by() graph with aspectratio() keeps the graph's shape and centres its panels in it, as twoway does (WP-41, 41-05)
 - by(, style(combine)) draws no shared axis title, as graph combine draws none (WP-41, 41-05)
 - by(, style(combine)) ticks each panel as graph combine ticks a graph: (scatter mpg weight) (lfit mpg weight), by(rep78, style(combine)) drew panel 1's x as 2,800(200)3,400 and cut its markers, now 2,800(200)3,600 as twoway (WP-41, 41-05)
 - A by() graph's panels, strips, x title and note sit where twoway's do: scatter mpg weight, by(foreign) drew its plot regions 580 px tall and 37 px apart at 1,400 x 840, now 620 px and 59 px (twoway's 618 and 59) (WP-41, 41-05)
