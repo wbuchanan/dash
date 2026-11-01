@@ -11962,7 +11962,16 @@ def _hm_reach(html):
         if isinstance(o, list):
             return any(hits(v) for v in o)
         return False
+    # Flipped (DECISIONS D66): the one-picture width scale
+    # (_DASH_WIDTH_SCALE_JS) is a layout callback, not a filter callback:
+    # it writes every size the graph draws, markers and legend keys
+    # included, from Python's own fixed property table, so its args hold
+    # the glyphs by design (test_by_text.py and test_by_axes_keys.py flip
+    # it alike).  Every other CustomJS is still held to the guard.
+    def scale(o):
+        return "W / nominal * unit" in str(o.get("attributes", {}).get("code", ""))
     n = sum(1 for o in objs.values() if o.get("name") == "CustomJS"
+            and not scale(o)
             and hits(o.get("attributes", {}).get("args")))
     Macro.setLocal("hm_out", str(n))
 end
