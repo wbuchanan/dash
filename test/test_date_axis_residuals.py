@@ -732,11 +732,11 @@ _PLAIN_DIGESTS = {
     # WP-45 VF-4 with DECISIONS D66/D67 (the graph drawn as one picture, its width-scale callback on every figure; one toolbar per page, laid over it); the same under both Pythons.
     # 5b51f15b... -> 14933864... saved, 28fb7ffe... -> d46d95fa... served:
     # WP-45 GW-6, the figure's graph-region box (its margin padding, fill
-    # and tag in its styles) and the span hook's graph box; measured on
-    # Python 3.14 only.
+    # and tag in its styles) and the span hook's graph box; the same under
+    # both Pythons.
     # 14933864... -> f7c8dba6... saved, d46d95fa... -> cf6d2d71... served:
     # WP-41 41-05, the plot region's outline in the width scale's table;
-    # measured on Python 3.14 only.
+    # the same under both Pythons.
     ("saved", "plain"):
         "f7c8dba6dcacb9c31eef3cf6a1e653092e997ab744f665384e2734337c843e10",
     ("saved", "yaxis2"):

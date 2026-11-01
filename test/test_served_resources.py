@@ -621,9 +621,9 @@ _SAVED_DIGEST = (
     # d6a94b82... -> b1f61909...: WP-45 VF-4 with DECISIONS D66/D67 (the graph drawn as one picture, its width-scale callback on every figure; one toolbar per page, laid over it); the same under both Pythons.
     # b1f61909... -> 6b5d294b...: WP-45 GW-6, the figure's graph-region
     # box (margin padding, fill and tag in its styles) and the span hook's
-    # graph box; measured on Python 3.14 only.
+    # graph box; the same under both Pythons.
     # 6b5d294b... -> 48aab271...: WP-41 41-05, the plot region's outline
-    # in the width scale's table; measured on Python 3.14 only.
+    # in the width scale's table; the same under both Pythons.
     "48aab2713af559af85e76820f06b3067343a8307bf4eeba2ff27062bfb7227e8")
 
 
