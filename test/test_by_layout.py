@@ -516,3 +516,22 @@ class TestOverhangs:
         assert (f.min_border_left or 0) > (g.min_border_left or 5)
         assert (f.min_border_right or 5) == (g.min_border_right or 5) or \
             (f.min_border_right or 0) < (f.min_border_left or 0) / 4
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestTheOuterYAxisSize:
+    """The row's outer y axis cell (WP-41 VF-6) draws its tick labels at
+    the panels' size: by()'s multiplier (0.85 for two panels) applies to
+    it as to the panels, as twoway draws one size for every tick label
+    (figure_geometry_truth.json G_by_stcolor: 9.57 pt, x and y alike)."""
+
+    def test_the_tick_labels_match_the_panels(self, mode):
+        grid, _r, _n = _built(mode, {"by": "foreign"})
+        panels = tk._panels(grid)
+        cells = [c[0] for c in grid.children
+                 if str(getattr(c[0], "name", "") or "").startswith(
+                     "dash_by_yaxis_")]
+        assert cells
+        want = panels[0].xaxis[0].major_label_text_font_size
+        for cell in cells:
+            assert cell.left[0].major_label_text_font_size == want

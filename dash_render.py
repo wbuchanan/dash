@@ -53414,6 +53414,12 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
         # The axis titles, legend and colour key beside the panels (WP-30
         # P1.15c); the overall text then spans every column.
         cn = _dash_by_side_grid(grid, side, nr, nc) if side else nc
+        # A row's outer y axis (VF-6) is a copy of a panel's axis made
+        # before the panels took by()'s size: it takes it now, once.
+        for _ch in list(grid.children):
+            if str(getattr(_ch[0], "name", "") or "").startswith(
+                    "dash_by_yaxis_"):
+                _dash_by_scale_panel(_ch[0], m)
         if side and side.get("hook") is not None:
             # The stacked view's ruler, a column of its own (see
             # _DASH_BY_STACK_JS).

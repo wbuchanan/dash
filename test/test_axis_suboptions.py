@@ -50,10 +50,14 @@ def _figs(mode, go, plots=None, scheme="s2color"):
     else:
         doc, caught = tp._served(spec)
         found = list(doc.select({"type": Plot}))
+    # Flipped (WP-41 VF-6): a by() row's outer y axis cell
+    # (dash_by_yaxis_<r>) holds a copy of a panel's axis; it is not a
+    # panel, as the head and foot cells are not.
     out = [p for p in found
-           if any(isinstance(a, Axis) for side in ("left", "right", "below",
-                                                  "above")
-                  for a in getattr(p, side))]
+           if not str(getattr(p, "name", "") or "").startswith("dash_by_")
+           and any(isinstance(a, Axis) for side in ("left", "right", "below",
+                                                    "above")
+                   for a in getattr(p, side))]
     # WP-30 P1.15c: by() panels draw different axes (twoway's outer-axes
     # rule), so two builds' panels are paired in label order, not in
     # select()'s unordered one.

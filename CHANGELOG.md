@@ -1002,6 +1002,7 @@ and now matches Stata.
 
 ### Fixed in WP-41
 
+- A by() graph's y tick labels are drawn at the panels' size, as its x tick labels are; scatter mpg weight, by(foreign) drew them at 10pt beside 8.5pt x labels, now 8.5pt (WP-41, VF-6)
 - contour and contourline under by() cut every panel at the first panel's cuts, as twoway does; by(rep78, total) drew 4, 5, 3, 3, 4 and 3 levels, now 4 in every panel (WP-41, BY-28)
 - scale() beside by() no longer scales the panels and by(, scale()) scales the whole graph, as twoway does; scatter mpg weight, scale(1.5) by(foreign) drew 12.75pt tick labels, now 8.5pt (WP-41, BY-2)
 - function and kdensity range(varname) under by() span each panel's own range, as twoway does; Domestic and Foreign both drew 1760-4840, now 1800-4840 and 1760-3420 (WP-41, BY-27)
