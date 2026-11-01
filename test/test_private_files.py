@@ -142,6 +142,11 @@ def _parse_frame(b):
 
 
 def _fake_proc_class(on_init=None, stdin_fail=None):
+    # Only the test's own thread is counted: a daemon thread an earlier test
+    # in the same worker left running can start a process while Popen is
+    # faked (seen once in the 01nov2026 gate, never alone).
+    owner = threading.get_ident()
+
     class _FakeProc:
         made = 0
         cmd = None
@@ -149,6 +154,8 @@ def _fake_proc_class(on_init=None, stdin_fail=None):
         last = None
 
         def __init__(self, cmd, **kw):
+            if threading.get_ident() != owner:
+                raise OSError("a process started off the test's thread")
             type(self).made += 1
             type(self).cmd = list(cmd)
             type(self).kw = kw
