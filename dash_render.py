@@ -57802,6 +57802,11 @@ def _dash_by_yaxis_cell(scheme, name, panel, axis):
         new = type(axis)(**kw)
     except Exception:  # noqa: BLE001 -- the panel keeps its axis
         return None
+    # Built after the canvas-text pass from the panel's finished axis: its
+    # tick-label overrides and fonts are already drawn as twoway draws
+    # them, so the copy is finished as it stands (a second translation is
+    # not idempotent).
+    setattr(new, _DASH_GRAPH_TEXT_DONE, True)
     cell.add_layout(new, "left")
     # One invisible renderer, as _dash_by_text_cell's: a Plot with none
     # logs W-1000 (MISSING_RENDERERS) at build.
