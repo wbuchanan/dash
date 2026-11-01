@@ -88,7 +88,10 @@ def _start_memory_guard(config):
     a run's workers once exhausted it, 01nov2026)."""
     if hasattr(config, "workerinput") or os.environ.get("DASH_NO_MEMORY_GUARD"):
         return
-    import memory_guard
+    try:
+        import memory_guard
+    except ImportError:   # a copied conftest run elsewhere (test_strict_mode)
+        return
     memory_guard.start_watchdog()
 
 
@@ -97,7 +100,10 @@ def _trim_worker_memory():
     """After each module, a worker past memory_guard's cap drops the test
     modules' build caches."""
     yield
-    import memory_guard
+    try:
+        import memory_guard
+    except ImportError:
+        return
     memory_guard.trim_worker()
 
 
