@@ -76435,7 +76435,6 @@ class ServerAppBuilder:
             imports.
         """
         import ast as _ast_sup
-        import re as _re_sup
         import sys as _sys_sup
 
         used, assigned = _dash_scan_constants(lines)
