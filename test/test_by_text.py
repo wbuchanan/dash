@@ -521,9 +521,13 @@ class TestEdgeTitles:
             # No head: the panels are row 0, the foot row 2.
             # WP-41 VF-6: every column one right of the outer y axis
             # column (dash_by_yaxis_0); was one fewer.
-            assert kids["dash_by_r1title"] == (0, 4, 1, 1)
-            assert kids["dash_by_r2title"] == (0, 5, 1, 1)
-            assert kids["dash_by_ruler"] == (0, 6, 1, 1)
+            # Flipped (WP-45 GW-6): the stacking ruler sits just right of
+            # the panels, so R1 and R2 end at the graph region's edge, as
+            # twoway's do (bp75: R2's box ends at the margin); it was the
+            # last column.
+            assert kids["dash_by_ruler"] == (0, 4, 1, 1)
+            assert kids["dash_by_r1title"] == (0, 5, 1, 1)
+            assert kids["dash_by_r2title"] == (0, 6, 1, 1)
             assert kids["dash_by_foot"] == (2, 0, 1, 7)
             assert got["dash_by_r1title"] == ["R1"]
             assert got["dash_by_r2title"] == ["R2"]

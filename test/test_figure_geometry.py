@@ -54,6 +54,13 @@ def _figs(mode, go, scheme="stcolor"):
     return roots, out
 
 
+def _inner(ratio, scheme="stcolor"):
+    """The figure's width/height inside the scheme's graph margin (WP-45
+    GW-6): the graph region keeps *ratio*."""
+    return dr._dash_inner_ratio(ratio, dr._dash_graph_margin_pct(
+        {}, dr.SchemeParser(scheme)))
+
+
 def _pt(css):
     return dr.OptionTranslator.css_to_pt(css)
 
@@ -271,3 +278,56 @@ console.log(JSON.stringify({first: first, second: writes - first,
         assert len(shown) == 1 and shown[0].toolbar.autohide is True
         css = " ".join(getattr(s, "css", "") for s in shown[0].stylesheets)
         assert dr._DASH_TOOLBAR_OVERLAY_CSS in css
+
+
+class TestGraphRegion:
+    """WP-45 GW-6 (VF-7): the scheme's graph margin is drawn around the
+    graph, a by() array included (figure_geometry_truth.json M_stcolor:
+    the plot region's top 113.4 of 3240 SVG units below the edge, 3.5% of
+    the smaller side; M_by_stcolor alike), in the graph region's fill:
+    the figure's (or the by() grid's) own CSS padding, a share of its
+    width, inside a box that keeps the graph's shape."""
+
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("go", [{}, {"by": "foreign"}])
+    def test_the_margin_box(self, go, mode):
+        roots, figs = _figs(mode, go)
+        boxes = [m for r in roots for m in r.references()
+                 if "dash_graph_region" in (getattr(m, "tags", None) or [])]
+        assert len(boxes) == 1, boxes
+        st = dict(boxes[0].styles or {})
+        # 3.5 units of min(7.5, 4.5) in, as a share of the 7.5 in width.
+        pct = 3.5 * 4.5 / 7.5
+        assert st["padding"] == " ".join(["%.4g%%" % pct] * 4)
+        assert st["background-color"].lower() == \
+            str(figs[0].border_fill_color).lower()
+
+    def test_the_inner_ratio(self):
+        pct = [2.1] * 4
+        r = 7.5 / 4.5
+        assert dr._dash_inner_ratio(r, pct) == pytest.approx(
+            (1 - 0.042) / (1 / r - 0.042))
+        st = dr.SchemeParser("stcolor")
+        assert dr._dash_graph_margin_pct({}, st) == pytest.approx([2.1] * 4)
+
+    def test_the_ruler_column(self):
+        """by()'s stacking ruler goes just right of the panels: the columns
+        from there move one right and a cell spanning across grows one."""
+        from bokeh.models import Plot
+        def cell(name=None):
+            return Plot(name=name) if name else Plot()
+        p1, p2, r1 = cell(), cell(), cell("dash_by_r1title")
+        head, xt, ru = cell("dash_by_head"), cell("dash_by_xtitle"), \
+            cell("dash_by_ruler")
+        kids = [(head, 0, 0, 1, 4), (p1, 1, 1), (p2, 1, 2),
+                (r1, 1, 3, 1, 1), (xt, 2, 1, 1, 2)]
+        out = dr._dash_by_ruler_column(kids, ru)
+        got = {id(c[0]): tuple(c[1:]) for c in out}
+        assert got[id(ru)] == (1, 3, 1, 1)
+        assert got[id(r1)] == (1, 4, 1, 1)
+        assert got[id(head)] == (0, 0, 1, 5)
+        assert got[id(xt)] == (2, 1, 1, 2)
+        assert got[id(p2)] == (1, 2)
+        # No panel: the ruler takes the last column, as before.
+        out = dr._dash_by_ruler_column([(head, 0, 0, 1, 2)], ru)
+        assert tuple(out[-1][1:]) == (0, 2, 1, 1)

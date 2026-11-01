@@ -730,10 +730,14 @@ _PLAIN_DIGESTS = {
     # (DECISIONS A-1); the same under both Pythons.
     # 7b91a824... -> 5b51f15b... saved, 945ef1ea... -> 28fb7ffe... served:
     # WP-45 VF-4 with DECISIONS D66/D67 (the graph drawn as one picture, its width-scale callback on every figure; one toolbar per page, laid over it); the same under both Pythons.
+    # 5b51f15b... -> 14933864... saved, 28fb7ffe... -> d46d95fa... served:
+    # WP-45 GW-6, the figure's graph-region box (its margin padding, fill
+    # and tag in its styles) and the span hook's graph box; measured on
+    # Python 3.14 only.
     ("saved", "plain"):
-        "5b51f15b98c5dcdb0395def64c757ac4fb8e0c3f2c6460e849ffdb624b6604bc",
+        "149338646cf80ab7efd9e087f7b5efde6c3ff9ad9227eb8f013393fbf4e671fb",
     ("saved", "yaxis2"):
-        "5b51f15b98c5dcdb0395def64c757ac4fb8e0c3f2c6460e849ffdb624b6604bc",
+        "149338646cf80ab7efd9e087f7b5efde6c3ff9ad9227eb8f013393fbf4e671fb",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -748,9 +752,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "28fb7ffe4c3d1960aaf6f08c035f8bcafd4a4d9cd7c0b421621108bd5da4d68c",
+        "d46d95fa73a1e9384b8faad2209ffcfadb6a5dd46b9cbe01140aa5accfcfe9ee",
     ("served", "yaxis2"):
-        "28fb7ffe4c3d1960aaf6f08c035f8bcafd4a4d9cd7c0b421621108bd5da4d68c",
+        "d46d95fa73a1e9384b8faad2209ffcfadb6a5dd46b9cbe01140aa5accfcfe9ee",
 }
 
 

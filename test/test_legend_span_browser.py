@@ -230,6 +230,9 @@ class TestTheTitlesSpan:
 _BY_JS = r"""
 <script>
 function rect(el){const r=el.getBoundingClientRect();return [r.left,r.top,r.right,r.bottom];}
+// Flipped (WP-45 GW-6): the graph is the grid's graph region box, the
+// scheme's graph margin (its CSS padding) included, where it was the grid.
+function gbox(v){for(let q=v;q!=null;q=q.parent){if(q.model&&q.el&&(q.model.tags||[]).includes('dash_graph_region'))return q.el;}return v.el;}
 function state() {
   const boxes = [], pframes = [], prows = [], pcells = [];
   let grid = null, pgrid = null;
@@ -238,9 +241,9 @@ function state() {
     if (v.model && v.model.type === 'GridBox') box = v;
     if (v.model && (v.model.name === 'dash_by_legend'
         || v.model.name === 'dash_by_clegend'
-        || v.model.name === 'dash_by_plegend') && box) grid = rect(box.el);
+        || v.model.name === 'dash_by_plegend') && box) grid = rect(gbox(box));
     if (v.frame && v.model && !v.model.name && box && !pgrid) {
-      pgrid = rect(box.el);
+      pgrid = rect(gbox(box));
     }
     if (v.frame && v.model && !v.model.name && box) {
       pframes.push(v.frame.bbox.width);
@@ -313,7 +316,7 @@ function state() {
   if (!grid) grid = pgrid;
   // The panels plus their axes: the union of the grid's panel figures
   // (every child not named dash_by_*).
-  let panels = null;
+  let panels = null, pright = null;
   const gv = (() => { let f = null; const look = (v) => { if (!v || f) return;
     if (v.model && v.model.type === 'GridBox' && (v.child_views || []).some(
       (k) => k.model && (k.model.name === 'dash_by_legend'
@@ -322,18 +325,32 @@ function state() {
     for (const c of (v.child_views || [])) look(c); };
     for (const v of Object.values(Bokeh.index)) look(v); return f; })();
   if (gv) {
+    let yt = null;
     for (const k of gv.child_views || []) {
       const nm = (k.model && k.model.name) || '';
+      if (nm === 'dash_by_ytitle') { yt = k; continue; }
       // WP-41 VF-6: a row's outer y axis cell is the panels' own axis.
-      if (nm.startsWith('dash_by_') && !nm.startsWith('dash_by_yaxis_')) continue;
+      // Flipped (WP-45 GW-6): the stacking ruler closes the panels on the
+      // right, as twoway's panels reach the graph region's edge.
+      if (nm.startsWith('dash_by_') && !nm.startsWith('dash_by_yaxis_')
+          && nm !== 'dash_by_ruler') continue;
       const r = rect(k.el);
       if (!(r[2] > r[0])) continue;
+      if (nm !== 'dash_by_ruler') pright = pright == null ? r[2] : Math.max(pright, r[2]);
       panels = panels == null ? r : [Math.min(panels[0], r[0]),
         Math.min(panels[1], r[1]), Math.max(panels[2], r[2]),
         Math.max(panels[3], r[3])];
     }
+    // Flipped (WP-45 GW-6): twoway's panels start one y-title size right
+    // of the y title's cell (by_text_truth.json bp40: 113.4 + 112.56 of
+    // 5400), not at dash's y labels.
+    const tm = yt && (yt.model.left || []).find((t) => t && t.type === 'Title' && t.text);
+    if (panels && tm) {
+      const fs = String(tm.text_font_size || ''), fn = parseFloat(fs);
+      panels[0] = Math.min(panels[0], rect(yt.el)[0] + (/pt$/.test(fs) ? fn * 4 / 3 : fn));
+    }
   }
-  return {grid, boxes, panels, pframes, prows, pcells};
+  return {grid, boxes, panels, pright, pframes, prows, pcells};
 }
 addEventListener('load', () => setTimeout(() => {
   const wide = state();
@@ -671,7 +688,9 @@ class TestByLegendInAHole:
             # wrong because twoway draws every panel's plot region equally
             # wide (by_layout_truth.json Y17); the y labels are a cell of
             # their own now.
-            assert abs(c[2] - st["panels"][2]) <= 1.5, st
+            # Flipped (WP-45 GW-6): against the panel columns' right, as
+            # the panels' box now reaches the stacking ruler past them.
+            assert abs(c[2] - st["pright"]) <= 1.5, st
             assert c[2] - c[0] > 300, st
             f = st["pframes"]
             assert max(f) - min(f) <= 2, st

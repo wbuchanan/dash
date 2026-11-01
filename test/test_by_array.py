@@ -20,6 +20,7 @@ Measured (test/fixtures/by_remainder_truth.json, s2color):
 - style(altleg) draws as style(default) (bystyle_altleg).
 """
 import os
+import re
 import sys
 
 import pytest
@@ -107,6 +108,14 @@ class TestShrinkFactor:
         assert not [n for n in _notes(mode) if "shrink" in n], _notes(mode)
 
 
+def _same(a, b):
+    """Two CSS percentage lists equal to 0.002 (the sum of two rounded
+    %.4g terms, WP-45 GW-6)."""
+    x = [float(v) for v in re.findall(r"-?[0-9.]+", str(a))]
+    y = [float(v) for v in re.findall(r"-?[0-9.]+", str(b))]
+    return len(x) == len(y) and all(abs(p - q) <= 0.002 for p, q in zip(x, y))
+
+
 class TestArrayInset:
     @staticmethod
     def _pad(mode, name):
@@ -130,22 +139,25 @@ class TestArrayInset:
     # the inset is a CSS percentage of the cell's width: the units times
     # min(W, H) / W, the graph's own ratio (s2color 5.5 x 4 in: 4 / 5.5),
     # which follows any resize.
+    # Flipped (WP-45 GW-6): the padding was the change alone; the scheme's
+    # graph margin (s2color's medium, 3.5 units a side) is drawn round the
+    # array now, so the padding is the scheme's margin plus the change.
     @staticmethod
     def _pct(*units):
         k = min(1.0, 4.0 / 5.5)
-        return " ".join("%.4g%%" % (u * k) for u in units)
+        return " ".join("%.4g%%" % ((u + 3.5) * k) for u in units)
 
     @pytest.mark.parametrize("mode", MODES)
     def test_graph_margin(self, mode):
-        assert self._pad(mode, "gm_large") == self._pct(4.5, 4.5, 4.5, 4.5)
+        assert _same(self._pad(mode, "gm_large"), self._pct(4.5, 4.5, 4.5, 4.5))
 
     @pytest.mark.parametrize("mode", MODES)
     def test_plot_margin(self, mode):
-        assert self._pad(mode, "pm_large") == self._pct(8.0, 8.0, 8.0, 8.0)
+        assert _same(self._pad(mode, "pm_large"), self._pct(8.0, 8.0, 8.0, 8.0))
 
     @pytest.mark.parametrize("mode", MODES)
     def test_terms_add(self, mode):
-        assert self._pad(mode, "pm_both") == self._pct(1.2, 1.2, 1.2, 6.2)
+        assert _same(self._pad(mode, "pm_both"), self._pct(1.2, 1.2, 1.2, 6.2))
 
     def test_the_inset_follows_the_graphs_ratio(self):
         """A taller-than-wide graph: min(W, H) is W, the units themselves

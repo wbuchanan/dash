@@ -2948,7 +2948,6 @@ GAPS4_OPEN = {
     'ST-17': 'Scheme directives read but not drawn: clockdir p/p#, title textboxstyle, legend_col_gap, title clocks 2-4/8-10; a scheme name must not be a path; files over 1 MB or linked out are skipped',
     'ST-10': 'A shipped-name scheme placed before BASE (adopath ++) is ignored; dash always uses its own translation',
     'ST-16': 'An unknown scheme() is refused r(198) where twoway notes and draws s2color',
-    'GW-6': "The graph-region outline is not stroked by default, and the scheme's graph margin (3.5 units) is not drawn (Bokeh's 5 px min_border is used)",
     'ST-21': "graphregion's inner box and region lalign() are named; ifcolor() fills the whole border; the plot margin is a share of the whole graph",
     'GW-1': "xsize()/ysize() with units (10cm, 3in, 200pt) are ignored with a note that leaks 'None'",
     'ST-22': "Colour edges: navy*52 intensity rule, blank stylelist element refused in dash's words",

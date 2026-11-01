@@ -28263,10 +28263,14 @@ for (const [m, p, b, kind] of entries) {
   }
 }
 if (typeof Bokeh !== "undefined" && Bokeh.index != null) {
+  // Deferred, as the size follow's: a layout asked for inside the
+  // browser's resize observer is what makes it report a loop.
   for (const pl of plots) {
     let pv = null;
     try { pv = Bokeh.index.find_one(pl); } catch (e) { pv = null; }
-    if (pv != null && pv.invalidate_layout != null) { pv.invalidate_layout(); }
+    if (pv != null && pv.invalidate_layout != null) {
+      setTimeout(() => pv.invalidate_layout(), 0);
+    }
   }
   // Each figure's size follow reads the frame these sizes leave: run it
   // again once they are laid out.
@@ -39966,6 +39970,15 @@ const sd = (typeof sides !== "undefined" && sides) ? sides : [0, 0, 0, 0];
 // "panel": a by() panel's graph, as twoway draws it: from just left of its
 // y labels to the graph's right margin (of the by() grid's size) past its
 // frame.
+const graphBox = (b) => {
+  for (let q = b; q != null; q = q.parent) {
+    if (q.model != null && q.el != null
+        && (q.model.tags || []).includes("dash_graph_region")) {
+      return q.el;
+    }
+  }
+  return b.el;
+};
 const region = (ref) => {
   if (ref === "panel") {
     let b = pv.parent;
@@ -39974,7 +39987,7 @@ const region = (ref) => {
     }
     let v = Math.min(W, H) / 100;
     if (b != null && b.el != null) {
-      const q = b.el.getBoundingClientRect();
+      const q = graphBox(b).getBoundingClientRect();
       if (q.width > 0 && q.height > 0) {
         v = Math.min(q.width, q.height) / 100;
       }
@@ -40018,7 +40031,10 @@ const region = (ref) => {
       a = a.parent;
     }
     if (a == null || a.el == null || pv.canvas_view == null) { return null; }
-    const g = a.el.getBoundingClientRect();
+    // WP-45 GW-6: a grid drawn inside its graph region's margin (a
+    // dash_graph_region box's CSS padding) is placed against that whole
+    // box, as twoway measures from the graph's edge.
+    const g = graphBox(a).getBoundingClientRect();
     c = pv.canvas_view.el.getBoundingClientRect();
     x0 = g.left - c.left; y0 = g.top - c.top; gw = g.width; gh = g.height;
     if (!(gw > 0) || !(gh > 0)) { return null; }
@@ -40028,12 +40044,14 @@ const region = (ref) => {
              T: y0 + (+sd[3] || 0) * u, B: y0 + gh - (+sd[2] || 0) * u, u,
              gw, gh};
   if (ref !== "panels") { return r; }
-  let p = null;
+  let p = null, yt = null;
   for (const k of (a.child_views || [])) {
     const nm = (k.model != null && k.model.name) || "";
-    // WP-41 VF-6: a row's outer y axis cell is the panels' own axis.
-    if ((nm.startsWith("dash_by_") && !nm.startsWith("dash_by_yaxis_"))
-        || k.el == null) { continue; }
+    if (nm === "dash_by_ytitle" && k.el != null) { yt = k; continue; }
+    // WP-41 VF-6: a row's outer y axis cell is the panels' own axis; the
+    // stacking ruler (WP-45 GW-6) closes the panels' columns on the right.
+    if ((nm.startsWith("dash_by_") && !nm.startsWith("dash_by_yaxis_")
+         && nm !== "dash_by_ruler") || k.el == null) { continue; }
     const b = k.el.getBoundingClientRect();
     if (!(b.width > 0) || !(b.height > 0)) { continue; }
     p = p == null ? {L: b.left, R: b.right, T: b.top, B: b.bottom}
@@ -40041,6 +40059,20 @@ const region = (ref) => {
          T: Math.min(p.T, b.top), B: Math.max(p.B, b.bottom)};
   }
   if (p == null) { return null; }
+  if (yt != null) {
+    // WP-45 GW-6: twoway's panels start one y-title size right of the
+    // y title's cell (by_text_truth.json bp40: the title X at 245.4 of
+    // 5400, the graph margin 113.4 plus the title's 112.56 plus the
+    // box's 0.6 units), wherever dash's y labels start.
+    const yb = yt.el.getBoundingClientRect();
+    const tm = yt.model.left != null ? yt.model.left.find(
+      (t) => t != null && t.type === "Title" && t.text) : null;
+    const fs = tm != null ? String(tm.text_font_size || "") : "";
+    const fn = parseFloat(fs);
+    if (yb.width > 0 && fn > 0) {
+      p.L = Math.min(p.L, yb.left + (/pt$/.test(fs) ? fn * 4 / 3 : fn));
+    }
+  }
   const q = {L: Math.max(r.L, p.L - c.left), R: Math.min(r.R, p.R - c.left),
              T: Math.max(r.T, p.T - c.top), B: Math.min(r.B, p.B - c.top), u,
              pT: p.T - c.top, pB: p.B - c.top};
@@ -42134,8 +42166,10 @@ if (x != null) {
   shift(x, [ax, ax, ay, ay]);
 }
 // A border is not a layout property in BokehJS: lay the figure out again.
+// Deferred: a layout asked for inside the browser's resize observer is
+// what makes it report a loop.
 if (moved && view != null && view.invalidate_layout != null) {
-  view.invalidate_layout();
+  setTimeout(() => view.invalidate_layout(), 0);
 }
 """
 
@@ -53396,6 +53430,7 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
         # panels, as twoway's does (BUGS.md "A by() legend, key or text
         # row was added under panels that kept their proportion, where
         # twoway shortens the panels"), set as the grid is laid out.
+        _fit_cb = None
         if not own_ar and figs[0]._dash_array_ar:
             # WP-45 VF-11: fxsize()/fysize() narrow or shorten the array.
             _fxy = {}
@@ -53403,8 +53438,14 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
                 _v = _dash_frame_aspect({"aspectratio": go.get(_k)})
                 if _v is not None and _v < 100:
                     _fxy[_k[:2] + "_px"] = int(round(_v / 100.0 * 384.0))
-            _dash_by_fit_hook(figs, float(figs[0]._dash_array_ar), nr, nc,
-                              **_fxy)
+            # WP-45 GW-6: the array is what the graph region holds inside
+            # the scheme's margin (unless xsize()/ysize() fix its box).
+            _ratio = float(figs[0]._dash_array_ar)
+            _gm = getattr(figs[0], "_dash_gmargin", None)
+            if _gm and _dash_graph_box_in(go, *(getattr(
+                    figs[0], "_dash_gsize", None) or (7.5, 4.5))) is None:
+                _ratio = _dash_inner_ratio(_ratio, _gm)
+            _fit_cb = _dash_by_fit_hook(figs, _ratio, nr, nc, **_fxy)
         elif own_ar:
             # WP-41 BY-18: aspectratio(#) shapes each panel's plot region,
             # as twoway does.
@@ -53425,8 +53466,7 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
             # _DASH_BY_STACK_JS).
             ruler = side["hook"].args.get("ruler")
             if getattr(ruler, "name", None) == "dash_by_ruler":
-                grid.children = list(grid.children) + [
-                    (ruler, 0, cn, 1, 1)]
+                grid.children = _dash_by_ruler_column(grid.children, ruler)
                 cn += 1
         # by()'s overall text above and below the panels (WP-30 P1.15a).
         _dash_by_frame_grid(grid, getattr(figs[0], "_dash_by_chrome", None),
@@ -53455,28 +53495,48 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
         # the graph's inch width.
         _gw = (_box[0] if _box is not None else
                (getattr(figs[0], "_dash_gsize", None) or (7.5, 4.5))[0])
+        _gm = getattr(figs[0], "_dash_gmargin", None) if _box is None \
+            else None
+        if _gm:
+            _gw = _gw * (1.0 - (_gm[0] + _gm[1]) / 100.0)
         _dash_width_scale(figs[0], [grid], float(_gw) * 96.0,
                           OptionTranslator.size_ref_of(figs[0]), grid=grid)
         cell = _dash_name_save(_dash_reflow(grid, stack=_box is None))
+        if _gm:
+            # WP-45 GW-6: the scheme's graph margin round the array, with
+            # graphregion(margin())'s change; the fit hook keeps the
+            # graph's shape over what the two leave.
+            cell = _dash_graph_region_box(cell, _gm,
+                                          figs[0].border_fill_color)
+            _cb = _fit_cb
+            if _cb is not None and figs[0]._dash_array_ar:
+                _cb.args = dict(_cb.args, ratio=_dash_inner_ratio(
+                    float(figs[0]._dash_array_ar), cell._dash_gm_total))
         # A by() graph's data table, once under its grid (WP-31 H2t, D6).
         tbl = getattr(figs[0], "_dash_table", None)
         return column(cell, *tbl, sizing_mode="stretch_width") if tbl \
             else cell
     if name in figures:
         _dash_fxy_size(figures[name], gopts_of(name) or {})
+        # A graph's data table under its figure (WP-31 H2t).
+        tbl = getattr(figures[name], "_dash_table", None)
         _nom = getattr(figures[name], "_dash_nominal_px", None)
+        _gm = getattr(figures[name], "_dash_gmargin", None)
         if _nom and getattr(figures[name], "sizing_mode", None) != "fixed":
-            # D66: the graph drawn as one picture.
-            _dash_width_scale(figures[name], [figures[name]],
-                              float(_nom[0]),
-                              OptionTranslator.size_ref_of(figures[name]))
+            _f = figures[name]
+            # D66: the graph drawn as one picture (its box's width, the
+            # margin included, against the graph's inch width).
+            _dash_width_scale(_f, [_f], float(_nom[0]),
+                              OptionTranslator.size_ref_of(_f))
+            if _gm:
+                # WP-45 GW-6: the figure's box keeps the graph's shape and
+                # draws inside the scheme's margin (its CSS padding).
+                _dash_graph_region_box(_f, _gm, _f.border_fill_color)
         elif _nom:
             # A box at 96 px an inch: twoway's unit only.
             _dash_width_scale(figures[name], [figures[name]],
                               float(_nom[0]),
                               OptionTranslator.size_ref_of(figures[name]))
-        # A graph's data table under its figure (WP-31 H2t).
-        tbl = getattr(figures[name], "_dash_table", None)
         if getattr(figures[name], "sizing_mode", None) == "fixed":
             # WP-45 VF-4: a figure at its xsize()/ysize() box keeps its
             # size in a narrower cell, which scrolls sideways (the page
@@ -57563,9 +57623,21 @@ def _dash_by_title_cell(scheme, name, text, side, axis):
         v = getattr(axis, src, None) if axis is not None else None
         if v is not None:
             kw[dst] = v
+    if side in ("left", "right"):
+        # WP-45 GW-6: an upright title's box is its text, flush with the
+        # graph region's edge, as twoway draws by()'s y title (bp40: its
+        # 112.56 units from the margin at 113.4 to the panels at 226.0)
+        # and r1title/r2title (bp75: R2 ending at the margin).
+        kw["standoff"] = 0
     title = Title(text=str(text), align="center", name=name + "_text", **kw)
     setattr(title, _DASH_GRAPH_TEXT_DONE, True)
     cell.add_layout(title, side)
+    if side in ("above", "below"):
+        # WP-45 GW-6: centred on the panels' box, from one y-title size
+        # right of the y title's cell to the panels' columns' end, as
+        # twoway centres by()'s x title (2251.29 of 5400 on 226.0 ..
+        # 4276.8), not on the x title's own cell.
+        _dash_span(cell, title, "title", side, "center", 0.0, ref="panels")
     # Centred on the panels, as twoway centres its shared axis titles
     # (BUGS.md "A by() panel row was taller than its panels"; measured
     # 19oct2026: the y title at 1499.34 of 3240 on the panels' box 113.4
@@ -58704,7 +58776,9 @@ def _dash_error_hooks(err_div):
     """The window error hooks of a saved page (WP-31 H1): one ``CustomJS``
     for ``document_ready`` that sets ``window.onerror`` and listens for
     ``unhandledrejection``, each writing the failure into *err_div* (the
-    filter row's error status Div) through ``dash_report_js_error``.  A
+    filter row's error status Div) through ``dash_report_js_error``; the
+    browser's benign "ResizeObserver loop" notice (a page whose height
+    follows its width, WP-45 GW-6) is not a failure.  A
     Bokeh model, serialised with the document, so the page gains no
     inline script.  ``[]`` when *err_div* is None."""
     from bokeh.models import CustomJS
@@ -58714,7 +58788,8 @@ def _dash_error_hooks(err_div):
         name="dash_error_hooks", args={"d": err_div},
         code=_DASH_JS_REPORT_JS
         + "\nwindow.onerror = function (msg, src, line, col, err) "
-          "{ dash_report_js_error(err || msg, d); };\n"
+          "{ if (String(msg).indexOf('ResizeObserver loop') >= 0) "
+          "{ return; } dash_report_js_error(err || msg, d); };\n"
           "window.addEventListener('unhandledrejection', function (ev) "
           "{ dash_report_js_error(ev && ev.reason ? ev.reason : ev, d); });"
           "\n")]
@@ -58857,6 +58932,72 @@ def _dash_by_apply_regions(figs, cells, graph_opts, scheme, seen=None,
         _dash_apply_regions(cell, {"graphregion": graph}, scheme, seen, key)
         cell.background_fill_color = cell.border_fill_color
         cell.outline_line_color = None
+
+
+def _dash_graph_margin_pct(graph_opts, scheme):
+    """The scheme's graph margin (``margin graph``, WP-45 GW-6) as
+    ``[left, right, bottom, top]`` percentages of the graph's width: each
+    side's relative units times min(W, H) / W
+    (:func:`_dash_short_side_share`), so a CSS padding holds it at every
+    drawn width, as twoway's margin is a share of the smaller side."""
+    if _dash_by_is_combine((graph_opts or {}).get("by")):
+        # by(, style(combine)): graph combine's own inset is the whole
+        # margin (_DASH_BY_COMBINE_INSET_RS, measured from the graph's
+        # edge), set on the array by _dash_by_array_styles.
+        return [0.0, 0.0, 0.0, 0.0]
+    sch = scheme if scheme is not None else SchemeParser.fallback()
+    try:
+        sides = [float(v) for v in sch.graph_margin_sides]
+    except Exception:  # noqa: BLE001 -- the shipped default, medium
+        sides = [3.5] * 4
+    k = _dash_short_side_share(graph_opts, sch)
+    return [max(0.0, min(40.0, v * k)) for v in sides]
+
+
+def _dash_inner_ratio(ratio, pct):
+    """The width/height of what a graph region of width/height *ratio*
+    holds inside its margin *pct* (``_dash_graph_margin_pct``)."""
+    try:
+        w = 1.0 - (pct[0] + pct[1]) / 100.0
+        h = 1.0 / float(ratio) - (pct[2] + pct[3]) / 100.0
+    except (TypeError, ValueError, ZeroDivisionError):
+        return ratio
+    return w / h if w > 0 and h > 0 else ratio
+
+
+def _dash_graph_region_box(item, pct, fill):
+    """*item* (a figure or a by() grid) drawn inside its graph region
+    (WP-45 GW-6): the scheme's graph margin *pct* (percentages of its
+    width, CSS order top right bottom left) as the item's own CSS padding
+    and the region's *fill* as its background, through its ``styles``
+    (no inline style text; the model tree is unchanged).  Tags the item
+    ``dash_graph_region``; returns it."""
+    st = dict(item.styles or {})
+    # What the item's own styles already inset or widen it by (a by()
+    # grid's graphregion(margin()) change, WP-41 BY-18: padding, or a
+    # negative margin with its width widened), in CSS order t r b l, joins
+    # the scheme's margin: one padding, never below 0.
+    tot = [pct[3], pct[1], pct[2], pct[0]]
+    for key in ("padding", "margin"):
+        vals = re.findall(r"-?[0-9.]+(?=%)", str(st.get(key, "") or ""))
+        if len(vals) == 4:
+            tot = [a + float(b) for a, b in zip(tot, vals)]
+    for key in ("margin", "width", "max-width", "overflow"):
+        st.pop(key, None)
+    tot = [max(0.0, v) for v in tot]
+    item._dash_gm_total = [tot[3], tot[1], tot[2], tot[0]]
+    st["padding"] = " ".join("%.4g%%" % v for v in tot)
+    st["box-sizing"] = "border-box"
+    # BokehJS sizes its event and overlay layers to the box, not to what
+    # the padding leaves: without this they overhang the cell by the
+    # margin and the page scrolls sideways (measured: 778 px at 768).
+    st["overflow"] = "hidden"
+    if isinstance(fill, str) and fill and "background-color" not in st:
+        st["background-color"] = fill
+    item.styles = st
+    if "dash_graph_region" not in (item.tags or []):
+        item.tags = list(item.tags or []) + ["dash_graph_region"]
+    return item
 
 
 def _dash_short_side_share(graph_opts, scheme):
@@ -59161,6 +59302,34 @@ def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
         + [c for _k, c, _w in side["cells"]], go, scheme, seen, key)
     figs[0]._dash_by_side = side
     return side
+
+
+def _dash_by_ruler_column(children, ruler):
+    """*children* (a by() grid's) with the stacked view's *ruler* in a
+    column of its own just right of the panels (WP-45 GW-6): the columns
+    from there on move one right and a cell spanning across it spans one
+    more, so by()'s r1title, r2title and a right legend end at the graph
+    region's edge, as twoway draws them (by_text_truth.json bp75: R2's
+    box ends at the margin, 5286.6 of 5400), not one grid gap short."""
+    kids = [tuple(c) for c in (children or [])]
+    panels = [c for c in kids if not str(
+        getattr(c[0], "name", "") or "").startswith("dash_by_")]
+    if not panels:
+        n = max([int(c[2]) + (int(c[4]) if len(c) >= 5 else 1)
+                 for c in kids] or [0])
+        return kids + [(ruler, 0, n, 1, 1)]
+    at = max(int(c[2]) + (int(c[4]) if len(c) >= 5 else 1) for c in panels)
+    row = min(int(c[1]) for c in panels)
+    out = []
+    for c in kids:
+        col = int(c[2])
+        span = int(c[4]) if len(c) >= 5 else 1
+        if col >= at:
+            c = (c[0], c[1], col + 1) + c[3:]
+        elif len(c) >= 5 and col + span > at:
+            c = c[:4] + (span + 1,)
+        out.append(c)
+    return out + [(ruler, row, at, 1, 1)]
 
 
 def _dash_by_side_grid(grid, side, nrows, ncols):
@@ -67314,6 +67483,7 @@ class DashRenderer:
         _dash_apply_scale(fig, _dash_scale_factor(graph_opts))
         fig._dash_gsize = (getattr(self.scheme, "graphsize_x", None) or 5.5,
                            getattr(self.scheme, "graphsize_y", None) or 4.0)
+        fig._dash_gmargin = _dash_graph_margin_pct(graph_opts, self.scheme)
         _dash_overhangs(fig, graph_opts)
         # WP-36 DG-14: a dashed line keeps the figure on canvas.
         _dash_dashes_on_canvas(fig)
@@ -71107,6 +71277,9 @@ class ServerAppBuilder:
                          "_dash_parse_tabs", "_dash_tab_panels",
                          # by()'s shrink and its array's CSS (WP-31 D10b).
                          "_dash_by_shrink_factor", "_dash_short_side_share",
+                         # WP-45 GW-6: the graph region's margin box.
+                         "_dash_graph_margin_pct", "_dash_inner_ratio",
+                         "_dash_graph_region_box",
                          "_dash_by_array_styles",
                          # A tab's own layout() (WP-31 D14).
                          "_dash_tab_layout", "_dash_tab_grid",
@@ -71164,6 +71337,7 @@ class ServerAppBuilder:
                          # WP-31 D3b: a panel label at ring(0).
                          "_dash_by_label_inside",
                          "_dash_by_side", "_dash_by_side_grid",
+                         "_dash_by_ruler_column",
                          "_dash_by_stack_hook", "_dash_by_stack_hooks",
                          # The arrowheads' document_ready hooks (WP-31 C1).
                          "_dash_arrow_head_hooks",
@@ -74271,6 +74445,7 @@ class ServerAppBuilder:
             "        # applies them.",
             "        _dash_apply_scale(fig, _dash_scale_factor(go))",
             "        fig._dash_gsize = (_SCHEME_GRAPHSIZE_X or 5.5, _SCHEME_GRAPHSIZE_Y or 4.0)",
+            "        fig._dash_gmargin = _dash_graph_margin_pct(go, _dash_cur_scheme())",
             "        _dash_overhangs(fig, go)",
             "        _dash_dashes_on_canvas(fig)",
             "        if _fac_label is None:",

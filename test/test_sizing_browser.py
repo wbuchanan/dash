@@ -178,12 +178,16 @@ _SHAPE_JS = r"""
 <script>
 addEventListener('load', () => setTimeout(() => {
   const plots = [];
-  let grid = null, deep = -1;
+  let grid = null, deep = -1, outer = null;
   const visit = (v, d) => {
     if (!v) return;
     if (v.frame && v.model) {
       const f = v.frame.bbox;
       plots.push([v.el.offsetWidth, v.el.offsetHeight, f.width, f.height]);
+    }
+    if (outer === null && v.model && v.model.type === "GridBox" && v.el) {
+      const q = v.el.getBoundingClientRect();
+      outer = [q.width, q.height];
     }
     if (d > deep && v.model && v.model.type === "GridBox" && v.el) {
       const r = v.el.getBoundingClientRect();
@@ -194,7 +198,7 @@ addEventListener('load', () => setTimeout(() => {
   };
   for (const v of Object.values(Bokeh.index)) { if (!v.parent) visit(v, 0); }
   parent.postMessage('DASHPROBE' + JSON.stringify({W: innerWidth, plots,
-                                                   grid}), '*');
+                                                   grid, outer}), '*');
 }, 3000));
 </script>
 """
@@ -245,20 +249,20 @@ class TestTheThreeCasesInChrome:
 
     def test_shape(self, mode, tmp_path):
         r = 7.5 / 4.5
-        html = self._page(mode, {}, tmp_path)
-        for w, rec in _shape_probe(html, (600, 1200, 1920)).items():
-            hw, hh = rec["plots"][0][:2]
-            assert hw / hh == pytest.approx(r, rel=0.01), (w, rec)
-        html = self._page(mode, {"by": "foreign"}, tmp_path)
-        for w, rec in _shape_probe(html, (600, 1200, 1920)).items():
-            gw, gh = rec["grid"]
-            assert gw / gh == pytest.approx(r, rel=0.01), (w, rec)
+        # The whole graph, its graph region's margin (WP-45 GW-6)
+        # included: the page's grid.
+        for go in ({}, {"by": "foreign"}):
+            html = self._page(mode, go, tmp_path)
+            for w, rec in _shape_probe(html, (600, 1200, 1920)).items():
+                gw, gh = rec["outer"]
+                assert gw / gh == pytest.approx(r, rel=0.01), (w, go, rec)
 
     def test_aspectratio_alone(self, mode, tmp_path):
         html = self._page(mode, {"aspectratio": "1"}, tmp_path)
         for w, rec in _shape_probe(html, (600, 1200)).items():
             hw, hh, fw, fh = rec["plots"][0]
-            assert hw / hh == pytest.approx(7.5 / 4.5, rel=0.01), (w, rec)
+            gw, gh = rec["outer"]
+            assert gw / gh == pytest.approx(7.5 / 4.5, rel=0.01), (w, rec)
             assert abs(fw - fh) <= 2, (w, rec)
 
     def test_by_box(self, mode, tmp_path):
@@ -313,3 +317,45 @@ class TestOnePictureInChrome:
             assert top <= 1, (w, rec)
             assert float(font[:-2]) == pytest.approx(
                 10.0 * w / 720.0 * 4.5 / 4.0, abs=0.02), (w, rec)
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestTheGraphMarginInChrome:
+    """WP-45 GW-6: at 1400 x 840 a stcolor scatter's plot region starts
+    3.5% of the 840 px side below the page's top (twoway: 113.4 of 3240
+    SVG units, 29.4 px), and the graph is 840 px tall with its margin."""
+
+    def test_top_and_height(self, mode, tmp_path):
+        for go in ({}, {"by": "foreign"}):
+            html = TestTheThreeCasesInChrome._page(mode, go, tmp_path)
+            mp = pytest.MonkeyPatch()
+            mp.setattr(responsive_probe, "PROBE_JS", _CANVAS_JS)
+            try:
+                rec = responsive_probe.measure_many(html, (1400,))[1400]
+            finally:
+                mp.undo()
+            left = min(r[0] for r in rec["rows"])
+            top = min(r[1] for r in rec["rows"])
+            bottom = max(r[1] + r[3] for r in rec["rows"])
+            m = 0.035 * 840
+            assert abs(left - m) <= 2 and abs(top - m) <= 2, (go, rec)
+            assert abs(bottom - (840 - m)) <= 3, (go, rec)
+            assert rec["sh"] <= 841 or rec["sh"] == 1100, (go, rec)
+
+
+#: Every canvas's box on the page (the graph drawn inside its margin).
+_CANVAS_JS = r"""
+<script>
+addEventListener('load', () => setTimeout(() => {
+  const rows = [];
+  const walk = (root) => { for (const el of root.querySelectorAll('*')) {
+    if (el.shadowRoot) walk(el.shadowRoot);
+    if (el.tagName === 'CANVAS') { const r = el.getBoundingClientRect();
+      if (r.width > 20 && r.height > 20) rows.push([r.left, r.top, r.width,
+                                                   r.height]); } } };
+  walk(document);
+  parent.postMessage('DASHPROBE' + JSON.stringify({W: innerWidth, rows,
+    sh: document.documentElement.scrollHeight}), '*');
+}, 3500));
+</script>
+"""

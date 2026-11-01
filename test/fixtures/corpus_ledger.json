@@ -1,22 +1,13 @@
 {
   "_meta": {
     "born_date": "22 Oct 2026",
-    "dash_commit": "d6aec16bb9ab4f5e8e756db9ae81790f98c7b3ee",
+    "dash_commit": "f735a9ca3e94cb45631ec16d214da65e4e782929",
     "extracted": "01 Nov 2026",
     "source": "scripts/corpus/ledger.py",
     "stata_version": "19.5",
     "tsv": "scripts/corpus/ledger.tsv"
   },
   "rows": [
-    {
-      "check": "frame_aspect",
-      "form": "plain",
-      "gaps4_id": "GW-6",
-      "id": "GW-6",
-      "note": "default plot-region margins differ (45-04)",
-      "plottype": "*",
-      "when": "*"
-    },
     {
       "check": "x_labels_none",
       "form": "plain",
@@ -32,15 +23,6 @@
       "gaps4_id": "basic:PT-4",
       "id": "basic:PT-4",
       "note": "dash strokes a bar, histogram, rbar or area outline where twoway strokes none (D51, 47-03)",
-      "plottype": "*",
-      "when": "*"
-    },
-    {
-      "check": "margins",
-      "form": "plain",
-      "gaps4_id": "GW-6",
-      "id": "GW-6",
-      "note": "the scheme's graph margin is not drawn; the plot region's outer insets differ (45-04)",
       "plottype": "*",
       "when": "*"
     },

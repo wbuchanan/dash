@@ -512,7 +512,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **ST-17 Tracked:** Open (WP-45 section 45-03).
 - **ST-10 Tracked:** Open (WP-45 section 45-03).
 - **ST-16 Tracked:** Open (WP-45 section 45-03).
-- **GW-6 Tracked:** Open (WP-45 section 45-04).
+- **GW-6 Tracked:** Partly closed in WP-45 (section 45-04, commit pending): the scheme's graph margin is drawn round every stretched graph, a by() array included, in the graph region's fill; open: the outline stroke unasked and the margin of a graph at its xsize()/ysize() box (BUGS.md "The graph region's outline is not stroked unasked, and a graph drawn at its xsize()/ysize() box has no scheme graph margin").
 - **ST-21 Tracked:** Open (WP-45 section 45-04).
 - **VF-4 Tracked:** Partly closed in WP-45 (section 45-04, commit pending): every graph, by() included, keeps twoway's shape with no height band, xsize()/ysize() draw the exact box, aspectratio() alone shapes the plot region and fxsize()/fysize() keep a lone graph's size; the graph drawn as one picture at twoway's unit (DECISIONS D66, 01nov2026); open: the title's top inset under scale() and by()'s fysize() centring (BUGS.md "Under scale() the title's room above the plot region grows faster than twoway's, and by()'s fysize() array is not centred").
 - **GW-1 Tracked:** Open (WP-45 section 45-04).

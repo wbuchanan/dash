@@ -619,7 +619,10 @@ _SAVED_DIGEST = (
     # min_height None); twoway draws its graph's shape at any size
     # (DECISIONS A-1); the same under both Pythons.
     # d6a94b82... -> b1f61909...: WP-45 VF-4 with DECISIONS D66/D67 (the graph drawn as one picture, its width-scale callback on every figure; one toolbar per page, laid over it); the same under both Pythons.
-    "b1f61909aeb9bd75efbf442b375f2487ec3f7ca4a2c3eea07f76406121990324")
+    # b1f61909... -> 6b5d294b...: WP-45 GW-6, the figure's graph-region
+    # box (margin padding, fill and tag in its styles) and the span hook's
+    # graph box; measured on Python 3.14 only.
+    "6b5d294b1838256a3d898449beeb893e65f9ddf2783d005d07b16449f1ef34d3")
 
 
 # ===========================================================================
