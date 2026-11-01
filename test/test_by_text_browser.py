@@ -196,13 +196,11 @@ class TestEdgeTitlesInChrome:
             # any size (DECISIONS A-1): at 840 px dash's text and the
             # graph margin it does not draw yet (GW-6) leave T1 and B2
             # 0.058 and 0.059 nearer the edge (measured 01nov2026).
-            # Flipped (DECISIONS D66, 01nov2026): x within 0.02; drawn as
-            # one picture (text 2.19 x at 1400 px) R1, L2 and B2 sit
-            # 0.039, 0.035 and 0.025 from twoway's (measured), the graph
-            # margin dash does not draw yet (GW-6) among the causes: an
-            # open difference, re-measured when GW-6 lands.
-            elif abs(gx - wx) > (0.045 if text in ("R1", "L2", "B2")
-                                 else 0.02) or abs(gy - wy) > (
+            # Restored (WP-45 GW-6, 01nov2026): x within 0.02 for every
+            # text again, as before DECISIONS D66 widened R1, L2 and B2 to
+            # 0.045; the graph margin, the text-wide title cells and the
+            # ruler's column put them within it.
+            elif abs(gx - wx) > 0.02 or abs(gy - wy) > (
                     0.065 if text in ("T1", "B2") else 0.05):
                 bad.append("%s: dash (%.3f, %.3f), twoway (%.3f, %.3f)"
                            % (text, gx, gy, wx, wy))
