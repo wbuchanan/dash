@@ -856,7 +856,9 @@ def dash_geometry(view, svg_path=None):
     if not figs:
         return out
     f = next((g for g in figs if g.get("axes")), figs[0])
-    axes = f.get("axes") or []
+    # BY-32: an axis the page hides (a by() panel above the bottom row)
+    # draws no ticks or labels; read only the drawn ones.
+    axes = [a for a in (f.get("axes") or []) if a.get("visible") is not False]
     for k, dim in (("x_axes", 0), ("y_axes", 1)):
         out[k] = sum(1 for a in axes if a.get("dim") == dim)
     xa, ya = _pick_axis(axes, 0, "below"), _pick_axis(axes, 1, "left")

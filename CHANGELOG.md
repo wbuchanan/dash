@@ -1003,6 +1003,7 @@ and now matches Stata.
 
 ### Fixed in WP-41
 
+- The corpus check no longer reads a by() panel's hidden x axis: it reported x labels above the bottom row that dash does not draw (WP-41, 41-05, BY-32)
 - A by() graph with aspectratio() keeps the graph's shape and centres its panels in it, as twoway does (WP-41, 41-05)
 - by(, style(combine)) draws no shared axis title, as graph combine draws none (WP-41, 41-05)
 - by(, style(combine)) ticks each panel as graph combine ticks a graph: (scatter mpg weight) (lfit mpg weight), by(rep78, style(combine)) drew panel 1's x as 2,800(200)3,400 and cut its markers, now 2,800(200)3,600 as twoway (WP-41, 41-05)

@@ -1,22 +1,13 @@
 {
   "_meta": {
     "born_date": "22 Oct 2026",
-    "dash_commit": "f735a9ca3e94cb45631ec16d214da65e4e782929",
+    "dash_commit": "b8db5dc260ca0295a24a7539477b9d4e1a594dec",
     "extracted": "01 Nov 2026",
     "source": "scripts/corpus/ledger.py",
     "stata_version": "19.5",
     "tsv": "scripts/corpus/ledger.tsv"
   },
   "rows": [
-    {
-      "check": "x_labels_none",
-      "form": "plain",
-      "gaps4_id": "BY-32",
-      "id": "BY-32",
-      "note": "by() labels x on every panel; twoway only on the bottom row (D48)",
-      "plottype": "*",
-      "when": "\\bby\\("
-    },
     {
       "check": "outline_extra",
       "form": "plain",

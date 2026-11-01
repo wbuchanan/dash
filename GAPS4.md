@@ -426,7 +426,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-4 Tracked:** Closed in WP-41, BUGS.md "compact: beside an explicit style() it is drawn compact (twoway lets style() win), and its black plot-region and label-box outlines are not drawn", commit a7c89f9.
 - **BY-5 Tracked:** Closed in WP-41, BUGS.md "aspectratio() with by(, shrink) is accepted; twoway refuses it ('options aspect() and shrink may not be combined')", commit dba1f74.
 - **BY-6 Tracked:** Closed in WP-41, BUGS.md "by(, total) with no variables gives r(198) in dash's words; twoway gives r(100) 'varlist required in by()'", commit a2d1e27.
-- **BY-32 Tracked:** Open (WP-41 section 41-05).
+- **BY-32 Tracked:** Closed in WP-41, BUGS.md "Under by(), dash draws x-axis labels on every panel; twoway only on the bottom row", commit pending.
 - **BY-12 Tracked:** Closed in WP-41, BUGS.md "by(, l1title() b1title() t1title() ...) are named and ignored; in twoway l1title/b1title replace the shared axis titles", commit 5918789.
 - **BY-13 Tracked:** Closed in WP-41, BUGS.md "by(, legloc() clegloc() plegend() plegloc()) are named and ignored", commit 9300f24.
 - **BY-14 Tracked:** Closed in WP-41, BUGS.md "coloruseplegend under by(): plegend(on) draws nothing, and clegend(on) draws a discrete Legend with '(missing)' where twoway draws a colour-bar key", commit a75f477.

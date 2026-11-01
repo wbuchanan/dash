@@ -726,6 +726,16 @@ class TestMarkerLabels:
 
 class TestDashGeometry:
 
+    def test_a_hidden_axis_is_not_read(self):
+        # BY-32: a by() panel above the bottom row has its x axis hidden
+        # (visible false, _dash_by_outer_axes, as twoway draws it); its
+        # ticks and labels are not the panel's.
+        v = _view()
+        v["figures"][0]["axes"][0]["visible"] = False
+        g = verdict.dash_geometry(v)
+        assert g["x_labels"] == [] and g["x_ticks"] == []
+        assert g["y_labels"] == ["10", "20", "30", "40"]
+
     def test_axes_titles_legend_glyphs(self):
         g = verdict.dash_geometry(_view([_rdr(n=52, marker="circle"),
                                          _rdr(n=22, marker="cross", fill="#d41159",

@@ -383,7 +383,8 @@ DUMP_JS = r"""() => {
         const tickPx = safe(() => ticks.map((t) => r1(scale.compute(t))));
         axes.push({side: safe(() => m.side ?? v.panel?.side), dim: dim, ticks: ticks,
                    labels: labels, title: safe(() => textOf(m.axis_label)),
-                   scale: kind, tick_px: tickPx});
+                   scale: kind, tick_px: tickPx,
+                   visible: safe(() => m.visible !== false)});
       } else if (m && v.glyph !== undefined && m.data_source !== undefined) {
         const gm = safe(() => v.glyph.model);
         const src = safe(() => m.data_source);
