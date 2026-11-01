@@ -1003,6 +1003,7 @@ and now matches Stata.
 
 ### Fixed in WP-41
 
+- by(, compact) draws its panels touching and outlined at the axis lines' width, as twoway does; scatter mpg weight, by(foreign, compact) scheme(s2color) left its plot regions 10 px apart with 0.8 px outlines at 1,400 px, now touching with 1.73 px outlines (WP-41, 41-05)
 - A by() graph's y tick labels are drawn at the panels' size, as its x tick labels are; scatter mpg weight, by(foreign) drew them at 10pt beside 8.5pt x labels, now 8.5pt (WP-41, VF-6)
 - contour and contourline under by() cut every panel at the first panel's cuts, as twoway does; by(rep78, total) drew 4, 5, 3, 3, 4 and 3 levels, now 4 in every panel (WP-41, BY-28)
 - scale() beside by() no longer scales the panels and by(, scale()) scales the whole graph, as twoway does; scatter mpg weight, scale(1.5) by(foreign) drew 12.75pt tick labels, now 8.5pt (WP-41, BY-2)

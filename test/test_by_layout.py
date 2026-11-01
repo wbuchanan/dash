@@ -195,6 +195,9 @@ function state() {
                  gridplot: gp ? rect(gp.el) : null,
                  frame: [cr.left + f.x0, cr.top + f.y0, cr.left + f.x1, cr.top + f.y1],
                  strips, titles, axes,
+                 ol: v.model.outline_line_width,
+                 alw: ((v.model.left || []).concat(v.model.below || []).find(
+                   (a) => (a.type || '').endsWith('Axis')) || {}).axis_line_width,
                  grid: gb ? rect(gb.el) : null});
     }
     for (const c of (v.child_views || [])) visit(c, gb);
@@ -535,3 +538,22 @@ class TestTheOuterYAxisSize:
         want = panels[0].xaxis[0].major_label_text_font_size
         for cell in cells:
             assert cell.left[0].major_label_text_font_size == want
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestCompactPanels:
+    """WP-41 41-05 pair 1: by(foreign, compact) under s2color.  Measured
+    (figure_geometry_truth.json P1, 3960 x 2880): the plot regions touch
+    (353.80 .. 2106.47, 2106.47 .. 3859.02) and each is outlined at the
+    axis lines' width (stroke-width 4.90 for both, 1.73 px at 1400)."""
+
+    def test_the_panels_touch_and_are_outlined_as_the_axes(self, mode):
+        figs = _panels_of(_measure(mode, {"by": "foreign, compact"},
+                                   scheme="s2color")[1400])
+        assert len(figs) == 2
+        a, b = sorted(figs, key=lambda f: f["frame"][0])
+        assert abs(b["frame"][0] - a["frame"][2]) <= 1, (a, b)
+        k = 1400.0 / 3960.0
+        for f in figs:
+            assert f["ol"] == pytest.approx(4.90 * k, abs=0.1), f
+            assert f["alw"] == pytest.approx(4.90 * k, abs=0.1), f

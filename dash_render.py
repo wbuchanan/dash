@@ -28099,6 +28099,9 @@ _DASH_WIDTH_SCALE_PROPS = {
     "Span": (("num", "line_width"),),
     "Arrow": (("num", "line_width"),),
     "Glyph": (("num", "line_width", "size"), ("css", "text_font_size")),
+    # The plot region's outline (WP-41 41-05: twoway's scales with the
+    # picture as its axis lines do, P1: both 1.73 px at 1400).
+    "Plot": (("num", "outline_line_width"),),
 }
 
 
@@ -28158,6 +28161,8 @@ def _dash_width_scale_entries(models):
             tables = ("Arrow",)
         elif type(m).__module__.startswith("bokeh.models.glyphs"):
             tables = ("Glyph",)
+        elif isinstance(m, Plot):
+            tables = ("Plot",)
         else:
             continue
         span_key = getattr(m, "_dash_span_key", False)
@@ -38030,6 +38035,10 @@ _DASH_BY_SCALED_PROPS = {
              "minor_tick_in", "minor_tick_out", "major_label_standoff",
              "axis_label_standoff"),
     "grid": ("grid_line_width",),
+    # WP-41 41-05: the plot region's outline is drawn at the axis lines'
+    # width under by(), as twoway's (figure_geometry_truth.json P1: both
+    # 4.90 of 3960).
+    "plot": ("outline_line_width",),
 }
 
 
@@ -38119,6 +38128,7 @@ def _dash_by_scale_panel(fig, m):
         scale(ax, "axis")
     for gr in list(fig.xgrid) + list(fig.ygrid):
         scale(gr, "grid")
+    scale(fig, "plot")
     fig._dash_by_scaled = m
     return fig
 
@@ -53452,6 +53462,14 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
             _dash_by_fit_hook(figs, float(figs[0]._dash_array_ar or 1.0),
                               nr, nc, frame_ar=own_ar)
         grid.spacing = _dash_by_spacing(figs[0], opts)
+        if opts.get("compact") or str(opts.get("style") or "") == "compact":
+            # WP-41 41-05: compact's plot regions touch, as twoway's do
+            # (figure_geometry_truth.json P1: 353.80 .. 2106.47, 2106.47
+            # .. 3859.02 of 3960); a panel's own 5 px border left and
+            # right kept them 10 px apart.
+            for _f in figs:
+                _f.min_border_left = 0
+                _f.min_border_right = 0
         # The axis titles, legend and colour key beside the panels (WP-30
         # P1.15c); the overall text then spans every column.
         cn = _dash_by_side_grid(grid, side, nr, nc) if side else nc

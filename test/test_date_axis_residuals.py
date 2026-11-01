@@ -734,10 +734,13 @@ _PLAIN_DIGESTS = {
     # WP-45 GW-6, the figure's graph-region box (its margin padding, fill
     # and tag in its styles) and the span hook's graph box; measured on
     # Python 3.14 only.
+    # 14933864... -> f7c8dba6... saved, d46d95fa... -> cf6d2d71... served:
+    # WP-41 41-05, the plot region's outline in the width scale's table;
+    # measured on Python 3.14 only.
     ("saved", "plain"):
-        "149338646cf80ab7efd9e087f7b5efde6c3ff9ad9227eb8f013393fbf4e671fb",
+        "f7c8dba6dcacb9c31eef3cf6a1e653092e997ab744f665384e2734337c843e10",
     ("saved", "yaxis2"):
-        "149338646cf80ab7efd9e087f7b5efde6c3ff9ad9227eb8f013393fbf4e671fb",
+        "f7c8dba6dcacb9c31eef3cf6a1e653092e997ab744f665384e2734337c843e10",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -752,9 +755,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "d46d95fa73a1e9384b8faad2209ffcfadb6a5dd46b9cbe01140aa5accfcfe9ee",
+        "cf6d2d7145fa51df15a3ff5e5a6d480d069bdd34204d48aaed2efaa59ad77f43",
     ("served", "yaxis2"):
-        "d46d95fa73a1e9384b8faad2209ffcfadb6a5dd46b9cbe01140aa5accfcfe9ee",
+        "cf6d2d7145fa51df15a3ff5e5a6d480d069bdd34204d48aaed2efaa59ad77f43",
 }
 
 

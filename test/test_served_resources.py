@@ -622,7 +622,9 @@ _SAVED_DIGEST = (
     # b1f61909... -> 6b5d294b...: WP-45 GW-6, the figure's graph-region
     # box (margin padding, fill and tag in its styles) and the span hook's
     # graph box; measured on Python 3.14 only.
-    "6b5d294b1838256a3d898449beeb893e65f9ddf2783d005d07b16449f1ef34d3")
+    # 6b5d294b... -> 48aab271...: WP-41 41-05, the plot region's outline
+    # in the width scale's table; measured on Python 3.14 only.
+    "48aab2713af559af85e76820f06b3067343a8307bf4eeba2ff27062bfb7227e8")
 
 
 # ===========================================================================

@@ -353,6 +353,13 @@ class TestTheSizes:
                     want = int(round(want))
                 if vb != want:
                     bad.append("%s: %r -> %r (want %r)" % (k, va, vb, want))
+            elif k[0] == "figure" and k[2] == "outline_line_width":
+                # Flipped (WP-41 41-05): the plot region's outline takes
+                # by()'s size as its axis lines do (figure_geometry_truth
+                # .json P1: both 4.90 of 3960); it was the figure's own
+                # border, left alone.
+                if vb != dr._dash_by_scale_value(va, 0.5):
+                    bad.append("%s: %r -> %r" % (k, va, vb))
             elif vb != va and k[2] not in ("aspect_ratio",):
                 bad.append("%s changed: %r -> %r" % (k, va, vb))
         assert not bad, "\n".join(bad[:30])
