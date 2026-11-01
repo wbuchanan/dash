@@ -1210,6 +1210,8 @@ FUNCTIONS = {
  '_dash_by_numticks': 'test/test_default_axes.py::TestTheHelpers::test_the_by_tick_count',
  '_dash_default_ticker': 'test/test_default_axes.py::TestTheHelpers::test_the_default_ticker_is_a_tagged_fixed_ticker',
  '_dash_layer_extent': 'test/test_default_axes.py::TestTheHelpers::test_layer_extent_equals_the_python_reader',
+ '_dash_has': 'test/test_default_axes.py::TestTheMissFreeReaders::test__dash_has',
+ '_dash_prop': 'test/test_default_axes.py::TestTheMissFreeReaders::test__dash_prop',
  '_dash_plot_margin': 'test/test_default_axes.py::TestTheHelpers::test_the_plot_margin',
  '_dash_graph_margin': 'test/test_region_remainder.py::TestGraphMargin::test_adds_not_assigns',
  'SchemeParser.plotregion_shade': 'test/test_region_remainder.py::TestShade::test_stub_read',

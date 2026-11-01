@@ -360,6 +360,45 @@ class TestStataTruth:
 
 
 # ---------------------------------------------------------------------------
+class TestTheMissFreeReaders:
+    """``_dash_has`` and ``_dash_prop`` answer as ``hasattr`` and
+    ``getattr`` do, without asking a Bokeh model for a name it lacks."""
+
+    def test__dash_has(self, monkeypatch):
+        from types import SimpleNamespace
+        from bokeh.core.has_props import HasProps
+        from bokeh.models import BooleanFilter, IndexFilter, Plot, RangeTool
+        missed = []
+        real = HasProps._raise_attribute_error_with_matches
+        monkeypatch.setattr(
+            HasProps, "_raise_attribute_error_with_matches",
+            lambda self, n, p: missed.append(n) or real(self, n, p))
+        objs = [IndexFilter(indices=[1]), BooleanFilter(booleans=[True]),
+                Plot(), RangeTool(), SimpleNamespace(indices=[2]), None, 3]
+        for o in objs:
+            for n in ("indices", "booleans", "x_range", "formatter",
+                      "source", "data_source"):
+                monkeypatch.setattr(HasProps,
+                                    "_raise_attribute_error_with_matches",
+                                    real)
+                want = hasattr(o, n)
+                monkeypatch.setattr(
+                    HasProps, "_raise_attribute_error_with_matches",
+                    lambda self, n, p: missed.append(n) or real(self, n, p))
+                assert dr._dash_has(o, n) is want, (o, n)
+        assert missed == []
+
+    def test__dash_prop(self):
+        from types import SimpleNamespace
+        from bokeh.models import IndexFilter
+        f = IndexFilter(indices=[1, 3])
+        assert list(dr._dash_prop(f, "indices")) == [1, 3]
+        assert dr._dash_prop(f, "booleans") is None
+        assert dr._dash_prop(f, "booleans", "d") == "d"
+        assert dr._dash_prop(SimpleNamespace(source=4), "source") == 4
+        assert dr._dash_prop(None, "source", 7) == 7
+
+
 class TestTheHelpers:
     def test_the_default_ticker_is_a_tagged_fixed_ticker(self):
         from bokeh.models import FixedTicker

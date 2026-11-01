@@ -47874,6 +47874,24 @@ def _dash_finish_auto_bases(fig):
     return n
 
 
+def _dash_has(m, name):
+    """``hasattr(m, name)`` for a public *name*, asked of a Bokeh model's
+    class: a model's public attributes are its class's properties (Bokeh
+    refuses any other), and the model's own ``hasattr`` of a name it lacks
+    builds a did-you-mean list with difflib before it raises -- thousands
+    of times a page.  Any other object is asked as ``hasattr`` asks."""
+    from bokeh.core.has_props import HasProps
+    if isinstance(m, HasProps):
+        return hasattr(type(m), name)
+    return hasattr(m, name)
+
+
+def _dash_prop(m, name, default=None):
+    """``getattr(m, name, default)`` for a public *name*, without the
+    miss ``_dash_has`` avoids."""
+    return getattr(m, name, default) if _dash_has(m, name) else default
+
+
 def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
     """``(low, high)`` of every value the layers on range *name* draw, or
     None when they draw none (WP-30 P1.3a).
@@ -47941,9 +47959,9 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
         filt = getattr(getattr(r, "view", None), "filter", None)
         rows = None
         if filt is not None:
-            idx = getattr(filt, "indices", None)
+            idx = _dash_prop(filt, "indices")
             if idx is None:
-                bools = getattr(filt, "booleans", None)
+                bools = _dash_prop(filt, "booleans")
                 if bools is not None:
                     rows = np.flatnonzero(
                         np.asarray(list(bools)[:n], dtype=bool))
@@ -49329,9 +49347,9 @@ def _dash_axis_hull(fig, e):
         filt = getattr(getattr(r, "view", None), "filter", None)
         rows = None
         if filt is not None:
-            idx = getattr(filt, "indices", None)
+            idx = _dash_prop(filt, "indices")
             if idx is None:
-                bools = getattr(filt, "booleans", None)
+                bools = _dash_prop(filt, "booleans")
                 if bools is not None:
                     rows = np.flatnonzero(
                         np.asarray(list(bools)[:n], dtype=bool))
@@ -50039,7 +50057,7 @@ def _dash_graph_text_models(fig):
             if not isinstance(m, Model):
                 continue
             out.append(m)
-            fmt = getattr(m, "formatter", None)
+            fmt = _dash_prop(m, "formatter")
             if isinstance(fmt, Model):
                 out.append(fmt)
             if isinstance(m, Legend):
@@ -66470,8 +66488,8 @@ class DashRenderer:
                 models.append(_tbl[1])
             for m in models:
                 src = (getattr(m, "data_source", None)
-                       if hasattr(m, "data_source")
-                       else getattr(m, "source", None))
+                       if _dash_has(m, "data_source")
+                       else _dash_prop(m, "source"))
                 if not isinstance(src, ColumnDataSource):
                     continue
                 if id(src) in graph_ids or id(src) in agg_ids:
@@ -71387,6 +71405,7 @@ class ServerAppBuilder:
                          "_dash_graph_margin",
                          "_dash_by_numticks",
                          "_dash_axis_plan", "_dash_layer_extent",
+                         "_dash_has", "_dash_prop",
                          "_dash_tag_hull_roles", "_dash_refinish_axes",
                          # WP-31 D10: an emptied by() panel is hidden.
                          "_dash_panel_source_rows", "_dash_panel_visibility",
