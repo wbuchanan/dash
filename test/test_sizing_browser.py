@@ -269,3 +269,47 @@ class TestTheThreeCasesInChrome:
             assert gw == pytest.approx(768, rel=0.01), (w, rec)
             assert gh == pytest.approx(384, rel=0.01), (w, rec)
 
+
+
+_PICTURE_JS = r"""
+<script>
+addEventListener('load', () => setTimeout(() => {
+  const plots = [];
+  const visit = (v) => {
+    if (!v) return;
+    if (v.frame && v.model) {
+      const ax = (v.model.below || []).filter(
+        (a) => a.major_label_text_font_size);
+      plots.push([v.el.getBoundingClientRect().top,
+                  ax.length ? ax[0].major_label_text_font_size : null]);
+    }
+    for (const c of (v.child_views || [])) visit(c);
+  };
+  for (const v of Object.values(Bokeh.index)) { if (!v.parent) visit(v); }
+  parent.postMessage('DASHPROBE' + JSON.stringify({W: innerWidth, plots}),
+                     '*');
+}, 3000));
+</script>
+"""
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestOnePictureInChrome:
+    """DECISIONS D66 (the maintainer's ruling of 01nov2026): at 1400 px a
+    7.5-inch stcolor graph draws its 10-point tick labels at 10 x 1400 /
+    720 x 4.5 / 4 pt (about 29 px, twoway's stcolor tick labels 11.26 pt
+    on its 7.5 x 4.5 picture), and no toolbar pushes the graph down."""
+
+    def test_tick_labels_and_top(self, mode, tmp_path):
+        html = TestTheThreeCasesInChrome._page(mode, {}, tmp_path)
+        mp = pytest.MonkeyPatch()
+        mp.setattr(responsive_probe, "PROBE_JS", _PICTURE_JS)
+        try:
+            got = responsive_probe.measure_many(html, (1400, 720))
+        finally:
+            mp.undo()
+        for w, rec in got.items():
+            top, font = rec["plots"][0]
+            assert top <= 1, (w, rec)
+            assert float(font[:-2]) == pytest.approx(
+                10.0 * w / 720.0 * 4.5 / 4.0, abs=0.02), (w, rec)

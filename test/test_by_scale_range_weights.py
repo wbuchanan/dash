@@ -82,7 +82,15 @@ def _sizes(mode, go, plots=None):
            "chrome": {}, "legend": None, "notes": notes}
     own = set()
     for _r, _c, f in panels:
-        own |= {id(m) for m in f.references()}
+        # Flipped (DECISIONS D66): the first panel's width-scale callback
+        # holds every model of the graph; a panel's own models are read
+        # without its callbacks.
+        cbs = dict(f.js_property_callbacks)
+        f.js_property_callbacks = {}
+        try:
+            own |= {id(m) for m in f.references()}
+        finally:
+            f.js_property_callbacks = cbs
     for child in grid.children:
         cell = child[0]
         if not is_chrome(cell):

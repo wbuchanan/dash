@@ -357,7 +357,11 @@ class TestAspect:
             == pytest.approx(h, abs=1)
         assert f.min_border_left + f.frame_width + f.min_border_right \
             == pytest.approx(w, abs=1)
-        assert not f.js_property_callbacks
+        # Flipped (DECISIONS D66, the maintainer's ruling of 01nov2026):
+        # no page JavaScript; the graph is one picture, so the box carries
+        # the width scale alone (twoway's unit at its fixed width).
+        assert [cb.code for cbs in f.js_property_callbacks.values()
+                for cb in cbs] == [dr._DASH_WIDTH_SCALE_JS]
 
     @pytest.mark.parametrize("mode", _MODES)
     @pytest.mark.parametrize("place", ["c", "e", "w", "n", "s", "ne", "sw"])

@@ -203,13 +203,15 @@ class TestTheActions:
                             tt._CORPUS["a by() graph beside a graph"]())
         (top,) = _top_grids(_roots(docs))
         subs = [c[0] for c in top.children if isinstance(c[0], GridPlot)]
-        subs = [s for s in subs if _acts(s, _SVG)]
-        assert subs, "no by() sub-grid with a save action"
+        # Flipped (DECISIONS D67, the maintainer's ruling of 01nov2026: one
+        # toolbar per page, outside the graph): a by() sub-grid kept its
+        # own toolbar and a grid-alone Save as SVG; it has no toolbar now
+        # and holds no export action, the page's being the one.
+        assert subs, "no by() sub-grid"
         for s in subs:
-            (svg,) = _acts(s, _SVG)
-            assert svg.callback.code == dr._DASH_SVG_SAVE_JS
-            assert set(svg.callback.args) == {"grid", "name"}
-            assert _acts(s, _PNG) == []
+            assert s.toolbar_location is None
+            assert _acts(s, _SVG) == [] and _acts(s, _PNG) == []
+        assert _acts(top, _SVG) and _acts(top, _PNG)
 
     def test_only_ids_and_names_reach_the_args(self, tmp_path, mode):
         """The action holds no reference to another model (a grid whose

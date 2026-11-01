@@ -450,7 +450,11 @@ class TestLabelOptionsInChrome:
         panels = _in_chrome(mode, pid)
         assert len(panels) == 2, panels
         p = _probe(pid)
-        font = _font_px_of(mode, pid)
+        # Flipped (DECISIONS D66, the maintainer's ruling of 01nov2026):
+        # the label's font was drawn at the model's px at any width; the
+        # graph is one picture, every size times the drawn width over
+        # the 7.5-inch graph's 720 px and stcolor's unit (4.5 / 4).
+        font = _font_px_of(mode, pid) * 1400 / 720.0 * 4.5 / 4.0
         s = font / p["boxes"][0]["size"]
         for got, b in zip(panels, p["boxes"]):
             f, fill, dark = got["frame"], got["fill"], got["dark"]
@@ -463,7 +467,10 @@ class TestLabelOptionsInChrome:
             elif pid == "L03":
                 # 3 px: Chrome's text metrics against Stata's Helvetica
                 # (measured 55 px against 57.35).
-                assert abs((fill[2] - fill[0]) - b["w"] * s) <= 3.0, got
+                # Flipped (D66): 3 px at the 96-px size, scaled with the
+                # text (Chrome's metric error grows with it).
+                assert abs((fill[2] - fill[0]) - b["w"] * s) <= \
+                    3.0 * 1400 / 720.0 * 4.5 / 4.0, got
                 assert abs((fill[0] + fill[2]) / 2 - (f[0] + f[2]) / 2) \
                     <= 2.0, got
             elif pid == "L06":

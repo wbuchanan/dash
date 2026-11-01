@@ -814,8 +814,11 @@ class TestAfterAFilterMove:
                     # places by()'s legend and boxes on the panels as the
                     # cells are laid out, is a layout callback, not a
                     # filter callback.
+                    # Flipped (DECISIONS D66): so is the one-picture width
+                    # scale (_DASH_WIDTH_SCALE_JS).
                     if isinstance(m, CustomJS) and m.name != "dash_by_stack" \
-                            and m.code != dr._DASH_SPAN_JS:
+                            and m.code not in (dr._DASH_SPAN_JS,
+                                               dr._DASH_WIDTH_SCALE_JS):
                         for v in m.args.values():
                             vs = v if isinstance(v, (list, tuple)) else [v]
                             assert not any(id(x) in side_ids for x in vs)

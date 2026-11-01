@@ -6239,9 +6239,14 @@ refused, as {cmd:twoway} refuses it.{p_end}
 {pstd}
 {it:The size reference.}  As in {helpb twoway}, a relative size -- a number,
 or a name such as {cmd:medium} -- is a share of the smaller side of the
-graph: one unit is 2.88 points at four inches, and {cmd:dash}, whose
-figures the browser sizes, draws it at 2.88 points whatever the graph's
-size.  An absolute size -- {it:#}{cmd:pt}, {it:#}{cmd:in}, {it:#}{cmd:cm},
+graph: one unit is 0.72 points for each inch of that side (3.24 points
+under {cmd:stcolor}, whose graph is 4.5 inches tall).  {cmd:dash} draws
+the graph as one picture, as Stata's Graph window and an exported picture
+do: every size -- text, markers, lines, gaps, legend keys, label strips --
+grows and shrinks with the width the graph is drawn at, against the
+scheme's width in inches, so a 7.5-inch {cmd:stcolor} graph drawn 1,400
+pixels wide draws its tick labels about 29 pixels tall, as {helpb twoway}'s
+picture of that width does.  An absolute size -- {it:#}{cmd:pt}, {it:#}{cmd:in}, {it:#}{cmd:cm},
 and a scheme's own point sizes -- keeps its length on a graph of any size,
 so it is converted at the figure's reference: the smaller of
 {cmd:xsize()} and {cmd:ysize()}, the scheme's {cmd:graphsize} standing in
@@ -6253,8 +6258,10 @@ and never moves the reference.
 
 {pstd}
 The shape is kept at every width, with no height band: a graph in a cell
-twice as wide is also twice as tall, as {helpb twoway}'s
-graph is a picture of one shape at any size.
+twice as wide is also twice as tall, and its text, markers and lines twice
+as large, as {helpb twoway}'s graph is a picture of one shape at any size.
+The page's toolbar lies over the graph's top right corner and shows while
+the pointer is over the page, so it takes none of the graph's room.
 
 {pstd}
 {it:Examples:}

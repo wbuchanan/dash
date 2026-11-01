@@ -49,6 +49,10 @@ CHROME_CANDIDATES = (
     "/usr/bin/chromium-browser",
 )
 
+#: Flipped (DECISIONS D66, the maintainer's ruling of 01nov2026): a figure
+#: was a canvas of 120 x 60 px and more; drawn as one picture, a by()
+#: graph's one-line title row is 61 px tall at 1440 px, so a figure is a
+#: canvas of 120 x 90 px and more.
 PROBE_JS = r"""
 <script>
 window.addEventListener('load', () => setTimeout(() => {
@@ -70,7 +74,7 @@ window.addEventListener('load', () => setTimeout(() => {
   const walk = (root) => { for (const el of root.querySelectorAll('*')) {
     if (el.shadowRoot) walk(el.shadowRoot);
     if (el.tagName === 'CANVAS') { const r = el.getBoundingClientRect();
-      if (r.width >= 120 && r.height >= 60) c.push([r.left, r.top, r.width, r.height]); }
+      if (r.width >= 120 && r.height >= 90) c.push([r.left, r.top, r.width, r.height]); }
     if (el.classList && el.classList.contains('db-kpi-card')) { const r = el.getBoundingClientRect();
       if (r.width > 0 && r.height > 0) { k.push([r.left, r.top, r.width, r.height]);
         kc.push(cellOf(el)); } } } };

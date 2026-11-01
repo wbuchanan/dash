@@ -28069,6 +28069,216 @@ def _dash_apply_scale(fig, factor, keep=None):
     _dash_scale_columns(cols, factor)
 
 
+#: The size props the width scale multiplies, by model class (the
+#: maintainer's ruling of 01nov2026, DECISIONS D66: the graph is one
+#: picture): ``css`` a font size, ``num`` a width, ``int`` a px count.
+#: The same props ``_dash_apply_scale`` multiplies, and the box sizes of
+#: by()'s label strips and colour keys (ColorBar padding and thickness).
+_DASH_WIDTH_SCALE_PROPS = {
+    "Axis": (("css", "major_label_text_font_size", "axis_label_text_font_size"),
+             ("int", "major_tick_in", "major_tick_out", "minor_tick_in",
+              "minor_tick_out", "axis_label_standoff", "major_label_standoff"),
+             ("num", "axis_line_width", "major_tick_line_width",
+              "minor_tick_line_width")),
+    "Grid": (("num", "grid_line_width", "minor_grid_line_width"),),
+    "Title": (("css", "text_font_size"),
+              ("num", "border_line_width", "x_offset", "y_offset"),
+              ("int", "padding", "standoff", "offset")),
+    "Legend": (("css", "label_text_font_size", "title_text_font_size"),
+               ("int", "glyph_width", "glyph_height", "label_standoff",
+                "spacing", "padding", "margin", "label_width",
+                "label_height"),
+               ("num", "border_line_width")),
+    "ColorBar": (("css", "major_label_text_font_size", "title_text_font_size"),
+                 ("num", "bar_line_width", "major_tick_line_width",
+                  "border_line_width"),
+                 ("int", "padding", "label_standoff", "title_standoff")),
+    # by()'s panel label strip: its thickness too (a colour key's length
+    # and thickness follow the panels already).
+    "LabelBox": (("int", "width", "height"),),
+    "Span": (("num", "line_width"),),
+    "Arrow": (("num", "line_width"),),
+    "Glyph": (("num", "line_width", "size"), ("css", "text_font_size")),
+}
+
+
+def _dash_width_scale_entries(models):
+    """``[[model, prop, base, kind], ...]``: every fixed size the models
+    under *models* draw (``_DASH_WIDTH_SCALE_PROPS``), each once, as its
+    number (a font in pt), in a fixed order (a grid's children, then each
+    plot's title, side panels, centre and renderers), so two builds of
+    one graph write the same page.  A field spec (a per-row size) is left
+    out, and so are the px counts of a key a span places."""
+    from bokeh.models import (Axis, Grid, Title, Label, LabelSet, Legend,
+                              Span, ColorBar, GlyphRenderer, Arrow, Plot,
+                              GridPlot, LayoutDOM)
+    out, seen, order = [], set(), []
+
+    def walk(m):
+        if m is None or id(m) in seen:
+            return
+        seen.add(id(m))
+        order.append(m)
+        if isinstance(m, GridPlot):
+            for ch in m.children:
+                walk(ch[0])
+        elif isinstance(m, Plot):
+            walk(m.title)
+            for side in ("above", "below", "left", "right", "center"):
+                for x in getattr(m, side, None) or ():
+                    walk(x)
+            for r in m.renderers:
+                walk(r)
+        elif isinstance(m, GlyphRenderer):
+            for g in (m.glyph, m.nonselection_glyph, m.selection_glyph,
+                      m.hover_glyph, m.muted_glyph):
+                if g is not None and not isinstance(g, str):
+                    walk(g)
+        elif isinstance(m, LayoutDOM):
+            for ch in getattr(m, "children", None) or ():
+                walk(ch[0] if isinstance(ch, tuple) else ch)
+
+    for root in models:
+        walk(root)
+    for m in order:
+        if isinstance(m, Axis):
+            tables = ("Axis",)
+        elif isinstance(m, Grid):
+            tables = ("Grid",)
+        elif isinstance(m, (Title, Label, LabelSet)):
+            tables = ("Title",)
+        elif isinstance(m, Legend):
+            tables = ("Legend",)
+        elif isinstance(m, ColorBar):
+            tables = ("ColorBar", "LabelBox") if getattr(
+                m, "name", None) == "dash_by_label_box" else ("ColorBar",)
+        elif isinstance(m, Span):
+            tables = ("Span",)
+        elif isinstance(m, Arrow):
+            tables = ("Arrow",)
+        elif type(m).__module__.startswith("bokeh.models.glyphs"):
+            tables = ("Glyph",)
+        else:
+            continue
+        span_key = getattr(m, "_dash_span_key", False)
+        for table in tables:
+            for row in _DASH_WIDTH_SCALE_PROPS[table]:
+                kind = row[0]
+                if kind == "int" and span_key:
+                    continue  # the span hook sizes a placed key
+                for p in row[1:]:
+                    if p not in m.properties():
+                        continue
+                    v = getattr(m, p, None)
+                    if kind == "css":
+                        v = OptionTranslator.css_to_pt(
+                            v.get("value") if isinstance(v, dict) else v)
+                    elif isinstance(v, dict):
+                        v = v.get("value")
+                    if isinstance(v, bool) or \
+                            not isinstance(v, (int, float)) or \
+                            not math.isfinite(float(v)):
+                        continue
+                    out.append([m, p, float(v), kind])
+    return out
+
+
+def _dash_width_scale(anchor, models, nominal_w, ref_in=4.0, grid=None):
+    """Draw the graph as one picture (DECISIONS D66, the maintainer's
+    ruling of 01nov2026): every size of *models* -- text, markers, line
+    widths, ticks, gaps, legend keys, by()'s strips and keys -- times the
+    drawn width over the graph's *nominal_w* (its inch width at 96 px an
+    inch), as Stata's Graph window and exported pictures scale, and times
+    twoway's unit for the reference side, *ref_in* / 4 (1.125 under
+    stcolor), so a 7.5-inch stcolor graph drawn 1400 px wide draws a 10
+    pt size at 10 x 1400/720 x 1.125 pt.  Python's models keep the
+    4-inch, 96-px values; :data:`_DASH_WIDTH_SCALE_JS`, one CustomJS on
+    *anchor*'s drawn size, writes the product and lays the plots out
+    again, once per width.  *grid* (a by() graph's GridPlot) measures its
+    array's width instead of *anchor*'s, and its spacing scales too.
+    Returns the callback, or None."""
+    from bokeh.models import CustomJS, Plot
+    if anchor is None or not nominal_w or nominal_w <= 0:
+        return None
+    try:
+        unit = float(ref_in) / 4.0
+    except (TypeError, ValueError):
+        unit = 1.0
+    if not (math.isfinite(unit) and unit > 0):
+        unit = 1.0
+    entries = _dash_width_scale_entries(models)
+    if grid is not None and isinstance(getattr(grid, "spacing", None),
+                                       (int, float)):
+        entries.append([grid, "spacing", float(grid.spacing), "int"])
+    plots = []
+    for root in models:
+        plots += [m for m in root.references() if isinstance(m, Plot)
+                  and m not in plots]
+    follows = [getattr(m, "_dash_gm_cb", None) for m in plots]
+    follows = [[f, m] for f, m in zip(follows, plots) if f is not None]
+    cb = CustomJS(args={"anchor": anchor, "entries": entries,
+                        "plots": plots, "nominal": float(nominal_w),
+                        "unit": unit, "by": grid is not None,
+                        "state": {"k": None}, "follows": follows},
+                  code=_DASH_WIDTH_SCALE_JS)
+    keys = _DASH_SPAN_KEYS if grid is not None else ("outer_width",)
+    for k in keys:
+        anchor.js_on_change(k, cb)
+    anchor._dash_width_cb = cb
+    return cb
+
+
+#: The width scale (D66): k = drawn width / nominal width x unit, written
+#: to every entry once per width (a change under half a percent is not
+#: rewritten), then each plot laid out again.  Under by() the width is
+#: the array's (the GridBox holding the panels).
+_DASH_WIDTH_SCALE_JS = """
+let W = anchor.outer_width;
+if (by && typeof Bokeh !== "undefined" && Bokeh.index != null) {
+  let v = null;
+  try { v = Bokeh.index.find_one(anchor); } catch (e) { v = null; }
+  let a = v != null ? v.parent : null;
+  while (a != null && !(a.model != null && a.model.type === "GridBox")) {
+    a = a.parent;
+  }
+  if (a != null && a.el != null) {
+    const r = a.el.getBoundingClientRect();
+    if (r.width > 0) { W = r.width; }
+  }
+}
+if (!(W > 0) || !(nominal > 0)) { return; }
+const k = W / nominal * unit;
+if (state.k != null && Math.abs(k - state.k) < 0.005 * state.k) { return; }
+state.k = k;
+for (const [m, p, b, kind] of entries) {
+  const v = b * k;
+  if (kind === "css") {
+    const s = (Math.round(v * 100) / 100) + "pt";
+    if (m[p] !== s) { m[p] = s; }
+  } else if (kind === "int") {
+    const n = Math.round(v);
+    if (m[p] !== n) { m[p] = n; }
+  } else if (m[p] !== v) {
+    m[p] = v;
+  }
+}
+if (typeof Bokeh !== "undefined" && Bokeh.index != null) {
+  for (const pl of plots) {
+    let pv = null;
+    try { pv = Bokeh.index.find_one(pl); } catch (e) { pv = null; }
+    if (pv != null && pv.invalidate_layout != null) { pv.invalidate_layout(); }
+  }
+  // Each figure's size follow reads the frame these sizes leave: run it
+  // again once they are laid out.
+  if (follows.length > 0) {
+    setTimeout(() => {
+      for (const [f, fg] of follows) { f.execute(fg, {force: true}); }
+    }, 0);
+  }
+}
+"""
+
+
 def _dash_frame_aspect(graph_opts):
     """twoway's aspectratio(#), the plot region's height/width, or None
     (WP-31 D5).  ``_dash_figure_aspect`` keeps the figure's own ratio;
@@ -40110,6 +40320,10 @@ def _dash_span(fig, model, kind=None, side="", place="", offset=0.0,
     (*mode* ``"row"``, *offset* its share of the grid's width, or
     ``"hole"``); *model* None drops every item.  Both modes come through
     here."""
+    if kind == "key" and model is not None:
+        # D66: the span places this key; the width scale leaves its
+        # spacing to it.
+        model._dash_span_key = True
     from bokeh.models import CustomJS
     key0 = "change:" + _DASH_SPAN_KEYS[0]
     cb = next((c for c in fig.js_property_callbacks.get(key0, [])
@@ -41864,7 +42078,9 @@ def _dash_graph_margin(fig, scheme, graph_opts):
 _DASH_GRAPH_MARGIN_JS = """
 const w = fig.outer_width, h = fig.outer_height;
 if (!(w > 0) || !(h > 0)) { return; }
-if (w === item.w && h === item.h) { return; }
+const forced = typeof cb_data !== "undefined" && cb_data != null &&
+  cb_data.force === true;
+if (w === item.w && h === item.h && !forced) { return; }
 item.w = w; item.h = h;
 const cur = (n) => (fig[n] == null ? (fig.min_border == null ? 0
                                        : fig.min_border) : fig[n]);
@@ -41912,8 +42128,9 @@ if (s != null && s.ar > 0) {
 }
 const x = item.fxy;
 if (x != null) {
-  const ax = x.fx != null ? Math.max(0, (w - x.fx / 100 * 384) / 2) : 0;
-  const ay = x.fy != null ? Math.max(0, (h - x.fy / 100 * 384) / 2) : 0;
+  const kk = x.nw > 0 ? w / x.nw : 1;
+  const ax = x.fx != null ? Math.max(0, (w - x.fx / 100 * 384 * kk) / 2) : 0;
+  const ay = x.fy != null ? Math.max(0, (h - x.fy / 100 * 384 * kk) / 2) : 0;
   shift(x, [ax, ax, ay, ay]);
 }
 // A border is not a layout property in BokehJS: lay the figure out again.
@@ -52235,6 +52452,44 @@ def _dash_save_filename(name=None):
     return s if _DASH_SAVE_NAME_RE.fullmatch(s) else _DASH_SAVE_NAME
 
 
+#: The page's one toolbar (the maintainer's ruling of 01nov2026, DECISIONS
+#: D67): laid over the grid's top right corner, out of the layout's flow,
+#: so the graph area is twoway's box, and shown only while the pointer is
+#: over the page (``autohide``).
+_DASH_TOOLBAR_OVERLAY_CSS = (
+    ":host { position: relative; } "
+    ".bk-Toolbar { position: absolute !important; top: 0; right: 0; "
+    "z-index: 20; background: rgba(255, 255, 255, 0.85); }")
+
+
+def _dash_one_toolbar(grid):
+    """One toolbar per page, outside the graph's box (D67): every grid
+    nested in the page's *grid* (a by() graph's sub-grid) loses its own
+    toolbar -- ``gridplot()`` already merged its panels' tools into the
+    page's -- and the page's toolbar is laid over the grid's top right
+    corner (:data:`_DASH_TOOLBAR_OVERLAY_CSS`), hidden until the pointer
+    is over the page.  Returns *grid*."""
+    from bokeh.models import GridPlot, InlineStyleSheet
+    if grid is None:
+        return grid
+    from bokeh.models import CustomAction
+    for m in grid.select(dict(type=GridPlot)):
+        if m is not grid:
+            m.toolbar_location = None
+            # Its hidden toolbar keeps no export action of its own.
+            m.toolbar.tools = [
+                t for t in m.toolbar.tools
+                if not (isinstance(t, CustomAction) and {
+                    "dash_svg_save", "dash_composite_png"} & set(
+                        t.tags or ()))]
+    tb = getattr(grid, "toolbar", None)
+    if tb is not None:
+        tb.autohide = True
+    grid.stylesheets = list(grid.stylesheets) + [
+        InlineStyleSheet(css=_DASH_TOOLBAR_OVERLAY_CSS)]
+    return grid
+
+
 def _dash_name_save(model, name=None, composite=None):
     """Name the PNG the save button on *model*'s own toolbar writes.
 
@@ -53190,6 +53445,12 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
             grid.styles = {**dict(grid.styles or {}), "width": f"{_bw}px",
                            "max-width": f"{_bw}px"}
         _dash_fxy_size(grid, gopts_of(name) or {})
+        # D66: the graph drawn as one picture, its array's width against
+        # the graph's inch width.
+        _gw = (_box[0] if _box is not None else
+               (getattr(figs[0], "_dash_gsize", None) or (7.5, 4.5))[0])
+        _dash_width_scale(figs[0], [grid], float(_gw) * 96.0,
+                          OptionTranslator.size_ref_of(figs[0]), grid=grid)
         cell = _dash_name_save(_dash_reflow(grid, stack=_box is None))
         # A by() graph's data table, once under its grid (WP-31 H2t, D6).
         tbl = getattr(figs[0], "_dash_table", None)
@@ -53197,6 +53458,17 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
             else cell
     if name in figures:
         _dash_fxy_size(figures[name], gopts_of(name) or {})
+        _nom = getattr(figures[name], "_dash_nominal_px", None)
+        if _nom and getattr(figures[name], "sizing_mode", None) != "fixed":
+            # D66: the graph drawn as one picture.
+            _dash_width_scale(figures[name], [figures[name]],
+                              float(_nom[0]),
+                              OptionTranslator.size_ref_of(figures[name]))
+        elif _nom:
+            # A box at 96 px an inch: twoway's unit only.
+            _dash_width_scale(figures[name], [figures[name]],
+                              float(_nom[0]),
+                              OptionTranslator.size_ref_of(figures[name]))
         # A graph's data table under its figure (WP-31 H2t).
         tbl = getattr(figures[name], "_dash_table", None)
         if getattr(figures[name], "sizing_mode", None) == "fixed":
@@ -53255,7 +53527,8 @@ def _dash_fxy_size(item, graph_opts):
     adds = [int(round(v)) for v in (ax, ax, ay, ay)]
     for side, v, a in zip(("left", "right", "top", "bottom"), base, adds):
         setattr(item, "min_border_" + side, int(round(v + a)))
-    _dash_graph_follow(item, "fxy", {"fx": fx, "fy": fy, "added": adds})
+    _dash_graph_follow(item, "fxy", {"fx": fx, "fy": fy, "added": adds,
+                                     "nw": float(w)})
 
 
 def _dash_parse_tabs(tabs_str, all_names, limit=None):
@@ -53372,7 +53645,7 @@ def _dash_tab_panels(tabs_spec, cell_of):
         placed.update(names)
         rows = _dash_tab_grid(names, layout, cell_of)
         panels.append(TabPanel(
-            child=_dash_name_save(_dash_reflow(gridplot(rows, sizing_mode="stretch_width"))),
+            child=_dash_one_toolbar(_dash_name_save(_dash_reflow(gridplot(rows, sizing_mode="stretch_width")))),
             title=title))
     if not panels:
         return None, placed
@@ -69294,7 +69567,7 @@ class DashRenderer:
                 cells[r * cols_n : (r + 1) * cols_n] for r in range(rows_n)
             ]
         # The grid's one save button writes the whole grid to dashboard.png.
-        grid = _dash_name_save(_dash_reflow(gridplot(grid_rows, sizing_mode="stretch_width")))
+        grid = _dash_one_toolbar(_dash_name_save(_dash_reflow(gridplot(grid_rows, sizing_mode="stretch_width"))))
 
         # The tabs widget sits above the remaining grid.  An empty grid --
         # every element tabbed -- would otherwise contribute a stray blank
@@ -70367,6 +70640,8 @@ class ServerAppBuilder:
                       "_DASH_FIGURE_TOOLS", "_DASH_SAVE_NAME",
                       "_DASH_SAVE_NAME_RE",
                       "_DASH_SVG_SAVE_JS", "_DASH_SVG_SAVE_ICON",
+                      "_DASH_TOOLBAR_OVERLAY_CSS", "_DASH_WIDTH_SCALE_JS",
+                      "_DASH_WIDTH_SCALE_PROPS",
                       # The whole-dashboard export and the print layout
                       # (WP-31 H2x).
                       "_DASH_COMPOSITE_JS", "_DASH_COMPOSITE_SAVE_JS",
@@ -70848,6 +71123,8 @@ class ServerAppBuilder:
                          # cell and tab helpers above call it, and so does
                          # the grid make_document builds (WP-21).
                          "_dash_save_filename", "_dash_name_save",
+                         # D67: the page's one toolbar, laid over it.
+                         "_dash_one_toolbar",
                          # WP-31 H2x: the composite export and print.
                          "_dash_layout_walk", "_dash_add_composites",
                          # WP-32: a brush made while a move waits.
@@ -71283,6 +71560,8 @@ class ServerAppBuilder:
                     _dash_graph_box_in, _dash_graph_follow,
                     _dash_border_base, _dash_frame_slack,
                     _dash_apply_figure_size,
+                    # D66: the graph drawn as one picture.
+                    _dash_width_scale_entries, _dash_width_scale,
                     _dash_dashes_on_canvas,
                     _fit_grid,
                     # WP-31 C10a: range(. #) on the fits, and the t of a
@@ -75217,7 +75496,7 @@ class ServerAppBuilder:
             '',
             "        # The grid's one save button writes the whole grid to",
             "        # dashboard.png, through the helper the saved grid uses.",
-            "        grid = _dash_name_save(_dash_reflow(gridplot(grid_rows, sizing_mode='stretch_width')))",
+            "        grid = _dash_one_toolbar(_dash_name_save(_dash_reflow(gridplot(grid_rows, sizing_mode='stretch_width'))))",
             '',
             '    # A tab strip sits above whatever grid is left.  An empty grid -- every',
             '    # element tabbed -- would otherwise contribute a blank row.',

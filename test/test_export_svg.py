@@ -440,8 +440,13 @@ class TestInChrome:
             assert p.violations() == [] and p.js_errors() == []
 
     def test_a_by_sub_grid_keeps_the_grid_alone(self):
-        """WP-31 H2x: a by() sub-grid's Save as SVG has no composite
-        models and still writes the sub-grid alone."""
+        """WP-31 H2x: a by() sub-grid's Save as SVG had no composite models
+        and wrote the sub-grid alone.
+
+        Flipped (DECISIONS D67, the maintainer's ruling of 01nov2026: one
+        toolbar per page, outside the graph): the sub-grid has no toolbar
+        of its own, so the page's one Save as SVG, the composite's, is the
+        only one, and it exports the page."""
         cb = _cb()
         spec = cb._spec([cb._graph("g1", [cb._scatter()], by="foreign"),
                          cb._graph("g2", [cb._scatter()])])
@@ -454,13 +459,9 @@ class TestInChrome:
                           ".filter(a => a.tags.includes('dash_svg_save'))"
                           ".map(a => a.callback.code.startsWith("
                           "'function dash_html_escape')))")
-            assert True in acts and False in acts, acts
-            entry, name = _export(p, acts.index(False))
-            assert not name.endswith("-full.svg"), name
+            assert acts == [True], acts
+            entry, name = _export(p, 0)
             assert entry["type"] == "image/svg+xml"
-            assert not entry["text"].startswith(
-                '<svg xmlns="http://www.w3.org/2000/svg" width="'), (
-                entry["text"][:120])
             assert p.violations() == [] and p.js_errors() == []
 
     def test_a_failure_is_said_once(self):

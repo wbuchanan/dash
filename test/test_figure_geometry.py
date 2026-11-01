@@ -209,3 +209,65 @@ class TestFxFy:
                                                                     abs=1)
             assert f.min_border_bottom - est["below"] == pytest.approx(
                 120, abs=1)
+
+
+class TestOnePicture:
+    """DECISIONS D66 (the maintainer's ruling of 01nov2026): the graph is
+    one picture -- every size scales with the drawn width against the
+    scheme's inch width, times twoway's unit for the reference side -- and
+    a page has one toolbar, laid over the grid, so the graph area is
+    twoway's box."""
+
+    def test_entries(self):
+        from bokeh.plotting import figure
+        f = figure()
+        f.xaxis[0].major_label_text_font_size = "10pt"
+        r = f.scatter([1], [2], size=6)
+        got = [(m, p, b, k) for m, p, b, k in
+               dr._dash_width_scale_entries([f])]
+        assert (f.xaxis[0], "major_label_text_font_size", 10.0, "css") in got
+        assert (r.glyph, "size", 6.0, "num") in got
+        # One fixed order: a second build reads the same list.
+        assert [(p, b) for _m, p, b, _k in got] == [
+            (p, b) for _m, p, b, _k in dr._dash_width_scale_entries([f])]
+        assert r.glyph.size == 6
+
+    @requires_node
+    def test_the_scale_runs_once_per_width(self):
+        from bokeh.plotting import figure
+        f = figure()
+        f.xaxis[0].major_label_text_font_size = "10pt"
+        cb = dr._dash_width_scale(f, [f], 720.0, 4.5)
+        assert cb.code == dr._DASH_WIDTH_SCALE_JS
+        ents = [[i, p, b, k] for i, (m, p, b, k) in
+                enumerate(cb.args["entries"])]
+        src = """
+const ms = %s.map(() => ({}));
+let writes = 0;
+const entries = %s.map(([i, p, b, k]) => [new Proxy(ms[i], {set(t, q, v) {
+  writes += 1; t[q] = v; return true; }}), p, b, k]);
+const anchor = {outer_width: 1400};
+const state = {k: null};
+const run = () => (function (anchor, entries, plots, nominal, unit, by,
+                             state, follows) { %s })(
+  anchor, entries, [], 720, 1.125, false, state, []);
+run(); const first = writes; run();
+console.log(JSON.stringify({first: first, second: writes - first,
+                            k: state.k, font: ms[%d].major_label_text_font_size}));
+""" % (json.dumps(ents), json.dumps(ents), cb.code,
+            [i for i, p, b, k in ents
+             if p == "major_label_text_font_size"][0])
+        got = run_js(src)
+        assert got["first"] > 0 and got["second"] == 0, got
+        assert got["k"] == pytest.approx(1400 / 720 * 1.125)
+        assert got["font"] == "21.88pt"
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_one_toolbar(self, mode):
+        from bokeh.models import GridPlot
+        roots, _ = _figs(mode, {"by": "foreign"})
+        grids = [g for r in roots for g in r.select({"type": GridPlot})]
+        shown = [g for g in grids if g.toolbar_location is not None]
+        assert len(shown) == 1 and shown[0].toolbar.autohide is True
+        css = " ".join(getattr(s, "css", "") for s in shown[0].stylesheets)
+        assert dr._DASH_TOOLBAR_OVERLAY_CSS in css

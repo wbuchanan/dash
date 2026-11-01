@@ -94,6 +94,21 @@ _LEFT = {"l1title": '"A left edge title"', "l2title": '"And another"',
          "ytitle": '"A y title"'}
 
 
+#: The legend's margin at the 4-inch unit and 96 px an inch.
+_LM = 5
+
+
+def _k(width, scheme="stcolor"):
+    """The width scale of a graph drawn *width* px wide (DECISIONS D66,
+    the maintainer's ruling of 01nov2026: the graph is one picture):
+    width over its inch width at 96 px, times twoway's unit for the
+    scheme's reference side.  Flipped: every size in px was the 4-inch,
+    96-px value at any width."""
+    import dash_render as _dr
+    sp = _dr.SchemeParser(scheme)
+    return float(width) / (sp.graphsize_x * 96.0) * sp.size_ref_in / 4.0
+
+
 def _figs(mode, go):
     spec = bk._spec([bk._graph("g1", bk._TWO, dict(_LEFT, **go),
                                title=False)], scheme="s2color")
@@ -149,7 +164,9 @@ class TestTheLegendSpans:
             # min(W, H)) plus the gap the box keeps from the plot region
             # without span (its own margin, 5 px), as twoway places it.
             edge = 0.035 * min(fig["canvas"])
-            assert abs(lg["box"][0] - (edge + 5)) <= 1.5, fig
+            # Flipped (D66): the margin is 5 px times the width scale.
+            assert abs(lg["box"][0] - (edge + 5 * _k(fig["canvas"][0],
+                                                     "s2color"))) <= 1.5, fig
 
     @pytest.mark.parametrize("pos", ("6", "12", "9"))
     def test_across_its_side_it_stays_where_it_was(self, mode, pos):
@@ -368,7 +385,8 @@ class TestByLegendSpans:
         for st in _by(mode, {"by": "foreign, legend(pos(7) span)"}):
             g, lg = st["grid"], _by_legend(st)
             edge = 0.035 * min(g[2] - g[0], g[3] - g[1])
-            assert abs(lg[0] - (g[0] + edge + 5)) <= 1.5, st
+            # Flipped (D66): the margin is 5 px times the width scale.
+            assert abs(lg[0] - (g[0] + edge + _LM * _k(g[2] - g[0]))) <= 1.5, st
 
 
 def _by_titles(state, text):
@@ -528,10 +546,13 @@ class TestByLegendWithoutSpan:
     def test_a_corner_is_at_the_panels_end(self, mode):
         for st in _by(mode, {"by": "foreign, legend(pos(7))"}):
             p, lg = _panels(st), _by_legend(st)
-            assert abs(lg[0] - (p[0] + 5)) <= 1.5, st
+            # Flipped (D66): the margin is 5 px times the width scale.
+            k = _k(st["grid"][2] - st["grid"][0])
+            assert abs(lg[0] - (p[0] + _LM * k)) <= 1.5, st
         for st in _by(mode, {"by": "foreign, legend(pos(4))"}):
             p, lg = _panels(st), _by_legend(st)
-            assert abs(lg[3] - (p[3] - 5)) <= 1.5, st
+            k = _k(st["grid"][2] - st["grid"][0])
+            assert abs(lg[3] - (p[3] - _LM * k)) <= 1.5, st
 
 
 @pytest.mark.parametrize("mode", ("saved", "served"))
@@ -629,7 +650,10 @@ class TestByLegendInAHole:
             (lg,) = [b for b in st["boxes"] if b["type"] == "Legend"
                      and b["cell"] == "dash_by_legend"]
             box, c = lg["box"], lg["canvas"]
-            mg = 5
+            # Flipped (D66): the margin is 5 px times the width scale.
+            # A key in an at() hole is at by()'s size multiplier too
+            # (0.8 for five panels and a hole, _dash_by_size_mult).
+            mg = _LM * _k(st["grid"][2] - st["grid"][0]) * 0.8
             cx = (c[0] + c[2]) / 2.0
             cy = (c[1] + c[3]) / 2.0
             if where == "c":
@@ -671,7 +695,9 @@ class TestByLegendRing0:
     def test_5_oclock_ends_at_the_panels_right(self, mode):
         for st in _by_spec(mode, {"by": "foreign, legend(ring(0) pos(5))"}):
             p, lg = _panels(st), _by_legend(st)
-            assert abs(lg[2] - (p[2] - 5)) <= 1.5, st
+            # Flipped (D66): the margin is 5 px times the width scale.
+            k = _k(st["grid"][2] - st["grid"][0])
+            assert abs(lg[2] - (p[2] - _LM * k)) <= 1.5, st
 
     def test_9_oclock_is_centred_on_the_panels_height(self, mode):
         for st in _by_spec(mode, {"by": "foreign, legend(ring(0) pos(9))"}):

@@ -747,9 +747,13 @@ class TestAfterAFilterMove:
             # Flipped (WP-32): the span hook (_DASH_SPAN_JS), which places
             # by()'s boxes on the panels as the cells are laid out, is a
             # layout callback, not a filter callback.
+            # Flipped (DECISIONS D66): so is the one-picture width scale
+            # (_DASH_WIDTH_SCALE_JS), which sizes every text by the drawn
+            # width.
             for cb in [m for m in r.roots[0].references()
                        if isinstance(m, CustomJS)
-                       and m.code != dr._DASH_SPAN_JS]:
+                       and m.code not in (dr._DASH_SPAN_JS,
+                                          dr._DASH_WIDTH_SCALE_JS)]:
                 assert "dash_by_" not in cb.code
                 for v in dict(cb.args).values():
                     vals = v if isinstance(v, (list, tuple)) else [v]
