@@ -6228,8 +6228,8 @@ may be shortened to five letters, as in {cmd:twoway}.{p_end}
 
 {phang2}{opt xoverhangs} and {opt yoverhangs} keep the first and last tick labels
 inside the figure, as {helpb twoway} narrows the plot region for them: the
-figure's border on each side is raised to half the widest end label, never
-lowered.  {cmd:aspectratio()} with {cmd:xoverhangs} or {cmd:yoverhangs} is
+figure's border on each side is raised to half that side's own end label,
+never lowered; under {cmd:by()} they are ignored, as in {cmd:twoway}.  {cmd:aspectratio()} with {cmd:xoverhangs} or {cmd:yoverhangs} is
 refused, as {cmd:twoway} refuses it.{p_end}
 
 {pstd}

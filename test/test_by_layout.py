@@ -471,4 +471,43 @@ class TestEqualPanels:
         assert all(f["axes"] for f in panels)
         assert not [f for f in figs if f["name"].startswith("dash_by_yaxis")
                     and f["el"][2] - f["el"][0] > 0]
+# GW-5: xoverhangs.  Measured (by_layout_truth.json): Y18 (by(foreign)
+# xoverhangs) exports Y19's rects (twoway ignores overhangs under by());
+# sizing_truth.json overhang_x0/x1 a long first label moving the left edge
+# in by 138 units and the right by 80 of 3,960.
+# ---------------------------------------------------------------------------
+_LONG = '2000 "a very long label" 5000'
 
+
+def _figures(mode, go):
+    """Every plot figure of one graph (its panels under by())."""
+    spec = tk._spec([tk._graph("g1", tk._ONE, go, title=False)])
+    roots, _n, _o = tk._build(mode, spec, data=tr._data())
+    return [m for r in roots for m in r.references()
+            if type(m).__name__ == "figure"]
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestOverhangs:
+    def test_ignored_under_by(self, mode):
+        p = _truth()["probes"]
+        assert p["Y18"]["rects"] == p["Y19"]["rects"]
+        a = _figures(mode, {"by": "foreign", "xlabel": _LONG,
+                            "xoverhangs": "xoverhangs"})
+        b = _figures(mode, {"by": "foreign", "xlabel": _LONG})
+        sides = ("min_border_left", "min_border_right", "min_border_top",
+                 "min_border_bottom")
+        assert [[getattr(f, s) for s in sides] for f in a] == \
+            [[getattr(f, s) for s in sides] for f in b]
+
+    def test_end_labels_per_side(self, mode):
+        """Each side follows its own end label: the long first label
+        raises the left, the one-letter last label leaves the right."""
+        (f,) = _figures(mode, {"xlabel": '2000 "a very long label" 3000 "b" '
+                                         '5000 "c"',
+                               "xoverhangs": "xoverhangs"})
+        (g,) = _figures(mode, {"xlabel": '2000 "a very long label" 3000 "b" '
+                                         '5000 "c"'})
+        assert (f.min_border_left or 0) > (g.min_border_left or 5)
+        assert (f.min_border_right or 5) == (g.min_border_right or 5) or \
+            (f.min_border_right or 0) < (f.min_border_left or 0) / 4

@@ -434,7 +434,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-16 Tracked:** Closed in WP-41, BUGS.md "by() panel labels: a date variable is written as dates (twoway writes 14610); a value label holding double quotes stays one line", commit 653b1bb.
 - **BY-18 Tracked:** Closed in WP-41, BUGS.md "Documented by() layout differences: style(combine) on by()'s grid; clock 3/9 labels and titles below instead of beside; aspectratio() shapes each panel figure, not its plot region; a smaller graph margin insets nothing", commit pending.
 - **VF-6 Tracked:** Closed in WP-41, BUGS.md "by() panels in the first column have narrower plot regions (y labels inside their canvas), so pixels per unit differ across a row", commit pending.
-- **GW-5 Tracked:** Open (WP-41 section 41-05).
+- **GW-5 Tracked:** Closed in WP-41, BUGS.md "xoverhangs/yoverhangs move panel borders under by() (twoway ignores them there) and use every label, not only the end labels, raising both sides equally", commit pending.
 - **sil:SD-7 Tracked:** Closed in WP-41, BUGS.md "A weighted layer under by() with a panel whose weights are all zero is drawn; twoway stops with r(198)", commit 2fb5c6e.
 - **PIC-13 Tracked:** Closed in WP-41, BUGS.md "A legend in a by() at() hole keeps full-size text; twoway scales it (0.85x)", commit f62bb34.
 - **BY-7 Tracked:** Closed in WP-41, BUGS.md "by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor", commit 5497cfa.

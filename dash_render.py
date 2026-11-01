@@ -28196,13 +28196,18 @@ def _dash_overhangs(fig, graph_opts):
     so the first and last tick labels fit inside the graph (measured,
     sizing_truth.json overhang_x0/x1: the plot region's left edge moved in
     by 138 and its right by 80 of 3,960 units for a long first label).
-    Each side's min_border is raised to half the widest end label
-    (x: the labels' estimated width; y: their height), never lowered, so
-    the borders other options set are kept."""
+    Each side's min_border is raised to half its own end label (x: the
+    label of the smallest tick on the left, of the largest on the right,
+    their estimated widths; y: the labels' height), never lowered, so the
+    borders other options set are kept.  WP-41 GW-5: under by() twoway
+    ignores both (by_layout_truth.json Y18 exports Y19's rects), and so
+    does dash; a side no longer takes the widest label of all."""
     go = graph_opts or {}
     want_x = bool(str(go.get("xoverhangs", "") or "").strip())
     want_y = bool(str(go.get("yoverhangs", "") or "").strip())
     if fig is None or not (want_x or want_y):
+        return
+    if _dash_parse_by(str(go.get("by", "") or ""), warn=False)[0]:
         return
     base = fig.min_border if isinstance(fig.min_border, (int, float)) else 5
 
@@ -28221,12 +28226,24 @@ def _dash_overhangs(fig, graph_opts):
             px = pt * 4.0 / 3.0
             if sides[0] == "left":
                 ov = getattr(ax, "major_label_overrides", None) or {}
-                n = max([len(str(v)) for v in ov.values()] or [6])
-                half = 0.5 * n * 0.6 * px
+                keys = []
+                for k in ov:
+                    try:
+                        kv = float(k)
+                    except (TypeError, ValueError):
+                        continue
+                    if math.isfinite(kv):
+                        keys.append((kv, k))
+                if keys:
+                    ends = (len(str(ov[min(keys)[1]])),
+                            len(str(ov[max(keys)[1]])))
+                else:
+                    ends = (6, 6)
+                for side, n in zip(sides, ends):
+                    raise_to(side, 0.5 * n * 0.6 * px)
             else:
-                half = 0.5 * px
-            for side in sides:
-                raise_to(side, half)
+                for side in sides:
+                    raise_to(side, 0.5 * px)
 
 
 def _dash_drawn_rows(source, facet_view=None, row_id=None):
