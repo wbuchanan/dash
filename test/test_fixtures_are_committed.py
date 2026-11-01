@@ -140,9 +140,39 @@ def readers():
 
 def _names(text, name):
     """Whether *text* names *name* as a whole token: "truth.json" is not
-    named by "stat_truth.json", nor "sp500" by "sp5000"."""
+    named by "stat_truth.json", nor "sp500" by "sp5000".
+
+    A name of word characters, dots and hyphens -- every fixture's -- is
+    looked up in the text's token index (``_token_index``): the regex below
+    over every reader for every fixture was most of this file's time."""
+    if _TOKEN_CHARS.fullmatch(name):
+        return name in _token_index(text)
     return re.search(r"(?<![\w.-])" + re.escape(name) + r"(?![\w-])",
                      text) is not None
+
+
+_TOKEN_CHARS = re.compile(r"[\w.-]+")
+#: text -> its token index (str hashes are cached, so a lookup is cheap).
+_TOKEN_INDEX = {}
+
+
+def _token_index(text):
+    """Every name of ``[\\w.-]`` characters the regex of ``_names`` finds in
+    *text*: a match starts a maximal run of those characters (nothing of
+    them before it) and ends where the run does or at a dot inside it
+    (nothing of ``[\\w-]`` after it), so the names are each run's prefixes
+    that end at a dot or at the run's end."""
+    idx = _TOKEN_INDEX.get(text)
+    if idx is None:
+        idx = set()
+        for run in _TOKEN_CHARS.findall(text):
+            idx.add(run)
+            i = run.find(".")
+            while i != -1:
+                idx.add(run[:i])
+                i = run.find(".", i + 1)
+        _TOKEN_INDEX[text] = idx
+    return idx
 
 
 def _names_dir(text, directory):
@@ -203,6 +233,15 @@ def test_the_readers_name_what_they_load(readers):
     assert not _named_by("no_such_fixture.json", readers)
     assert not _names('"stat_truth.json"', "truth.json")
     assert _names('os.path.join(_DIR, "truth.json")', "truth.json")
+    # The index answers as the regex does.
+    for text, name in (("a stat_truth.json b", "truth.json"),
+                       ("x/truth.json.", "truth.json"), ("sp5000", "sp500"),
+                       ("sp500-x", "sp500"), ("sp500.csv", "sp500"),
+                       ("-sp500", "sp500"), (".sp500", "sp500"),
+                       ("a.b.c d", "a.b"), ("a.b.c d", "b.c")):
+        want = re.search(r"(?<![\w.-])" + re.escape(name) + r"(?![\w-])",
+                         text) is not None
+        assert _names(text, name) is want, (text, name)
     assert _names_dir('os.path.join(_HERE, "fixtures", "data")', "data")
     assert _names_dir('"test/fixtures/data/auto.csv"', "data")
     assert not _names_dir('{"data": [1, 2]}', "data")
