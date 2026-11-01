@@ -11653,7 +11653,10 @@ def _s53_check():
             return "on"
         if c[2] > max(cols):
             return "rightof"
-        if c[2] < min(cols):
+        # WP-41 VF-6: a row's outer y-axis cell is a column left of the
+        # panels, and a key below or above spans it too: leftof only
+        # when the whole cell is left of the panels.
+        if c[2] + c[4] <= min(cols):
             return "leftof"
         return "above" if c[1] < min(rows) else "below"
     if grid is not None and kind == "axes":
@@ -11667,7 +11670,13 @@ def _s53_check():
             prim = [a for a in f.yaxis if a.y_range_name == "default"]
             sec = [a for a in f.yaxis if a.y_range_name != "default"]
             xs = [a for a in f.xaxis if a.x_range_name == "default"]
-            got = [any(a.visible for a in prim), any(a.visible for a in xs),
+            # Flipped (WP-41 VF-6): a row's shared y axis is drawn in the
+            # row's own dash_by_yaxis_<r> cell left of it, and the
+            # panel's own axis, hidden, is tagged dash_by_outer_yaxis:
+            # it is drawn, in the cell.
+            def shown(a):
+                return a.visible or "dash_by_outer_yaxis" in (a.tags or [])
+            got = [any(shown(a) for a in prim), any(a.visible for a in xs),
                    any(a.visible for a in sec) if sec else None]
             for k, (w, g) in enumerate(zip(flags.split(","), got)):
                 if w != "." and g is not None and (w == "1") != g:
