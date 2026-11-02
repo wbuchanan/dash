@@ -2917,11 +2917,12 @@ class TestTheCountsAreTrue:
 # ===========================================================================
 
 #: GAPS4 (.ultraplan/sections/index.md PD-1..PD-4, Appendix A): the open
-#: BUGS.md entry of each of the 235 registered items, by lead id, with its
+#: BUGS.md entry of each of the 236 registered items, by lead id, with its
 #: exact title, one key per line in Appendix A order.  An item's closing
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
+    'CV-8a': 'Under by(), every panel draws its own contour colour key; twoway draws none under by(), and one key beside the panels under by(, clegend(on))',
     'CV-3': "The discrete/binned clegend differs: ascending top to bottom, value labels and interval texts instead of a z axis, an extra '(missing)'/otherlabel entry, circles for every type, a frame",
     'CV-4': "The coloruseplegend key: ascending order, '(missing)' for 'Other', an extra title, value labels; legend() sub-options and colorkeysrange applied",
     'CV-2': 'colordiscrete with colorlevels(k) makes k-1 cuts at range/k; twoway makes k cuts at range/(k+1)',
@@ -3154,6 +3155,7 @@ GAPS4_WP = {
     'BY-7': 'WP-41',
     'TR-19': 'WP-41',
     'CV-8': 'WP-42',
+    'CV-8a': 'WP-42',
     'CV-1': 'WP-42',
     'CV-3': 'WP-42',
     'CV-4': 'WP-42',
@@ -3392,6 +3394,7 @@ GAPS4_SECTION = {
     'BY-7': '41-02',
     'TR-19': '41-02',
     'CV-8': '42-01',
+    'CV-8a': '42-03',
     'CV-1': '42-02',
     'CV-3': '42-03',
     'CV-4': '42-04',
@@ -3529,7 +3532,7 @@ _GAPS4_WPS = ("WP-33", "WP-34", "WP-35", "WP-36", "WP-37", "WP-38",
 _GAPS4_WITHDRAWN = ("plat:PT-3", "basic:PT-7", "plot:PT-10")
 # An optional lower-case letter: the rows a closing section registers for
 # differences it measured and no audit item covers (D42: syn:SD-20a..e;
-# D44: BY-24a; D64: TR-13a).
+# D44: BY-24a; D64: TR-13a; D68: CV-8a).
 _GAPS4_ID = r"(?:(?:plot|basic|stat|plat|syn|sil):)?[A-Z]{2,3}-\d{1,2}[a-z]?"
 _GAPS4_KINDS = ("Fix", "Document", "Partly", "Fix per the Q8 per-word ruling",
                 "Fix or Document per the Q8 per-word ruling")
@@ -3729,7 +3732,8 @@ class TestGaps4Tracking:
         # old -> new: 231 -> 234: 34-07 (TR-4) measured AX-19, AX-20 and
         # PIC-17, three range/bar rows rules no item covered (24oct2026)
         # old -> new: 234 -> 235: TR-13a (D64)
-        assert len(GAPS4_ALL) == 235
+        # old -> new: 235 -> 236: CV-8a (D68)
+        assert len(GAPS4_ALL) == 236
         assert tuple(GAPS4_SECTION) == GAPS4_ALL
         # GAPS4_OPEN shrinks as items close; never compare it with
         # GAPS4_ALL for equality.

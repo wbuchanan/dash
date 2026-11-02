@@ -5990,3 +5990,8 @@
   - Suggested fix: Read the outer y axis cell's labels for the label box.
   - Resolution: Fixed in part 01nov2026 (WP-41, 41-05): for a label box the span hook reads the abutting outer y axis cell's labels, so the box reaches over the panel's left margin to its canvas's edge; it cannot reach over the labels themselves, which another canvas draws (open). Titles, notes and captions on a panel are unchanged.
 
+- [ ] Title: Under by(), every panel draws its own contour colour key; twoway draws none under by(), and one key beside the panels under by(, clegend(on))
+  - File Names and Line Numbers: dash_render.py _dash_by_keys (its colour_keys test, isinstance(m, ColorBar)), _dash_by_colour_bar_cell, GlyphMapper._contour_key
+  - Description: Found by WP-42 section 42-01 (sil:SD-4) and re-measured 02nov2026 (D68): sysuse surface, `contour temperature latitude longitude, levels(10)`. twoway draws no colour key under by(date) and one key beside the two panels under by(date, clegend(on)). dash's saved pages hold two ContourColorBars, one per panel, in both cases, because _dash_by_keys collects only ColorBar and ContourColorBar is not a subclass. The wider key from 42-01 makes each panel narrower (the corpus guard's help-clegend_option-2779567d frame aspect: dash 0.611, twoway 0.689).
+  - Suggested fix: Treat a ContourColorBar as a colour key in _dash_by_keys: drop the panels' keys, and under clegend(on) draw one key beside the panels, as twoway draws it.
+  - Resolution: Not fixed because WP-42 section 42-03 has not landed. Graded S2 (WP-42): a key twoway leaves out is drawn on every panel.

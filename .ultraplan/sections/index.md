@@ -449,6 +449,7 @@ Kind: **Fix** (closed by code), **Document** (closed by a help note; M10, M8, M1
 | AX-12 | syn:SD-4 | The z tick family: zlabels/zticks/zmlabels/zmticks are refused (twoway takes them); ztick(), zmlabel() and zmtick() are noted and not drawn, and are absent from the Unsupported list | S2 | 42-03 | Fix |
 | sil:SD-4 | sil:SD-14 | The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read | S2 | 42-01 | Fix |
 | LT-22 | -- | contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line | S2 | 42-03 | Fix |
+| CV-8a | -- | Under by(), every panel draws its own contour colour key; twoway draws none under by(), and one key beside the panels under by(, clegend(on)) (D68) | S2 | 42-03 | Fix |
 
 ### WP-43 · Legend, titles and added text (P8)
 
