@@ -85,13 +85,19 @@ from dash_render import DashRenderer, GlyphMapper, OptionTranslator, SchemeParse
 
 def _start_memory_guard(config):
     """The controlling process watches the machine's memory (memory_guard;
-    a run's workers once exhausted it, 01nov2026)."""
-    if hasattr(config, "workerinput") or os.environ.get("DASH_NO_MEMORY_GUARD"):
+    a run's workers once exhausted it, 01nov2026).  Once per process, and
+    never in a worker: a nested pytest run inside a worker configures with
+    no ``workerinput``, and started a second watchdog there (02nov2026)."""
+    if (hasattr(config, "workerinput") or os.environ.get("PYTEST_XDIST_WORKER")
+            or os.environ.get("DASH_NO_MEMORY_GUARD")):
         return
     try:
         import memory_guard
     except ImportError:   # a copied conftest run elsewhere (test_strict_mode)
         return
+    if getattr(memory_guard, "_STARTED", False):
+        return
+    memory_guard._STARTED = True
     memory_guard.start_watchdog()
 
 

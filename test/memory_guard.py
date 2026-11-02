@@ -115,14 +115,22 @@ def _stop(avail):
     os._exit(3)
 
 
-def start_watchdog(interval=INTERVAL_S, floor=FLOOR_BYTES):
-    """Start the controlling process's memory check (a daemon thread)."""
+#: Whether this process's watchdog was started (conftest._start_memory_guard).
+_STARTED = False
+
+
+def start_watchdog(interval=INTERVAL_S, floor=FLOOR_BYTES, stop=None):
+    """Start the controlling process's memory check (a daemon thread); it
+    runs until *stop* (a ``threading.Event``) is set, or for the process's
+    life without one."""
+    stop = stop or threading.Event()
+
     def run():
-        while True:
+        while not stop.is_set():
             avail = available_bytes()
             if too_low(avail, floor):
                 _stop(avail)
-            threading.Event().wait(interval)
+            stop.wait(interval)
     t = threading.Thread(target=run, name="dash-memory-guard", daemon=True)
     t.start()
     return t

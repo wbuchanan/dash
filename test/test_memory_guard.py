@@ -63,6 +63,34 @@ def test_children_and_test_modules():
     assert any(m.__name__ == "memory_guard" for m in mg._test_modules())
 
 
-def test_start_watchdog_runs_without_stopping_when_memory_is_plenty():
-    t = mg.start_watchdog(interval=0.01, floor=0)
+def test_start_watchdog_runs_until_it_is_told_to_stop():
+    """A watchdog a test starts is stopped by it: one left running spawned
+    vm_stat every 10 ms in its worker for the rest of the run, and a fake
+    Popen in a later test recorded it (02nov2026)."""
+    import threading
+    stop = threading.Event()
+    t = mg.start_watchdog(interval=0.01, floor=0, stop=stop)
     assert t.daemon and t.is_alive()
+    stop.set()
+    t.join(2)
+    assert not t.is_alive()
+
+
+def test_the_guard_starts_once_and_only_in_the_controlling_process(
+        monkeypatch):
+    """A nested pytest run inside a worker configures without workerinput;
+    it must not start a second watchdog there (02nov2026)."""
+    import types
+    import conftest
+    started = []
+    monkeypatch.setattr(mg, "start_watchdog", lambda: started.append(1))
+    monkeypatch.setattr(mg, "_STARTED", False, raising=False)
+    monkeypatch.delenv("DASH_NO_MEMORY_GUARD", raising=False)
+    cfg = types.SimpleNamespace()
+    monkeypatch.setenv("PYTEST_XDIST_WORKER", "gw3")
+    conftest._start_memory_guard(cfg)
+    assert started == []
+    monkeypatch.delenv("PYTEST_XDIST_WORKER")
+    conftest._start_memory_guard(cfg)
+    conftest._start_memory_guard(cfg)
+    assert started == [1]
