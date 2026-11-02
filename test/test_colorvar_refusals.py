@@ -241,3 +241,51 @@ class TestTheAdoText:
             if not m or m.group(1) in ("bogus", "bogusp", "abbrev"):
                 continue
             assert (m.group(1) in rows) == (p["rc"] == 0), (key, p["rc"])
+
+
+# ---------------------------------------------------------------------------
+# CV-14: a colorvar() layer with no observation, as twoway answers it.
+# ---------------------------------------------------------------------------
+
+#: E_* probes twoway refuses for the layer itself (not by()'s byempty).
+_E_REFUSED = ("E_empty", "E_empty_in", "E_empty_line", "E_empty_levels",
+              "E_empty_cuts", "E_nodata", "E_two")
+#: E_* probes twoway draws: colordiscrete (colorvar(i.x) too) and the
+#: all-missing layers.
+_E_DRAWN = ("E_empty_disc", "E_nodata_disc", "E_empty_ipre", "E_allmiss",
+            "E_allmiss_y")
+
+
+def _mata_function(src, name):
+    start = src.index(" %s(" % name, src.index("\nstring rowvector " + name))
+    return src[start:src.index("\n}\n", start)]
+
+
+class TestTheEmptyLayer:
+
+    def test_the_rule_matches_the_fixture(self):
+        body = _mata_function(_read("dash_parse.mata"),
+                              "_dash_zero_obs_cvrule")
+        lits = re.findall(r'"([^"]*)"', body)
+        rows = _truth()["probes"]
+        for key in _E_REFUSED:
+            p = rows[key]
+            assert p["rc"] != 0, key
+            assert str(p["rc"]) in lits, key
+            for ln in p["lines"]:
+                assert ln in lits, (key, ln)
+        for key in _E_DRAWN:
+            assert rows[key]["rc"] == 0, key
+        # The colordiscrete rule: twoway draws the empty discrete layer.
+        assert "discrete" in body
+        chk = _program(_read("dash.ado"), "_dash_zero_obs_check")
+        assert "_dash_zero_obs_cvrule(" in chk
+        assert re.search(r"foreach key in [^{]*\bcolorvar colordiscrete\b", chk)
+
+    def test_the_help_sentence(self):
+        text = " ".join(_read("dash.sthlp").split())
+        assert ("A {cmd:colorvar()} layer whose {cmd:if} or {cmd:in} keeps "
+                "no observation is refused with {cmd:twoway}'s message and "
+                "return code, r(3001), as {cmd:twoway} answers it when it "
+                "draws the graph, unless it is {cmd:colordiscrete}") in text
+        assert "draws no key ({cmd:twoway} stops with r(3001))" not in text

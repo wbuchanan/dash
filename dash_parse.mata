@@ -832,6 +832,10 @@
 *!       (nodata, none, allmissing, byempty): (rc, note line, error line);
 *!       rc "0" draws (WP-37 DG-1).
 *!
+*!   _dash_zero_obs_cvrule(c, discrete)
+*!       twoway's answer when a colorvar() layer has no observation in case
+*!       c: (rc, error line 1, error line 2); rc "0" draws (WP-42 CV-14).
+*!
 *!   _dash_zo_records(json, pend)
 *!       The records of json's first "plots" array, each its own JSON text;
 *!       pend is set to the byte offset of the ] that closes the array.
@@ -14115,6 +14119,22 @@ string rowvector _dash_zero_obs_rule(string scalar t, string scalar c)
     if (t == "histogram" & c == "nodata")
         return(("198", "", "observation numbers out of range"))
     return(("0", "", ""))
+}
+
+// _dash_zero_obs_cvrule(c, discrete) -- twoway's answer when a colorvar()
+// layer has no observation in case c ("nodata" or "none"): (rc, line 1,
+// line 2), rc "0" drawing.  Measured (test/fixtures/
+// colorvar_refusal_truth.json E_*, scripts/extract_colorvar_refusal_
+// truth.do): twoway stops with r(3001) when it draws the layer, its key's
+// levels made from no value, and prints these two lines; a colordiscrete
+// layer (colorvar(i.x) too) and an all-missing one are drawn.  A by()
+// graph is judged by byempty alone (_dash_zero_obs_rule).
+string rowvector _dash_zero_obs_cvrule(string scalar c, real scalar discrete)
+{
+    if (discrete | !anyof(("nodata", "none"), c)) return(("0", "", ""))
+    return(("3001",
+            "          _calc_levels():  3001  incorrect number of arguments",
+            "                 <istmt>:     -  function returned error"))
 }
 
 // _dash_zo_records(json, pend) -- the records of json's first "plots"

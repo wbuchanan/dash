@@ -685,6 +685,7 @@ COVERAGE = {
         "_dash_qual_skipws": ("test_qualifier_in_stata.cscript:QS-09",),
         # WP-37 DG-1: the zero-observation rule table and the plots walker.
         "_dash_zero_obs_rule": ("test_wp37_truth.cscript:Q3701-1",),
+        "_dash_zero_obs_cvrule": ("test_option_validation.cscript:Q4205-4g",),
         "_dash_zo_records": ("test_wp37_truth.cscript:Q3701-5",),
         "_dash_sel_col": ("test_wp40_truth.cscript:Q4001-7",),
         "_dash_sel_mark": ("test_wp40_truth.cscript:Q4001-7",),

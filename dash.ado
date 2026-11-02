@@ -527,7 +527,7 @@ program define _dash_require_mata
         _dash_tw_value_msg ///
         _dash_reserved_prefix _dash_esample_sub _dash_expr_words ///
         _dash_pyname ///
-        _dash_zero_obs_rule _dash_zo_records ///
+        _dash_zero_obs_rule _dash_zero_obs_cvrule _dash_zo_records ///
         _dash_sel_mark _dash_put_n_obs ///
         _dash_cg_reset _dash_cg_take ///
         _dash_abs_path _dash_graph_names _dash_gt_ccl _dash_at_globals _dash_gt_qadded _dash_gt_qtexts _dash_at_isnum
@@ -8995,7 +8995,7 @@ program define _dash_zero_obs_check
     mata: _dash_json_get_str(substr(st_strscalar("`sc'"), `zp' + 1, .), "by", "_zo_by")
     local _zo_types ""
     forvalues k = 1/`_zo_n' {
-        foreach key in type yvar xvar var qual_col wexp bands {
+        foreach key in type yvar xvar var qual_col wexp bands colorvar colordiscrete {
             mata: _dash_json_get_str(`zr'[`k'], "`key'", "_zo_`key'_`k'")
         }
         local _zo_type_`k' = strlower("`_zo_type_`k''")
@@ -9086,6 +9086,20 @@ program define _dash_zero_obs_check
         mata: st_local("_zo_rc", _dash_zero_obs_rule(st_local("t"), st_local("_zo_case"))[1])
         mata: st_local("_zo_note", _dash_zero_obs_rule(st_local("t"), st_local("_zo_case"))[2])
         mata: st_local("_zo_err", _dash_zero_obs_rule(st_local("t"), st_local("_zo_case"))[3])
+        // A colorvar() layer twoway would draw stops when it draws its
+        // key's levels from no value, r(3001), unless it is colordiscrete
+        // (WP-42 CV-14, _dash_zero_obs_cvrule; colorvar(i.x) is written
+        // colordiscrete).
+        if `_zo_rc' == 0 & `: length local _zo_colorvar_`k'' {
+            mata: st_local("_zo_rc", _dash_zero_obs_cvrule(st_local("_zo_case"), st_local("_zo_colordiscrete_`k'") != "")[1])
+            if `_zo_rc' == 0 continue
+            mata: st_local("_zo_cv1", _dash_zero_obs_cvrule(st_local("_zo_case"), 0)[2])
+            mata: st_local("_zo_cv2", _dash_zero_obs_cvrule(st_local("_zo_case"), 0)[3])
+            display as error "`_zo_cv1'"
+            display as error "`_zo_cv2'"
+            _dash_zo_line `k' "`t'" "`name'" 0
+            exit `_zo_rc'
+        }
         if `_zo_rc' == 0 continue
         if "`_zo_note'" != "" display as text "`_zo_note'"
         display as error "`_zo_err'"

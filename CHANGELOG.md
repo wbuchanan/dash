@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- A colorvar() layer whose if or in keeps no observation is refused r(3001) as twoway refuses it when drawing (was drawn empty); a colordiscrete one is drawn, as in twoway (WP-42, CV-14)
 - clegend(bogus), plegend(bogus), zlabel(bogus) and zscale(bogus) are refused r(198) in twoway's words (were drawn with a note) (WP-42, CV-10)
 - colorcuts(abc) is r(121) and colorvar(a b) r(101) in twoway's words (were r(198)); colorvar(pri*) is refused (was drawn) (WP-42, CV-9)
 - aspectratio() with by(, shrink) or overallshrink is refused r(198), as twoway refuses it; it was drawn (WP-41, BY-5)

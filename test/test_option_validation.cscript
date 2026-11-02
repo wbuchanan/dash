@@ -438,6 +438,13 @@
 *!          colorvar(rep78 foreign), colorvar(pri*), colorvar(price-length),
 *!          colorvar(nosuch), colorvar(pri) (drawn), colorvar(make),
 *!          colorvar(L.price): twoway's rc and lines, nothing more
+*! The colorvar spellings and layers (CV-14; DECISIONS.md P4-7, P4-9):
+*!   Q4205-4a..4e cv(), colv(), colornlevels(), colormissing(),
+*!          colpalette(): twoway's line and the hint line (HINT)
+*!   Q4205-4f a string colorvar(): twoway's rc and line
+*!   Q4205-4g a colorvar() layer with no observation (E_*): twoway's rc
+*!          and lines, then the line naming the plot
+*!   Q4205-4h colordiscrete and all-missing layers are drawn
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -4102,6 +4109,31 @@ local _q42l a b c d e f g h i j
 local _q42k R_cuts_abc R_levels_abc R_levels_frac R_var_two R_var_wild R_var_range R_var_nosuch R_var_abbrev R_var_string R_var_ts
 forvalues _q42j = 1/10 {
     _q4205 Q4205-2`: word `_q42j' of `_q42l'' `: word `_q42j' of `_q42k''
+}
+
+// ----------------------------------------------------------------
+// CV-14 (WP-42 section 42-05; DECISIONS.md P4-7 and P4-9, A-12): the
+// colorvar spellings twoway does not take are refused with twoway's line
+// and the hint line naming its spelling; a string colorvar() as twoway
+// refuses it; a colorvar() layer with no observation as twoway answers
+// when it draws (its lines, then 37-01's line naming the plot), unless
+// colordiscrete (colorvar(i.x) too), which twoway draws; an all-missing
+// layer is drawn.  The answers are the fixture's (_q4205 above).
+// ----------------------------------------------------------------
+_q4205 Q4205-4a W_cv "cv()"
+_q4205 Q4205-4b W_colv "colv()"
+_q4205 Q4205-4c W_colornlevels "colornlevels()"
+_q4205 Q4205-4d W_colormissing "colormissing()"
+_q4205 Q4205-4e W_colpalette "colpalette()"
+_q4205 Q4205-4f R_var_string
+foreach _q42k in E_empty E_empty_in E_empty_levels E_empty_cuts E_nodata {
+    _q4205 Q4205-4g `_q42k' "" "dash: plot 1 (scatter) has no observations."
+}
+_q4205 Q4205-4g E_empty_line "" "dash: plot 1 (line) has no observations."
+_q4205 Q4205-4g E_two "" "dash: plot 2 (scatter) has no observations."
+_q4205 Q4205-4g E_by "" "dash: plot 1 (scatter) leaves no by() panel."
+foreach _q42k in E_allmiss E_allmiss_y E_empty_disc E_nodata_disc E_empty_ipre {
+    _q4205 Q4205-4h `_q42k'
 }
 
 // Summary

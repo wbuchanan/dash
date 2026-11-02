@@ -2927,7 +2927,6 @@ GAPS4_OPEN = {
     'CV-4': "The coloruseplegend key: ascending order, '(missing)' for 'Other', an extra title, value labels; legend() sub-options and colorkeysrange applied",
     'CV-5': "legend(size()) and legend(rows()/cols()) restyle the colour key; twoway's key ignores them",
     'CV-11': 'colorkeysreverse reverses entries and labels (twoway reverses colours only); colorlevels() over one value prints nonsense intervals',
-    'CV-14': "Documented acceptances: string colorvar, colpalette()/colornlevels()/colormissing(), cv()/colv(), an empty layer drawing no key, '(missing)' for all-missing",
     'CV-15': "On a discrete key, zlabel() and zscale() are named and not drawn; clegend() altaxis, region(), bplacement(), bmargin(), subtitle(), note() and caption() are named as 'not a recognised sub-option'",
     'LT-12': 'clegend(title()) replaces the z title and prints the raw option text, quotes included, when it has sub-options',
     'AX-12': 'The z tick family: zlabels/zticks/zmlabels/zmticks are refused (twoway takes them); ztick(), zmlabel() and zmtick() are noted and not drawn, and are absent from the Unsupported list',

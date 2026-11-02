@@ -6110,10 +6110,15 @@ observation whose y or x is missing included, a plot with its own
 {cmd:if} or {cmd:in} too, and under {cmd:colorvarminmax} a
 {cmd:colorcuts()} key can gain the bin a move leaves, as {cmd:twoway}'s
 does.
-{cmd:rconnected} draws one key for both ends.  A plot whose {cmd:if}
-selects no observation draws no key ({cmd:twoway} stops with r(3001)), and
-one whose observations are all missing on the variable draws a
-"(missing)" entry where {cmd:twoway} draws the key's title alone.
+{cmd:rconnected} draws one key for both ends.  A {cmd:colorvar()} layer
+whose {cmd:if} or {cmd:in} keeps no observation is refused with
+{cmd:twoway}'s message and return code, r(3001), as {cmd:twoway} answers it
+when it draws the graph, unless it is {cmd:colordiscrete} (or
+{cmd:colorvar(i.}{it:varname}{cmd:)}), which {cmd:twoway} draws, and so does
+{cmd:dash}; a {cmd:by()} graph with no panel is refused "nothing to graph".
+A layer whose observations are all missing on the variable is drawn, as in
+{cmd:twoway}, its key with a "(missing)" entry where {cmd:twoway} draws the
+key's title alone.
 
 {pstd}
 The colour key's own axis options, {cmd:ztitle()}, {cmd:zlabel()} and
