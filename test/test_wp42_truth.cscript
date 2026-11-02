@@ -974,6 +974,86 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
 }
 * ==== end S03 ====
 
+// S03 AX-12 helper: _q4203_keynums: the colour key's tick texts both
+// modes draw for a registered graph, into q4203_ks and q4203_kv.
+python:
+def _q4203_keynums(sp, dp, app):
+    from sfi import Macro
+    from bokeh.models import Plot
+    a, b = _q4203_models(sp, dp, app)
+    for models, sfx in ((a, "s"), (b, "v")):
+        texts = []
+        for m in models:
+            if not isinstance(m, Plot):
+                continue
+            for side in (m.right, m.left, m.above, m.below, m.center):
+                for k in side:
+                    if type(k).__name__ != "ColorBar":
+                        continue
+                    over = dict(k.major_label_overrides or {})
+                    for t in sorted(getattr(k.ticker, "ticks", []) or []):
+                        texts.append(str(over.get(t, t)))
+        Macro.setGlobal("q4203_k" + sfx, " ".join(texts))
+end
+
+capture program drop _q4203_kreg
+program define _q4203_kreg, rclass
+    // _q4203_kreg <dir> <dash command...>: register one graph (its rc in
+    // r(rc)) and, when it registers, read the key both modes draw.
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    capture quietly dash `0'
+    return scalar rc = _rc
+    global q4203_ks ""
+    global q4203_kv ""
+    if _rc == 0 {
+        _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+        python: import __main__ as _q4203_m; _q4203_m._q4203_keynums("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+    }
+end
+
+* ==== S03 AX-12: the z tick family's plurals ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03d "`w42_work'/s03z"
+    capture mkdir "`q03d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4203-4: zlabels(), zticks(), zmlabels() and zmticks() are twoway's
+    // spellings of zlabel(), ztick(), zmlabel() and zmtick() (twoway: rc 0
+    // for each, live): dash takes each as its singular -- the same rc, 0,
+    // and the same key, saved and served.
+    // ------------------------------------------------------------
+    foreach pr in "zlabel|4000 8000 12000" "ztick|5000 10000" "zmlabel|7500" "zmtick|2500(5000)17500" {
+        gettoken w v : pr, parse("|")
+        local v = substr("`v'", 2, .)
+        capture noisily twoway scatter mpg weight, colorvar(price) `w's(`v') nodraw
+        _w42_expect Q4203-4 "(_rc == 0)" "twoway `w's(`v'): rc `=_rc'"
+        _q4203_kreg "`q03d'" scatter mpg weight, colorvar(price) `w'(`v') name(q03z)
+        local rc1 = r(rc)
+        local s1 "${q4203_ks}"
+        local v1 "${q4203_kv}"
+        _q4203_kreg "`q03d'" scatter mpg weight, colorvar(price) `w's(`v') name(q03z)
+        _w42_expect Q4203-4 "(r(rc) == 0 & `rc1' == 0)" "dash `w's(`v'): rc `=r(rc)', `w'(): rc `rc1'"
+        _w42_expect Q4203-4 `"("${q4203_ks}" == "`s1'" & "${q4203_kv}" == "`v1'")"' "`w's(): saved ${q4203_ks} / `s1', served ${q4203_kv} / `v1'"
+    }
+    _w42_done Q4203-4 "the z tick family's plurals are their singulars, saved and served"
+
+    foreach f in s.json d.json a.py {
+        capture erase "`q03d'/`f'"
+    }
+    capture rmdir "`q03d'"
+    macro drop q4203_ks q4203_kv
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // S05 helpers (WP-42 42-05).  _q4205_row: a probe of
 // fixtures/colorvar_refusal_truth.json into locals q05_rc, q05_n,
 // q05_l1 .. (its printed lines, trimmed), q05_cmd (twoway's command) and

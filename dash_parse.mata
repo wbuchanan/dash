@@ -10593,6 +10593,8 @@ real scalar _dash_ax_parse(string scalar tok, string matrix fam,
 //   any other axis, a second
 //       axis word, an axis word in capitals and a second comma: left as
 //       typed, for _dash_axreq_check to refuse in twoway's words.
+// zlabels(), zticks(), zmlabels() and zmticks() are written as zlabel(),
+// ztick(), zmlabel() and zmtick(), their values as typed (WP-42 AX-12).
 // Every other word, and every body, is returned byte for byte, so text
 // holding "axis(2)", a quote, $ or a backtick is kept as typed.  No regex
 // (regexm follows the caller's version).
@@ -10610,6 +10612,18 @@ string scalar _dash_route_axis2(string scalar opts)
     any = 0
     for (i = 1; i <= cols(toks); i++) {
         tok = toks[i]
+        // The z axis's plurals (WP-42 AX-12): twoway takes zlabels(),
+        // zticks(), zmlabels() and zmticks() as zlabel(), ztick(),
+        // zmlabel() and zmtick() (twowaygraph_g.class ZLabels ZTicks
+        // ZMLabels ZMTicks); written as the singular, its value as typed.
+        if (strpos(tok, "(") & anyof(("zlabels", "zticks", "zmlabels",
+                                      "zmticks"), _dash_rep_optname(tok))) {
+            dn = _dash_rep_optname(tok)
+            toks[i] = substr(dn, 1, strlen(dn) - 1) + "(" +
+                      _dash_rep_value(tok) + ")"
+            any = 1
+            continue
+        }
         if (!_dash_ax_parse(tok, fam, d, r, v, body, words, dcw, nax, n,
                             badw, axpos)) continue
         if (dcw != "" | badw != "") continue

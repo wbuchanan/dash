@@ -2928,7 +2928,6 @@ GAPS4_OPEN = {
     'CV-11': 'colorkeysreverse reverses entries and labels (twoway reverses colours only); colorlevels() over one value prints nonsense intervals',
     'CV-15': "On a discrete key, zlabel() and zscale() are named and not drawn; clegend() altaxis, region(), bplacement(), bmargin(), subtitle(), note() and caption() are named as 'not a recognised sub-option'",
     'LT-12': 'clegend(title()) replaces the z title and prints the raw option text, quotes included, when it has sub-options',
-    'AX-12': 'The z tick family: zlabels/zticks/zmlabels/zmticks are refused (twoway takes them); ztick(), zmlabel() and zmtick() are noted and not drawn, and are absent from the Unsupported list',
     'CV-17': 'colorlist() with quoted RGB colours is not applied under colorvar(): every marker is black and the key is a legend of ranges where twoway draws the listed colours with a colour bar',
     'LT-1': "legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles",
     'LT-4': 'legend(ring(0) bplacement()) ignores bplacement; bplacement abbreviations (nor, nea, t, top) are not read',

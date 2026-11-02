@@ -455,7 +455,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **CV-14 Tracked:** Closed in WP-42, BUGS.md "Documented acceptances: string colorvar, colpalette()/colornlevels()/colormissing(), cv()/colv(), an empty layer drawing no key, '(missing)' for all-missing", commit 6ed9266.
 - **CV-15 Tracked:** Open (WP-42 section 42-03).
 - **LT-12 Tracked:** Open (WP-42 section 42-03).
-- **AX-12 Tracked:** Open (WP-42 section 42-03).
+- **AX-12 Tracked:** Partly closed in WP-42 (section 42-03, commit pending): zlabels(), zticks(), zmlabels() and zmticks() are taken as their singulars, as twoway takes them; open: ztick(), zmlabel() and zmtick() are not drawn (BUGS.md "ztick(), zmlabel() and zmtick() are named in the note and not drawn on the colour key").
 - **sil:SD-4 Tracked:** Closed in WP-42, BUGS.md "The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read", commit d7dffa5.
 - **CV-17 Tracked:** Open (WP-42 section 42-01).
 - **LT-22 Tracked:** Partly closed in WP-42 (section 42-03, commit pending): contourline keys its levels under colorlines or ccolors() and plain contourline prints no note; open: the contour key's side title and axis line, and the level legend after a move (BUGS.md "The contour colour key's title sits above it with no axis line, and contourline's level legend keeps its build's levels after a filter move").

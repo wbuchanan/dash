@@ -5246,11 +5246,17 @@
   - Suggested fix: Parse it as a textbox and draw it above the key, keeping ztitle
   - Resolution: Not fixed because WP-42 section 42-03 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
 
-- [ ] Title: The z tick family: zlabels/zticks/zmlabels/zmticks are refused (twoway takes them); ztick(), zmlabel() and zmtick() are noted and not drawn, and are absent from the Unsupported list
+- [x] Title: The z tick family: zlabels/zticks/zmlabels/zmticks are refused (twoway takes them); ztick(), zmlabel() and zmtick() are noted and not drawn, and are absent from the Unsupported list
   - File Names and Line Numbers: twowaygraph_g.class:122-123; dash.ado:995, 1324; dash_parse.mata:8151-8156; Z01-Z32
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids AX-12, syn:SD-4; confirmed; tracked: untracked. Registered as GAPS4 AX-12 (WP-42, section 42-03, Fix).
   - Suggested fix: Accept the plurals; draw the ticks and labels on the key (M11: every P6-P10 item is drawn).
-  - Resolution: Not fixed because WP-42 section 42-03 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+  - Resolution: Fixed in part 02nov2026 (WP-42, AX-12). Measured first (scripts/extract_colorvar_key_truth.do Z1-Z4s, test/fixtures/colorvar_key_truth.json; a live probe 02nov2026): twoway takes zlabels(), zticks(), zmlabels() and zmticks() as zlabel(), ztick(), zmlabel() and zmtick() (rc 0, the same key: Z1 = Z1p, Z3 = Z3p, Z4 = Z4s), where dash refused each r(198) "option zticks() not allowed". _dash_route_axis2 (dash_parse.mata) now writes each plural as its singular, its value as typed, at the plot's and the graph's options alike, so zlabels(4000 8000 12000) draws zlabel()'s key in both modes and the other three are taken as their singulars. The help's colour-key paragraph says so. Left open (BUGS.md "ztick(), zmlabel() and zmtick() are named in the note and not drawn on the colour key"): ztick(), zmlabel() and zmtick() are drawn by the axis-style key cell of CV-3; the Unsupported list's check against the takes table is syn:SD-15's. Pinned by test_wp42_truth.cscript Q4203-4, test_parser.cscript (passes); fixture test/fixtures/colorvar_key_truth.json.
+
+- [ ] Title: ztick(), zmlabel() and zmtick() are named in the note and not drawn on the colour key
+  - File Names and Line Numbers: dash_render.py _dash_apply_z_options; dash.ado graph and plot syntax (no ztick/zmlabel/zmtick)
+  - Description: Residual of GAPS4 AX-12 (WP-42, section 42-03). twoway draws ztick() as ticks on the key's z axis, zmlabel() as a minor tick with its label (colorvar_key_truth.json Z2: 7,500, turned -90) and zmtick() as minor ticks, widening the axis to them (Z3: zmtick(2500(5000)17500) runs the axis to 17,500); dash names each in the note and draws none.
+  - Suggested fix: declare them, read them into the z options and draw them on the axis-style key cell of CV-3 (42-03 TR-42-03.7), relevel twins included.
+  - Resolution: Not fixed: it stays open because the axis-style key cell (CV-3) has not landed. Graded S3 (WP-42): three tick options named in the note.
 
 - [x] Title: The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read
   - File Names and Line Numbers: dash_render.py:16751, 24622; scheme-s2color.scheme:56, 185, 2239-2241

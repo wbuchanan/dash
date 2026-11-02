@@ -6143,7 +6143,11 @@ cuts at those days, as in {cmd:twoway}; {cmd:zlabel(, format(%td))} writes
 the dates.  A format {cmd:twoway} accepts that {cmd:dash} cannot write
 ({cmd:%12s}, {cmd:%21x}) is drawn as {cmd:%9.0g} and named in the note.
 On a discrete key {cmd:zlabel()}'s ticks and {cmd:zscale()} are named in the
-note.
+note.  {cmd:zlabels()}, {cmd:zticks()}, {cmd:zmlabels()} and {cmd:zmticks()}
+are {cmd:twoway}'s spellings of {cmd:zlabel()}, {cmd:ztick()},
+{cmd:zmlabel()} and {cmd:zmtick()} and are taken as them;
+{cmd:ztick()}, {cmd:zmlabel()} and {cmd:zmtick()} are named in the note and
+not drawn.
 {cmd:ztitle()} given only sub-options styles the key's default title, the
 colour variable's label; {cmd:suffix} and {cmd:prefix} add lines to it.
 
