@@ -454,7 +454,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **CV-15 Tracked:** Open (WP-42 section 42-03).
 - **LT-12 Tracked:** Open (WP-42 section 42-03).
 - **AX-12 Tracked:** Open (WP-42 section 42-03).
-- **sil:SD-4 Tracked:** Open (WP-42 section 42-01).
+- **sil:SD-4 Tracked:** Closed in WP-42, BUGS.md "The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read", commit pending.
 - **CV-17 Tracked:** Open (WP-42 section 42-01).
 - **LT-22 Tracked:** Open (WP-42 section 42-03).
 - **LT-1 Tracked:** Open (WP-43 section 43-01).

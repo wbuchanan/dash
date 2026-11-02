@@ -5252,11 +5252,11 @@
   - Suggested fix: Accept the plurals; draw the ticks and labels on the key (M11: every P6-P10 item is drawn).
   - Resolution: Not fixed because WP-42 section 42-03 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
 
-- [ ] Title: The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read
+- [x] Title: The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read
   - File Names and Line Numbers: dash_render.py:16751, 24622; scheme-s2color.scheme:56, 185, 2239-2241
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids sil:SD-4, sil:SD-14; confirmed; tracked: untracked. Registered as GAPS4 sil:SD-4 (WP-42, section 42-01, Fix).
   - Suggested fix: Read clegend_width/height and the four contour keys
-  - Resolution: Not fixed because WP-42 section 42-01 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+  - Resolution: Fixed 02nov2026 (WP-42, sil:SD-4). SchemeParser reads gsize clegend_width and clegend_height (huge and zero under s2color); _dash_clegend_size sizes the colorvar() ColorBar, contour's key (drawn and empty) and by()'s coloruseplegend bar from them through _dash_clegend_px, 0.9 of the width as twoway draws its key (measured: 179.56-181.16 SVG units of huge's 200 on a 5.5-inch graph, 24 px), both modes; clegend(width()) and clegend(height()) still win. twoway draws contours_outline, contours_colorlines, contours_reversekey and numstyle contours exactly as s2color (measured, Z_*), so dash reads and ignores them and the help says so. Pinned by test/test_colorvar_steps.py::TestTheKeyWidth, ::TestContourSchemeKeys, test/test_wp42_truth.cscript Q4201-4, Q4201-5; fixture test/fixtures/colorvar_steps_truth.json. Closes GAPS4 sil:SD-4 (WP-42, sil:SD-4).
 
 - [ ] Title: colorlist() with quoted RGB colours is not applied under colorvar(): every marker is black and the key is a legend of ranges where twoway draws the listed colours with a colour bar
   - File Names and Line Numbers: dash_render.py:16165-16172 (colorlist() read by _dash_by_tokens, each token parsed as a colour); examples/feature_tour.do (the colorvar example); scripts/corpus/ledger.tsv CV-17 rows

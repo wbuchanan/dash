@@ -257,13 +257,20 @@ def _q4201_draw(sp, dp, app):
     from sfi import Macro
     a, b = _q4201_docs(sp, dp, app)
     for figs, sfx in ((a, "s"), (b, "v")):
-        cols, width = set(), 0
+        cols, width, fw, sig = set(), 0, 0, []
         for f in figs:
+            fw = float(f.width or 0)
             for side in (f.right, f.left, f.above, f.below, f.center):
                 for m in side:
                     if type(m).__name__ in ("ColorBar", "ContourColorBar") \
                             and m.name != "dash_by_label_box":
                         width = m.width
+                        sig.append(repr(list(getattr(m, "levels", None)
+                                             or [])))
+            for r in f.renderers:
+                g = getattr(r, "glyph", None)
+                sig.append(type(g).__name__ + repr(getattr(g, "fill_color",
+                                                           None)))
             for r in f.renderers:
                 g = getattr(r, "glyph", None)
                 if str(getattr(r, "name", "") or "").startswith("_clegend_"):
@@ -278,6 +285,10 @@ def _q4201_draw(sp, dp, app):
                     cols.add(_q4201_colour(tr, v))
         Macro.setGlobal("q4201_" + sfx, " ".join(sorted(cols)))
         Macro.setGlobal("q4201_w" + sfx, str(width))
+        Macro.setGlobal("q4201_r" + sfx, "%.6f" % (width / fw if fw else 0))
+        import hashlib
+        Macro.setGlobal("q4201_g" + sfx, hashlib.sha256(
+            "|".join(sig).encode()).hexdigest()[:16])
 
 
 def _q4201_svg(path):
@@ -378,7 +389,72 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w42_run' {
         capture erase "`q01d'/`f'"
     }
     capture rmdir "`q01d'"
-    macro drop q4201_s q4201_v q4201_ws q4201_wv q4201_tw q4201_kw
+    macro drop q4201_s q4201_v q4201_ws q4201_wv q4201_rs q4201_rv q4201_gs q4201_gv q4201_tw q4201_kw
+    capture graph drop _all
+    dash clear
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
+* ==== S01 sil:SD-4: colour key width and contour keys ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w42_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+    local q01d "`w42_work'/s01w"
+    capture mkdir "`q01d'"
+    local lf "`q01d'/try.log"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4201-4: the colour key is as thick as s2color's clegend_width
+    // (huge): dash's bar over its figure's width within 15% of twoway's
+    // key over its graph's (measured live), saved and served.
+    // ------------------------------------------------------------
+    quietly twoway scatter mpg weight, colorvar(price) scheme(s2color) name(q01w, replace)
+    capture erase "`q01d'/q01w.svg"
+    cert_svg_export, name(q01w) file("`q01d'/q01w.svg")
+    python: import __main__ as _q4201_m; _q4201_m._q4201_svg("`q01d'/q01w.svg")
+    local kw = ${q4201_kw}
+    _q4201_reg "`q01d'" scatter mpg weight, colorvar(price) scheme(s2color) name(q01w)
+    _w42_expect Q4201-4 "(`kw' > 0)" "twoway's key width ratio `kw'"
+    _w42_expect Q4201-4 "(${q4201_ws} == 24 & ${q4201_wv} == 24)" "bar width saved ${q4201_ws}, served ${q4201_wv}"
+    _w42_expect Q4201-4 "(abs(${q4201_rs} - `kw') <= 0.15 * `kw')" "saved ratio ${q4201_rs}, twoway `kw'"
+    _w42_expect Q4201-4 "(abs(${q4201_rv} - `kw') <= 0.15 * `kw')" "served ratio ${q4201_rv}, twoway `kw'"
+    _w42_done Q4201-4 "the colour key is as thick as clegend_width, saved and served"
+
+    // ------------------------------------------------------------
+    // Q4201-5: scheme w42o (s2color with yesno contours_outline yes):
+    // twoway cuts and draws the contour as under s2color, and dash draws
+    // its s2color contour, rc 0 and no note, saved and served.
+    // ------------------------------------------------------------
+    tempname sfh
+    capture erase "`q01d'/scheme-w42o.scheme"
+    file open `sfh' using "`q01d'/scheme-w42o.scheme", write text replace
+    file write `sfh' "#include s2color" _n "yesno contours_outline yes" _n
+    file close `sfh'
+    adopath ++ "`q01d'"
+    sysuse sandstone, clear
+    quietly twoway contour depth northing easting, scheme(s2color) name(q01z, replace)
+    local c0 "`.q01z.plotregion1.plot1.lastcuts'"
+    quietly twoway contour depth northing easting, scheme(w42o) name(q01z, replace)
+    local c1 "`.q01z.plotregion1.plot1.lastcuts'"
+    _w42_expect Q4201-5 `"("`c0'" != "" & "`c0'" == "`c1'")"' "twoway lastcuts `c0' / `c1'"
+    _q4201_try "`lf'" dash contour depth northing easting, scheme(w42o) name(q01z)
+    _w42_expect Q4201-5 "(r(rc) == 0 & r(note) == 0)" "dash rc `r(rc)', note `r(note)'"
+    _q4201_reg "`q01d'" contour depth northing easting, scheme(s2color) name(q01z)
+    local g0s "${q4201_gs}"
+    local g0v "${q4201_gv}"
+    _q4201_reg "`q01d'" contour depth northing easting, scheme(w42o) name(q01z)
+    _w42_expect Q4201-5 `"("${q4201_gs}" == "`g0s'" & "${q4201_gv}" == "`g0v'")"' "saved ${q4201_gs} / `g0s', served ${q4201_gv} / `g0v'"
+    _w42_done Q4201-5 "contours_outline in a scheme changes nothing, in twoway and in dash"
+    adopath - "`q01d'"
+
+    foreach f in q01w.svg s.json d.json a.py try.log scheme-w42o.scheme {
+        capture erase "`q01d'/`f'"
+    }
+    capture rmdir "`q01d'"
+    macro drop q4201_s q4201_v q4201_ws q4201_wv q4201_rs q4201_rv q4201_gs q4201_gv q4201_tw q4201_kw
     capture graph drop _all
     dash clear
     display as text "S01 end " c(current_date) " " c(current_time)

@@ -12128,6 +12128,15 @@ class SchemeParser:
             "clockdir zyx2legend_position", 3, 0, 12, "zyx2legend_position")
         self.zyx2_ring: int = self._bounded_int(
             "gridringstyle zyx2legend_ring", 4, 0, 100, "zyx2legend_ring")
+        # WP-42 sil:SD-4: the colour key's thickness and length, in
+        # relative units (scheme-s2color.scheme:185-186, huge and zero; every
+        # shipped scheme inherits them).  The scheme's contours_* keys are
+        # read by twoway and change nothing it draws (measured,
+        # colorvar_steps_truth.json Z_*), so dash reads none of them.
+        self.clegend_width_rs: float = self._gsize_units(
+            "gsize clegend_width", "huge")
+        self.clegend_height_rs: float = self._gsize_units(
+            "gsize clegend_height", "zero")
         self.by_flags: dict = {
             k: self._yesno("yesno by_" + k, v)
             for k, v in _DASH_BY_FLAG_DEFAULTS.items()}
@@ -16886,9 +16895,11 @@ class GlyphMapper:
                 # Raw: a ColorBar draws its title on the canvas, so escaping
                 # it only showed the entities.
                 _cbar = ColorBar(color_mapper=mapper, label_standoff=8,
-                                width=12, location=(0, 0),
+                                location=(0, 0),
                                 title=var_display,
                                 **self.scheme.colorbar_chrome())
+                # WP-42 sil:SD-4: as thick as the scheme's clegend_width.
+                _dash_clegend_size(_cbar, self.scheme)
             except (ValueError, TypeError, KeyError) as _exc:  # noqa: BLE001
                 warnings.warn(f"dash: color bar skipped — {_exc}", stacklevel=2)
                 _cbar = None
@@ -25081,7 +25092,7 @@ class GlyphMapper:
                 setattr(cb, k, v)
             except (AttributeError, ValueError, TypeError):
                 pass
-        cb.width = 12
+        _dash_clegend_size(cb, self.scheme)
         if outlined:
             from bokeh.models import GlyphRenderer, MultiLine
             med = float(OptionTranslator.translate_lwidth("medium"))
@@ -25124,7 +25135,7 @@ class GlyphMapper:
                 setattr(cb, k, v)
             except (AttributeError, ValueError, TypeError):
                 pass
-        cb.width = 12
+        _dash_clegend_size(cb, self.scheme)
         cb.ticker = FixedTicker(ticks=[])
         cb.major_label_overrides = {}
         # A ContourColorBar draws its strip in the bands' fill (it has no
@@ -58456,11 +58467,40 @@ def _dash_by_colour_bar_cell(scheme, legend):
         color_mapper=LinearColorMapper(palette=cols, low=0, high=len(cols)),
         ticker=FixedTicker(ticks=ticks),
         major_label_overrides=dict(zip(ticks, labs)),
-        label_standoff=8, width=12, location=(0, 0),
+        label_standoff=8, location=(0, 0),
         title=getattr(legend, "title", None), **chrome)
+    _dash_clegend_size(bar, scheme)
     if getattr(legend, "label_text_font_size", None):
         bar.major_label_text_font_size = legend.label_text_font_size
     return bar
+
+
+def _dash_clegend_px(rs):
+    """WP-42 sil:SD-4: a colour key's thickness in px from the scheme's
+    ``gsize clegend_width`` in relative units: 2.88 pt a unit at the 4-inch
+    reference, 4/3 px a pt, and 0.9 of it, as twoway draws the key's band
+    (measured, colorvar_steps_truth.json: huge's 200 SVG units draw a key
+    179.56 to 181.16 wide on a 5.5-inch graph, 23.9 px at 96 dpi; small's
+    80 draw 70.78; stcolor's 225 draw 204.54).  At least 1."""
+    try:
+        v = float(rs) * OptionTranslator.PT_PER_RS * 4.0 / 3.0 * 0.9
+    except (TypeError, ValueError):
+        return 1
+    if not math.isfinite(v):
+        return 1
+    return max(1, int(round(v)))
+
+
+def _dash_clegend_size(bar, scheme):
+    """Size a colour key's *bar* from *scheme*'s ``clegend_width`` (its
+    thickness) and, when not zero, ``clegend_height`` (its length); a
+    scheme object without them gives s2color's huge and zero.
+    clegend(width()) and clegend(height()) are applied after this and win
+    (``GlyphMapper._colorvar_key_place``)."""
+    bar.width = _dash_clegend_px(getattr(scheme, "clegend_width_rs", 6.9444))
+    h = getattr(scheme, "clegend_height_rs", 0.0) or 0.0
+    if h > 0:
+        bar.height = _dash_clegend_px(h)
 
 
 def _dash_by_keys(figs, opts, scheme):
@@ -72130,6 +72170,7 @@ class ServerAppBuilder:
                          "_dash_zyx2_derive", "_dash_scheme_choice",
                          "_resolve_scheme_name", "_dash_scheme_dirs_of",
                          "_dash_clegend_opts", "_dash_pcycle",
+                         "_dash_clegend_px", "_dash_clegend_size",
                          # a filled layer's vertices under cmissing(n) and
                          # rarea's connect() (WP-31 C6).
                          "_dash_fill_vertices",

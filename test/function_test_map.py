@@ -1538,6 +1538,8 @@ FUNCTIONS = {
  '_dash_cvar_key_ticks': 'test/test_mode_parity.py::TestTheColourKeyTicksAfterAMove::test_the_key_is_ticked_over_the_kept_rows',
  '_dash_cvar_relevel_steps': 'test/test_mode_parity.py::TestTheColourKeyTicksAfterAMove::test_the_key_is_ticked_over_the_kept_rows',
  '_dash_cvar_relevel_stepmap': 'test/test_colorvar_steps.py::TestTheStepmapRelevel::test_python_and_js_agree',
+ '_dash_clegend_px': 'test/test_colorvar_steps.py::TestTheKeyWidth::test_the_width_helper',
+ '_dash_clegend_size': 'test/test_colorvar_steps.py::TestTheSizeHelper::test_the_size_helper',
  '_dash_cvar_bar_palette': 'test/test_colorvar_steps.py::TestTheBarHelpers::test_the_bar_palette',
  '_dash_cvar_step_bar': 'test/test_colorvar_steps.py::TestTheBarHelpers::test_the_step_bar',
  '_dash_cvar_drop_nonpositive_ticks': 'test/test_colorvar_steps.py::TestTheBarHelpers::test_a_log_key_drops_its_non_positive_ticks',

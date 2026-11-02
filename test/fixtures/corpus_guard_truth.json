@@ -1,8 +1,8 @@
 {
   "_meta": {
     "born_date": "14 Oct 2026",
-    "dash_commit": "fa9610ce94aae3175d2cf7ef6a851298da57cf37",
-    "extracted": " 2 Nov 2026 01:16:04",
+    "dash_commit": "fd716dedbe399bba77ba74235ab32bc834513f82",
+    "extracted": " 2 Nov 2026 05:22:07",
     "ledger": "test/fixtures/corpus_ledger.json",
     "rules": "test/fixtures/corpus_verdict_rules.json",
     "source": "scripts/extract_corpus_guard_truth.do",
@@ -173,6 +173,7 @@
     },
     "help-clegend_option-2779567d": {
       "checks": [
+        "frame_aspect",
         "margins",
         "texts"
       ],
@@ -207,8 +208,8 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.522,
-      "summary": "text, margins",
+      "ssim": 0.5251,
+      "summary": "text, margins, plot region shape",
       "verdict": "Differs"
     },
     "help-graph_intro-724684a2": {

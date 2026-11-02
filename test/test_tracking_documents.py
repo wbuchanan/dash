@@ -2936,7 +2936,6 @@ GAPS4_OPEN = {
     'CV-15': "On a discrete key, zlabel() and zscale() are named and not drawn; clegend() altaxis, region(), bplacement(), bmargin(), subtitle(), note() and caption() are named as 'not a recognised sub-option'",
     'LT-12': 'clegend(title()) replaces the z title and prints the raw option text, quotes included, when it has sub-options',
     'AX-12': 'The z tick family: zlabels/zticks/zmlabels/zmticks are refused (twoway takes them); ztick(), zmlabel() and zmtick() are noted and not drawn, and are absent from the Unsupported list',
-    'sil:SD-4': "The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read",
     'CV-17': 'colorlist() with quoted RGB colours is not applied under colorvar(): every marker is black and the key is a legend of ranges where twoway draws the listed colours with a colour bar',
     'LT-22': 'contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line',
     'LT-1': "legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles",

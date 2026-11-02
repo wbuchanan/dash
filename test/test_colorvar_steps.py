@@ -400,3 +400,142 @@ class TestTheBarHelpers:
         labels = [bar.major_label_overrides.get(t) for t in bar.ticker.ticks]
         assert labels == [t for t in TRUTH["L_zlog"]["key_texts"]
                           if t != "Price"]
+
+
+# ---------------------------------------------------------------------------
+# sil:SD-4: the colour key's thickness is the scheme's gsize clegend_width
+# (measured: B_<scheme>, twoway's key 0.9 of it), and the scheme's contour
+# keys are read as twoway reads them (Z_<key>: none changes the picture).
+# ---------------------------------------------------------------------------
+
+_W42 = {"w42w": "gsize clegend_width small",
+        "w42o": "yesno contours_outline yes",
+        "w42c": "yesno contours_colorlines yes",
+        "w42r": "yesno contours_reversekey yes",
+        "w42n": "numstyle contours 4"}
+
+
+@pytest.fixture(scope="module")
+def schemes(tmp_path_factory):
+    d = tmp_path_factory.mktemp("w42schemes")
+    for name, line in _W42.items():
+        (d / f"scheme-{name}.scheme").write_text(
+            "#include s2color\n" + line + "\n")
+    return str(d)
+
+
+def _scheme_bo(name, schemes):
+    bo = {"scheme": name}
+    if name in _W42:
+        bo["scheme_dirs"] = [schemes]
+    return bo
+
+
+def _key_bars(figs):
+    return [m for f in figs for side in ("right", "left", "above", "below",
+                                         "center")
+            for m in getattr(f, side)
+            if type(m).__name__ in ("ColorBar", "ContourColorBar")
+            and m.name != "dash_by_label_box"]
+
+
+class TestTheKeyWidth:
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("scheme", ["s2color", "stcolor", "w42w"])
+    def test_scheme_width(self, tmp, schemes, scheme, mode):
+        want = TRUTH["B_" + scheme]
+        figs = _figs(tmp, mode, [{"type": "scatter", "yvar": "mpg",
+                                  "xvar": "weight",
+                                  "options": {"colorvar": "price"}}],
+                     _AUTO_DF, bo=_scheme_bo(scheme, schemes))
+        [bar] = _key_bars(figs)
+        sp = dr.SchemeParser(scheme, ado_dirs=[schemes])
+        assert bar.width == dr._dash_clegend_px(sp.clegend_width_rs)
+        [f] = figs
+        got = bar.width / float(f.width)
+        tw = want["key_width"] / want["graph_width"]
+        assert abs(got - tw) <= 0.15 * tw, (got, tw)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_contour_key(self, tmp, mode):
+        figs = _figs(tmp, mode, [{"type": "contour", "zvar": "price",
+                                  "yvar": "mpg", "xvar": "weight",
+                                  "options": {}}], _AUTO_DF)
+        [bar] = _key_bars(figs)
+        assert bar.width == dr._dash_clegend_px(
+            dr.SchemeParser("s2color").clegend_width_rs)
+        [f] = figs
+        z = TRUTH["Z_ctl"]
+        tw = z["key_width"] / z["graph_width"]
+        assert abs(bar.width / float(f.width) - tw) <= 0.15 * tw
+
+    def test_the_width_helper(self):
+        # huge (6.9444 units) is 20 pt; twoway's key is 0.9 of it, 24 px.
+        assert dr._dash_clegend_px(6.9444) == 24
+        assert dr._dash_clegend_px(0.0) == 1
+        assert dr.SchemeParser("s2color").clegend_width_rs == pytest.approx(
+            6.9444)
+        assert dr.SchemeParser("s2color").clegend_height_rs == 0.0
+
+
+class TestTheSizeHelper:
+
+    def test_the_size_helper(self):
+        """The bar takes the scheme's clegend_width, and clegend_height as
+        its length only when that is not zero."""
+        class _S:
+            clegend_width_rs = 2.777
+            clegend_height_rs = 25.0
+        bar = ColorBar()
+        dr._dash_clegend_size(bar, dr.SchemeParser("s2color"))
+        assert bar.width == 24 and bar.height == "auto"
+        dr._dash_clegend_size(bar, _S())
+        assert bar.width == dr._dash_clegend_px(2.777) == 10
+        assert bar.height == dr._dash_clegend_px(25.0)
+        dr._dash_clegend_size(bar, None)
+        assert bar.width == 24
+
+
+def _contour_look(figs):
+    """What a contour figure draws: each renderer's glyph type and colours,
+    and the key's palette and ticks."""
+    out = []
+    for f in figs:
+        for r in f.renderers:
+            g = getattr(r, "glyph", None)
+            if g is None:
+                continue
+            out.append((type(g).__name__,
+                        repr(getattr(g, "fill_color", None)),
+                        repr(getattr(g, "line_color", None)),
+                        len(next(iter(r.data_source.data.values()), []))
+                        if r.data_source.data else 0))
+    for b in _key_bars(figs):
+        out.append(("key", repr(getattr(b, "fill_color", None)),
+                    list(getattr(b.ticker, "ticks", None) or [])))
+    return out
+
+
+class TestContourSchemeKeys:
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("probe,scheme", [
+        ("outline", "w42o"), ("colorlines", "w42c"), ("reversekey", "w42r"),
+        ("levels", "w42n")])
+    def test_key(self, tmp, schemes, probe, scheme, mode):
+        ctl, z = TRUTH["Z_ctl"], TRUTH["Z_" + probe]
+        keys = ("lastcuts", "n_path", "n_line", "n_use", "colours",
+                "key_width", "key_texts")
+        differs = any(z[k] != ctl[k] for k in keys)
+        # twoway draws every one of them as it draws s2color (measured):
+        # read and ignored, so dash's picture under the scheme is its
+        # s2color picture.
+        assert not differs, probe
+        plot = [{"type": "contour", "zvar": "price", "yvar": "mpg",
+                 "xvar": "weight", "options": {}}]
+        base = _figs(tmp, mode, plot, _AUTO_DF, bo={"scheme": "s2color"})
+        got = _figs(tmp, mode, plot, _AUTO_DF,
+                    bo=_scheme_bo(scheme, schemes))
+        assert _contour_look(got) == _contour_look(base)
+

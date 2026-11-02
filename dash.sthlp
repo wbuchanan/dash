@@ -651,7 +651,12 @@ edged in its own colour; {opt alpattern()} dashes the boundaries'
 hairline in their levels' colours, and {opt sort} draws what
 {cmd:alpattern(dash)} draws, as {cmd:twoway} draws each; all three are
 redrawn after a move.  {cmd:contourline} takes {opt outlines} and draws
-nothing different, as {cmd:twoway} does.
+nothing different, as {cmd:twoway} does.  The colour key is as thick as
+the scheme's {cmd:gsize clegend_width} ({cmd:huge} under {cmd:s2color}).
+A scheme's {cmd:yesno contours_outline}, {cmd:yesno contours_colorlines},
+{cmd:yesno contours_reversekey} and {cmd:numstyle contours} are read and
+ignored, as {cmd:twoway} ignores them: a scheme that includes
+{cmd:s2color} and sets any of them draws the {cmd:s2color} picture.
 {cmd:contourline}'s legend keys are named in a note and not drawn,
 which
 {opt clabels()} and {opt format()} label.  {opt lev()} through
@@ -6050,7 +6055,10 @@ at or above its minimum, {it:n} cuts making {it:n} + 1 levels in
 in the level below, before and after a filter move;
 {cmd:colorvar(price)} on the auto data draws four colours, keyed
 0 5,000 10,000 15,000.  The key is a bar of those colours ticked at the
-key's ticks.  {cmd:zscale(log)} and {cmd:zscale(reverse)} keep the levels,
+key's ticks.  The bar is as thick as the scheme's {cmd:gsize clegend_width}
+({cmd:huge} under {cmd:s2color}), and as long as its {cmd:clegend_height}
+when that is not zero; {cmd:clegend(width())} and {cmd:clegend(height())}
+win.  {cmd:zscale(log)} and {cmd:zscale(reverse)} keep the levels,
 as in {cmd:twoway}.  The colour bar sits on the
 graph region with no box of its own: its tick labels take the scheme's
 {cmd:tick_label} size and colour, its title the {cmd:axis_title} size and
