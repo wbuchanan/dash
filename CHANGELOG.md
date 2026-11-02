@@ -1005,6 +1005,7 @@ and now matches Stata.
 
 - dash scatter mpg weight, colorvar(price) draws twoway's four level colours, keyed 0 5,000 10,000 15,000, on every type twoway colours (was a 256-step gradient) (WP-42, CV-8)
 - The colour key's bar takes the scheme's clegend_width, 24 px under s2color (was 12 px) (WP-42, sil:SD-4)
+- colorfillonly keeps the level colours on lines, spikes, drop lines, caps and arrows (WP-42, CV-1)
 
 ### Fixed in WP-41
 

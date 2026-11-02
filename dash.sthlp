@@ -5968,8 +5968,10 @@ With more than one y variable, {cmd:colorvar()} is refused on
 {synopt:{cmdab:colore:nd(}{it:color}{cmd:)}}the rule's last colour{p_end}
 {synopt:{cmdab:colorli:st(}{it:colors}{cmd:)}}one colour a level, in order;
     a list shorter than the levels repeats its last colour{p_end}
-{synopt:{cmd:colorfillonly}}colour the fills only; outlines keep the series
-    colour{p_end}
+{synopt:{cmd:colorfillonly}}the levels colour the fills of markers, bars
+    and dots, whose outlines keep the series colour; lines, spikes, drop
+    lines, caps and the arrows' shafts and heads keep their level colours,
+    as in {cmd:twoway}{p_end}
 {synopt:{cmdab:colorformiss:ing(}{it:color}{cmd:)}}colour drawn for
     observations where {it:varname} is missing{p_end}
 {synopt:{cmdab:colorkeysran:ge}}draw each key entry's swatch as a

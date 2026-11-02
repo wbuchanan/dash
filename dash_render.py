@@ -17156,11 +17156,21 @@ class GlyphMapper:
         and map_rline draw one line a level instead (D39 D-15f,
         ``_colorvar_line_parts``), as twoway does.
 
-        *fill_only* (colorfillonly, WP-31 C8b) colours the fill and leaves
-        the outline in the series colour, as twoway does (D10); *opacity*
-        (colorrule()'s %#, 0-100) is drawn as the glyph's alpha."""
-        for _p in (("fill_color",) if fill_only
-                   else ("fill_color", "line_color")):
+        *fill_only* (colorfillonly, WP-31 C8b) colours the fill of a glyph
+        that has one -- a marker, a bar, a dot -- and leaves its outline in
+        the series colour, as twoway does (D10); a glyph with no fill (a
+        Segment, MultiLine or Line: lines, spikes, drop-line stems, caps,
+        the arrows' shafts and heads) still takes the colour on its line,
+        as twoway draws every line part in the level colours (WP-42 CV-1,
+        colorvar_parts_truth.json F_*).  *opacity* (colorrule()'s %#,
+        0-100) is drawn as the glyph's alpha."""
+        if not fill_only:
+            _props = ("fill_color", "line_color")
+        elif hasattr(glyph, "fill_color"):
+            _props = ("fill_color",)
+        else:
+            _props = ("line_color",)
+        for _p in _props:
             if not hasattr(glyph, _p):
                 continue
             if opacity is not None:
@@ -17327,8 +17337,8 @@ class GlyphMapper:
                              add_key=True):
         """colorvar() on a line (D39 D-15f): ``[(source, colour), ...]``,
         one source a colour level holding that level's rows of *source* in
-        their join order, or None when the layer has no colorvar() (or
-        colorfillonly, which leaves a line its series colour).
+        their join order, or None when the layer has no colorvar() (a
+        line keeps its level colours under colorfillonly, WP-42 CV-1).
 
         twoway draws one path a level through that level's points
         (measured 18oct2026: z 1 1 2 2 1 3 on x 1..6 is the paths x 1 2 5
@@ -17339,8 +17349,7 @@ class GlyphMapper:
         layer's colour rows (``colorvar_domain``, the build's on a served
         redraw), the missing one first, each a source even when it is
         empty, so the served redraw pairs the same sources by position."""
-        if not str((options or {}).get("colorvar", "") or "").strip() \
-                or (options or {}).get("colorfillonly"):
+        if not str((options or {}).get("colorvar", "") or "").strip():
             return None
         probe = fig.scatter(x=xvar, y=yvar, source=source)
         try:

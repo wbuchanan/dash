@@ -461,6 +461,200 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w42_run' {
 }
 * ==== end S01 ====
 
+// S02 helpers (WP-42 42-02).  _q4202_reg: register one dash graph and
+// read what both modes draw (S01's _q4201_docs builds them) into globals
+// q4202_<x><s|v> (s saved, v served): l the distinct colours of the line
+// parts (Line, MultiLine, Segment), o the markers' outlines, k the number
+// of colour keys, t their titles, p the plot legend's labels and c its
+// keys' colours (a field-mapped key is "field"), "|" separated.
+// _q4202_svg: twoway's distinct plot-region line strokes, into q4202_tw;
+// _q4202_close: two colour lists equal within 1/255 a channel (q4202_eq).
+python:
+def _q4202_rows(r):
+    n = max((len(v) for v in r.data_source.data.values()), default=0)
+    flt = getattr(getattr(r, "view", None), "filter", None)
+    idx = getattr(flt, "indices", None) if flt is not None else None
+    if idx is not None:
+        return [i for i in idx if i < n]
+    bo = getattr(flt, "booleans", None) if flt is not None else None
+    if bo is not None:
+        return [i for i, b in enumerate(bo) if b and i < n]
+    return list(range(n))
+
+
+def _q4202_colour(m, v):
+    if type(m).__name__ == "CategoricalColorMapper":
+        f = list(m.factors)
+        return (str(m.palette[f.index(v)]).lower()[:7] if v in f
+                else str(m.nan_color).lower())
+    import __main__ as _mm
+    return _mm._q4201_colour(m, v)
+
+
+def _q4202_cols(r, prop):
+    v = getattr(r.glyph, prop, None)
+    rows = _q4202_rows(r)
+    if not rows:
+        return set()
+    fld, tr = getattr(v, "field", None), getattr(v, "transform", None)
+    if isinstance(v, dict):
+        fld, tr = v.get("field"), v.get("transform")
+    if fld is not None and tr is not None:
+        col = list(r.data_source.data.get(fld, []))
+        return {_q4202_colour(tr, col[i]) for i in rows if i < len(col)}
+    if v is None or fld is not None:
+        return set()
+    return {str(v).lower()[:7]}
+
+
+def _q4202_draw(sp, dp, app):
+    from sfi import Macro
+    import __main__ as _mm
+    import dash_render as dr
+    a, b = _mm._q4201_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        ls, os_, keys, titles, labs, kc = set(), set(), 0, [], [], []
+        for f in figs:
+            for side in (f.right, f.left, f.above, f.below, f.center):
+                for m in side:
+                    tn = type(m).__name__
+                    ck = (tn in ("ColorBar", "ContourColorBar")
+                          and m.name != "dash_by_label_box") or (
+                        tn == "Legend"
+                        and str(m.name or "") == dr._COLORVAR_LEGEND_NAME)
+                    if ck:
+                        keys += 1
+                        titles.append(str(m.title or ""))
+                    elif tn == "Legend" and m.visible:
+                        for it in m.items:
+                            if not it.visible:
+                                continue
+                            lab = it.label
+                            labs.append(str(getattr(lab, "value", lab)
+                                            if not isinstance(lab, dict)
+                                            else lab.get("value")))
+                            g = (it.renderers[0].glyph if it.renderers
+                                 else None)
+                            fc = getattr(g, "fill_color", None) or getattr(
+                                g, "line_color", None)
+                            kc.append("field" if getattr(fc, "field", None)
+                                      or isinstance(fc, dict)
+                                      else str(fc).lower()[:7])
+            for r in f.renderers:
+                g = getattr(r, "glyph", None)
+                if (g is None or not r.visible or dr._dash_is_swatch(r)
+                        or str(r.name or "") == "__dash_keyproxy"):
+                    continue
+                tn = type(g).__name__
+                if tn in ("Line", "MultiLine", "Segment"):
+                    ls |= _q4202_cols(r, "line_color")
+                elif tn in ("Scatter", "Circle"):
+                    os_ |= _q4202_cols(r, "line_color")
+        Macro.setGlobal("q4202_l" + sfx, " ".join(sorted(ls)))
+        Macro.setGlobal("q4202_o" + sfx, " ".join(sorted(os_)))
+        Macro.setGlobal("q4202_k" + sfx, str(keys))
+        Macro.setGlobal("q4202_t" + sfx, "|".join(titles))
+        Macro.setGlobal("q4202_p" + sfx, "|".join(labs))
+        Macro.setGlobal("q4202_c" + sfx, "|".join(kc))
+
+
+def _q4202_svg(path):
+    from sfi import Macro
+    from svg_truth import svg_document
+    d = svg_document(path)
+    pr = d["plotregion"]
+    chrome = {"#eaf2f3", "#ffffff", "#000000", "#dce7eb"}
+    st = set()
+    for k in ("hlines", "vlines", "diaglines"):
+        for e in d[k]:
+            x, y = (e["x1"] + e["x2"]) / 2.0, (e["y1"] + e["y2"]) / 2.0
+            c = e.get("stroke") or ""
+            if (not e.get("dasharray") and c.startswith("#")
+                    and c not in chrome
+                    and pr["left"] <= x <= pr["right"]
+                    and pr["top"] <= y <= pr["bottom"]):
+                st.add(c)
+    Macro.setGlobal("q4202_tw", " ".join(sorted(st)))
+
+
+def _q4202_close(a, b):
+    """q4202_eq 1 when the colour lists *a* and *b* (space separated,
+    sorted) are equal to within 1/255 a channel, as the pytest twins
+    compare them."""
+    from sfi import Macro
+    x, y = a.split(), b.split()
+    ok = len(x) == len(y) and all(
+        abs(int(p[i:i + 2], 16) - int(q[i:i + 2], 16)) <= 1
+        for p, q in zip(x, y) for i in (1, 3, 5))
+    Macro.setGlobal("q4202_eq", "1" if ok else "0")
+end
+
+capture program drop _q4202_reg
+program define _q4202_reg
+    // _q4202_reg <dir> <dash command...>: register one graph, write its
+    // spec and data, and read what both modes draw.
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4202_m; _q4202_m._q4202_draw("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
+* ==== S02 CV-1: colorfillonly colours line parts ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w42_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local q02d "`w42_work'/s02"
+    capture mkdir "`q02d'"
+    local lf "`q02d'/try.log"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4202-1: spike under colorfillonly strokes its spikes in twoway's
+    // level colours (measured live from twoway's SVG), saved and served.
+    // ------------------------------------------------------------
+    quietly twoway spike mpg weight, colorvar(rep78) colorfillonly scheme(s2color) name(q02a, replace)
+    capture erase "`q02d'/q02a.svg"
+    cert_svg_export, name(q02a) file("`q02d'/q02a.svg")
+    python: import __main__ as _q4202_m; _q4202_m._q4202_svg("`q02d'/q02a.svg")
+    local tw "${q4202_tw}"
+    _q4202_reg "`q02d'" spike mpg weight, colorvar(rep78) colorfillonly scheme(s2color) name(q02a)
+    _w42_expect Q4202-1 "(`: word count `tw'' == 6)" `"twoway strokes `tw'"'
+    python: import __main__ as _q4202_m; _q4202_m._q4202_close("${q4202_ls}", "`tw'")
+    _w42_expect Q4202-1 "(${q4202_eq} == 1)" `"saved ${q4202_ls}, twoway `tw'"'
+    python: import __main__ as _q4202_m; _q4202_m._q4202_close("${q4202_lv}", "`tw'")
+    _w42_expect Q4202-1 "(${q4202_eq} == 1)" `"served ${q4202_lv}, twoway `tw'"'
+    _w42_done Q4202-1 "colorfillonly: spike's stems in twoway's level colours, saved and served"
+
+    // ------------------------------------------------------------
+    // Q4202-2: colorfillonly is drawn with rc 0 and no note on every
+    // measured type (colorvar_parts_truth.json F_*).
+    // ------------------------------------------------------------
+    sort weight
+    generate t = _n
+    generate y2 = mpg + 5
+    foreach c in "line mpg t" "connected mpg t" "bar mpg t" "spike mpg t" ///
+        "pcarrow mpg t y2 t" "rcap mpg y2 t" "rcapsym mpg y2 t" ///
+        "dropline mpg t" "pcspike mpg t y2 t" "pccapsym mpg t y2 t" ///
+        "scatter mpg t" {
+        _q4201_try "`lf'" dash `c', colorvar(rep78) colorfillonly name(q02b)
+        _w42_expect Q4202-2 "(r(rc) == 0 & r(note) == 0)" "`c': dash rc `r(rc)', note `r(note)'"
+    }
+    _w42_done Q4202-2 "colorfillonly is drawn with rc 0 and no note on the 11 measured types"
+
+    foreach f in q02a.svg s.json d.json a.py try.log {
+        capture erase "`q02d'/`f'"
+    }
+    capture rmdir "`q02d'"
+    macro drop q4202_*
+    capture graph drop _all
+    dash clear
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

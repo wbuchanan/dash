@@ -482,8 +482,8 @@ _CV_DRAWN = tuple(p for p in _CV_PROBES if p not in _CV_REFUSALS)
 
 #: D-33-13.f: each difference keyed "<probe>:<check>" to the live GAPS4
 #: item that fixes it (known_differences.py's rules), measured 21oct2026,
-#: the same in both modes.  CV-1: colorfillonly strips the level colour
-#: from a line; CV-2: colordiscrete + colorlevels(k) cuts; CV-3: the
+#: the same in both modes (WP-42 CV-1 closed colorfillonly's line
+#: colours).  CV-2: colordiscrete + colorlevels(k) cuts; CV-3: the
 #: discrete/binned clegend (ascending, value labels and interval texts,
 #: '(missing)', a frame); CV-4: the coloruseplegend key; CV-6: two
 #: colorvar layers; CV-8: the continuous default's gradient and ColorBar
@@ -545,7 +545,6 @@ COLORVAR_KNOWN = {
     "cv16_bar_fillonly:key_frame": "CV-3",
     "cv16_line_fillonly:key_texts": "CV-3",
     "cv16_line_fillonly:key_frame": "CV-3",
-    "cv16_line_fillonly:colours": "CV-1",
     "cv16_line_plegend:key_texts": "CV-4",
     "cv16_line_plegend:key_frame": "CV-4",
     "cv16_bar_keysrange:key_texts": "CV-3",

@@ -1846,6 +1846,10 @@ CORPUS = [
           [_sc(colorvar="foreign", colordiscrete="colordiscrete",
                colorfillonly="colorfillonly",
                colorkeysrange="colorkeysrange")]),
+    # WP-42 CV-1: colorfillonly keeps a spike's level colours.
+    _case("colorvar colorfillonly on spike",
+          [plot_for("spike", {"colorvar": "rep",
+                              "colorfillonly": "colorfillonly"})]),
     _case("colorvar clegend(position(6))", [_sc(colorvar="price")],
           go={"clegend": "position(6)"}),
     _case("pcycle(2) three series",
