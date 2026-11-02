@@ -14338,15 +14338,20 @@ def _dash_colorvar_step_index(cuts, values):
     return out
 
 
-def _dash_colorvar_cuts(col_vals, cuts, levels, minmax):
+def _dash_colorvar_cuts(col_vals, cuts, levels, minmax, discrete=False):
     """The effective, sorted, de-duplicated colorvar cut list (GAPS2 X2).
 
     Implements Stata 18's colorvar_options.sthlp rules for how cuts are
-    derived, independent of colordiscrete:
+    derived:
 
-    ``colorlevels(#)``/``colornlevels(#)`` (*levels*, :124-128) "creates
-    # - 1 equally spaced cuts between the minimum and maximum of colorvar":
-    ``np.linspace(lo, hi, levels + 1)[1:-1]``.
+    ``colorlevels(#)`` (*levels*, :124-128) "creates # - 1 equally spaced
+    cuts between the minimum and maximum of colorvar":
+    ``np.linspace(lo, hi, levels + 1)[1:-1]``.  Under colordiscrete
+    (*discrete*) twoway's ``set_colorcuts_from_levels``
+    (yxview.class:2406-2427) adds one to the count, so # levels make #
+    cuts at the range over # + 1, each cut a level (WP-42 CV-2; measured,
+    test/fixtures/colorvar_refusal_truth.json L1-L5: z 0..100 in steps of
+    10 with colorlevels(4) cuts at 20 40 60 80).
 
     ``colorcuts(numlist)`` (*cuts*, :111-116): "Any values below the
     minimum for colorvar are ignored; if all values are below the
@@ -14367,7 +14372,8 @@ def _dash_colorvar_cuts(col_vals, cuts, levels, minmax):
 
     if levels is not None:
         edge_hi = hi_v if hi_v != lo_v else lo_v + 1.0
-        edges = np.linspace(lo_v, edge_hi, int(levels) + 1)
+        cnt = int(levels) + (1 if discrete else 0)
+        edges = np.linspace(lo_v, edge_hi, cnt + 1)
         eff = [float(x) for x in edges[1:-1]]
     elif cuts is not None:
         kept = sorted({float(c) for c in cuts if float(c) >= lo_v})
@@ -16613,7 +16619,8 @@ class GlyphMapper:
                     # were.
                     # WP-30 P1.23b: in the variable's Stata units.
                     eff_cuts = _dash_colorvar_cuts(dom_units, cuts, nlevels,
-                                                   minmax)
+                                                   minmax,
+                                                   discrete=force_discrete)
                     # colorlevels()/colornlevels() with no explicit
                     # colorcuts() and no colorvarminmax divides the whole
                     # data range, so its outer bins carry the column's own
@@ -46182,8 +46189,11 @@ function dash_cvar_relevel_bins(pl, kv) {
     const lo = Math.min(...fin), hi = Math.max(...fin);
     if (pl.nlevels !== null && pl.nlevels !== undefined) {
       const top = hi !== lo ? hi : lo + 1;
-      const step = (top - lo) / pl.nlevels;
-      for (let i = 1; i < pl.nlevels; i++) eff.push(i * step + lo);
+      // Under colordiscrete one more step (WP-42 CV-2, yxview.class's
+      // set_colorcuts_from_levels): # cuts at the range over # + 1.
+      const cnt = pl.nlevels + (pl.discrete ? 1 : 0);
+      const step = (top - lo) / cnt;
+      for (let i = 1; i < cnt; i++) eff.push(i * step + lo);
     } else if (pl.cuts) {
       eff = Array.from(new Set(pl.cuts.filter((c) => c >= lo)));
       if (!eff.length) eff = [lo];
@@ -55172,7 +55182,8 @@ def _dash_cvar_relevel_bins(plan, kv=None):
     except (KeyError, IndexError, AttributeError, TypeError, ValueError):
         return
     eff = _dash_colorvar_cuts(dom, plan.get("cuts"), plan.get("nlevels"),
-                              plan.get("minmax"))
+                              plan.get("minmax"),
+                              discrete=bool(plan.get("discrete")))
 
     def _bins(values):
         return _dash_colorvar_bins(

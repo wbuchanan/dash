@@ -1008,6 +1008,7 @@ and now matches Stata.
 - colorfillonly keeps the level colours on lines, spikes, drop lines, caps and arrows (WP-42, CV-1)
 - Two colorvar() layers draw the last layer's colour key and a plot legend (was a key per layer and no legend) (WP-42, CV-6)
 - A colorvar() layer's plot-legend key is drawn in its series colour (was its first row's level colour) (WP-42, CV-7)
+- colorvar(z) colordiscrete colorlevels(4) cuts at 20 40 60 80 over 0-100 (was 25 50 75) (WP-42, CV-2)
 
 ### Fixed in WP-41
 

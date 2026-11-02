@@ -758,6 +758,121 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w42_run' {
 }
 * ==== end S02 ====
 
+// S05 helpers (WP-42 42-05).  _q4205_row: a probe of
+// fixtures/colorvar_refusal_truth.json into locals q05_rc, q05_n,
+// q05_l1 .. (its printed lines, trimmed), q05_cmd (twoway's command) and
+// q05_kt (its key's numbers, sorted); _q4205_keys: the key numbers both
+// modes of a registered dash graph draw, into globals q4205_s and
+// q4205_v (S01's _q4201_docs builds them); _q4205_list: the probe ids
+// starting with a prefix, into local q05_ids.
+python:
+def _q4205_rows():
+    import json
+    with open("fixtures/colorvar_refusal_truth.json", encoding="utf-8") as fh:
+        return json.load(fh)["probes"]
+
+
+def _q4205_nums(texts):
+    import re
+    out = set()
+    for t in texts:
+        t = str(t).strip()
+        if re.fullmatch(r"-?[\d,]*\.?\d+", t):
+            out.add(float(t.replace(",", "")))
+    return " ".join("%g" % v for v in sorted(out))
+
+
+def _q4205_row(key):
+    from sfi import Macro
+    p = _q4205_rows()[key]
+    Macro.setLocal("q05_rc", str(p["rc"]))
+    Macro.setLocal("q05_n", str(len(p["lines"])))
+    for i, ln in enumerate(p["lines"], 1):
+        Macro.setLocal("q05_l%d" % i, ln.strip())
+    Macro.setLocal("q05_cmd", p["command"])
+    Macro.setLocal("q05_kt", _q4205_nums(p.get("key_texts", [])))
+
+
+def _q4205_list(prefix):
+    from sfi import Macro
+    Macro.setLocal("q05_ids", " ".join(sorted(k for k in _q4205_rows()
+                                              if k.startswith(prefix))))
+
+
+def _q4205_keys(sp, dp, app):
+    from sfi import Macro
+    a, b = _q4201_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        texts = []
+        for f in figs:
+            for side in (f.right, f.left, f.above, f.below, f.center):
+                for m in side:
+                    tn = type(m).__name__
+                    if tn == "Legend" and m.visible is not False:
+                        for it in m.items:
+                            lab = it.label
+                            v = getattr(lab, "value", None)
+                            if v is None and isinstance(lab, dict):
+                                v = lab.get("value")
+                            texts.append(str(lab if v is None else v))
+                    elif tn == "ColorBar" and m.name != "dash_by_label_box":
+                        over = dict(m.major_label_overrides or {})
+                        for t in list(getattr(m.ticker, "ticks", []) or []):
+                            texts.append(str(over.get(t, over.get(str(t), t))))
+        Macro.setGlobal("q4205_" + sfx, _q4205_nums(texts))
+end
+
+capture program drop _q4205_reg
+program define _q4205_reg
+    // _q4205_reg <dir> <dash command...>: register one graph, write its
+    // spec and data, and read the key numbers both modes draw.
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4205_m; _q4205_m._q4205_keys("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
+* ==== S05 CV-2: colordiscrete colorlevels cuts ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w42_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+    local q05d "`w42_work'/s05c"
+    capture mkdir "`q05d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // Q4205-1: colordiscrete colorlevels(4) on z = 0, 10, ..., 100 keys
+    // twoway's levels (fixture rows L2, L3: twoway's own key texts),
+    // saved and served.
+    // ------------------------------------------------------------
+    clear
+    quietly set obs 11
+    gen z = (_n - 1) * 10
+    gen y = _n
+    gen x = _n
+    foreach k in L2 L3 {
+        python: import __main__ as _q4205_m; _q4205_m._q4205_row("`k'")
+        local q05_dcmd : subinstr local q05_cmd "twoway " ""
+        _q4205_reg "`q05d'" `q05_dcmd' name(q05g)
+        foreach m in s v {
+            _w42_expect Q4205-1 `"("${q4205_`m'}" == "`q05_kt'")"' `"`k' `m': dash keys ${q4205_`m'}, twoway `q05_kt'"'
+        }
+    }
+    _w42_done Q4205-1 "colordiscrete colorlevels(4) keys twoway's levels, saved and served"
+
+    foreach f in s.json d.json a.py {
+        capture erase "`q05d'/`f'"
+    }
+    capture rmdir "`q05d'"
+    macro drop q4205_*
+    capture graph drop _all
+    dash clear
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

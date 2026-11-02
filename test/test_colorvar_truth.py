@@ -483,7 +483,7 @@ _CV_DRAWN = tuple(p for p in _CV_PROBES if p not in _CV_REFUSALS)
 #: D-33-13.f: each difference keyed "<probe>:<check>" to the live GAPS4
 #: item that fixes it (known_differences.py's rules), measured 21oct2026,
 #: the same in both modes (WP-42 CV-1 closed colorfillonly's line
-#: colours).  CV-2: colordiscrete + colorlevels(k) cuts; CV-3: the
+#: colours, WP-42 CV-2 the colordiscrete + colorlevels(k) cuts).  CV-3: the
 #: discrete/binned clegend (ascending, value labels and interval texts,
 #: '(missing)', a frame); CV-4: the coloruseplegend key (WP-42 CV-6
 #: closed the key a layer of two colorvar layers); CV-8: the continuous default's gradient and ColorBar
@@ -510,7 +510,9 @@ COLORVAR_KNOWN = {
     "levels_price_4_minmax:key_frame": "CV-3",
     "cuts_price_minmax:key_texts": "CV-3",
     "cuts_price_minmax:key_frame": "CV-3",
-    "disc_levels_price_4:key_texts": "CV-2",
+    # WP-42 CV-2 closed the cuts: the texts left differ as CV-3's
+    # (ascending, '(missing)').
+    "disc_levels_price_4:key_texts": "CV-3",
     "disc_levels_price_4:key_frame": "CV-3",
     "ztitle_disc:key_texts": "CV-3",
     "ztitle_disc:key_frame": "CV-3",
@@ -558,9 +560,8 @@ COLORVAR_KNOWN = {
     "cv16_two_layers:key_frame": "CV-3",
     "cv16_legend_rows2:key_texts": "CV-3",
     "cv16_legend_rows2:key_frame": "CV-3",
-    "cv16_disc_levels_rep78_3:key_texts": "CV-2",
+    "cv16_disc_levels_rep78_3:key_texts": "CV-3",
     "cv16_disc_levels_rep78_3:key_frame": "CV-3",
-    "cv16_disc_levels_rep78_3:colours": "CV-2",
     "cv16_zlabel_bogus:rc": "CV-10",
 }
 COLORVAR_DELIBERATE = {}

@@ -1873,6 +1873,10 @@ CORPUS = [
     _case("colorvar() colordiscrete colorcuts(2 4)",
           [_sc(colorvar="rep", colordiscrete="colordiscrete",
                colorcuts="2 4")]),
+    # WP-42 CV-2: colordiscrete colorlevels(k) cuts at range/(k+1).
+    _case("colorvar() colordiscrete colorlevels(4)",
+          [_sc(colorvar="price", colordiscrete="colordiscrete",
+               colorlevels="4")]),
     _case("colorvar() colorcuts(0 2 4)",
           [_sc(colorvar="rep", colorcuts="0 2 4")]),
     _case("colorvar() colorlevels(4)", [_sc(colorvar="price",

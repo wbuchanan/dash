@@ -5186,11 +5186,11 @@
   - Suggested fix: Descending levels plus 'Other', no title, display-format numbers; keep legend() off it
   - Resolution: Not fixed because WP-42 section 42-04 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
 
-- [ ] Title: colordiscrete with colorlevels(k) makes k-1 cuts at range/k; twoway makes k cuts at range/(k+1)
+- [x] Title: colordiscrete with colorlevels(k) makes k-1 cuts at range/k; twoway makes k cuts at range/(k+1)
   - File Names and Line Numbers: yxview.class:2406-2427; dash_render.py:14227-14230; test_colorvar_forms.py:128 pins dash's rule; disc_levels_price_4 passes vacuously
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-2; confirmed; tracked: untracked. Registered as GAPS4 CV-2 (WP-42, section 42-05, Fix).
   - Suggested fix: Use k+1 steps under colordiscrete (add min/max with colorvarminmax), also in the relevel path
-  - Resolution: Not fixed because WP-42 section 42-05 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+  - Resolution: Fixed 02nov2026 (WP-42, CV-2). _dash_colorvar_cuts takes discrete: under colordiscrete colorlevels(k) makes k cuts at the range over k + 1, each cut a level (twoway's set_colorcuts_from_levels, yxview.class:2406-2427), colorvarminmax adding the minimum and maximum; GlyphMapper._apply_colorvar passes colordiscrete, and after a filter move _dash_cvar_relevel_bins and its saved twin dash_cvar_relevel_bins cut the kept rows alike. Measured (scripts/extract_colorvar_refusal_truth.do): z 0..100 in steps of 10 with colorlevels(4) colordiscrete keys 20 40 60 80 (dash keyed 25 50 75), with colorvarminmax 0 20 .. 100; rep78 colorlevels(4) colordiscrete cuts at 1.8 2.6 3.4 4.2, every marker grey. The key's order and its '(missing)' entry are CV-3's (WP-42 section 42-03). Pinned by test/test_colorvar_refusals.py::TestTheCutRule::test_discrete_adds_one_step, ::TestAgainstTwoway::test_probe, ::TestTheRelevelTwins::test_discrete_levels_agree, test/test_wp42_truth.cscript Q4205-1; fixture test/fixtures/colorvar_refusal_truth.json. Closes GAPS4 CV-2 (WP-42, CV-2).
 
 - [ ] Title: legend(size()) and legend(rows()/cols()) restyle the colour key; twoway's key ignores them
   - File Names and Line Numbers: dash_render.py:39703-39735; Q1, Q3, P12

@@ -6026,7 +6026,10 @@ line, is named in the note.
 {cmd:colorlevels()} and {cmd:colorvarminmax} are Stata 18's own and drawn as
 Stata draws them: under {cmd:colordiscrete} the cuts are the levels and every
 other value is drawn in {cmd:colorformissing()}'s colour with the missing
-values; a cut below the minimum is ignored, and the minimum is used if all
+values, and {cmd:colorlevels(}{it:#}{cmd:)} makes {it:#} cuts at the range
+over {it:#} + 1, each cut a level, as {cmd:twoway} draws them
+({cmd:colorlevels(4)} over 0 to 100 cuts at 20 40 60 80; without
+{cmd:colordiscrete}, {it:#} - 1 cuts at the range over {it:#}); a cut below the minimum is ignored, and the minimum is used if all
 are; {cmd:colorcuts()} and {cmd:colorlevels()} may not be combined.
 Every other
 {cmd:colorvar} option {cmd:twoway} takes is drawn, in {cmd:twoway}'s

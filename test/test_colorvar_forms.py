@@ -126,11 +126,14 @@ class TestColorlevels:
         assert got_a == got_b
 
     def test_colorlevels_under_colordiscrete_makes_the_cut_values_the_levels(self):
+        # Flipped (WP-42 CV-2): dash made k-1 cuts under colordiscrete;
+        # twoway's set_colorcuts_from_levels makes k at range/(k+1)
+        # (colorvar_refusal_truth.json L2), so 0..15 cuts at 3 6 9 12.
         got, factors = _bins({"colordiscrete": "yes", "colorlevels": "4"},
-                             [0.0, 3.0, 6.0, 9.0, 12.0])
+                             [0.0, 3.0, 6.0, 9.0, 12.0, 15.0])
         # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
-        assert factors == ["3", "6", "9"]
-        assert got == [None, "3", "6", "9", None]
+        assert factors == ["3", "6", "9", "12"]
+        assert got == [None, "3", "6", "9", "12", None]
 
 
 class TestColorvarminmax:
