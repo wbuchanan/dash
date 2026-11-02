@@ -59,6 +59,7 @@ import re
 import sys
 import tempfile
 import warnings
+from collections import Counter
 from unittest import mock
 
 import numpy as np
@@ -297,11 +298,42 @@ def _served(spec):
     document's -- the saved renderer raises everything in one ``render()``,
     so the two lists are comparable only as a whole.
     """
+    doc, got, _ = _served_build(spec, trial=False)
+    return doc, got
+
+
+def _served_build(spec, trial):
+    """(document, warnings, trial notes) from the generated server app.
+
+    With *trial* the app is built as ``dash build, server`` builds it, with
+    its one trial drawing (``build(trial=True)``), and the third item is
+    every note that build raised, sorted; the notes the trial re-raised
+    (``_dash_trial_render``'s return) are taken back out of the warnings,
+    which stay the build's own plus the document's draw.  One build serves
+    both comparisons, where TestTheServedBuildNamesTheSavedNotes built
+    every entry's app a second time (02nov2026).  Without *trial* the third
+    item is None.
+    """
     tag, sp, dp = _write(spec)
     ap = os.path.join(_TMP, f"app_{tag}.py")
+    raised = []
+    real = dr._dash_trial_render
+
+    def _kept(source):
+        notes = real(source)
+        raised.extend(notes)
+        return notes
+
     with warnings.catch_warnings(record=True) as built:
         warnings.simplefilter("always")
-        dr.ServerAppBuilder(sp, dp).build(ap)
+        if trial:
+            with trial_by_blocks(dr), \
+                    mock.patch.object(dr, "_dash_trial_render", _kept):
+                dr.ServerAppBuilder(sp, dp).build(ap, trial=True)
+        else:
+            dr.ServerAppBuilder(sp, dp).build(ap)
+    every = [str(w.message) for w in built]
+    own = list((Counter(every) - Counter(raised)).elements())
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         mod = load_app(ap, f"_parity_{tag}", draw=False)
@@ -309,7 +341,8 @@ def _served(spec):
         warnings.simplefilter("always")
         doc = Document()
         mod.make_document(doc)
-    return doc, sorted(str(w.message) for w in list(built) + list(caught))
+    return (doc, sorted(own + [str(w.message) for w in caught]),
+            sorted(every) if trial else None)
 
 
 # ---------------------------------------------------------------------------
@@ -1372,7 +1405,7 @@ def _render_pair(name, spec):
         r, std_w, page = _standalone_page(spec)
     embedded = {m.id: m for call in handed.call_args_list
                 for m in call.args[0]}
-    doc, srv_w = _served(spec)
+    doc, srv_w, trial_w = _served_build(spec, trial=name in _TRIAL_NAMES)
     std_figs, srv_figs = [], []
     root = getattr(r, "_last_layout_root", None)
     std_cells, srv_cells = [], []
@@ -1433,6 +1466,7 @@ def _render_pair(name, spec):
                 "widgets": std_widgets, "kpis": std_kpis,
                 "bs": root is None, "cells": std_cells},
         "srv": {"tree": srv_tree, "figures": srv_figs, "warnings": srv_w,
+                "trial_warnings": trial_w,
                 "widgets": leaves(srv_tree, "Widget"),
                 "kpis": kpis_of(srv_tree), "cells": srv_cells},
     }
@@ -3036,6 +3070,10 @@ CORPUS = [
           go={"by": "rep78", "ylabel": ", format(%15.2fc)"}),
 ]
 
+#: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair
+#: builds their served app with its trial drawing (_served_build).
+_TRIAL_NAMES = frozenset(c.values[0] for c in CORPUS)
+
 
 #: Dates.  The served app had no date handling at all (BUGS.md, "The
 #: generated server app has no date handling at all"): measured 23sep2026 a
@@ -3345,14 +3383,9 @@ class TestTheServedBuildNamesTheSavedNotes:
     drawing of the app it wrote -- for every entry."""
 
     def test_the_trial_names_what_the_saved_build_names(self, name, spec):
-        saved = _render_pair(name, spec)["std"]["warnings"]
-        _, sp, dp = _write(spec)
-        ap = os.path.join(_TMP, f"trial_{next(_SEQ)}.py")
-        with warnings.catch_warnings(record=True) as got:
-            warnings.simplefilter("always")
-            with trial_by_blocks(dr):
-                dr.ServerAppBuilder(sp, dp).build(ap, trial=True)
-        got = sorted(str(w.message) for w in got)
+        pair = _render_pair(name, spec)
+        saved, got = pair["std"]["warnings"], pair["srv"]["trial_warnings"]
+        assert got is not None, f"{name}: the served build drew no trial"
         assert got == saved, (
             f"{name}: the server build's notes differ\n  saved  {saved}"
             f"\n  server {got}")
