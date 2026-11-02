@@ -52601,12 +52601,18 @@ def _dash_one_toolbar(grid):
     toolbar -- ``gridplot()`` already merged its panels' tools into the
     page's -- and the page's toolbar is laid over the grid's top right
     corner (:data:`_DASH_TOOLBAR_OVERLAY_CSS`), hidden until the pointer
-    is over the page.  Returns *grid*."""
+    is over the page.  Returns *grid*.
+
+    The grids are found through the layout (``_dash_layout_walk``), not
+    ``select()``, which walks every glyph, source and callback the page
+    holds: one such walk was a seventh of a by() page's render; on the 585
+    grids the parity corpus builds the two find the same grids (02nov2026)."""
     from bokeh.models import GridPlot, InlineStyleSheet
     if grid is None:
         return grid
     from bokeh.models import CustomAction
-    for m in grid.select(dict(type=GridPlot)):
+    for m in [m for m, _inside in _dash_layout_walk(grid)
+              if isinstance(m, GridPlot)]:
         if m is not grid:
             m.toolbar_location = None
             # Its hidden toolbar keeps no export action of its own.

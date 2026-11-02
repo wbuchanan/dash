@@ -280,6 +280,19 @@ console.log(JSON.stringify({first: first, second: writes - first,
         assert dr._DASH_TOOLBAR_OVERLAY_CSS in css
 
 
+    def test_a_grid_in_a_column_cell_loses_its_toolbar(self):
+        """The nested grids are found through the layout: a by() grid
+        under a strip's Column in a cell, as select() found it."""
+        from bokeh.layouts import column, gridplot
+        from bokeh.models import Div
+        from bokeh.plotting import figure
+        inner = gridplot([[figure(), figure()]])
+        outer = gridplot([[column(Div(text="strip"), inner), figure()]])
+        assert dr._dash_one_toolbar(outer) is outer
+        assert inner.toolbar_location is None
+        assert outer.toolbar_location is not None and outer.toolbar.autohide
+
+
 class TestGraphRegion:
     """WP-45 GW-6 (VF-7): the scheme's graph margin is drawn around the
     graph, a by() array included (figure_geometry_truth.json M_stcolor:
