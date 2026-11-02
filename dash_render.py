@@ -25256,7 +25256,10 @@ class GlyphMapper:
                     widths[min(i, len(widths) - 1)]),
                 visible=False, name=f"{_DASH_SWATCH_PREFIX}contourline_{i}")
             items.append(LegendItem(label=text, renderers=[sw]))
-        lg = Legend(items=items, name=_COLORVAR_LEGEND_NAME)
+        # Centred on its side, as twoway draws it (CL_cl: the legend's box
+        # 1031.86 to 1558.19 about the plot region's centre, 1295.0).
+        lg = Legend(items=items, name=_COLORVAR_LEGEND_NAME,
+                    location="center")
         lg._dash_useplegend = True
         pleg = str((self.z_options or {}).get("plegend", "") or "").strip()
         self._colorvar_key_place(fig, lg, _dash_clegend_opts(pleg),

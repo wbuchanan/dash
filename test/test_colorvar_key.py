@@ -214,6 +214,8 @@ class TestContourlineLegend:
         cols = list(cr.line_renderer.data_source.data["line_color"])
         (lg,) = _level_legends(fig)
         assert lg in list(fig.right)
+        # Centred on the plot region (CL_cl's box about its centre).
+        assert lg.location == "center"
         want = [dr._dash_fmt_text(v, "%9.0g") for v in reversed(lev)]
         assert [_label(it) for it in lg.items] == want
         got = [it.renderers[0].glyph.line_color for it in lg.items]
