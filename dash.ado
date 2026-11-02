@@ -7630,6 +7630,9 @@ program define _dash_process_segment, rclass
     mata: st_local("_seg_cvam", strofreal(st_global("s(colorallowmultiple)") != ""))
     c_local _seg_cv_out `_seg_cv'
     c_local _seg_cvam_out `_seg_cvam'
+    // coloruseplegend, for plegend()'s check (WP-42 CV-10).
+    mata: st_local("_seg_cvupl", strofreal(st_global("s(coloruseplegend)") != ""))
+    c_local _seg_cvupl_out `_seg_cvupl'
     // The variable this segment's x axis takes its label format from, for
     // the t-options' date literals (WP-30 P1.6, _dash_taxis_fold): the x of
     // the yx and range types (tsline and tsrline: the tsset variable), the
@@ -9689,6 +9692,7 @@ program define _dash_plot
     mata: _dash_axisn_clear()
     local _g_ys ""
     local _g_cvn 0
+    local _g_cvupl 0
     local _g_hascont 0
     local _g_hascl 0
     local _g_xs ""
@@ -9918,6 +9922,7 @@ program define _dash_plot
                 exit 198
             }
             local ++_g_cvn
+            if `_seg_cvupl_out' local _g_cvupl 1
         }
         // This segment's axis options, as typed, and its layers' axes, for
         // twoway's axis check after the loop (WP-29 P0.5).
@@ -10168,14 +10173,40 @@ program define _dash_plot
     // WP-31 H2t: table()'s sub-options, rows(#) and open (_dash_table_check).
     if `"`macval(g_table)'"' != "" _dash_table_check `"`macval(g_table)'"'
     _dash_subopt_check zlabel
+    // WP-42 CV-10: clegend() is read when a layer has colorvar(), plegend()
+    // when one has coloruseplegend, zscale() always, as twoway reads them
+    // (measured, colorvar_refusal_truth.json K_*: clegend(bogus) and
+    // plegend(bogus) are drawn where no such key is).
+    if `_g_cvn' _dash_subopt_check clegend
+    if `_g_cvupl' _dash_subopt_check plegend
+    _dash_subopt_check zscale
     // The label forms twoway refuses, in its words (WP-31 D6; measured,
     // test/fixtures/axis_look_truth.json ref_*): r(198) "invalid label
-    // specifier, :  <the part>:" (two blanks, as twoway writes it).
-    foreach _alo in xlabel ylabel xtick ytick xlabel2 ylabel2 xtick2 ytick2 {
+    // specifier, :  <the part>:" (two blanks, as twoway writes it), and
+    // zlabel()'s (WP-42 CV-10).
+    foreach _alo in xlabel ylabel xtick ytick xlabel2 ylabel2 xtick2 ytick2 zlabel {
         mata: st_local("_alr", _dash_axlabel_refusal(st_local("g_`_alo'")))
         if `"`macval(_alr)'"' != "" {
             mata: _dash_say("err", "invalid label specifier, :  ", st_local("_alr"), ":")
             exit 198
+        }
+    }
+    // zlabel()'s rule or value list, its labels, #n, minmax and none set
+    // aside, is a numlist to twoway (WP-42 CV-10; measured,
+    // colorvar_refusal_truth.json K_zlab_*: zlabel(bogus) is "invalid
+    // label specifier, :  bogus:", r(198), with or without colorvar()).
+    // Read by value; a text holding a backtick, $, a quote or a control
+    // byte is not put to -numlist-.
+    if `: length local g_zlabel' {
+        mata: _dash_zl_v = st_local("g_zlabel"); _dash_zl_c = strpos(_dash_zl_v, ","); _dash_zl_v = (_dash_zl_c ? substr(_dash_zl_v, 1, _dash_zl_c - 1) : _dash_zl_v)
+        mata: st_local("_zlh", strtrim(ustrregexra(_dash_zl_v, char(34) + "[^" + char(34) + "]*" + char(34) + "|#[0-9]+|\bminmax\b|\bnone\b", " "))); st_local("_zlbad", strofreal(_dash_so_unsafe(st_local("_zlh"))))
+        capture mata: mata drop _dash_zl_v _dash_zl_c
+        if `: length local _zlh' & !`_zlbad' {
+            capture numlist `"`macval(_zlh)'"'
+            if _rc {
+                mata: _dash_say("err", "invalid label specifier, :  ", st_local("_zlh"), ":")
+                exit 198
+            }
         }
     }
     _dash_subopt_check title

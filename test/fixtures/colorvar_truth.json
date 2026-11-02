@@ -462,8 +462,8 @@
   "_meta": {
     "born_date": "14 Oct 2026",
     "cv16_fields": "texts, plot, rects, panels, elements (in-region drawn colours by kind: circle fill, rect fill, hline/vline/diag stroke, path stroke; axis and full-width grid strokes and region rects dropped), fills_by_panel under by()",
-    "dash_commit": "fef398df8e0e05c2ee753a32e5b03e12560fa32f",
-    "extracted": "2026-10-21",
+    "dash_commit": "58731901478e54aaf037d176dca2c889c8dfb880",
+    "extracted": "2026-11-02",
     "marker_order_selfcheck": "observation",
     "source": "scripts/extract_colorvar_truth.do",
     "stata_version": "19.5",
@@ -8938,7 +8938,7 @@
       "message": "",
       "n_groups": 0,
       "n_markers": 0,
-      "rc": 0,
+      "rc": 198,
       "twoway_message": "invalid label specifier, :  bogus:",
       "twoway_rc": 198
     },

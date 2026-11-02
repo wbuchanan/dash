@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- clegend(bogus), plegend(bogus), zlabel(bogus) and zscale(bogus) are refused r(198) in twoway's words (were drawn with a note) (WP-42, CV-10)
 - colorcuts(abc) is r(121) and colorvar(a b) r(101) in twoway's words (were r(198)); colorvar(pri*) is refused (was drawn) (WP-42, CV-9)
 - aspectratio() with by(, shrink) or overallshrink is refused r(198), as twoway refuses it; it was drawn (WP-41, BY-5)
 - A weighted marker layer under by() with a panel whose weights are all zero is refused r(198), as twoway refuses it; it was drawn (WP-41, sil:SD-7)

@@ -487,8 +487,8 @@ _CV_DRAWN = tuple(p for p in _CV_PROBES if p not in _CV_REFUSALS)
 #: discrete/binned clegend (ascending, value labels and interval texts,
 #: '(missing)', a frame); CV-4: the coloruseplegend key (WP-42 CV-6
 #: closed the key a layer of two colorvar layers); CV-8: the continuous default's gradient and ColorBar
-#: (zscale(log) and zscale(reverse) included); CV-10: zlabel(bogus) drawn
-#: where twoway refuses r(198).
+#: (zscale(log) and zscale(reverse) included); WP-42 CV-10 closed
+#: zlabel(bogus), refused r(198) as twoway refuses it.
 COLORVAR_KNOWN = {
     "selfcheck_foreign:key_texts": "CV-3",
     "selfcheck_foreign:key_frame": "CV-3",
@@ -562,7 +562,6 @@ COLORVAR_KNOWN = {
     "cv16_legend_rows2:key_frame": "CV-3",
     "cv16_disc_levels_rep78_3:key_texts": "CV-3",
     "cv16_disc_levels_rep78_3:key_frame": "CV-3",
-    "cv16_zlabel_bogus:rc": "CV-10",
 }
 COLORVAR_DELIBERATE = {}
 

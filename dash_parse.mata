@@ -11569,6 +11569,25 @@ string matrix _dash_so_rows(string scalar fam)
                   "axis", "ax", "1", "a", "1", "")
         t = t \ ("range", "r", "2", "r", "1", "")
     }
+    else if (fam == "clegend") {
+        // WP-42 CV-10: twoway's clegend() words at the graph level
+        // (clegend_option.sthlp; measured, colorvar_refusal_truth.json
+        // K_cleg_*): t1title() .. r2title() and at() are refused there.
+        t = t \ ("width", "width", "1", "r", "0", "" \
+                  "height", "height", "1", "r", "0", "" \
+                  "altaxis", "altaxis", "1", "w", "0", "" \
+                  "bmargin", "bm", "1", "r", "0", "" \
+                  "title", "ti", "1", "r", "0", "" \
+                  "subtitle", "sub", "1", "r", "0", "")
+        t = t \ ("note", "note", "1", "r", "0", "" \
+                  "caption", "cap", "1", "r", "0", "" \
+                  "region", "reg", "1", "r", "0", "" \
+                  "off", "off", "1", "w", "0", "" \
+                  "on", "on", "1", "w", "0", "" \
+                  "position", "pos", "1", "r", "0", "")
+        t = t \ ("ring", "ring", "1", "r", "0", "" \
+                  "bplacement", "bplace", "1", "r", "0", "")
+    }
     else if (fam == "refline") {
         t = t \ ("style", "st", "1", "a", "0", "" \
                   "noextend", "noex", "1", "w", "0", "" \
@@ -11984,6 +12003,15 @@ void _dash_subreq_add(string scalar opts, real scalar seg)
                 if (_dash_rep_split(sub, b2, s2)) sub = b2
             }
         }
+        else if ((strlen(nm) >= 4 & substr("clegend", 1, strlen(nm)) == nm) |
+                 (strlen(nm) >= 4 & substr("plegend", 1, strlen(nm)) == nm) |
+                 (strlen(nm) >= 3 & substr("zscale", 1, strlen(nm)) == nm)) {
+            // WP-42 CV-10: the colour key's options and zscale(), checked
+            // by kind (clegend, plegend, zscale) with twoway's tables.
+            kind = (substr(nm, 1, 1) == "c" ? "clegend" :
+                    (substr(nm, 1, 1) == "p" ? "plegend" : "zscale"))
+            sub  = v
+        }
         else if ((strlen(nm) >= 6 & substr("graphregion", 1, strlen(nm)) == nm) |
                  (strlen(nm) >= 5 & substr("plotregion", 1, strlen(nm)) == nm)) {
             // A region's whole value (WP-30 P1.20a): graphr() and plotr()
@@ -12222,6 +12250,31 @@ real scalar _dash_subreq_check(string scalar kind)
             }
         }
         _dash_subreq_drop("zlabel")
+        return(0)
+    }
+    if (kind == "clegend" | kind == "plegend" | kind == "zscale") {
+        // WP-42 CV-10: clegend() with clegend's table, plegend() with
+        // legend's, zscale() with the axis scale's, every copy together
+        // as twoway merges them; the words inside region() and the titles
+        // with their own tables (_dash_subreq_nested).
+        _dash_subreq_toks(kind, toks, cid)
+        if (cols(toks)) {
+            fam = (kind == "plegend" ? "legend" : (kind == "zscale" ? "axscale" : "clegend"))
+            if (_dash_so_resolve(toks, cid, fam, names, msg, at)) {
+                _dash_say("err", "", msg, "")
+                _dash_subreq_clear()
+                return(198)
+            }
+            if (kind != "zscale") {
+                msg = _dash_subreq_nested(toks, names)
+                if (msg != "") {
+                    _dash_say("err", "", msg, "")
+                    _dash_subreq_clear()
+                    return(198)
+                }
+            }
+        }
+        _dash_subreq_drop(kind)
         return(0)
     }
     if (kind == "title") {

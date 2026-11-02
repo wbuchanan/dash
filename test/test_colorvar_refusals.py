@@ -215,3 +215,29 @@ class TestTheAdoText:
         assert "_dash_cv_value_check" in vv
         # 35-07's string-colorvar lines are given by confirm now.
         assert "found where numeric variable expected" not in src
+
+    def test_key_option_checks(self):
+        """CV-10: clegend() is read when a layer has colorvar(), plegend()
+        when one has coloruseplegend, zscale() always (twoway's tables,
+        measured: K_*), and zlabel() joins the label-list refusals."""
+        src = _read("dash.ado")
+        start = src.index("program define _dash_plot\n")
+        body = src[start:src.index("\nend\n", start)]
+        assert "if `_g_cvn' _dash_subopt_check clegend" in body
+        assert "if `_g_cvupl' _dash_subopt_check plegend" in body
+        assert "_dash_subopt_check zscale" in body
+        loop = re.search(r"foreach _alo in ([^{]*)\{", body).group(1)
+        assert "zlabel" in loop.split()
+
+    def test_the_clegend_table_is_twoways(self):
+        """Every clegend() word twoway draws is in the table, and every
+        word it refuses at the graph level is not (K_cleg_<word>)."""
+        src = _read("dash_parse.mata")
+        start = src.index('if (fam == "clegend")')
+        block = src[start:src.index("}", start)]
+        rows = set(re.findall(r'"([a-z0-9]+)", "[a-z0-9]+", "1"', block))
+        for key, p in _truth()["probes"].items():
+            m = re.fullmatch(r"K_cleg_([a-z0-9]+)", key)
+            if not m or m.group(1) in ("bogus", "bogusp", "abbrev"):
+                continue
+            assert (m.group(1) in rows) == (p["rc"] == 0), (key, p["rc"])

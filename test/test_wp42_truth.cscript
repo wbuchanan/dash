@@ -799,6 +799,27 @@ def _q4205_list(prefix):
                                               if k.startswith(prefix))))
 
 
+def _q4205_judge(key, path, rc):
+    from sfi import Macro
+    r = _q4205_rows()[key]
+    lines = []
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            for ln in fh:
+                if ln.strip() and not ln.startswith((". ", "> ")):
+                    lines.append(ln.strip())
+    except OSError:
+        pass
+    want = [ln.strip() for ln in r["lines"]]
+    ok = int(rc) == r["rc"] and (r["rc"] == 0 or lines == want)
+    Macro.setLocal("q05_ok", "1" if ok else "0")
+    for name, text in (("q05_got", " / ".join(lines)),
+                       ("q05_want", " / ".join(want))):
+        for ch, to in (('"', "'"), ("\x60", "'"), ("$", "S")):
+            text = text.replace(ch, to)
+        Macro.setLocal(name, text[:200])
+
+
 def _q4205_keys(sp, dp, app):
     from sfi import Macro
     a, b = _q4201_docs(sp, dp, app)
@@ -867,6 +888,44 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w42_run' {
     }
     capture rmdir "`q05d'"
     macro drop q4205_*
+    capture graph drop _all
+    dash clear
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
+* ==== S05 CV-10: malformed colour-key options ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w42_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // Q4205-3: every clegend(), plegend(), zlabel() and zscale() probe
+    // of the fixture (K_*) run through dash: dash's rc is twoway's, and
+    // a refusal prints twoway's line and nothing else; the words twoway
+    // draws are drawn.  Every expectation is the fixture's.
+    // ------------------------------------------------------------
+    python: import __main__ as _q4205_m; _q4205_m._q4205_list("K_")
+    local q05_klf "`w42_work'/q4205k.log"
+    foreach k of local q05_ids {
+        python: import __main__ as _q4205_m; _q4205_m._q4205_row("`k'")
+        local q05_dcmd : subinstr local q05_cmd "twoway " ""
+        quietly sysuse auto, clear
+        set linesize 255
+        capture dash clear
+        capture log close q4205l
+        capture erase "`q05_klf'"
+        quietly log using "`q05_klf'", text replace name(q4205l)
+        capture noisily dash `q05_dcmd'
+        local q05_rcd = _rc
+        quietly log close q4205l
+        set linesize 80
+        python: import __main__ as _q4205_m; _q4205_m._q4205_judge("`k'", r"`q05_klf'", "`q05_rcd'")
+        _w42_expect Q4205-3 "(`q05_ok' == 1)" `"`k': rc `q05_rcd' (twoway `q05_rc'); dash said: `macval(q05_got)'; want: `macval(q05_want)'"'
+    }
+    _w42_done Q4205-3 "clegend(), plegend(), zlabel() and zscale() words read as twoway reads them"
+    capture erase "`q05_klf'"
     capture graph drop _all
     dash clear
     display as text "S05 end " c(current_date) " " c(current_time)
