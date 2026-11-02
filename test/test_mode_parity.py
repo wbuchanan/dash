@@ -1830,6 +1830,9 @@ CORPUS = [
     _case("colorvar() colordiscrete",
           [_sc(colorvar="foreign", colordiscrete="colordiscrete")]),
     _case("colorvar() on a continuous variable", [_sc(colorvar="price")]),
+    # WP-42 CV-8: every type binned at the key's ticks, not only a line.
+    _case("colorvar() stepped on bar",
+          [plot_for("bar", {"colorvar": "price"})]),
     _case("colorvar() with a palette",
           [_sc(colorvar="price", colpalette="magma", colornlevels="8")]),
     # WP-31 C8b: twoway's colorvar options and clegend()/pcycle().
@@ -4331,6 +4334,11 @@ _CVAR_MOVES = [
                ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
                 "rep == 3"), [plot_for("scatter", {"colorvar": "mpg"})],
                {"zlabel": "#3"}),
+    # WP-42 CV-8: a stepped (binned) price key cut again over the rows
+    # kept, its glyph and bar mappers both rewritten.
+    _move_case("scatter colorvar stepped price, rep dropdown to 3",
+               ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
+                "rep == 3"), [plot_for("scatter", {"colorvar": "price"})]),
     _move_case("scatter colorvar date, rep dropdown to 3",
                ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
                 "rep == 3"), [plot_for("scatter", {"colorvar": "when"})],
@@ -6862,6 +6870,7 @@ def _key_ticks_of(models):
     "scatter colorvar continuous, rep dropdown to 3",
     "line colorvar levels (D-15f), rep dropdown to 3",
     "scatter colorvar zlabel(#3), rep dropdown to 3",
+    "scatter colorvar stepped price, rep dropdown to 3",
     "scatter colorvar date, rep dropdown to 3",
     "line colorvar zscale(log), rep dropdown to 3"])
 class TestTheColourKeyTicksAfterAMove:

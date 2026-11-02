@@ -594,14 +594,18 @@ class TestColorvar:
         fig = _page_figure(html)
         mappers = [m for m in fig.document.models
                    if isinstance(m, LinearColorMapper)]
-        assert len(mappers) == 1, f"{len(mappers)} LinearColorMappers"
-        assert (mappers[0].low, mappers[0].high) == (0.0, 2.0)
+        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); two mappers, the layer's levels and
+        # the key's bar, each holding grp's range 0 to 2.
+        assert len(mappers) == 2, f"{len(mappers)} LinearColorMappers"
+        assert all(m.low <= 0.0 and m.high >= 2.0 for m in mappers)
         layers = _layers(fig)
         assert len(layers) == 1, f"{len(layers)} layers, not 1"
+        ids = set()
         for prop in ("fill_color", "line_color"):
             spec = getattr(layers[0].glyph, prop)
             assert getattr(spec, "field", None) == "grp", (prop, spec)
-            assert getattr(spec.transform, "id", None) == mappers[0].id, prop
+            ids.add(getattr(spec.transform, "id", None))
+        assert len(ids) == 1 and ids <= {m.id for m in mappers}
 
 
     def test_colorvar_html_contains_colorbar(self):
@@ -617,8 +621,11 @@ class TestColorvar:
         assert len(bars) == 1, f"{len(bars)} ColorBars"
         assert bars[0] in fig.right
         mapped = _layers(fig)[0].glyph.fill_color
-        assert bars[0].color_mapper.id == getattr(
-            getattr(mapped, "transform", None), "id", None)
+        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); the bar is its own mapper of the
+        # layer's level colours, over twoway's axis range.
+        tr = getattr(mapped, "transform", None)
+        assert bars[0].color_mapper.id != getattr(tr, "id", None)
+        assert list(bars[0].color_mapper.palette) == list(tr.palette)
 
 
     def test_colorvar_palette_viridis_default(self):
@@ -636,7 +643,10 @@ class TestColorvar:
         # twoway draws the key in its colour rule, hue from blue to red
         # (colorvar_options_truth.json D01).
         pal = list(mapper.palette)
-        assert len(pal) == 256 and pal[0] == "#0000ff" and pal[-1] == "#ff0000"
+        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); one step of the rule a level.
+        cuts = [t for t in bar.ticker.ticks if t >= min(src.data["grp"])]
+        assert len(pal) == len(cuts) + 1
+        assert pal[0] == "#0000ff" and pal[-1] == "#ff0000"
 
     def test_colorvar_palette_magma_option(self):
         """CV-10: colpalette(magma) selects Magma256 palette."""

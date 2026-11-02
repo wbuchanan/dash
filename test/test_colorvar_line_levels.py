@@ -263,9 +263,16 @@ def test_the_key_has_twoways_levels(mode):
     # Five bins of 500 from 500: (.., 1000], (1000, 1500], ... (2500, ..).
     assert (m.low, m.high) == pytest.approx((500.0, 3000.0))
     # A value on a cut takes the level below, as twoway's (c0, c1] does.
+    # Flipped (WP-42 CV-8): the bar was the levels' own mapper; it is now
+    # its own mapper over twoway's axis range exactly (so a tick on its low
+    # end is drawn), and the levels are the line plan's stepped mapper.
+    [plan] = [r._dash_cvar for r in fig.renderers
+              if (getattr(r, "_dash_cvar", None) or {}).get("kind")
+              == "steps"]
+    assert plan["bar"] is m and plan["mapper"] is not m
     assert dr.GlyphMapper._colorvar_level_index(
-        {"field": "z", "transform": m}, [1000.0, 1000.5, 1500.0]).tolist() \
-        == [0, 1, 1]
+        {"field": "z", "transform": plan["mapper"]},
+        [1000.0, 1000.5, 1500.0]).tolist() == [0, 1, 1]
     assert list(bar.ticker.ticks) == [1000.0, 1500.0, 2000.0, 2500.0]
 
 

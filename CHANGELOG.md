@@ -1003,6 +1003,8 @@ and now matches Stata.
 
 ### Fixed in WP-42
 
+- dash scatter mpg weight, colorvar(price) draws twoway's four level colours, keyed 0 5,000 10,000 15,000, on every type twoway colours (was a 256-step gradient) (WP-42, CV-8)
+
 ### Fixed in WP-41
 
 - The corpus check no longer reads a by() panel's hidden x axis: it reported x labels above the bottom row that dash does not draw (WP-41, 41-05, BY-32)

@@ -790,6 +790,12 @@ class TestColourKeyUnderBy:
             mappers = {id(getattr(getattr(r.glyph, "fill_color", None),
                                   "transform", None))
                        for r in panels[0].renderers}
+            # Flipped (WP-42 CV-8): the continuous key was a 256-step
+            # gradient on the glyphs' own mapper; twoway bins at its z
+            # ticks (CV-8), and the key is panel 1's stepped bar, its own
+            # mapper on panel 1's relevel plan.
+            mappers |= {id((getattr(r, "_dash_cvar", None) or {}).get("bar"))
+                        for r in panels[0].renderers}
             if pid == "q08":
                 if len(legs) != 1 or not legs[0].items:
                     bad.append((pid, "discrete key"))
@@ -833,6 +839,11 @@ class TestAfterAFilterMove:
             mappers = [getattr(r.glyph.fill_color, "transform", None)
                        for r in panels[0].renderers
                        if hasattr(r, "glyph")]
+            # Flipped (WP-42 CV-8): the key is panel 1's stepped bar, its
+            # own mapper on panel 1's relevel plan (twoway bins at its z
+            # ticks).
+            mappers += [(getattr(r, "_dash_cvar", None) or {}).get("bar")
+                        for r in panels[0].renderers]
             assert any(m is bar.color_mapper for m in mappers)
         else:
             side_ids = {id(c[0]) for c in grid.children

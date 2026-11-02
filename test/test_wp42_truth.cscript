@@ -203,6 +203,188 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w42_run' {
 }
 * ==== end S00 ====
 
+// S01 helpers (WP-42 42-01).  _q4201_draw: the distinct colours a
+// registered dash graph's colour layer draws, each row through its mapper,
+// saved and served -- into globals q4201_s and q4201_v (sorted hex, space
+// separated), and q4201_w<s|v>, the colour bar's thickness in px;
+// _q4201_svg: twoway's distinct plot-region marker fills from an SVG, into
+// q4201_tw, and the colour key's width over the graph's (q4201_kw).
+python:
+import os as _q4201_os, sys as _q4201_sys
+for _q4201_p in (_q4201_os.path.abspath(".."),
+                 _q4201_os.path.abspath(_q4201_os.path.join("..", "scripts"))):
+    if _q4201_p not in _q4201_sys.path:
+        _q4201_sys.path.insert(0, _q4201_p)
+
+
+def _q4201_docs(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_q4201_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_q4201_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+    return list(r.figures.values()), sv
+
+
+def _q4201_colour(m, v):
+    if v is None or v != v:
+        return str(m.nan_color).lower()
+    pal = [str(c).lower()[:7] for c in m.palette]
+    lo, hi = float(m.low), float(m.high)
+    v = float(v)
+    if v < lo:
+        return pal[0]
+    if v > hi:
+        return pal[-1]
+    return pal[min(int((v - lo) / (hi - lo) * len(pal)), len(pal) - 1)]
+
+
+def _q4201_draw(sp, dp, app):
+    from sfi import Macro
+    a, b = _q4201_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        cols, width = set(), 0
+        for f in figs:
+            for side in (f.right, f.left, f.above, f.below, f.center):
+                for m in side:
+                    if type(m).__name__ in ("ColorBar", "ContourColorBar") \
+                            and m.name != "dash_by_label_box":
+                        width = m.width
+            for r in f.renderers:
+                g = getattr(r, "glyph", None)
+                if str(getattr(r, "name", "") or "").startswith("_clegend_"):
+                    continue
+                fc = getattr(g, "fill_color", None)
+                tr = getattr(fc, "transform", None)
+                fld = getattr(fc, "field", None)
+                if tr is None or not hasattr(tr, "low") \
+                        or fld not in r.data_source.data:
+                    continue
+                for v in r.data_source.data[fld]:
+                    cols.add(_q4201_colour(tr, v))
+        Macro.setGlobal("q4201_" + sfx, " ".join(sorted(cols)))
+        Macro.setGlobal("q4201_w" + sfx, str(width))
+
+
+def _q4201_svg(path):
+    from sfi import Macro
+    from svg_truth import svg_document
+    d = svg_document(path)
+    pr = d["plotregion"]
+    fills = sorted({c["fill"] for c in d["circles"]
+                    if c.get("fill") and c["fill"] != "none"
+                    and pr["left"] <= c["cx"] <= pr["right"]
+                    and pr["top"] <= c["cy"] <= pr["bottom"]})
+    Macro.setGlobal("q4201_tw", " ".join(fills))
+    ax = [v["x1"] for v in d["vlines"] if v["x1"] > pr["right"]
+          and (v.get("stroke") or "") == "#000000"]
+    sw = [c["cx"] for c in d["circles"] if c["cx"] > pr["right"]
+          and c.get("fill") and c["fill"] != "none"]
+    kw = (2 * (min(ax) - sum(sw) / len(sw)) / d["canvas"]["w"]
+          if ax and sw else 0)
+    Macro.setGlobal("q4201_kw", "%.6f" % kw)
+end
+
+capture program drop _q4201_reg
+program define _q4201_reg
+    // _q4201_reg <dir> <dash command...>: register one graph, write its
+    // spec and data, and read what both modes draw.
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4201_m; _q4201_m._q4201_draw("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
+capture program drop _q4201_try
+program define _q4201_try, rclass
+    // _q4201_try <log> <command...>: run it in its own log; r(rc), and
+    // r(note) 1 when the log holds dash's ignoring note.
+    version 19
+    gettoken lf 0 : 0
+    capture dash clear
+    capture log close q4201l
+    quietly log using "`lf'", text replace name(q4201l)
+    capture noisily `0'
+    local rc = _rc
+    quietly log close q4201l
+    cert_log_has "`lf'", needle("ignoring unsupported")
+    return scalar note = r(found)
+    return scalar rc = `rc'
+end
+
+* ==== S01 CV-8: continuous colorvar binned at the key's ticks ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w42_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+    local q01d "`w42_work'/s01"
+    capture mkdir "`q01d'"
+    local lf "`q01d'/try.log"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4201-1: colorvar(price) on a scatter draws twoway's level colours
+    // (four, measured live from twoway's SVG), saved and served.
+    // ------------------------------------------------------------
+    quietly twoway scatter mpg weight, colorvar(price) scheme(s2color) name(q01a, replace)
+    capture erase "`q01d'/q01a.svg"
+    cert_svg_export, name(q01a) file("`q01d'/q01a.svg")
+    python: import __main__ as _q4201_m; _q4201_m._q4201_svg("`q01d'/q01a.svg")
+    local tw "${q4201_tw}"
+    _q4201_reg "`q01d'" scatter mpg weight, colorvar(price) scheme(s2color) name(q01a)
+    _w42_expect Q4201-1 "(`: word count `tw'' == 4)" `"twoway draws `tw'"'
+    _w42_expect Q4201-1 `"(`"${q4201_s}"' == `"`tw'"')"' `"saved ${q4201_s}, twoway `tw'"'
+    _w42_expect Q4201-1 `"(`"${q4201_v}"' == `"`tw'"')"' `"served ${q4201_v}, twoway `tw'"'
+    _w42_done Q4201-1 "colorvar(price): twoway's four level colours, saved and served"
+
+    // ------------------------------------------------------------
+    // Q4201-2: the stepped default is drawn with rc 0 and no note.
+    // ------------------------------------------------------------
+    _q4201_try "`lf'" dash scatter mpg weight, colorvar(price) name(q01b)
+    _w42_expect Q4201-2 "(r(rc) == 0 & r(note) == 0)" "dash rc `r(rc)', note `r(note)'"
+    _w42_done Q4201-2 "colorvar(price) is drawn with rc 0 and no note"
+
+    // ------------------------------------------------------------
+    // Q4201-3: under s1mono the levels start at twoway's #bfbfbf.
+    // ------------------------------------------------------------
+    quietly twoway scatter mpg weight, colorvar(price) scheme(s1mono) name(q01c, replace)
+    capture erase "`q01d'/q01c.svg"
+    cert_svg_export, name(q01c) file("`q01d'/q01c.svg")
+    python: import __main__ as _q4201_m; _q4201_m._q4201_svg("`q01d'/q01c.svg")
+    local tw "${q4201_tw}"
+    _q4201_reg "`q01d'" scatter mpg weight, colorvar(price) scheme(s1mono) name(q01c)
+    _w42_expect Q4201-3 `"(strpos(`"`tw'"', "#bfbfbf") > 0)"' `"twoway draws `tw'"'
+    _w42_expect Q4201-3 `"(`"${q4201_s}"' == `"`tw'"')"' `"saved ${q4201_s}, twoway `tw'"'
+    _w42_expect Q4201-3 `"(`"${q4201_v}"' == `"`tw'"')"' `"served ${q4201_v}, twoway `tw'"'
+    _w42_done Q4201-3 "scheme(s1mono): twoway's grey levels from #bfbfbf, saved and served"
+
+    foreach f in q01a.svg q01c.svg s.json d.json a.py try.log {
+        capture erase "`q01d'/`f'"
+    }
+    capture rmdir "`q01d'"
+    macro drop q4201_s q4201_v q4201_ws q4201_wv q4201_tw q4201_kw
+    capture graph drop _all
+    dash clear
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

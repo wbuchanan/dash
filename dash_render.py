@@ -16314,14 +16314,17 @@ class GlyphMapper:
         False builds the same mapper but adds no key: rconnected's second
         end, which twoway colours from the one key it draws.
 
-        *stepped* (a line's colorvar(), ``_colorvar_line_parts``) draws a
-        continuous variable in twoway's levels instead of the colour bar's
-        256 bins: the cuts are the key's ticks (natscale #5, or zlabel()),
+        A continuous variable is drawn in twoway's levels on every type
+        (WP-42 CV-8; before it only *stepped* layers were): the cuts are the
+        key's ticks (natscale #5, or zlabel()),
         a cut below the domain's minimum dropped, the levels the intervals
         (-inf, c0], (c0, c1], ..., (ck, +inf) in n + 1 colours of the rule
         (or colorlist()), and the bar's mapper one colour a level; the cuts
         are left in ``self._colorvar_step_cuts`` for the caller (None when
-        the layer is not stepped).
+        the layer is not continuous).  *stepped* (a line's colorvar(),
+        ``_colorvar_line_parts``) also records the line pool's relevel plan
+        in ``self._colorvar_step_plan``; any other layer records a
+        ``stepmap`` relevel plan on its renderer.
 
         Supports Stata 18 colorvar_options:
             colorvar(varname)   — variable whose values drive the color mapping
@@ -16339,6 +16342,8 @@ class GlyphMapper:
         self._colorvar_step_cuts = None
         self._colorvar_step_colours = None
         self._colorvar_step_plan = None
+        self._colorvar_step_bar = None
+        self._colorvar_step_zrange = None
         varname = options.get("colorvar", "").strip()
         if not varname or varname not in source.data:
             return
@@ -16920,7 +16925,13 @@ class GlyphMapper:
                                                dp=getattr(self, "dp",
                                                           "period"))
                 _cbar.color_mapper = mapper
-                if stepped and type(mapper).__name__ in (
+                # WP-42 CV-8: every continuous layer, a line's or not, is
+                # drawn in twoway's levels -- the key's ticks at or above
+                # the minimum are the cuts, n cuts n + 1 levels -- and the
+                # key is a bar of those colours (measured,
+                # colorvar_steps_truth.json T_*: four colours on all 17
+                # types for price, the key ticked from 0).
+                if type(mapper).__name__ in (
                         "LinearColorMapper", "LogColorMapper"):
                     def _cof(n):
                         if _c_list:
@@ -16932,19 +16943,22 @@ class GlyphMapper:
                         return _rule_palette(n)
                     mapper = self._colorvar_stepped_mapper(
                         _cbar, mapper, lo, hi, _cof, missing_color)
-                    _cbar.color_mapper = mapper
+                    _cbar.color_mapper = self._colorvar_step_bar or mapper
                     # The line's levels are cut again over the rows a move
                     # keeps (BUGS.md "A continuous colour key's labels and
                     # a line's colour levels keep the build's after a
                     # filter move"): what map_line's plan needs, for a
                     # linear key ticked by natscale (not a date's, nor
                     # zlabel()'s).
-                    if type(mapper).__name__ in (
+                    if stepped and type(mapper).__name__ in (
                             "LinearColorMapper", "LogColorMapper") \
                             and type(getattr(_cbar, "ticker", None)
                                      ).__name__ == "FixedTicker":
                         self._colorvar_step_plan = {
                             "cbar": _cbar, "mapper": mapper,
+                            "bar": self._colorvar_step_bar,
+                            "zrange": getattr(self, "_colorvar_step_zrange",
+                                              None),
                             "fmt": _key_fmt,
                             "dp": getattr(self, "dp", "period"),
                             "tick": _dash_cvar_tick_spec(
@@ -16965,7 +16979,27 @@ class GlyphMapper:
             # colour key keeps the build's range after a filter move"):
             # the plan _dash_cvar_relevel reads, unless zscale() or the
             # stepped line levels set the range themselves.
-            if (not stepped and type(mapper).__name__ in (
+            # WP-42 CV-8: a layer drawn in twoway's levels is cut again
+            # over the rows kept, both its mappers rewritten (stepmap).
+            if (not stepped and _cbar is not None
+                    and self._colorvar_step_cuts is not None
+                    and type(mapper).__name__ in (
+                        "LinearColorMapper", "LogColorMapper")):
+                renderer._dash_cvar = {
+                    "renderer": renderer, "field": varname,
+                    "kind": "stepmap", "mapper": mapper,
+                    "bar": self._colorvar_step_bar, "cbar": _cbar,
+                    "zrange": getattr(self, "_colorvar_step_zrange", None),
+                    "fmt": _key_fmt, "dp": getattr(self, "dp", "period"),
+                    "tick": _dash_cvar_tick_spec(self.z_options, _cv_kind,
+                                                 minmax),
+                    "log": type(mapper).__name__ == "LogColorMapper",
+                    "bins": _DASH_LOG_STEP_BINS,
+                    "missing": missing_color,
+                    "cols": {str(n): [str(c) for c in _cof(n)]
+                             for n in range(2, 13)},
+                    **_cv_rows(dom_vals)}
+            elif (not stepped and type(mapper).__name__ in (
                     "LinearColorMapper", "LogColorMapper")
                     and getattr(mapper, "low", None) == lo
                     and getattr(mapper, "high", None) == hi):
@@ -17192,9 +17226,10 @@ class GlyphMapper:
 
     def _colorvar_stepped_mapper(self, cbar, mapper, lo, hi, colours_of,
                                  missing_color):
-        """twoway's levels for a continuous colorvar() on a line (WP-32,
+        """twoway's levels for a continuous colorvar() (WP-32 on a line,
         BUGS.md "colorvar() on a line splits a continuous variable into the
-        colour bar's 256 bins where twoway draws its key's few levels"):
+        colour bar's 256 bins where twoway draws its key's few levels"; WP-42
+        CV-8 on every type):
         the cuts are *cbar*'s ticks (the key's labels, natscale #5 or
         zlabel()), those below the domain's minimum *lo* dropped (the
         minimum itself when none is left), as twoway drops colorcuts()
@@ -17202,7 +17237,9 @@ class GlyphMapper:
         LinearColorMapper of the n + 1 level colours (``colours_of(n + 1)``)
         whose equal bins fall on the cuts, closed above, when they are
         evenly spaced, as natscale's are; *mapper* unchanged when the bar
-        has no ticks."""
+        has no ticks.  A linear key also gets its own mapper of the same
+        colours over cuts[0] - step .. cuts[-1] + step exactly, in
+        ``self._colorvar_step_bar`` (None for a log key)."""
         from bokeh.models import LinearColorMapper
         try:
             ticks = sorted(float(t) for t in (cbar.ticker.ticks or []))
@@ -17227,6 +17264,9 @@ class GlyphMapper:
             lo_l, hi_l = float(mapper.low), float(mapper.high)
             if not (lo_l > 0 and hi_l > lo_l):
                 return mapper
+            # A log axis has no tick at or below 0 (measured, WP-42 CV-8:
+            # colorvar(price) zscale(log) is keyed 5,000 10,000 15,000).
+            _dash_cvar_drop_nonpositive_ticks(cbar)
             nb = _DASH_LOG_STEP_BINS
             ratio = math.log(hi_l / lo_l)
             centres = [lo_l * math.exp(ratio * (k + 0.5) / nb)
@@ -17246,6 +17286,18 @@ class GlyphMapper:
         # moved up by a billionth of a step, so a value on a cut takes the
         # level below, as in twoway.
         eps = step * 1e-9
+        # WP-42 CV-8: the key's bar has its own mapper of the same colours
+        # over twoway's axis range exactly, so a tick on its low end (price's
+        # 0) lies inside the bar and is drawn; a zscale(range()) wider than
+        # that stretches the end levels to it (measured 02nov2026:
+        # colorvar(price) zscale(range(0 20000)) keeps the four levels, the
+        # top one drawn 15,000 .. 20,000).
+        zr = [float(mapper.low) if float(mapper.low) < lo else None,
+              float(mapper.high) if float(mapper.high) > hi else None]
+        self._colorvar_step_zrange = zr
+        pal, blo, bhi = _dash_cvar_bar_palette(colours, cuts, step, zr)
+        self._colorvar_step_bar = LinearColorMapper(
+            palette=pal, low=blo, high=bhi, nan_color=missing_color)
         return LinearColorMapper(palette=colours, low=cuts[0] - step + eps,
                                  high=cuts[-1] + step + eps,
                                  nan_color=missing_color)
@@ -45851,6 +45903,104 @@ function dash_cvar_relevel_steps(pl, dom) {
     m.palette = colours.slice();
     m.low = cuts[0] - step + eps;
     m.high = cuts[cuts.length - 1] + step + eps;
+    dash_cvar_step_bar(pl, colours, cuts, step);
+  }
+}
+function dash_cvar_step_bar(pl, colours, cuts, step) {
+  // _dash_cvar_step_bar: a stepped key's own bar mapper over the axis
+  // range exactly (WP-42 CV-8).
+  // _dash_cvar_bar_palette: a zscale(range()) end beyond the axis range
+  // stretches the end levels to it, the bar then in equal bins.
+  const b = pl.bar;
+  if (!b) return;
+  let blo = cuts[0] - step, bhi = cuts[cuts.length - 1] + step;
+  const zr = pl.zrange || [null, null];
+  let wide = false;
+  if (zr[0] !== null && zr[0] !== undefined && zr[0] < blo) {
+    blo = Number(zr[0]); wide = true;
+  }
+  if (zr[1] !== null && zr[1] !== undefined && zr[1] > bhi) {
+    bhi = Number(zr[1]); wide = true;
+  }
+  let pal = colours.slice();
+  if (wide && bhi > blo) {
+    const nb = pl.bins || 1024;
+    pal = [];
+    for (let k = 0; k < nb; k++) {
+      const c = blo + (bhi - blo) * (k + 0.5) / nb;
+      pal.push(colours[cuts.filter((x) => x < c).length]);
+    }
+  }
+  b.palette = pal;
+  b.low = blo;
+  b.high = bhi;
+}
+function dash_cvar_drop_nonpositive_ticks(bar) {
+  // _dash_cvar_drop_nonpositive_ticks: a log key keeps its positive ticks.
+  if (!bar || !bar.ticker) return;
+  const ticks = Array.from(bar.ticker.ticks || []);
+  const keep = ticks.filter((t) => Number(t) > 0);
+  if (keep.length === ticks.length) return;
+  bar.ticker.ticks = keep;
+  const ovr = bar.major_label_overrides || {};
+  const out = {};
+  const ent = (ovr instanceof Map) ? Array.from(ovr.entries())
+    : Object.entries(ovr);
+  for (const [k, v] of ent) if (Number(k) > 0) out[k] = v;
+  bar.major_label_overrides = out;
+}
+function dash_cvar_relevel_stepmap(pl, dom) {
+  // _dash_cvar_relevel_stepmap: a continuous colorvar() layer that is not
+  // a line cut again in twoway's levels over the kept rows (WP-42 CV-8).
+  try {
+    let src = dom;
+    if (!src) {
+      const r = pl.renderer;
+      src = (r && r.data_source && r.data_source.data)
+        ? (r.data_source.data[pl.field] || []) : [];
+    }
+    // A loop, not Math.min(...): a spread overflows on a large column.
+    let lo = Infinity, hi = -Infinity;
+    for (const v of Array.from(src)) {
+      if (v === null || v === undefined) continue;
+      const f = Number(v);
+      if (!Number.isFinite(f)) continue;
+      if (f < lo) lo = f;
+      if (f > hi) hi = f;
+    }
+    if (!(lo <= hi)) return;
+    const ticks = dash_cvar_key_ticks(pl, lo, hi);
+    let cuts = ticks.filter((t) => t >= lo);
+    if (!cuts.length) cuts = [lo];
+    const colours = (pl.cols || {})[String(cuts.length + 1)];
+    const m = pl.mapper;
+    if (!colours || !m) return;
+    if (pl.log) {
+      dash_cvar_drop_nonpositive_ticks(pl.cbar);
+      const lo_l = lo, hi_l = hi > lo ? hi : lo + 1;
+      if (lo_l > 0 && hi_l > lo_l) {
+        const nb = pl.bins || 1024, ratio = Math.log(hi_l / lo_l);
+        const pal = [];
+        for (let k = 0; k < nb; k++) {
+          const c = lo_l * Math.exp(ratio * (k + 0.5) / nb);
+          pal.push(colours[cuts.filter((x) => x < c).length]);
+        }
+        m.palette = pal;
+        m.low = lo_l;
+        m.high = hi_l;
+      }
+      return;
+    }
+    const step = cuts.length > 1
+      ? (cuts[cuts.length - 1] - cuts[0]) / (cuts.length - 1)
+      : Math.max(Math.abs(hi - cuts[0]), Math.abs(cuts[0] - lo), 1.0);
+    const eps = step * 1e-9;
+    m.palette = colours.slice();
+    m.low = cuts[0] - step + eps;
+    m.high = cuts[cuts.length - 1] + step + eps;
+    dash_cvar_step_bar(pl, colours, cuts, step);
+  } catch (e) {
+    return;
   }
 }
 function dash_cvar_pyg(v) {
@@ -46107,6 +46257,7 @@ function dash_cvar_relevel(plans) {
   for (const pl of plans || []) {
     const kv = dash_cvar_kept(pl);
     if (pl.kind === "steps") { dash_cvar_relevel_steps(pl, kv); continue; }
+    if (pl.kind === "stepmap") { dash_cvar_relevel_stepmap(pl, kv); continue; }
     if (pl.kind === "bins") { dash_cvar_relevel_bins(pl, kv); continue; }
     const r = pl.renderer;
     const col = kv ? kv : (r && r.data_source && r.data_source.data)
@@ -54409,6 +54560,9 @@ def _dash_cvar_relevel(plan, kept=None):
     if plan.get("kind") == "steps":
         _dash_cvar_relevel_steps(plan, kv)
         return
+    if plan.get("kind") == "stepmap":
+        _dash_cvar_relevel_stepmap(plan, kv)
+        return
     if plan.get("kind") == "bins":
         _dash_cvar_relevel_bins(plan, kv)
         return
@@ -54644,6 +54798,120 @@ def _dash_cvar_relevel_steps(plan, dom=None):
             m.palette = list(colours)
         m.low = cuts[0] - step + eps
         m.high = cuts[-1] + step + eps
+        _dash_cvar_step_bar(plan, colours, cuts, step)
+
+
+def _dash_cvar_bar_palette(colours, cuts, step, zrange=None, nb=None):
+    """WP-42 CV-8: ``(palette, low, high)`` of a stepped key's bar: the
+    level colours over twoway's axis range, cuts[0] - step .. cuts[-1] +
+    step; a zscale(range()) end beyond it (*zrange*, ``[low or None,
+    high or None]``) moves that end out, and the bar is then drawn in
+    *nb* equal bins, each in the level of its centre (a centre on a cut
+    in the level below), so the end levels stretch to it."""
+    blo, bhi = cuts[0] - step, cuts[-1] + step
+    zlo, zhi = (list(zrange) + [None, None])[:2] if zrange else (None, None)
+    wide = False
+    if zlo is not None and zlo < blo:
+        blo, wide = float(zlo), True
+    if zhi is not None and zhi > bhi:
+        bhi, wide = float(zhi), True
+    if not wide or not bhi > blo:
+        return list(colours), blo, bhi
+    nb = int(nb or _DASH_LOG_STEP_BINS)
+    pal = [colours[sum(1 for c in cuts
+                       if c < blo + (bhi - blo) * (k + 0.5) / nb)]
+           for k in range(nb)]
+    return pal, blo, bhi
+
+
+def _dash_cvar_step_bar(plan, colours, cuts, step):
+    """WP-42 CV-8: a stepped key's own bar mapper (``plan["bar"]``) takes
+    :func:`_dash_cvar_bar_palette`'s colours and range, as
+    ``_colorvar_stepped_mapper`` builds it.  The served twin of
+    ``dash_cvar_step_bar``."""
+    b = plan.get("bar")
+    if b is None:
+        return
+    pal, blo, bhi = _dash_cvar_bar_palette(colours, cuts, step,
+                                           plan.get("zrange"),
+                                           plan.get("bins"))
+    if list(b.palette) != pal:
+        b.palette = pal
+    b.low = blo
+    b.high = bhi
+
+
+def _dash_cvar_drop_nonpositive_ticks(cbar):
+    """A log colour key's bar keeps only its positive ticks (and their
+    labels), as twoway's log key axis draws (WP-42 CV-8).  The served twin
+    of ``dash_cvar_drop_nonpositive_ticks``; never raises."""
+    try:
+        ticks = list(cbar.ticker.ticks or [])
+        keep = [t for t in ticks if float(t) > 0]
+        if keep != ticks:
+            cbar.ticker.ticks = keep
+            ovr = dict(cbar.major_label_overrides or {})
+            cbar.major_label_overrides = {k: v for k, v in ovr.items()
+                                          if float(k) > 0}
+    except (AttributeError, TypeError, ValueError):
+        return
+
+
+def _dash_cvar_relevel_stepmap(plan, dom=None):
+    """WP-42 CV-8: a continuous colorvar() layer that is not a line, cut
+    again in twoway's levels over the rows a move keeps: the key is ticked
+    over the kept range, the cuts are its ticks from the minimum up, n
+    cuts n + 1 colours of the plan's rule; the glyphs' mapper takes the
+    colours over bins moved up by a billionth of a step (a value on a cut
+    takes the level below), the bar's own mapper over the axis range
+    exactly; under zscale(log) the glyphs' log mapper takes the level of
+    each bin's centre.  *dom* is the kept colour rows' values
+    (:func:`_dash_cvar_kept`), else the renderer's column.  The served
+    twin of ``dash_cvar_relevel_stepmap``; never raises."""
+    try:
+        if dom is None:
+            dom = list((plan["renderer"].data_source.data or {}).get(
+                plan["field"], []))
+        vals = [float(v) for v in _dash_float_values(list(dom), coerce=True)
+                if math.isfinite(v)]
+        if not vals:
+            return
+        lo, hi = min(vals), max(vals)
+        ticks = _dash_cvar_key_ticks(plan, lo, hi)
+        cuts = [t for t in ticks if t >= lo] or [lo]
+        colours = (plan.get("cols") or {}).get(str(len(cuts) + 1))
+        m = plan.get("mapper")
+        if not colours or m is None:
+            return
+        if plan.get("log"):
+            if plan.get("cbar") is not None:
+                _dash_cvar_drop_nonpositive_ticks(plan["cbar"])
+            lo_l, hi_l = lo, (hi if hi > lo else lo + 1.0)
+            if lo_l > 0 and hi_l > lo_l:
+                nb = int(plan.get("bins") or _DASH_LOG_STEP_BINS)
+                ratio = math.log(hi_l / lo_l)
+                pal = [colours[sum(1 for c in cuts
+                                   if c < lo_l * math.exp(ratio * (k + 0.5)
+                                                          / nb))]
+                       for k in range(nb)]
+                if list(m.palette) != pal:
+                    m.palette = pal
+                m.low = lo_l
+                m.high = hi_l
+            return
+        if len(cuts) > 1:
+            step = (cuts[-1] - cuts[0]) / (len(cuts) - 1)
+        else:
+            step = max(abs(hi - cuts[0]), abs(cuts[0] - lo), 1.0)
+        eps = step * 1e-9
+        if list(m.palette) != list(colours):
+            m.palette = list(colours)
+        m.low = cuts[0] - step + eps
+        m.high = cuts[-1] + step + eps
+        _dash_cvar_step_bar(plan, colours, cuts, step)
+    except (KeyError, AttributeError, TypeError, ValueError,
+            IndexError, OverflowError):
+        return
 
 
 def _dash_cvar_bin_label(v, plan):
@@ -71730,6 +71998,9 @@ class ServerAppBuilder:
                          "_dash_cvar_bins_layer", "_dash_cvar_bin_rows",
                          "_dash_cvar_relevel_bins",
                          "_dash_cvar_relevel_steps", "_dash_cvar_kept",
+                         "_dash_cvar_bar_palette", "_dash_cvar_step_bar",
+                         "_dash_cvar_drop_nonpositive_ticks",
+                         "_dash_cvar_relevel_stepmap",
                          "_dash_cvar_kept_ids",
                          "_dash_by_fit_hook",
                          "_dash_by_keys", "_dash_by_layout_options",

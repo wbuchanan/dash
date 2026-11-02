@@ -295,7 +295,10 @@ class TestDefault:
         f = _fig(tmp, mode, {"colorvar": "price"})
         [cb] = _keys(f, ColorBar)
         pal = list(cb.color_mapper.palette)
-        assert len(pal) == 256
+        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); one step of the rule a level, n cuts
+        # n + 1 levels, from the rule's start to its end.
+        cuts = [t for t in cb.ticker.ticks if t >= min(_DF["price"])]
+        assert len(pal) == len(cuts) + 1
         assert _close([pal[0], pal[-1]], ["#0000ff", "#ff0000"]), pal[:2]
 
 

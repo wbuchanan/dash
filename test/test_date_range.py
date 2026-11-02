@@ -925,7 +925,13 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
                   else getattr(fc, "transform", None))
             if isinstance(tr, LinearColorMapper):
                 maps.append((tr.low, tr.high))
-        assert maps == [(_LO_MS, _HI_MS)]
+        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient
+        # from the first date to the last; twoway bins at its z ticks
+        # (CV-8), so the stepped mapper reaches one tick step past them --
+        # still in epoch milliseconds, within a few spans of the dates.
+        [(lo, hi)] = maps
+        assert lo <= _LO_MS and hi >= _HI_MS
+        assert hi - lo <= 4 * (_HI_MS - _LO_MS)
 
     def test_xlabel_minmax_ticks_the_first_and_last_date(self, tmp_path):
         spec = _spec([_plot_for("scatter")],
@@ -1106,7 +1112,13 @@ class TestADateColorvarUnderALayersIf:
     def test_the_key_spans_the_layers_dates(self, tmp_path, mode):
         import colour_bins as cb
         bars = cb.colour_bars(self._root(tmp_path, mode))
-        assert bars == [(_ms_of(_SPREAD[6]), _ms_of(_SPREAD[11]))]
+        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient
+        # over the layer's dates; twoway bins at its z ticks (CV-8): the
+        # stepped bar holds the layer's dates, not the graph's first.
+        [(lo, hi)] = bars
+        lo6, hi11 = _ms_of(_SPREAD[6]), _ms_of(_SPREAD[11])
+        assert lo <= lo6 and hi >= hi11 and lo > _ms_of(_SPREAD[0])
+        assert hi - lo <= 4 * (hi11 - lo6)
 
     @pytest.mark.parametrize("mode", ["saved", "served"])
     def test_colorlevels_cut_the_layers_dates(self, tmp_path, mode):

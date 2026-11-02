@@ -6043,11 +6043,15 @@ refuses it when it draws, after its two notes, {cmd:r(198)}.
 {cmd:colorlevels()} or with {cmd:colorkeysrange} -- {cmd:twoway} draws the
 same key with it as without it, and so does {cmd:dash}, in silence; under
 {cmd:coloruseplegend} it is taken in silence too, as {cmd:twoway}'s plot
-legend keeps its order.  How the colours are drawn
-is {cmd:dash}'s: an unbinned numeric {it:varname} is mapped continuously
-through the rule's colours in 256 steps and a colour bar is drawn beside
-the figure, where
-{cmd:twoway} bins it at its z axis's ticks.  The colour bar sits on the
+legend keeps its order.  An unbinned numeric {it:varname} is drawn in
+{cmd:twoway}'s levels on every type: it is cut at the colour key's ticks
+at or above its minimum, {it:n} cuts making {it:n} + 1 levels in
+{it:n} + 1 colours of the rule (or of {cmd:colorlist()}), a value on a cut
+in the level below, before and after a filter move;
+{cmd:colorvar(price)} on the auto data draws four colours, keyed
+0 5,000 10,000 15,000.  The key is a bar of those colours ticked at the
+key's ticks.  {cmd:zscale(log)} and {cmd:zscale(reverse)} keep the levels,
+as in {cmd:twoway}.  The colour bar sits on the
 graph region with no box of its own: its tick labels take the scheme's
 {cmd:tick_label} size and colour, its title the {cmd:axis_title} size and
 colour, upright, and its ticks the scheme's tick colour, width and length,

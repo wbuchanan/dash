@@ -171,6 +171,17 @@ def _mapper_colour(mapper, v):
     return pal[min(len(pal) - 1, max(0, k))]
 
 
+def _bar_level_colour(mapper, v):
+    """The colour of the key level holding *v* on a stepped key's bar.
+
+    Flipped (WP-42 CV-8): the bar was the lines' own mapper; it is now its
+    own mapper over twoway's axis range exactly, binned closed below as
+    BokehJS bins, so a value on a cut -- twoway's level below -- is read a
+    millionth of the bar's range below it."""
+    lo, hi = float(mapper.low), float(mapper.high)
+    return _mapper_colour(mapper, v - (hi - lo) * 1e-6)
+
+
 def _plot_renderers(fig):
     """The renderers a layer draws: the colour key's invisible swatches
     are left out."""
@@ -381,14 +392,14 @@ class TestLinePerLevel:
         lines = _level_lines(fig)
         assert len(lines) == len(set(_DF["rep78"]))
         for colour, vals in lines.items():
-            assert {_mapper_colour(mapper, v) for v in vals} == {colour}
+            assert {_bar_level_colour(mapper, v) for v in vals} == {colour}
 
     @pytest.mark.parametrize("mode", MODES)
     def test_connected_line_and_markers(self, tmp, mode):
         fig = _fig(tmp, mode, "connected", {"colorvar": "rep78"})
         mapper = _bar(fig).color_mapper
         for colour, vals in _level_lines(fig).items():
-            assert {_mapper_colour(mapper, v) for v in vals} == {colour}
+            assert {_bar_level_colour(mapper, v) for v in vals} == {colour}
         [sc] = [r for r in _plot_renderers(fig)
                 if type(r.glyph).__name__ == "Scatter"]
         assert _mapped(sc)

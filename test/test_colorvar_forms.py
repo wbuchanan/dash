@@ -289,9 +289,12 @@ class TestZOptions:
         r2, _d2, _sw2, _rw2 = _both(go={"zscale": "range(5000 6000)"},
                                     plots=plots)
         bar2 = _colorbar(list(r2.figures.values())[0])
-        # range() widens only: a narrower request leaves the data bounds.
-        assert bar2.color_mapper.low == lo0
-        assert bar2.color_mapper.high == hi0
+        # range() widens only: a narrower request leaves the bar as it is.
+        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); the stepped bar over 3,799 ..
+        # 11,385 (ticks 4,000 .. 12,000 by 2,000).
+        assert lo0 == 3799.0 and hi0 == 11385.0
+        assert bar2.color_mapper.low == 2000.0
+        assert bar2.color_mapper.high == 14000.0
 
         from bokeh.models import LogColorMapper
         r3, _d3, _sw3, _rw3 = _both(go={"zscale": "log"}, plots=plots)
@@ -302,8 +305,12 @@ class TestZOptions:
         default_bar = _colorbar(list(r4.figures.values())[0])
         r5, _d5, _sw5, _rw5 = _both(go={"zscale": "reverse"}, plots=plots)
         rev_bar = _colorbar(list(r5.figures.values())[0])
+        # Flipped (WP-42 CV-8): reversing the palette was wrong because
+        # twoway colours the levels as without reverse (colorvar_truth.json
+        # zscale_rev, colorvar_steps_truth.json); only its key is upside
+        # down, the key cell's (42-03).
         assert list(rev_bar.color_mapper.palette) == \
-            list(reversed(default_bar.color_mapper.palette))
+            list(default_bar.color_mapper.palette)
 
     def test_a_z_option_on_a_discrete_key_is_named_once(self):
         plots = [tp.plot_for("scatter", {"colorvar": "rep",
@@ -564,7 +571,8 @@ class TestTheColourBinsHelpers:
         assert [f["bars"] for f in got["served"]] == [
             [list(b) for b in cb.colour_bars(f)]
             for f in cb._figures(doc)]
-        assert got["saved"][0]["bars"] == [[3799.0, 11385.0]]
+        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8).
+        assert got["saved"][0]["bars"] == [[2000.0, 14000.0]]
 
 
 class TestTheColourDomain:
@@ -741,8 +749,11 @@ class TestTheDomainIsReset:
             root, _ = tp._served(spec)
         bars = cb.colour_bars(root)
         assert len(bars) == 2
-        assert bars[0] == (4453.0, 11385.0)
-        assert bars[1] == (3799.0, 11385.0)
+        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); each layer's stepped bar over its
+        # own rows (4,453 .. 11,385 and 3,799 .. 11,385, ticked 4,000 ..
+        # 12,000 by 2,000).
+        assert bars[0] == (4000.0, 14000.0)
+        assert bars[1] == (2000.0, 14000.0)
 
     @pytest.mark.parametrize("mode", ["saved", "served"])
     def test_the_attribute_is_none_after_the_render(self, mode):
@@ -826,7 +837,9 @@ class TestTheColourFieldName:
         m = cb.colour_mapper(user)
         assert isinstance(m, LinearColorMapper)
         if mode == "saved":
-            assert (m.low, m.high) == (0.0, 9.0)
+            # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); 0 .. 9 ticked 0 .. 10 by 2, one
+            # step beyond each end, the bins a billionth of a step up.
+            assert (m.low, m.high) == pytest.approx((-2.0, 12.0))
             assert list(user.data_source.data["_cvar_price_bin"]) == \
                 [float(i) for i in range(10)]
         factors = set(cb.colour_mapper(rends[0]).factors)

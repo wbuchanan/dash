@@ -625,7 +625,11 @@ _SAVED_DIGEST = (
     # 6b5d294b... -> 48aab271...: WP-41 41-05, the plot region's outline
     # in the width scale's table; the same under both Pythons.
     # 48aab271... -> 0754f387...: WP-41 41-05, the width scale's by() grid spacing pair and its --dash-by-k length (width-scale JS text only); the same under both Pythons.
-    "0754f3878b20375a0caf7493e9cbc6221ab39f8d8d27dd9ba90fbe61ba58d401")
+    # 0754f387... -> 965e9046...: WP-42 CV-8, the relevel's stepmap kind
+    # and the stepped key's bar (code only: with every CustomJS code string
+    # masked the new tree's page equals the base's); the same under
+    # both Pythons.
+    "965e9046f99273395841750acaa5bd35c02eebcca2d3566bbeb5120b925e8c0b")
 
 
 # ===========================================================================

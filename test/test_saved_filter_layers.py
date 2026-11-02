@@ -1395,5 +1395,14 @@ class TestTheColourKeyHoldsThroughAMove:
                 continue
             m = cb.colour_mapper(r)
             lo, hi = min(vals), max(vals)
-            assert (m.low, m.high) == (lo, hi if hi > lo else lo + 1.0), (
+            # Flipped (WP-42 CV-8): the continuous key was a 256-step
+            # gradient over the kept range; twoway bins at its z ticks
+            # (CV-8): the levels are cut again at the key's ticks over the
+            # kept rows, one step beyond the end cuts.
+            t = dr._dash_cvar_ticks(lo, hi, {"mode": "auto"})
+            cuts = [x for x in t if x >= lo] or [lo]
+            step = ((cuts[-1] - cuts[0]) / (len(cuts) - 1) if len(cuts) > 1
+                    else max(abs(hi - cuts[0]), abs(cuts[0] - lo), 1.0))
+            assert (m.low, m.high) == pytest.approx(
+                (cuts[0] - step, cuts[-1] + step), abs=step * 1e-6), (
                 (m.low, m.high), (lo, hi))

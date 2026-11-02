@@ -1240,8 +1240,20 @@ class TestColourPalettes:
         # because twoway draws the key in its colour rule, hue from blue to
         # red under s2color (colorvar_options_truth.json D01); colpalette()
         # stays dash's own.
-        want = (getattr(palettes, name.capitalize() + "256") if name else
-                dr._dash_colorrule_palette("hue", "#0000ff", "#ff0000", 256))
+        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); one colour a level, n cuts n + 1
+        # levels, taken evenly from the named palette (a hand-written
+        # spec's colpalette(); dash.ado refuses it since WP-35) or the rule.
+        import colour_bins as _cb
+        [rend] = _cb.colour_renderers(fig)
+        vmin = min(float(v) for v in _cb.colour_values(rend))
+        cuts = [t for t in bars[0].ticker.ticks if t >= vmin]
+        n = len(cuts) + 1
+        if name:
+            full = list(getattr(palettes, name.capitalize() + "256"))
+            want = [full[int(round(k * (len(full) - 1) / max(n - 1, 1)))]
+                    for k in range(n)]
+        else:
+            want = dr._dash_colorrule_palette("hue", "#0000ff", "#ff0000", n)
         assert list(bars[0].color_mapper.palette) == list(want)
 
 

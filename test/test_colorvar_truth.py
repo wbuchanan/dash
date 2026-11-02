@@ -91,8 +91,7 @@ class TestAgainstTwoway:
         opts = _opts_of(probe["command"])
         values = [np.nan if v is None else v for v in col[opts["colorvar"]]]
         assert probe["n_markers"] == len(values)
-        # Flipped (WP-33 CV-16): the continuous default is compared; its
-        # difference is CV-8's, 42-01 (TestEveryTypeColours lists it).
+        # Flipped (WP-33 CV-16): the continuous default is compared.
         if not ({"colordiscrete", "colorcuts", "colorlevels"} & set(opts)):
             gm = dr.GlyphMapper(dr.OptionTranslator(),
                                 dr.SchemeParser("s2color"))
@@ -105,6 +104,16 @@ class TestAgainstTwoway:
             got = [_cv_colour(cb.colour_mapper(rend), v)
                    for v in cb.colour_values(rend)]
             assert len(got) == probe["n_markers"], pid
+            # Flipped (WP-42 CV-8): the continuous key was a 256-step
+            # gradient; twoway bins at its z ticks (CV-8), so the
+            # partition is compared too.  zlabel() moves the cuts and is
+            # not read by this mapper alone (TestEveryTypeColours draws
+            # it); zscale(log) and zscale(reverse) keep the linear levels.
+            if "zlabel(" not in probe["command"]:
+                assert len(set(got)) == probe["n_groups"], (pid, set(got))
+                if truth["_meta"]["marker_order_selfcheck"] == "observation":
+                    assert _canonical(got) == _canonical(
+                        probe["fill_groups"]), pid
             return
         gm = dr.GlyphMapper(dr.OptionTranslator(), dr.SchemeParser("s2color"))
         src = ColumnDataSource({"v": values, "y": [1.0] * len(values)})
@@ -225,6 +234,17 @@ def _auto_frame():
     return df
 
 
+def _stepped_bar(lo, hi):
+    """WP-42 CV-8: (low, high) of the stepped key's bar over a layer's
+    rows *lo* .. *hi*: the key's ticks (natscale #5), the cuts those at or
+    above *lo*, one step beyond the first and the last."""
+    t = dr._dash_cvar_ticks(lo, hi, {"mode": "auto"})
+    cuts = [x for x in t if x >= lo] or [lo]
+    step = ((cuts[-1] - cuts[0]) / (len(cuts) - 1) if len(cuts) > 1
+            else max(abs(hi - cuts[0]), abs(cuts[0] - lo), 1.0))
+    return (cuts[0] - step, cuts[-1] + step)
+
+
 def _render(spec, mode):
     if mode == "saved":
         r, _ = tp._standalone(spec)
@@ -283,8 +303,10 @@ class TestTheKeyIsDrawnFromTheLayersRows:
             plot_for("scatter", {"colorvar": "price"},
                      if_expr="foreign == 1"),
             plot_for("scatter", if_expr="foreign == 0")])
+        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); the bar is the stepped key over
+        # the layer's own rows.
         assert cb.colour_bars(_render(spec, mode)) == [
-            (p["summ_min"], p["summ_max"])]
+            _stepped_bar(p["summ_min"], p["summ_max"])]
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_colordiscrete_levels_of_a_layers_own_if(self, mode):
@@ -331,8 +353,9 @@ class TestTheKeyIsDrawnFromTheLayersRows:
         p = _qtruth()["probes"]["q_cmd_if"]
         spec = _linked_spec([plot_for("scatter", {"colorvar": "price"})],
                             if_expr="foreign == 1", linked=True)
+        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8).
         assert cb.colour_bars(_render(spec, mode)) == [
-            (p["summ_min"], p["summ_max"])]
+            _stepped_bar(p["summ_min"], p["summ_max"])]
 
     @pytest.mark.parametrize("linked", [False, True],
                              ids=["unlinked", "linked"])
@@ -372,8 +395,9 @@ class TestTheKeyIsDrawnFromTheLayersRows:
                 for side in ("left", "right", "above", "below")
                 for a in getattr(cells[0], side)
                 if type(a).__name__ == "ColorBar"]
-        assert bars == [(probes["by_lv4_p0"]["summ_min"],
-                         probes["by_lv4_p0"]["summ_max"])]
+        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); panel 1's stepped key.
+        assert bars == [_stepped_bar(probes["by_lv4_p0"]["summ_min"],
+                                     probes["by_lv4_p0"]["summ_max"])]
 
     def _one_cut(self, mode, linked, ptype, y, x, pid):
         p = _qtruth()["probes"][pid]
@@ -468,7 +492,6 @@ _CV_DRAWN = tuple(p for p in _CV_PROBES if p not in _CV_REFUSALS)
 COLORVAR_KNOWN = {
     "selfcheck_foreign:key_texts": "CV-3",
     "selfcheck_foreign:key_frame": "CV-3",
-    "default_rep78:colours": "CV-8",
     "disc_rep78:key_texts": "CV-3",
     "disc_rep78:key_frame": "CV-3",
     "disc_cuts_2_4:key_texts": "CV-3",
@@ -491,11 +514,9 @@ COLORVAR_KNOWN = {
     "disc_levels_price_4:key_frame": "CV-3",
     "ztitle_disc:key_texts": "CV-3",
     "ztitle_disc:key_frame": "CV-3",
-    "zlabel_price:colours": "CV-8",
-    "zscale_log:key_texts": "CV-8",
-    "zscale_log:colours": "CV-8",
-    "zscale_rev:key_texts": "CV-8",
-    "zscale_rev:colours": "CV-8",
+    # WP-42 CV-8 closed the levels; the key drawn upside down under
+    # zscale(reverse) is the key cell's (42-03, CV-3).
+    "zscale_rev:key_texts": "CV-3",
     "cv16_line_disc_rep78:key_texts": "CV-3",
     "cv16_line_disc_rep78:key_frame": "CV-3",
     "cv16_line_levels_price_4:key_texts": "CV-3",
