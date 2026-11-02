@@ -84,7 +84,7 @@ _ROW_TYPES = ["scatter", "line", "tsline", "connected", "area", "bar",
 # The page's own callback, run under node (test/js_runner.py, WP-28 S03)
 # ---------------------------------------------------------------------------
 
-from conftest import render_models  # noqa: E402
+from conftest import memo_build, render_models  # noqa: E402
 
 
 def _run(code, args, cb_obj=None):
@@ -142,12 +142,14 @@ def _move(r, action):
     _run(cb.code, cb.args)
 
 
+@memo_build()
 def _saved_after_move(spec, action, df=_DF):
     r = _render(spec, df)
     _move(r, action)
     return _profile(r)
 
 
+@memo_build()
 def _saved_of_rows(spec, if_expr, df=_DF):
     """The saved page drawn from the rows the move keeps."""
     q = json.loads(json.dumps(spec))
@@ -247,6 +249,14 @@ _CORPUS = [
     _case("a turned rcap, range slider", _MOVES[1],
           [plot_for("rcap", {"horizontal": "horizontal"})]),
 ]
+
+
+#: Both checks of a corpus case read its moved page (_saved_after_move,
+#: kept per case): on one worker it is drawn once (02nov2026).
+def xdist_group_of(item):
+    if item.cls is not None and item.cls.__name__ == "TestEveryLayerFollowsAMove":
+        return "sfl:" + item.callspec.id
+    return None
 
 
 @pytest.mark.parametrize("spec,action,oracle", _CORPUS)

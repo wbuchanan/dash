@@ -541,10 +541,13 @@ def _build(root, mode, pid, layout="auto", inputs=None):
                  warnings=[str(w.message) for w in caught])
 
 
-#: Every check of one (mode, payload) dashboard on one xdist worker:
-#: ``built`` builds each once per worker, and spread over every worker each
-#: was built about eight times.
-xdist_group_of = group_by_params("sinks", "mode", "pid")
+#: Every check of one payload's dashboards on one xdist worker: ``built``
+#: builds each once per worker, and spread over every worker each was built
+#: about eight times.  By payload alone, not (mode, payload): TestPages,
+#: TestTeX and TestServedSource name their mode in the test, not as a
+#: parameter, and drew a second build of the payload on another worker
+#: (02nov2026).
+xdist_group_of = group_by_params("sinks", "pid")
 
 
 @pytest.fixture(scope="module")

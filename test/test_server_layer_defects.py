@@ -53,7 +53,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr
-from conftest import make_data_json, load_app
+from conftest import make_data_json, load_app, memo_build
 
 _SEQ = itertools.count()
 
@@ -178,6 +178,41 @@ def served(tmp_path, spec):
         doc = Document()
         mod.make_document(doc)
     return _figures_of(doc), doc, [str(w.message) for w in caught]
+
+
+_ONCE_DIR = None
+
+
+def _once_dir():
+    global _ONCE_DIR
+    if _ONCE_DIR is None:
+        import tempfile
+        _ONCE_DIR = __import__("pathlib").Path(tempfile.mkdtemp(prefix="sld_once_"))
+    return _ONCE_DIR
+
+
+@memo_build()
+def _standalone_once(spec):
+    """``standalone`` kept per spec, for the per-type checks that only read
+    it (02nov2026: four classes built every type's page again)."""
+    return standalone(_once_dir(), spec)
+
+
+@memo_build()
+def _served_once(spec):
+    """``served`` kept per spec, as ``_standalone_once``."""
+    return served(_once_dir(), spec)
+
+
+#: The per-type checks that read _standalone_once/_served_once share one
+#: worker per plot type, so each type is built once.
+_ONCE_TESTS = frozenset(['test_no_figure_carries_two_identical_hovers', 'test_no_type_is_reported_empty_in_only_one_mode', 'test_the_same_keys_at_the_same_size', 'test_the_same_tooltips_in_both_modes'])
+
+
+def xdist_group_of(item):
+    if item.name.split("[")[0] in _ONCE_TESTS:
+        return "sld:" + str(item.callspec.params.get("ptype"))
+    return None
 
 
 def _walk(doc):
@@ -479,8 +514,8 @@ class TestALayerThatDrewNothingSaysSoInBothModes:
                                                         ptype):
         """The sweep: a type that draws when saved must draw when served."""
         spec = make_spec([plot_for(ptype)])
-        std = [w for w in standalone(tmp_path, spec)[2] if "drew nothing" in w]
-        srv = [w for w in served(tmp_path, spec)[2] if "drew nothing" in w]
+        std = [w for w in _standalone_once(spec)[2] if "drew nothing" in w]
+        srv = [w for w in _served_once(spec)[2] if "drew nothing" in w]
         assert std == srv, (
             "%s: saved reports %r, served reports %r" % (ptype, std, srv))
 
@@ -670,8 +705,8 @@ class TestEveryFigureCarriesTheSameHover:
     @pytest.mark.parametrize("ptype", ALL_TYPES)
     def test_the_same_tooltips_in_both_modes(self, tmp_path, ptype):
         spec = make_spec([plot_for(ptype)])
-        std = tooltips(standalone(tmp_path, spec)[0])
-        srv = tooltips(served(tmp_path, spec)[0])
+        std = tooltips(_standalone_once(spec)[0])
+        srv = tooltips(_served_once(spec)[0])
         assert std == srv, (
             "%s: saved tooltips\n  %s\nserved tooltips\n  %s"
             % (ptype, std, srv)
@@ -709,8 +744,8 @@ class TestEveryFigureCarriesTheSameHover:
     def test_no_figure_carries_two_identical_hovers(self, tmp_path, ptype):
         """The saved renderer's own half of the defect."""
         spec = make_spec([plot_for(ptype)])
-        for mode, figs in (("saved", standalone(tmp_path, spec)[0]),
-                           ("served", served(tmp_path, spec)[0])):
+        for mode, figs in (("saved", _standalone_once(spec)[0]),
+                           ("served", _served_once(spec)[0])):
             got = tooltips(figs)
             assert len(got) == len(set(got)), (
                 "%s %s: the figure carries the same tooltip twice: %s"
@@ -764,8 +799,8 @@ class TestTheLegendSaysTheSameThing:
     @pytest.mark.parametrize("ptype", ALL_TYPES)
     def test_the_same_keys_at_the_same_size(self, tmp_path, ptype):
         spec = make_spec([plot_for(ptype)])
-        std = legends(standalone(tmp_path, spec)[0])
-        srv = legends(served(tmp_path, spec)[0])
+        std = legends(_standalone_once(spec)[0])
+        srv = legends(_served_once(spec)[0])
         assert std == srv, "%s: saved %r, served %r" % (ptype, std, srv)
 
     @pytest.mark.parametrize("ptype", ["lfitci", "qfitci", "lpolyci",

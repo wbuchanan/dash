@@ -318,6 +318,40 @@ def group_by_params(prefix, *names):
     return xdist_group_of
 
 
+def memo_build(maxsize=64):
+    """A decorator for a test module's build helper (02nov2026): calls whose
+    arguments have the same content (JSON, keys sorted; anything else --
+    a DataFrame, whose repr is cut short -- by identity, the argument kept
+    with the result so its id cannot pass to another object) return the
+    first call's result, the *maxsize* latest kept.  Only
+    for helpers whose callers read what they get and change nothing: the
+    object is shared.  ``cache_clear`` empties it, so memory_guard's
+    ``clear_caches`` trims it with the module's other caches."""
+    import collections
+    import functools
+
+    def deco(fn):
+        cache = collections.OrderedDict()
+
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            key = json.dumps([args, kwargs], sort_keys=True,
+                             default=lambda o: "<%s %d>" % (type(o).__name__,
+                                                            id(o)))
+            if key in cache:
+                cache.move_to_end(key)
+                return cache[key][0]
+            val = fn(*args, **kwargs)
+            cache[key] = (val, args, kwargs)
+            while len(cache) > maxsize:
+                cache.popitem(last=False)
+            return val
+
+        wrapper.cache_clear = cache.clear
+        return wrapper
+    return deco
+
+
 @pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(config, items):
     """Keep every comparison of one parity corpus entry on one xdist worker.

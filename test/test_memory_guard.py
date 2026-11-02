@@ -94,3 +94,38 @@ def test_the_guard_starts_once_and_only_in_the_controlling_process(
     conftest._start_memory_guard(cfg)
     conftest._start_memory_guard(cfg)
     assert started == [1]
+
+
+def test_memo_build_keeps_a_builds_result_by_its_arguments():
+    """conftest.memo_build: one build per distinct argument content, at
+    most *maxsize* kept, emptied by the guard's clear_caches."""
+    import conftest
+    calls = []
+
+    @conftest.memo_build(maxsize=2)
+    def build(mode, spec):
+        calls.append((mode, spec["k"]))
+        return object()
+
+    a = build("saved", {"k": 1, "j": [1]})
+    assert build("saved", {"j": [1], "k": 1}) is a          # same content
+    assert build("served", {"k": 1, "j": [1]}) is not a
+    build("saved", {"k": 2, "j": [1]})                       # evicts the first
+    assert build("saved", {"k": 1, "j": [1]}) is not a
+    assert len(calls) == 4
+    build.cache_clear()
+    build("saved", {"k": 2, "j": [1]})
+    assert len(calls) == 5
+    assert build.__module__ == __name__
+    # Anything JSON cannot write is keyed by identity, not by a repr two
+    # different objects can share.
+    one, two = [object()], [object()]
+    calls.clear()
+
+    @conftest.memo_build()
+    def by_obj(o):
+        calls.append(o)
+        return len(calls)
+
+    assert by_obj(one[0]) == by_obj(one[0]) == 1
+    assert by_obj(two[0]) == 2

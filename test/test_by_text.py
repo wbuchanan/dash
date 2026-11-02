@@ -46,7 +46,7 @@ sys.path.insert(0, _HERE)
 import dash_render as dr  # noqa: E402
 from by_panel_probe import (by_grid, chrome_texts, panel_label,  # noqa: E402
                             panel_label_title)
-from conftest import group_by_params, load_app  # noqa: E402
+from conftest import group_by_params, load_app, memo_build  # noqa: E402
 from known_differences import dead_rows, known_problems  # noqa: E402
 from probe_groups import (known_in, known_outside, probe_params,  # noqa: E402
                           representative)
@@ -121,9 +121,11 @@ def _write(spec):
     return tag, sp, dp
 
 
+@memo_build()
 def _draw(mode, spec):
     """Namespace(panels=[fig], head, foot, notes, root) as *mode* draws
-    *spec*; panels in grid order."""
+    *spec*; panels in grid order.  Kept per spec (memo_build): every
+    caller only reads it."""
     tag, sp, dp = _write(spec)
     dr._dash_reset_notes()
     if mode == "saved":
