@@ -629,7 +629,10 @@ _SAVED_DIGEST = (
     # and the stepped key's bar (code only: with every CustomJS code string
     # masked the new tree's page equals the base's); the same under
     # both Pythons.
-    "965e9046f99273395841750acaa5bd35c02eebcca2d3566bbeb5120b925e8c0b")
+    # 965e9046... -> 4109d373...: WP-42 CV-2, dash_cvar_relevel_bins'
+    # colordiscrete colorlevels() cuts (code only: the one page line that
+    # differs is that CustomJS code string); the same under both Pythons.
+    "4109d373098b81795b8567e0c7cfbec38f6dc6b1495ba8d018e7e183c5c6adfc")
 
 
 # ===========================================================================
