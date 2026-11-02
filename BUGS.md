@@ -5198,11 +5198,11 @@
   - Suggested fix: Exclude colorvar keys from legend()'s grid and size steps
   - Resolution: Not fixed because WP-42 section 42-04 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
 
-- [ ] Title: Two colorvar layers: dash draws a key per layer and no plot legend; twoway draws the last layer's key plus a plot legend
+- [x] Title: Two colorvar layers: dash draws a key per layer and no plot legend; twoway draws the last layer's key plus a plot legend
   - File Names and Line Numbers: dash_render.py:16859-16886; M1, K11
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-6; confirmed; tracked: untracked. Registered as GAPS4 CV-6 (WP-42, section 42-02, Fix).
   - Suggested fix: One key from the last colorvar layer; keep plot-legend items
-  - Resolution: Not fixed because WP-42 section 42-02 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+  - Resolution: Fixed 02nov2026 (WP-42, CV-6). A colorvar() layer's key (its ColorBar or colour Legend, marked _dash_cvar_key) takes off the figure every key an earlier colorvar() layer placed (GlyphMapper._colorvar_drop_earlier_keys, called from _colorvar_key_place), so a graph draws one colour key, the last layer's; contour's own key is not marked and stays.  The loop that took each colorvar layer's item out of the plot legend is gone, so the plot legend follows twoway's two-key rule in _dash_apply_legend: a lone colorvar layer draws none, two layers key both series. Measured (scripts/extract_colorvar_parts_truth.do M1): scatter mpg weight, colorvar(rep78) || scatter price weight, colorvar(foreign) colorallowmultiple draws the key 'Car origin' 0 .2 .. 1 and a plot legend 'Mileage (mpg)' 'Price'; twoway stops with r(198) on contour beside a colorvar() layer (M3). Pinned by test/test_colorvar_parts.py::TestOneKeyForTheGraph, test/test_wp42_truth.cscript Q4202-3; fixture test/fixtures/colorvar_parts_truth.json. Closes GAPS4 CV-6 (WP-42, CV-6).
 
 - [ ] Title: A colorvar layer's plot-legend swatch takes row 0's level colour, not its pstyle colour
   - File Names and Line Numbers: D_K9 field-mapped renderer; bokeh.js:32111-32112

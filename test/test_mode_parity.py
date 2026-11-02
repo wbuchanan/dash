@@ -1850,6 +1850,12 @@ CORPUS = [
     _case("colorvar colorfillonly on spike",
           [plot_for("spike", {"colorvar": "rep",
                               "colorfillonly": "colorfillonly"})]),
+    # WP-42 CV-6: two colorvar layers draw one key and a plot legend.
+    _case("two colorvar layers",
+          [_sc(colorvar="rep"),
+           dict(_sc(colorvar="foreign",
+                    colorallowmultiple="colorallowmultiple"),
+                yvar="price")]),
     _case("colorvar clegend(position(6))", [_sc(colorvar="price")],
           go={"clegend": "position(6)"}),
     _case("pcycle(2) three series",
@@ -7032,7 +7038,12 @@ _MISSING_X_KEYS = [
 def _colour_key_profile(figs, models):
     """Each figure's glyphs, legends and colour bars, every colour bar's
     ticks and labels, and by()'s key's labels."""
-    return ([{"glyphs": f["glyphs"], "legends": _legends_of(f),
+    # WP-42 CV-6: a colorvar layer keeps its plot-legend item, and a
+    # one-key plot legend is hidden (twoway's two-key rule); a hidden
+    # legend draws no key, so only the drawn legends are compared.
+    return ([{"glyphs": f["glyphs"],
+              "legends": [x for x in _legends_of(f)
+                          if x.get("visible") is not False],
               "bars": [x for x in f["annotations"]
                        if x["kind"] == "ColorBar"]} for f in figs],
             _key_ticks_of(models), _by_keys_of(models))

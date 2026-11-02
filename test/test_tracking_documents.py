@@ -2926,7 +2926,6 @@ GAPS4_OPEN = {
     'CV-4': "The coloruseplegend key: ascending order, '(missing)' for 'Other', an extra title, value labels; legend() sub-options and colorkeysrange applied",
     'CV-2': 'colordiscrete with colorlevels(k) makes k-1 cuts at range/k; twoway makes k cuts at range/(k+1)',
     'CV-5': "legend(size()) and legend(rows()/cols()) restyle the colour key; twoway's key ignores them",
-    'CV-6': "Two colorvar layers: dash draws a key per layer and no plot legend; twoway draws the last layer's key plus a plot legend",
     'CV-7': "A colorvar layer's plot-legend swatch takes row 0's level colour, not its pstyle colour",
     'CV-11': 'colorkeysreverse reverses entries and labels (twoway reverses colours only); colorlevels() over one value prints nonsense intervals',
     'CV-9': "colorvar refusals differ in rc or words: colorcuts(abc) r(198) vs r(121); colorvar(a b) r(198) vs r(101); colorvar(pri*) accepted vs r(198); colorlevels(abc) and nosuch in dash's words",

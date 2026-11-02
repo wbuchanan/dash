@@ -640,6 +640,7 @@ FUNCTIONS = {
  '_dash_fxy_size': 'test/test_sizing.py::TestFxFy::test_out_of_range_changes_nothing',
  'GlyphMapper._colorvar_key_place': 'test/test_colorvar_options.py::TestClegend::test_position_width',
  'GlyphMapper._colorvar_key_place.<locals>._inside': 'test/test_scheme_key_readers.py::test_the_ring_orders_the_key_beside_the_legend',
+ 'GlyphMapper._colorvar_drop_earlier_keys': 'test/test_colorvar_parts.py::TestOneKeyForTheGraph::test_last_layers_key',
  'GlyphMapper._apply_colorvar.<locals>._cv_colour': 'test/test_colorvar_options.py::TestDefault::test_rule_start_end',
  'GlyphMapper._apply_colorvar.<locals>._rule_palette': 'test/test_colorvar_options.py::TestDefault::test_discrete_levels_in_twoways_hue',
  'GlyphMapper._apply_colorvar.<locals>._swatch': 'test/test_colorvar_options.py::TestKeys::test_range',

@@ -748,12 +748,13 @@ class TestTheDomainIsReset:
         else:
             root, _ = tp._served(spec)
         bars = cb.colour_bars(root)
-        assert len(bars) == 2
-        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); each layer's stepped bar over its
-        # own rows (4,453 .. 11,385 and 3,799 .. 11,385, ticked 4,000 ..
-        # 12,000 by 2,000).
-        assert bars[0] == (4000.0, 14000.0)
-        assert bars[1] == (2000.0, 14000.0)
+        # Flipped (WP-42 CV-6): a key a layer was wrong because twoway
+        # draws one colour key, the last layer's (colorvar_parts_truth.json
+        # M1); that key is over the last layer's own rows (3,799 ..
+        # 11,385, ticked 4,000 .. 12,000 by 2,000), not the first's.
+        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient;
+        # twoway bins at its z ticks.
+        assert bars == [(2000.0, 14000.0)]
 
     @pytest.mark.parametrize("mode", ["saved", "served"])
     def test_the_attribute_is_none_after_the_render(self, mode):

@@ -223,3 +223,139 @@ class TestFillonlyLines:
         """colorfillonly is drawn: the build names nothing about it."""
         _figs_, warns = _figs(tmp, mode, [_type_plot(ptype, _FILLONLY)])
         assert not [w for w in warns if "colorfillonly" in w], warns
+
+
+# CV-6 and CV-7: the auto data's columns the M*/K* probes use, labelled
+# as sysuse auto labels them.
+_AUTO = pd.DataFrame({
+    "mpg":     [30.0, 28.0, 25.0, 23.0, 22.0, 21.0, 19.0, 17.0, 16.0, 14.0],
+    "weight":  [1800.0, 2010.0, 2200.0, 2650.0, 2930.0, 3000.0, 3100.0,
+                3350.0, 3600.0, 4080.0],
+    "price":   [4816.0, 10372.0, 3799.0, 11385.0, 4099.0, 5788.0, 4453.0,
+                4749.0, 4082.0, 5189.0],
+    "foreign": [1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0],
+    "rep78":   [4.0, 5.0, 3.0, 2.0, 1.0, 3.0, 4.0, 5.0, 2.0, 3.0],
+})
+_AUTO_LABELS = {"mpg": "Mileage (mpg)", "weight": "Weight (lbs.)",
+                "price": "Price", "foreign": "Car origin",
+                "rep78": "Repair record 1978"}
+
+
+def _auto_figs(tmp, mode, plots, go=None, df=None):
+    """_figs over the labelled auto columns."""
+    df = _AUTO if df is None else df
+    key = ("auto", mode, json.dumps([plots, go], sort_keys=True), id(df))
+    if key in _CACHE:
+        return _CACHE[key]
+    spec = make_spec(plots, graph_options=go)
+    tag = next(_SEQ)
+    sp = tmp / f"cvp_spec_{tag}.json"
+    dp = tmp / f"cvp_data_{tag}.json"
+    sp.write_text(json.dumps(spec))
+    dp.write_text(json.dumps(make_data_json(
+        df, value_labels=None, value_label_names=None,
+        variable_labels=_AUTO_LABELS)))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        if mode == "saved":
+            r = dr.DashRenderer(str(sp), str(dp))
+            render_models(r)
+            figs = list(r.figures.values())
+        else:
+            ap = tmp / f"cvp_app_{tag}.py"
+            dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
+            mod = load_app(str(ap), f"_cvp_{tag}", draw=False)
+            doc = Document()
+            mod.make_document(doc)
+            figs = _figures_of(doc)
+    _CACHE[key] = figs
+    return figs
+
+
+def _sc(yvar, **o):
+    return {"type": "scatter", "yvar": yvar, "xvar": "weight",
+            "options": dict(o)}
+
+
+def _colour_keys(fig):
+    """The figure's colour keys: ColorBars (a by() label box's excepted)
+    and colour-key Legends."""
+    out = []
+    for side in (fig.right, fig.left, fig.above, fig.below, fig.center):
+        for m in side:
+            tn = type(m).__name__
+            if (tn in ("ColorBar", "ContourColorBar")
+                    and m.name != "dash_by_label_box") or (
+                    tn == "Legend"
+                    and str(m.name or "") == dr._COLORVAR_LEGEND_NAME):
+                out.append(m)
+    return out
+
+
+def _plot_legends(fig):
+    """The figure's drawn plot legends (not colour keys)."""
+    return [m for side in (fig.right, fig.left, fig.above, fig.below,
+                           fig.center) for m in side
+            if type(m).__name__ == "Legend" and m.visible
+            and str(m.name or "") != dr._COLORVAR_LEGEND_NAME
+            and [it for it in m.items if it.visible]]
+
+
+def _label(it):
+    lab = it.label
+    if isinstance(lab, dict):
+        return lab.get("value")
+    return getattr(lab, "value", lab)
+
+
+_M1 = [_sc("mpg", colorvar="rep78"),
+       _sc("price", colorvar="foreign",
+           colorallowmultiple="colorallowmultiple")]
+
+
+class TestOneKeyForTheGraph:
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_last_layers_key(self, tmp, mode):
+        """M1: twoway draws one colour key, the last layer's ('Car
+        origin', 0 .2 .. 1)."""
+        truth = TRUTH["M1"]
+        assert truth["rc"] == 0 and truth["key_texts"][-1] == "Car origin"
+        assert "Repair record 1978" not in truth["key_texts"]
+        [fig] = _auto_figs(tmp, mode, _M1)
+        keys = _colour_keys(fig)
+        assert len(keys) == 1, [str(k.title) for k in keys]
+        assert str(keys[0].title) == "Car origin"
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_plot_legend(self, tmp, mode):
+        """M1: and a plot legend keying both series."""
+        truth = TRUTH["M1"]
+        assert truth["below_texts"][-2:] == ["Mileage (mpg)", "Price"]
+        [fig] = _auto_figs(tmp, mode, _M1)
+        legs = _plot_legends(fig)
+        assert len(legs) == 1, legs
+        assert [_label(it) for it in legs[0].items if it.visible] == [
+            "Mileage (mpg)", "Price"]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_lone_layer_has_no_legend(self, tmp, mode):
+        """One colorvar layer: one key, no plot legend (twoway's two-key
+        rule), before and after this section."""
+        [fig] = _auto_figs(tmp, mode, [_sc("mpg", colorvar="rep78")])
+        assert len(_colour_keys(fig)) == 1
+        assert _plot_legends(fig) == []
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_contour_beside_colorvar(self, tmp, mode):
+        """M3: twoway stops with r(198) on contour beside a colorvar()
+        layer under colorallowmultiple; dash draws it, and the colorvar
+        layer's key never removes contour's own key."""
+        assert TRUTH["M3"]["rc"] == 198
+        plots = [{"type": "contour", "zvar": "price", "yvar": "mpg",
+                  "xvar": "weight", "options": {}},
+                 _sc("mpg", colorvar="price",
+                     colorallowmultiple="colorallowmultiple")]
+        [fig] = _auto_figs(tmp, mode, plots)
+        kinds = sorted(type(k).__name__ for k in _colour_keys(fig))
+        assert "ContourColorBar" in kinds, kinds

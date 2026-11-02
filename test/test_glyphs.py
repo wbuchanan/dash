@@ -3929,12 +3929,11 @@ class TestApplyColorvarOptions:
         """Mirror map_scatter's call shape: scatter(..., legend_label=yvar)."""
         return fig.scatter(x=xvar, y=yvar, source=cds, legend_label=yvar)
 
-    def test_colorvar_strips_auto_legend_for_renderer(self):
-        """REGRESSION: colorvar removes the auto legend_label item for the glyph.
-
-        Without this, the figure shows BOTH a "mpg" item in the plot area
-        (auto-legend from legend_label=yvar) AND the colorvar Legend on the
-        right — visually noisy and confusing.
+    def test_colorvar_keeps_the_layers_legend_item(self):
+        """colorvar keeps the glyph's legend_label item: the plot legend
+        follows twoway's two-key rule (_dash_apply_legend), so one colorvar
+        layer alone draws none, and two layers, or a colorvar layer beside
+        a plain one, key their series (WP-42 CV-6).
         """
         from bokeh.models import Legend
         fig = self._fig()
@@ -3956,13 +3955,16 @@ class TestApplyColorvarOptions:
             {"colorvar": "foreign", "colordiscrete": "colordiscrete"},
         )
 
-        # After: no Legend item references the original glyph
+        # Flipped (WP-42 CV-6): removing the item was wrong because twoway
+        # keys a colorvar layer in its plot legend whenever the graph has
+        # two or more keys (colorvar_parts_truth.json M1, K9); the one-key
+        # case hides the legend in _dash_apply_legend.
         auto_items_post = [
             it for L in fig.legend for it in L.items
             if r in list(it.renderers or [])
         ]
-        assert auto_items_post == [], (
-            "Auto legend_label item must be removed once colorvar is applied"
+        assert len(auto_items_post) == 1, (
+            "the layer's legend_label item is kept once colorvar is applied"
         )
         # And the colorvar Legend is still present on the right
         assert any(isinstance(lay, Legend) for lay in fig.right), (

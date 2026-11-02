@@ -485,8 +485,8 @@ _CV_DRAWN = tuple(p for p in _CV_PROBES if p not in _CV_REFUSALS)
 #: the same in both modes (WP-42 CV-1 closed colorfillonly's line
 #: colours).  CV-2: colordiscrete + colorlevels(k) cuts; CV-3: the
 #: discrete/binned clegend (ascending, value labels and interval texts,
-#: '(missing)', a frame); CV-4: the coloruseplegend key; CV-6: two
-#: colorvar layers; CV-8: the continuous default's gradient and ColorBar
+#: '(missing)', a frame); CV-4: the coloruseplegend key (WP-42 CV-6
+#: closed the key a layer of two colorvar layers); CV-8: the continuous default's gradient and ColorBar
 #: (zscale(log) and zscale(reverse) included); CV-10: zlabel(bogus) drawn
 #: where twoway refuses r(198).
 COLORVAR_KNOWN = {
@@ -551,8 +551,11 @@ COLORVAR_KNOWN = {
     "cv16_bar_keysrange:key_frame": "CV-3",
     "cv16_line_cuts_list:key_texts": "CV-3",
     "cv16_line_cuts_list:key_frame": "CV-3",
-    "cv16_two_layers:key_texts": "CV-6",
-    "cv16_two_layers:key_frame": "CV-6",
+    # WP-42 CV-6 closed the key a layer: the one key left is the last
+    # layer's discrete key, drawn as CV-3's (ascending, '(missing)', a
+    # frame), as disc_rep78's is.
+    "cv16_two_layers:key_texts": "CV-3",
+    "cv16_two_layers:key_frame": "CV-3",
     "cv16_legend_rows2:key_texts": "CV-3",
     "cv16_legend_rows2:key_frame": "CV-3",
     "cv16_disc_levels_rep78_3:key_texts": "CV-2",
@@ -805,7 +808,10 @@ def _dash_key(models):
         for side in ("right", "left", "above", "below", "center"):
             for a in getattr(f, side):
                 tn = type(a).__name__
-                if tn == "Legend" and a.items:
+                # WP-42 CV-6: a colorvar layer's plot-legend item is kept
+                # (twoway's two-key rule hides a one-key legend), so a
+                # hidden plot Legend is passed over: it is not drawn.
+                if tn == "Legend" and a.items and a.visible is not False:
                     texts = [_cv_label(it.label) for it in a.items]
                     framed = bool(a.border_line_color) and \
                         (a.border_line_alpha or 0) > 0

@@ -5922,7 +5922,7 @@ third variable instead of by the scheme's series colour.  {cmd:dash} draws
 it on every plot type twoway colours -- markers, bars, spikes, drop lines,
 range bars and caps, and the shafts and heads of the paired-coordinate
 arrows, are coloured observation by observation, with one colour key a
-layer; a line ({cmd:line}, {cmd:rline}'s bounds, {cmd:tsline},
+graph, the last {cmd:colorvar()} layer's, as in {cmd:twoway}; a line ({cmd:line}, {cmd:rline}'s bounds, {cmd:tsline},
 {cmd:tsrline}, the connecting line of {cmd:connected} and
 {cmd:rconnected}) is drawn as {cmd:twoway} draws it, one line a colour
 level joining that level's observations in the line's order, the
@@ -5979,7 +5979,8 @@ With more than one y variable, {cmd:colorvar()} is refused on
 {synopt:{cmdab:colorkeysrev:erse}}reverse the order of the key's levels{p_end}
 {synopt:{cmd:colorallowmultiple}}allow this {cmd:colorvar()} layer beside an
     earlier one; without it the second is refused, as {cmd:twoway} refuses
-    it{p_end}
+    it; the graph draws the last layer's key and a plot legend of its
+    series{p_end}
 {synopt:{cmdab:colorotherlab:el(}{it:text}{cmd:)}}the text of the key's gray
     entry, the missing values and every value no level takes{p_end}
 {synopt:{cmdab:colorusepleg:end}}the keys in the plot legend, placed by

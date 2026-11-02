@@ -445,7 +445,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **CV-4 Tracked:** Open (WP-42 section 42-04).
 - **CV-2 Tracked:** Open (WP-42 section 42-05).
 - **CV-5 Tracked:** Open (WP-42 section 42-04).
-- **CV-6 Tracked:** Open (WP-42 section 42-02).
+- **CV-6 Tracked:** Closed in WP-42, BUGS.md "Two colorvar layers: dash draws a key per layer and no plot legend; twoway draws the last layer's key plus a plot legend", commit pending.
 - **CV-7 Tracked:** Open (WP-42 section 42-02).
 - **CV-11 Tracked:** Open (WP-42 section 42-04).
 - **CV-9 Tracked:** Open (WP-42 section 42-05).

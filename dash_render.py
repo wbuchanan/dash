@@ -16843,6 +16843,7 @@ class GlyphMapper:
             _legend = Legend(items=legend_items, title=var_display,
                              name=_COLORVAR_LEGEND_NAME)
             _legend._dash_useplegend = bool(_use_plegend)  # WP-41 BY-14
+            _legend._dash_cvar_key = True  # WP-42 CV-6
             for _ks in ((getattr(renderer, "_dash_cvar", None)
                          or {}).get("keys", [])
                         + (getattr(renderer, "_dash_cvar_bins", None)
@@ -16900,6 +16901,9 @@ class GlyphMapper:
                                 **self.scheme.colorbar_chrome())
                 # WP-42 sil:SD-4: as thick as the scheme's clegend_width.
                 _dash_clegend_size(_cbar, self.scheme)
+                # WP-42 CV-6: a colorvar() layer's key, which a later
+                # layer's key replaces (_colorvar_drop_earlier_keys).
+                _cbar._dash_cvar_key = True
             except (ValueError, TypeError, KeyError) as _exc:  # noqa: BLE001
                 warnings.warn(f"dash: color bar skipped — {_exc}", stacklevel=2)
                 _cbar = None
@@ -17038,31 +17042,10 @@ class GlyphMapper:
             if _cbar is not None and add_key:
                 self._colorvar_key_place(fig, _cbar, _cleg, "clegend")
 
-        # ------------------------------------------------------------------
-        # Strip the auto-generated `legend_label=yvar` item for *renderer*
-        # from any pre-existing Legend on the figure.
-        #
-        # When colorvar is applied, the colorvar Legend (or ColorBar) on the
-        # right is the canonical color identifier; the in-plot "mpg" item
-        # added by `fig.scatter(..., legend_label=yvar)` becomes redundant
-        # and visually clutters the plot area.
-        #
-        # The colorvar Legend we just added uses dummy invisible scatter
-        # renderers, so filtering on `renderer` (the original glyph) does
-        # not touch the colorvar Legend's own items.
-        # ------------------------------------------------------------------
-        for _slot in (fig.right, fig.left, fig.above, fig.below, fig.center):
-            for _lay in list(_slot):
-                if isinstance(_lay, Legend):
-                    _lay.items = [
-                        it for it in _lay.items
-                        if renderer not in list(it.renderers or [])
-                    ]
-                    if not _lay.items:
-                        try:
-                            _slot.remove(_lay)
-                        except ValueError:
-                            pass
+        # WP-42 CV-6: the layer's plot-legend item stays; the plot legend
+        # follows twoway's rule (_dash_apply_legend: two or more keys draw
+        # one), so a lone colorvar() layer draws none and two layers, or a
+        # colorvar() layer beside a plain one, key their series.
 
     def _colorvar_key_place(self, fig, key, place, which) -> None:
         """Add the colour *key* (a Legend or a ColorBar) to *fig* where
@@ -17074,6 +17057,8 @@ class GlyphMapper:
         a Legend, is named once under *which*."""
         if place.get("off"):
             return
+        if getattr(key, "_dash_cvar_key", False):
+            self._colorvar_drop_earlier_keys(fig, key)
         if place.get("title") is not None:
             key.title = place["title"]
         # contour's ContourColorBar sizes as a ColorBar does (WP-31 B4b).
@@ -17143,6 +17128,21 @@ class GlyphMapper:
                      default=-1)
         panel.insert(at, key)
         setattr(fig, side, panel)
+
+    @staticmethod
+    def _colorvar_drop_earlier_keys(fig, key) -> None:
+        """Take off *fig* every colour key an earlier colorvar() layer
+        placed (a model marked ``_dash_cvar_key``), *key* excepted: twoway
+        draws one colour key a graph, the last colorvar() layer's (WP-42
+        CV-6, colorvar_parts_truth.json M1).  contour's own key is not
+        marked and stays.  A removed key's relevel plan keeps its
+        reference and updates a model no longer drawn."""
+        for side in ("right", "left", "above", "below", "center"):
+            panel = list(getattr(fig, side))
+            kept = [m for m in panel
+                    if m is key or not getattr(m, "_dash_cvar_key", False)]
+            if len(kept) != len(panel):
+                setattr(fig, side, kept)
 
     def _colorvar_paint(self, glyph, source, color_spec, fill_only=False,
                         opacity=None) -> None:
