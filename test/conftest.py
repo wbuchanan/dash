@@ -32,6 +32,39 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 if os.path.dirname(os.path.abspath(__file__)) not in sys.path:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+def _cache_rewrites(folder):
+    """While the test modules are collected, let pytest keep its rewritten
+    modules (assertion rewriting) in *folder*: with PYTHONDONTWRITEBYTECODE
+    set, as in the agents' shells, every worker re-parsed and rewrote all
+    of them on every run, about half of the 19 s a worker spent collecting
+    (02nov2026).  Only where bytecode is off; returns the settings
+    ``_stop_caching_rewrites`` restores, or None."""
+    if not sys.dont_write_bytecode:
+        return None
+    saved = (sys.dont_write_bytecode, sys.pycache_prefix)
+    sys.pycache_prefix = folder
+    sys.dont_write_bytecode = False
+    return saved
+
+
+def _stop_caching_rewrites(saved):
+    """Put back what ``_cache_rewrites`` changed, before any test runs: a
+    test that writes a module and imports it (two of the same size in one
+    second once replayed a stale cache, test_server_build_options) must
+    import its text, never a cache."""
+    if saved is not None:
+        sys.dont_write_bytecode, sys.pycache_prefix = saved
+
+
+_REWRITES_SAVED = _cache_rewrites(os.path.join(
+    os.environ.get("TMPDIR") or tempfile.gettempdir(), "dash_pytest_pyc"))
+
+
+def pytest_collection_finish(session):
+    _stop_caching_rewrites(_REWRITES_SAVED)
+
+
+
 # Every temporary file the suite makes goes to one folder per test process
 # (each xdist worker and the controller), removed when the process ends.
 # Dozens of modules call tempfile.mkdtemp at import or per test and never

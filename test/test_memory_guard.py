@@ -129,3 +129,27 @@ def test_memo_build_keeps_a_builds_result_by_its_arguments():
 
     assert by_obj(one[0]) == by_obj(one[0]) == 1
     assert by_obj(two[0]) == 2
+
+
+def test_rewrites_are_cached_only_while_tests_are_collected(monkeypatch,
+                                                           tmp_path):
+    """conftest._cache_rewrites lets pytest keep its rewritten test modules
+    (under a cache folder, never beside the source) while collecting,
+    where PYTHONDONTWRITEBYTECODE made every worker rewrite all of them on
+    every run (02nov2026); _stop_caching_rewrites puts both settings back
+    before any test runs, so nothing a test writes and imports is cached."""
+    import sys
+    import conftest
+    monkeypatch.setattr(sys, "dont_write_bytecode", True)
+    monkeypatch.setattr(sys, "pycache_prefix", None)
+    saved = conftest._cache_rewrites(str(tmp_path / "pyc"))
+    assert sys.dont_write_bytecode is False
+    assert sys.pycache_prefix == str(tmp_path / "pyc")
+    conftest._stop_caching_rewrites(saved)
+    assert sys.dont_write_bytecode is True and sys.pycache_prefix is None
+    # Where bytecode is written anyway, nothing changes.
+    monkeypatch.setattr(sys, "dont_write_bytecode", False)
+    assert conftest._cache_rewrites(str(tmp_path / "pyc")) is None
+    assert sys.pycache_prefix is None
+    conftest._stop_caching_rewrites(None)
+    assert sys.dont_write_bytecode is False
