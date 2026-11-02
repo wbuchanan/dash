@@ -439,7 +439,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **PIC-13 Tracked:** Closed in WP-41, BUGS.md "A legend in a by() at() hole keeps full-size text; twoway scales it (0.85x)", commit f62bb34.
 - **BY-7 Tracked:** Closed in WP-41, BUGS.md "by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor", commit 5497cfa.
 - **TR-19 Tracked:** Closed in WP-41, BUGS.md "Residuals in closed by()/span entries are filed nowhere: 'panel row taller than its panels (unfiled)', by(clegend(pos(6))) keeps panel proportions", commit 8ecc023.
-- **CV-8 Tracked:** Closed in WP-42, BUGS.md "An unbinned numeric colorvar() on 17 non-line types is a 256-step gradient with a ColorBar; twoway bins at the z ticks with a stepped key (mono schemes start near white)", commit pending.
+- **CV-8 Tracked:** Closed in WP-42, BUGS.md "An unbinned numeric colorvar() on 17 non-line types is a 256-step gradient with a ColorBar; twoway bins at the z ticks with a stepped key (mono schemes start near white)", commit 140c7e7.
 - **CV-1 Tracked:** Open (WP-42 section 42-02).
 - **CV-3 Tracked:** Open (WP-42 section 42-03).
 - **CV-4 Tracked:** Open (WP-42 section 42-04).
@@ -454,7 +454,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **CV-15 Tracked:** Open (WP-42 section 42-03).
 - **LT-12 Tracked:** Open (WP-42 section 42-03).
 - **AX-12 Tracked:** Open (WP-42 section 42-03).
-- **sil:SD-4 Tracked:** Closed in WP-42, BUGS.md "The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read", commit pending.
+- **sil:SD-4 Tracked:** Closed in WP-42, BUGS.md "The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read", commit d7dffa5.
 - **CV-17 Tracked:** Open (WP-42 section 42-01).
 - **LT-22 Tracked:** Open (WP-42 section 42-03).
 - **LT-1 Tracked:** Open (WP-43 section 43-01).
