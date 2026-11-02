@@ -440,13 +440,13 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-7 Tracked:** Closed in WP-41, BUGS.md "by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor", commit 5497cfa.
 - **TR-19 Tracked:** Closed in WP-41, BUGS.md "Residuals in closed by()/span entries are filed nowhere: 'panel row taller than its panels (unfiled)', by(clegend(pos(6))) keeps panel proportions", commit 8ecc023.
 - **CV-8 Tracked:** Closed in WP-42, BUGS.md "An unbinned numeric colorvar() on 17 non-line types is a 256-step gradient with a ColorBar; twoway bins at the z ticks with a stepped key (mono schemes start near white)", commit 140c7e7.
-- **CV-1 Tracked:** Closed in WP-42, BUGS.md "colorfillonly strips the level colour from every line part (line, connected, spike, dropline, rcapsym, pc shafts and heads)", commit pending.
+- **CV-1 Tracked:** Closed in WP-42, BUGS.md "colorfillonly strips the level colour from every line part (line, connected, spike, dropline, rcapsym, pc shafts and heads)", commit 8a14a8d.
 - **CV-3 Tracked:** Open (WP-42 section 42-03).
 - **CV-4 Tracked:** Open (WP-42 section 42-04).
 - **CV-2 Tracked:** Open (WP-42 section 42-05).
 - **CV-5 Tracked:** Open (WP-42 section 42-04).
-- **CV-6 Tracked:** Closed in WP-42, BUGS.md "Two colorvar layers: dash draws a key per layer and no plot legend; twoway draws the last layer's key plus a plot legend", commit pending.
-- **CV-7 Tracked:** Closed in WP-42, BUGS.md "A colorvar layer's plot-legend swatch takes row 0's level colour, not its pstyle colour", commit pending.
+- **CV-6 Tracked:** Closed in WP-42, BUGS.md "Two colorvar layers: dash draws a key per layer and no plot legend; twoway draws the last layer's key plus a plot legend", commit c541e9e.
+- **CV-7 Tracked:** Closed in WP-42, BUGS.md "A colorvar layer's plot-legend swatch takes row 0's level colour, not its pstyle colour", commit b554984.
 - **CV-11 Tracked:** Open (WP-42 section 42-04).
 - **CV-9 Tracked:** Open (WP-42 section 42-05).
 - **CV-10 Tracked:** Open (WP-42 section 42-05).
