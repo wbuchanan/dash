@@ -71,6 +71,15 @@ class TestTheTiming:
         assert "--durations=0" in r.stdout
         assert "--durations-min=1" in r.stdout
 
+    def test_pytest_writes_every_tests_time(self):
+        """Phases under a second hold most of the suite's time (02nov2026:
+        1,403 of about 4,900 worker seconds were listed), so pytest also
+        writes the per-test report test/suite_timing.py keeps."""
+        r = _dry()
+        assert "DASH_SUITE_TIMING=" in r.stdout
+        with open(SCRIPT, encoding="utf-8") as fh:
+            assert 'DASH_SUITE_TIMING="$out/pytest_timing.json"' in fh.read()
+
     def test_the_timing_report_is_written_beside_the_logs(self):
         with open(SCRIPT, encoding="utf-8") as fh:
             sh = fh.read()

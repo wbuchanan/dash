@@ -78,3 +78,25 @@ def test_missing_logs_are_named(tmp_path):
     text = gt.report(str(tmp_path))
     assert "pytest.log: missing" in text and "cert.log: missing" in text
     assert gt.main(["gate_timing.py"]) == 2
+
+
+_SUITE = ('{"wall_seconds": 10.0, "test_seconds": 30.5, "tests": 3, '
+          '"files": [{"file": "test/test_b.py", "seconds": 20.25, "tests": 1}, '
+          '{"file": "test/test_a.py", "seconds": 10.25, "tests": 2}]}')
+
+
+def test_suite_files():
+    """Every file's worker seconds over all its phases, from the suite's
+    DASH_SUITE_TIMING report; None when the text is not that report."""
+    assert gt.suite_files(_SUITE) == (30.5, [(20.25, 1, "test/test_b.py"),
+                                             (10.25, 2, "test/test_a.py")])
+    assert gt.suite_files("not json") is None
+    assert gt.suite_files("[]") is None
+
+
+def test_report_ranks_every_file_from_the_suite_report(tmp_path):
+    (tmp_path / "pytest_timing.json").write_text(_SUITE)
+    text = gt.report(str(tmp_path), 5)
+    assert "every test file, all phases: 30 s of worker time" in text
+    assert text.index("test/test_b.py") < text.index("test/test_a.py")
+    assert "pytest_timing.json: missing" in gt.report(str(tmp_path / "x"))

@@ -3,7 +3,9 @@
 scripts/run_all_tests.sh runs pytest with ``--durations=0
 --durations-min=1`` (every test phase of a second or more) and the
 certification runner prints one ``[ TIME] <script> timer=...s wall=...s``
-line per script.  This reads both and writes ``timing.txt`` beside them:
+line per script; pytest also writes test/suite_timing.py's per-test report
+to ``pytest_timing.json`` (DASH_SUITE_TIMING), which holds the phases under
+a second that the duration lines leave out.  This reads all three and writes ``timing.txt`` beside them:
 pytest's total, the test files and tests that took the most worker time,
 and each certification session's scripts by wall time.  The maintainer
 asked for it on 22oct2026: the whole suite took about 33 minutes against
@@ -15,6 +17,7 @@ more than the wall time; they rank where the work is, not the wait.
 Usage:  python3 scripts/gate_timing.py <gate log folder> [<top n>]
 Exit:   0, also when a log is missing (the report says so).
 """
+import json
 import os
 import re
 import sys
@@ -52,6 +55,19 @@ def by_test(durations):
     for sec, _, node in durations:
         tot[node] += sec
     return dict(tot)
+
+
+def suite_files(text):
+    """(test seconds, [(seconds, tests, file)]) from the suite's
+    DASH_SUITE_TIMING report, slowest file first; None when *text* is not
+    that report."""
+    try:
+        d = json.loads(text)
+        files = [(float(f["seconds"]), int(f["tests"]), f["file"])
+                 for f in d["files"]]
+        return float(d["test_seconds"]), sorted(files, key=lambda r: (-r[0], r[2]))
+    except (ValueError, TypeError, KeyError):
+        return None
 
 
 def cert_times(text):
@@ -99,6 +115,16 @@ def report(folder, n=25):
         lines += ["  %8.1f  %s" % (s, f) for f, s in _top(by_file(durs), n)]
         lines.append("Slowest tests:")
         lines += ["  %8.1f  %s" % (s, t) for t, s in _top(by_test(durs), n)]
+    stext = _read(os.path.join(folder, "pytest_timing.json"))
+    suite = suite_files(stext) if stext is not None else None
+    lines.append("")
+    if suite is None:
+        lines.append("pytest_timing.json: missing" if stext is None
+                     else "pytest_timing.json: not a timing report")
+    else:
+        lines.append("pytest, every test file, all phases: %.0f s of worker time"
+                     % suite[0])
+        lines += ["  %8.1f  %6d tests  %s" % r for r in suite[1][:n]]
     ctext = _read(os.path.join(folder, "cert.log"))
     if ctext is None:
         lines.append("cert.log: missing")

@@ -8,7 +8,8 @@
 # certification scripts that serve on fixed ports fought over ports and
 # CPU, and seven serve tests failed.  The run fails if either half failed.
 # Their logs are kept in a fresh folder under TMPDIR, named at the end.
-# pytest lists every test phase of a second or more and
+# pytest lists every test phase of a second or more, writes every test's
+# time to pytest_timing.json (test/suite_timing.py), and
 # scripts/gate_timing.py ranks them, with each cert script's wall time, in
 # timing.txt.  DRY_RUN=1 prints the two commands and runs nothing.  The release tier
 # (make test-release) is not part of it.
@@ -32,7 +33,7 @@ if [ "$pw" -gt "$max" ] || [ "$cs" -gt "$max" ]; then
     exit 2
 fi
 durs="--durations=0 --durations-min=1"
-pytest_cmd="DASH_STRICT=1 DASH_BASELINE=dev DASH_TEST_TIER=batch FULL_SUITE_RERUN=1 $PYTHON -m pytest test/ -q -p no:cacheprovider -n $pw $durs"
+pytest_cmd="DASH_SUITE_TIMING=<log folder>/pytest_timing.json DASH_STRICT=1 DASH_BASELINE=dev DASH_TEST_TIER=batch FULL_SUITE_RERUN=1 $PYTHON -m pytest test/ -q -p no:cacheprovider -n $pw $durs"
 cert_cmd="DASH_CERT_SESSIONS=$cs sh scripts/run_cert_suite.sh"
 if [ "${DRY_RUN:-}" = 1 ]; then
     echo "pytest: $pytest_cmd"
@@ -47,7 +48,7 @@ out="$(mktemp -d "${TMPDIR:-/tmp}/dash_all_tests.XXXXXX")" || exit 1
 cd "$REPO" || exit 2
 start=$(date +%s)
 t0=$(date +%s)
-DASH_STRICT=1 DASH_BASELINE=dev DASH_TEST_TIER=batch FULL_SUITE_RERUN=1 "$PYTHON" -m pytest test/ -q -p no:cacheprovider -n "$pw" $durs > "$out/pytest.log" 2>&1
+DASH_SUITE_TIMING="$out/pytest_timing.json" DASH_STRICT=1 DASH_BASELINE=dev DASH_TEST_TIER=batch FULL_SUITE_RERUN=1 "$PYTHON" -m pytest test/ -q -p no:cacheprovider -n "$pw" $durs > "$out/pytest.log" 2>&1
 echo "rc=$? wall=$(( $(date +%s) - t0 ))" > "$out/pytest.rc"
 t0=$(date +%s)
 DASH_CERT_SESSIONS="$cs" PYTHON="$PYTHON" sh scripts/run_cert_suite.sh > "$out/cert.log" 2>&1
