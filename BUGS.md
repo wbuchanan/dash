@@ -5618,6 +5618,12 @@
   - Suggested fix: size the title's text box from twoway's textbox geometry (its margins scale, its line height does not grow by 1.3) and give the by() fit hook a vertical inset.
   - Resolution: Not fixed because neither VF-4's shape work nor D66's one-picture scale (WP-45, brought into WP-41 41-05) reaches the title box's height under scale() or by()'s vertical placement. Graded S3 (WP-45): a few px per unit of scale(), and fysize() under by().
 
+- [ ] Title: A line graph with a title, subtitle, note and a boxed text() has a wider plot region than twoway's
+  - File Names and Line Numbers: scripts/corpus/guard_examples.txt (help-added_text_options-0a48288d); dash_render.py _dash_graph_region_box, _dash_apply_frame_aspect
+  - Description: Residual of GAPS4 VF-4 (WP-45, section 45-04), found by the corpus guard after WP-41 41-05 and measured 02nov2026 at twoway's own size (scripts/corpus, one-example run): the plot region is 2.3216 wide per unit of height where twoway's is 2.2. As fractions of the graph (left, top, right, bottom), twoway leaves 0.0968, 0.1458, 0.021, 0.1859 and dash 0.0806, 0.162, 0.0069, 0.1829: less room left of the y axis and right of the last x label, more above the plot. The cause is not yet isolated.
+  - Suggested fix: measure the y-axis title and label widths, the x axis's right overhang and the title/subtitle stack's height against twoway's for this example, then correct the inset that differs.
+  - Resolution: Not fixed because the inset that differs is not yet isolated, and VF-4's remaining shape work is WP-45's; the verdict stays Close (aspect within aspect_close). Ledgered as VF-4 (residual) frame_aspect for this command. Graded S3 (WP-45): about 5% in plot-region shape on one guard example.
+
 - [ ] Title: by(, subtitle(, position(3))) panel labels sit right of their strips and the two plot regions are narrower and unequal
   - File Names and Line Numbers: dash_render.py _dash_by_title_cell, _dash_layout_cell (the clock-3 label column)
   - Description: Found in WP-41 section 41-05's screenshot pair 3 (`scatter mpg weight, by(foreign, subtitle(, position(3)))`, stcolor, 1400 x 840), measured in both programs. twoway centres each panel's label on the strip beside its plot region and draws both plot regions 561 px wide (x 143 and 772); dash draws the labels to the right of their strips and the plot regions 477 and 499 px wide (x 143 and 770), with a right margin of 34 px against twoway's 18. The maintainer accepted the 41-05 pairs on 01nov2026 with this pair left for later.

@@ -1,8 +1,8 @@
 {
   "_meta": {
     "born_date": "22 Oct 2026",
-    "dash_commit": "b8db5dc260ca0295a24a7539477b9d4e1a594dec",
-    "extracted": "01 Nov 2026",
+    "dash_commit": "fa9610ce94aae3175d2cf7ef6a851298da57cf37",
+    "extracted": "02 Nov 2026",
     "source": "scripts/corpus/ledger.py",
     "stata_version": "19.5",
     "tsv": "scripts/corpus/ledger.tsv"
@@ -88,6 +88,15 @@
       "note": "line widths are relative sizes, 0.889x twoway's under stcolor (45-04)",
       "plottype": "*",
       "when": "*"
+    },
+    {
+      "check": "frame_aspect",
+      "form": "residual",
+      "gaps4_id": "VF-4 (residual)",
+      "id": "VF-4",
+      "note": "a line graph with a title, subtitle, note and boxed text() has a wider plot region: less room left and right, more above (45-04)",
+      "plottype": "line",
+      "when": "text\\(48\\.5 1923\\b"
     }
   ]
 }

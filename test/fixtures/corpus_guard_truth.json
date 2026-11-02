@@ -1,8 +1,8 @@
 {
   "_meta": {
     "born_date": "14 Oct 2026",
-    "dash_commit": "1b8060ef964faa6ba333ad2a74421db9c70e5c97",
-    "extracted": " 1 Nov 2026 14:18:50",
+    "dash_commit": "fa9610ce94aae3175d2cf7ef6a851298da57cf37",
+    "extracted": " 2 Nov 2026 01:16:04",
     "ledger": "test/fixtures/corpus_ledger.json",
     "rules": "test/fixtures/corpus_verdict_rules.json",
     "source": "scripts/extract_corpus_guard_truth.do",
@@ -16,7 +16,9 @@
       ],
       "first_dash": "(note:  dash: text() draws no width(); see help dash##added_text)",
       "first_twoway": null,
-      "ledger": [],
+      "ledger": [
+        "VF-4"
+      ],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
