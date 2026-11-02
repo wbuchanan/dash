@@ -758,6 +758,130 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w42_run' {
 }
 * ==== end S02 ====
 
+// S03 helpers (WP-42 42-03).  _q4203_bykeys: the contour keys a
+// registered by() graph draws, saved and served -- into globals
+// q4203_p<s|v> (keys on the panels) and q4203_c<s|v> (keys in the by()
+// colour-key cell, dash_by_clegend); _q4203_svgkey: how many unrotated
+// texts twoway draws right of or below its panels, into q4203_tw.
+python:
+def _q4203_models(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_q4203_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_q4203_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    return list(r._last_layout_root.references()), list(doc.models)
+
+
+def _q4203_bykeys(sp, dp, app):
+    from sfi import Macro
+    from bokeh.models import Plot
+    a, b = _q4203_models(sp, dp, app)
+    for models, sfx in ((a, "s"), (b, "v")):
+        on_panel, in_cell = 0, 0
+        for m in models:
+            if not isinstance(m, Plot):
+                continue
+            for side in (m.right, m.left, m.above, m.below, m.center):
+                for k in side:
+                    if type(k).__name__ != "ContourColorBar":
+                        continue
+                    if getattr(m, "name", None) == "dash_by_clegend":
+                        in_cell += 1
+                    else:
+                        on_panel += 1
+        Macro.setGlobal("q4203_p" + sfx, str(on_panel))
+        Macro.setGlobal("q4203_c" + sfx, str(in_cell))
+
+
+def _q4203_svgkey(path):
+    from sfi import Macro
+    from svg_truth import svg_document
+    d = svg_document(path)
+    pans = [g for g in d["regions"] if g.get("fill") == "#ffffff"]
+    right = max(g["right"] for g in pans)
+    bottom = max(g["bottom"] for g in pans)
+    n = 0
+    for t in d["texts"]:
+        if t["rotate"] or t["x"] is None:
+            continue
+        try:
+            float(str(t["text"]).replace(",", ""))
+        except ValueError:
+            continue
+        if t["x"] > right + 1 or t["y"] > bottom + 200:
+            n += 1
+    Macro.setGlobal("q4203_tw", str(n))
+end
+
+capture program drop _q4203_reg
+program define _q4203_reg
+    // _q4203_reg <dir> <dash command...>: register one graph, write its
+    // spec and data, and read the contour keys both modes draw.
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4203_m; _q4203_m._q4203_bykeys("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
+* ==== S03 CV-8a: a by() contour draws twoway's one key ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03d "`w42_work'/s03b"
+    capture mkdir "`q03d'"
+    capture graph drop _all
+    sysuse surface, clear
+
+    // ------------------------------------------------------------
+    // Q4203-6: by(date) draws no contour key (twoway: no key number
+    // beside or below the panels); by(date, clegend(on)) one key beside
+    // them and by(date, clegend(on pos(6))) one below them (twoway: the
+    // key's numbers there) -- dash: none on a panel and one in the by()
+    // colour-key cell, saved and served.
+    // ------------------------------------------------------------
+    local k 0
+    foreach bo in "date" "date, clegend(on)" "date, clegend(on pos(6))" {
+        local ++k
+        quietly twoway contour temperature latitude longitude, levels(10) by(`bo') name(q03b`k', replace)
+        capture erase "`q03d'/q03b`k'.svg"
+        cert_svg_export, name(q03b`k') file("`q03d'/q03b`k'.svg")
+        python: import __main__ as _q4203_m; _q4203_m._q4203_svgkey("`q03d'/q03b`k'.svg")
+        local tw ${q4203_tw}
+        local want = cond(`k' == 1, 0, 1)
+        _w42_expect Q4203-6 "(cond(`want', `tw' > 0, `tw' == 0))" "by(`bo'): twoway draws `tw' key numbers"
+        _q4203_reg "`q03d'" contour temperature latitude longitude, levels(10) by(`bo') name(q03b`k')
+        _w42_expect Q4203-6 "(${q4203_ps} == 0 & ${q4203_pv} == 0)" "by(`bo'): panel keys saved ${q4203_ps}, served ${q4203_pv}"
+        _w42_expect Q4203-6 "(${q4203_cs} == `want' & ${q4203_cv} == `want')" "by(`bo'): keys beside the panels saved ${q4203_cs}, served ${q4203_cv}, want `want'"
+    }
+    _w42_done Q4203-6 "a by() contour draws twoway's one key, saved and served"
+
+    foreach f in q03b1.svg q03b2.svg q03b3.svg s.json d.json a.py {
+        capture erase "`q03d'/`f'"
+    }
+    capture rmdir "`q03d'"
+    macro drop q4203_ps q4203_pv q4203_cs q4203_cv q4203_tw
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // S05 helpers (WP-42 42-05).  _q4205_row: a probe of
 // fixtures/colorvar_refusal_truth.json into locals q05_rc, q05_n,
 // q05_l1 .. (its printed lines, trimmed), q05_cmd (twoway's command) and

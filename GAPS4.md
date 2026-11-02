@@ -441,7 +441,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-7 Tracked:** Closed in WP-41, BUGS.md "by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor", commit 5497cfa.
 - **TR-19 Tracked:** Closed in WP-41, BUGS.md "Residuals in closed by()/span entries are filed nowhere: 'panel row taller than its panels (unfiled)', by(clegend(pos(6))) keeps panel proportions", commit 8ecc023.
 - **CV-8 Tracked:** Closed in WP-42, BUGS.md "An unbinned numeric colorvar() on 17 non-line types is a 256-step gradient with a ColorBar; twoway bins at the z ticks with a stepped key (mono schemes start near white)", commit 140c7e7.
-- **CV-8a Tracked:** Open (WP-42 section 42-03).
+- **CV-8a Tracked:** Closed in WP-42, BUGS.md "Under by(), every panel draws its own contour colour key; twoway draws none under by(), and one key beside the panels under by(, clegend(on))", commit pending.
 - **CV-1 Tracked:** Closed in WP-42, BUGS.md "colorfillonly strips the level colour from every line part (line, connected, spike, dropline, rcapsym, pc shafts and heads)", commit 8a14a8d.
 - **CV-3 Tracked:** Open (WP-42 section 42-03).
 - **CV-4 Tracked:** Open (WP-42 section 42-04).

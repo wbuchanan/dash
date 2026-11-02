@@ -1528,6 +1528,7 @@ FUNCTIONS = {
  '_dash_by_glyph_fields': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_glyph_fields',
  '_dash_by_keys': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_keys',
  '_dash_by_keys.<locals>.colour_keys': 'test/test_by_axes_keys.py::TestColourKeyUnderBy::test_key',
+ '_dash_by_keys.<locals>._key_copy': 'test/test_colorvar_key.py::TestTheByContourKey::test_one_key_under_clegend_on',
  '_dash_by_keys.<locals>.place': 'test/test_by_axes_keys.py::TestOneLegend::test_probe',
  '_dash_by_keys.<locals>.series_legends': 'test/test_by_axes_keys.py::TestOneLegend::test_probe',
  '_dash_by_label_box': 'test/test_by_axes_keys.py::TestTheLabelBox::test_unit',

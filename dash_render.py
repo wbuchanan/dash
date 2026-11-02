@@ -50073,13 +50073,15 @@ def _dash_has_colour_key(fig):
     than a panel label's box (``dash_by_label_box``) or the colorvar key
     ``Legend`` (``_COLORVAR_LEGEND_NAME``), the test ``_dash_by_keys``'
     ``colour_keys`` makes (WP-41 BY-3).  Never raises."""
-    from bokeh.models import ColorBar, Legend
+    from bokeh.models import ColorBar, ContourColorBar, Legend
     if fig is None:
         return False
     for side in ("center", "left", "right", "above", "below"):
         for m in list(getattr(fig, side, None) or ()):
             name = getattr(m, "name", None)
-            if (isinstance(m, ColorBar) and name != "dash_by_label_box") or (
+            # WP-42 CV-8a: a contour's key is a colour key too.
+            if (isinstance(m, (ColorBar, ContourColorBar))
+                    and name != "dash_by_label_box") or (
                     isinstance(m, Legend) and name == _COLORVAR_LEGEND_NAME):
                 return True
     return False
@@ -58639,9 +58641,15 @@ def _dash_by_keys(figs, opts, scheme):
     updates it), placed by ``clegend(position() at())`` else the scheme's
     ``zyx2legend_position`` (q06, q07).
 
+    A contour's ``ContourColorBar``, which is not a ``ColorBar``, is a
+    colour key as well (WP-42 CV-8a, D68): twoway draws none on a panel
+    and, under ``by(, clegend(on))``, one beside the panels; the key
+    drawn there is panel 1's own model, so both modes' contour refit,
+    which rewrites it, still reaches it.
+
     Returns ``{"legend", "legend_side", "legend_at", "clegend",
     "clegend_side", "clegend_at", "ring0"}`` (cells or None)."""
-    from bokeh.models import ColorBar, Legend
+    from bokeh.models import ColorBar, ContourColorBar, Legend
     out = {"legend": None, "legend_side": "", "legend_at": 0,
            "clegend": None, "clegend_side": "", "clegend_at": 0,
            "plegend": None, "plegend_side": "", "ring0": False}
@@ -58678,7 +58686,8 @@ def _dash_by_keys(figs, opts, scheme):
         res = []
         for side in ("center", "left", "right", "above", "below"):
             for m in list(getattr(fig, side, None) or ()):
-                if (isinstance(m, ColorBar) and getattr(m, "name", None)
+                if (isinstance(m, (ColorBar, ContourColorBar))
+                        and getattr(m, "name", None)
                         != "dash_by_label_box") or (
                         isinstance(m, Legend) and getattr(m, "name", None)
                         == _COLORVAR_LEGEND_NAME):
@@ -58830,7 +58839,18 @@ def _dash_by_keys(figs, opts, scheme):
                 # plan recolours the panels' levels, not this bar's).
                 key = _dash_by_colour_bar_cell(scheme, key) or key
             vertical = (side if not at else "right") in ("left", "right")
-            if isinstance(key, ColorBar) and (at or not vertical):
+            _bars = (ColorBar, ContourColorBar)
+
+            def _key_copy(**kw):
+                # A contour's key is moved, not copied: the refit of both
+                # modes rewrites that model's levels and ticks (CV-8a).
+                if isinstance(key, ContourColorBar):
+                    for k, v in kw.items():
+                        setattr(key, k, v)
+                    key.name = "dash_by_clegend_key"
+                    return key
+                return ColorBar(name="dash_by_clegend_key", **kw)
+            if isinstance(key, _bars) and (at or not vertical):
                 # Upright at 6 and 12 o'clock and in an at() hole, as
                 # twoway draws it (BUGS.md "by(, clegend(pos(6))) drew the
                 # colour key across the graph, where twoway draws it
@@ -58842,9 +58862,8 @@ def _dash_by_keys(figs, opts, scheme):
                 kw = key.properties_with_values(include_defaults=False)
                 kw.pop("name", None)
                 kw["orientation"] = "vertical"
-                bar = ColorBar(name="dash_by_clegend_key", location="center",
-                               **{k: v for k, v in kw.items()
-                                  if k != "location"})
+                kw["location"] = "center"
+                bar = _key_copy(**kw)
                 setattr(bar, _DASH_GRAPH_TEXT_DONE, True)
                 cell.add_layout(bar, "center")
                 if at:
@@ -58872,14 +58891,14 @@ def _dash_by_keys(figs, opts, scheme):
                     _dash_span(cell, bar, "key", side, "center",
                                _dash_by_key_share(figs[0]), ref="grid",
                                mode="row")
-            elif isinstance(key, ColorBar):
+            elif isinstance(key, _bars):
                 cell = _dash_by_cell(scheme, "dash_by_clegend",
                                      (1, None) if vertical else (None, 1))
                 kw = key.properties_with_values(include_defaults=False)
                 kw.pop("name", None)
                 kw["orientation"] = "vertical" if vertical else "horizontal"
                 kw["location"] = "center"
-                bar = ColorBar(name="dash_by_clegend_key", **kw)
+                bar = _key_copy(**kw)
                 setattr(bar, _DASH_GRAPH_TEXT_DONE, True)
                 cell.add_layout(bar, "left" if vertical else "above")
                 # Beside the panels: their box less 0.094 units, centred
