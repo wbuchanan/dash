@@ -28225,7 +28225,7 @@ def _dash_width_scale(anchor, models, nominal_w, ref_in=4.0, grid=None):
                         [float(v) for v in grid.spacing], "pair"])
     if grid is not None:
         # WP-41 41-05: by()'s panel margins, the panels' own borders.
-        for _m in grid.references():
+        for _m in _dash_refs(grid):
             if isinstance(_m, Plot) and getattr(_m, "_dash_by_mb", False):
                 for _p in ("min_border_left", "min_border_right"):
                     _v = getattr(_m, _p, None)
@@ -28233,7 +28233,7 @@ def _dash_width_scale(anchor, models, nominal_w, ref_in=4.0, grid=None):
                         entries.append([_m, _p, float(_v), "int"])
     plots = []
     for root in models:
-        plots += [m for m in root.references() if isinstance(m, Plot)
+        plots += [m for m in _dash_refs(root) if isinstance(m, Plot)
                   and m not in plots]
     follows = [getattr(m, "_dash_gm_cb", None) for m in plots]
     follows = [[f, m] for f, m in zip(follows, plots) if f is not None]
@@ -54915,7 +54915,7 @@ def _dash_cvar_plans(models):
     and the models they reach, once each."""
     out, seen = [], set()
     for root in models or ():
-        refs = root.references() if hasattr(root, "references") else [root]
+        refs = _dash_refs(root) if hasattr(root, "references") else [root]
         for m in refs:
             p = getattr(m, "_dash_cvar", None)
             if isinstance(p, dict) and id(m) not in seen:
@@ -58915,6 +58915,52 @@ def _dash_by_stack_hook(figs, axes, restore, cells, ruler):
         code=_DASH_BY_STACK_JS)
 
 
+def _dash_refs(root, _names={}):  # noqa: B006 (the class cache, see below)
+    """The models *root* reaches, as ``root.references()`` finds them, for
+    the hooks that look models up and change nothing they did not make.
+
+    ``references()`` reads every property that can hold a model, and a
+    default not yet built is built to be read: on a page that was about a
+    third of a render, three such walks a page.  This reads only values
+    already there (set, or a default already built) through the same
+    properties (``properties_with_refs``), and the lists, dicts and
+    dataclasses (a colour field's transform) inside them, so a default no
+    one has built is not reached; nothing dash marks or tags is one.  On
+    every parity corpus page the two found the same models (02nov2026),
+    about seven times faster.  A hook that changes what it finds, such as
+    the scale pass, keeps ``references()``.  *_names* (a model class ->
+    its properties that can hold a model) is the function's own cache, a
+    default argument, so the served app's copy carries it.  Never passed."""
+    import dataclasses as _dc
+    from bokeh.model import Model
+    seen = {}
+    stack = [root]
+    while stack:
+        v = stack.pop()
+        if isinstance(v, Model):
+            if v.id in seen:
+                continue
+            seen[v.id] = v
+            cls = type(v)
+            names = _names.get(cls)
+            if names is None:
+                names = _names[cls] = tuple(cls.properties_with_refs())
+            pv, uv = v._property_values, v._unstable_default_values
+            for n in names:
+                if n in pv:
+                    stack.append(pv[n])
+                elif n in uv:
+                    stack.append(uv[n])
+        elif isinstance(v, (list, tuple)):
+            stack.extend(v)
+        elif isinstance(v, dict):
+            stack.extend(v.values())
+            stack.extend(v.keys())
+        elif _dc.is_dataclass(v) and not isinstance(v, type):
+            stack.extend(getattr(v, f.name) for f in _dc.fields(v))
+    return set(seen.values())
+
+
 def _dash_walked(models):
     """*models* walked once each, for hooks read back to back: one
     stand-in per root whose ``references()`` is the root's own, collected
@@ -58928,7 +58974,7 @@ def _dash_walked(models):
     from types import SimpleNamespace
     out = []
     for root in models or ():
-        refs = root.references() if hasattr(root, "references") else ()
+        refs = _dash_refs(root) if hasattr(root, "references") else ()
         out.append(SimpleNamespace(references=(lambda r=refs: r)))
     return out
 
@@ -71699,7 +71745,7 @@ class ServerAppBuilder:
                          "_dash_by_ruler_column", "_dash_by_panel_borders",
                          "_dash_by_row_gaps",
                          "_dash_by_stack_hook", "_dash_by_stack_hooks",
-                         "_dash_walked",
+                         "_dash_walked", "_dash_refs",
                          # The arrowheads' document_ready hooks (WP-31 C1).
                          "_dash_arrow_head_hooks",
                          "_dash_by_label_box",

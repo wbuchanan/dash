@@ -573,6 +573,10 @@ class TestTheUnitFunctions:
         roots = [column(*figs), column(figure())]
         calls = []
         real = Model.references
+        walk_one = dr._dash_refs
+        # One walk (_dash_refs, 02nov2026) per root, none by the hooks.
+        monkeypatch.setattr(dr, "_dash_refs",
+                            lambda r: calls.append(r) or walk_one(r))
         monkeypatch.setattr(Model, "references",
                             lambda self: calls.append(self) or real(self))
         walk = dr._dash_walked(roots + [object()])

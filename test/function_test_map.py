@@ -848,6 +848,7 @@ FUNCTIONS = {
  '_dash_source_of': 'test/test_helper_source_cache.py::TestItIsReadOnce::test_a_second_read_does_not_ask_inspect',
  '_dash_scan_constants': 'test/test_helper_source_cache.py::TestTheConstantScan::test_it_is_the_joined_scan',
  '_dash_source_lines_of': 'test/test_helper_source_cache.py::TestTheSplitIsKeptWithItsText::test_the_lines_are_the_texts_and_split_once',
+ '_dash_refs': 'test/test_figure_geometry.py::TestTheLookupWalk::test_it_finds_what_references_finds',
  '_dash_copied_lines': 'test/test_helper_source_cache.py::TestTheCopiedLines::test_they_are_the_dedented_text_and_kept',
  '_dash_kernels_lines': 'test/test_helper_source_cache.py::TestTheKernelsSlice::test_it_is_the_assignment',
  '_dash_literal_text': 'test/test_helper_source_cache.py::TestTheLiteralText::test_the_answer',

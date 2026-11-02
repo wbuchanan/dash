@@ -370,3 +370,24 @@ class TestGraphRegion:
         assert foot.styles["margin-top"] == \
             "calc(-%.4gpx * var(--dash-by-k, 1))" % (9 - 0.7 * u)
 
+
+
+class TestTheLookupWalk:
+    """``_dash_refs``: the models a page's lookup hooks see, as
+    ``references()`` finds them, without building unread defaults."""
+
+    @pytest.mark.parametrize("go", [{}, {"by": "foreign"}])
+    def test_it_finds_what_references_finds(self, go):
+        roots, _ = _figs("saved", go)
+        for r in roots:
+            assert dr._dash_refs(r) == r.references()
+
+    def test_a_mapper_inside_a_field_transform(self):
+        from bokeh.models import ColumnDataSource
+        from bokeh.plotting import figure
+        from bokeh.transform import factor_cmap
+        fig = figure()
+        cmap = factor_cmap("k", palette=["red", "blue"], factors=["a", "b"])
+        fig.scatter("x", "y", color=cmap,
+                    source=ColumnDataSource({"x": [1], "y": [2], "k": ["a"]}))
+        assert cmap.transform in dr._dash_refs(fig)
