@@ -129,10 +129,10 @@
 *!   OV-93  colpalette(Viridis)       rc 198 naming colpalette() (DT-15)
 *!   OV-94  colpalette(bogus)         rc 198 naming colpalette()
 *!   OV-95  colorcuts(20 30)          rc 0
-*!   OV-96  colorcuts(abc)            rc 198 naming colorcuts()
+*!   OV-96  colorcuts(abc)            rc and words of R_cuts_abc
 *!   OV-97  colorvar(for)             rc 0, registry carries "colorvar":"foreign"
-*!   OV-98  colorvar(nosuchvar)       rc 111 naming colorvar()
-*!   OV-99  colorvar(mpg weight)      rc 198 naming colorvar()
+*!   OV-98  colorvar(nosuch)          rc and words of R_var_nosuch
+*!   OV-99  colorvar(rep78 foreign)   rc and words of R_var_two
 *!   OV-100 mlabel(mak)               rc 0, registry carries "mlabel":"make"
 *!   OV-101 mlabel(nosuchvar)         rc 111 naming mlabel()
 *! Graph rules:
@@ -432,6 +432,12 @@
 *!          kernel(GAUSSIAN), xsize(()) and a string colorvar() refused
 *!          with twoway's rc and line and a line naming twoway's spelling,
 *!          inside p1() too, in twoway's order
+*! The colorvar() values twoway refuses (WP-42 section 42-05, CV-9;
+*! colorvar_refusal_truth.json, every rc and line read from it):
+*!   Q4205-2a..2j  colorcuts(abc), colorlevels(abc), colorlevels(2.5),
+*!          colorvar(rep78 foreign), colorvar(pri*), colorvar(price-length),
+*!          colorvar(nosuch), colorvar(pri) (drawn), colorvar(make),
+*!          colorvar(L.price): twoway's rc and lines, nothing more
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -691,6 +697,82 @@ program define _ov_assert
     }
 end
 
+// ----------------------------------------------------------------
+// WP-42 section 42-05 (CV-9, CV-14): a colorvar() value, spelling or
+// layer run through dash as test/fixtures/colorvar_refusal_truth.json ran
+// it in twoway.  _q4205 <id> <key> [<hint> [<plot line>]]: dash's rc is
+// twoway's, and on a refusal dash prints twoway's lines, then the hint
+// line test/dash_only_rulings.py's HINT holds for <hint> (P4-9), then
+// <plot line> (37-01's line naming the plot), and nothing else.  Every
+// expectation is read from the fixture or HINT, never typed.
+// ----------------------------------------------------------------
+python:
+import json as _q4205_json
+from sfi import Macro as _q4205_M
+from dash_only_rulings import HINT as _q4205_hint
+with open("fixtures/colorvar_refusal_truth.json", encoding="utf-8") as _q4205_fh:
+    _q4205_fx = _q4205_json.load(_q4205_fh)["probes"]
+
+
+def _q4205_take(key):
+    c = _q4205_fx[key]["command"].strip()[len("twoway "):].rstrip()
+    if c.endswith(","):
+        c = c[:-1].rstrip()
+    _q4205_M.setLocal("q_cmd", c)
+    _q4205_M.setLocal("q_rc", str(_q4205_fx[key]["rc"]))
+
+
+def _q4205_judge(key, path, rc, hint, plot):
+    r = _q4205_fx[key]
+    lines = []
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            for ln in fh:
+                if ln.strip() and not ln.startswith((". ", "> ")):
+                    lines.append(ln.strip())
+    except OSError:
+        pass
+    want = [ln.strip() for ln in r["lines"]]
+    if hint:
+        want.append(_q4205_hint[hint])
+    if plot:
+        want.append(plot)
+    ok = int(rc) == r["rc"] and (r["rc"] == 0 or lines == want)
+    _q4205_M.setLocal("q_ok", "1" if ok else "0")
+    for name, text in (("q_got", " / ".join(lines)),
+                       ("q_want", " / ".join(want))):
+        for ch, to in (('"', "'"), ("\x60", "'"), ("$", "S")):
+            text = text.replace(ch, to)
+        _q4205_M.setLocal(name, text[:300])
+end
+capture program drop _q4205
+program define _q4205
+    version 16.0
+    args id key hint plot
+    python: import __main__ as _q4205_main; _q4205_main._q4205_take("`key'")
+    // The cases around it keep their data.
+    preserve
+    quietly sysuse auto, clear
+    quietly gen m = .
+    quietly gen ymiss = .
+    quietly gen t = _n
+    quietly tsset t
+    if "`key'" == "E_nodata" | "`key'" == "E_nodata_disc" quietly drop if 1
+    set linesize 255
+    capture dash clear
+    capture log close _ovlog
+    capture erase "`c(tmpdir)'dash_ov.log"
+    quietly log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture noisily dash `macval(q_cmd)'
+    local rc = _rc
+    quietly log close _ovlog
+    python: import __main__ as _q4205_main; _q4205_main._q4205_judge("`key'", r"`c(tmpdir)'dash_ov.log", "`rc'", "`hint'", "`plot'")
+    _ov_assert `id' "(`q_ok' == 1)" `"`key': rc `rc' (twoway `q_rc'); dash said: `macval(q_got)'; want: `macval(q_want)'"'
+    capture dash clear
+    set linesize 80
+    restore
+end
+
 // A command refused at registration for its VARLIST rather than an
 // option: rc must equal `expected'; the captured log must say `needle'
 // (the message names the plot type and the variables given); it must
@@ -936,10 +1018,13 @@ _ov_case OV-93  `"dash scatter mpg weight, colorvar(price) colpalette(Viridis) n
 // Flipped (WP-35 DT-15): the value refusal was wrong; twoway refuses colpalette() itself, "option colpalette() not allowed", whatever its value (P4-7).
 _ov_case OV-94  `"dash scatter mpg weight, colorvar(price) colpalette(bogus) name(ov94)"' 198 colpalette
 _ov_case OV-95  `"dash scatter mpg weight, colorvar(price) colorcuts(20 30) name(ov95)"' 0 ""
-_ov_case OV-96  `"dash scatter mpg weight, colorvar(price) colorcuts(abc) name(ov96)"' 198 colorcuts
+// Flipped (WP-42 CV-9): dash's own words were wrong; twoway refuses colorcuts(abc) with syntax's numlist line and rc (R_cuts_abc).
+_q4205 OV-96 R_cuts_abc
 _ov_case OV-97  `"dash scatter mpg weight, colorvar(for) name(ov97)"' 0 "" `""colorvar":"foreign""'
-_ov_case OV-98  `"dash scatter mpg weight, colorvar(nosuchvar) name(ov98)"' 111 colorvar
-_ov_case OV-99  `"dash scatter mpg weight, colorvar(mpg weight) name(ov99)"' 198 colorvar
+// Flipped (WP-42 CV-9): twoway names the variable alone, without dash's colorvar() prefix (R_var_nosuch).
+_q4205 OV-98 R_var_nosuch
+// Flipped (WP-42 CV-9): twoway refuses a second variable with confirm's line and rc, not dash's (R_var_two).
+_q4205 OV-99 R_var_two
 _ov_case OV-100 `"dash scatter mpg weight, mlabel(mak) name(ov100)"' 0 "" `""mlabel":"make""'
 _ov_case OV-101 `"dash scatter mpg weight, mlabel(nosuchvar) name(ov101)"' 111 mlabel
 
@@ -4008,6 +4093,16 @@ foreach _q37k of local q_okeys {
 // 41 rows on two routes, 38 p.<word> keys, ten order keys and space.run
 _ov_assert Q3507-1 "(`_q37n' == 131)" "`_q37n' dash_only_words_truth probes ran"
 set linesize 80
+
+// ----------------------------------------------------------------
+// Q4205-2 (WP-42 section 42-05, CV-9): the colorvar() values, run
+// through dash as twoway ran them (_q4205 above).
+// ----------------------------------------------------------------
+local _q42l a b c d e f g h i j
+local _q42k R_cuts_abc R_levels_abc R_levels_frac R_var_two R_var_wild R_var_range R_var_nosuch R_var_abbrev R_var_string R_var_ts
+forvalues _q42j = 1/10 {
+    _q4205 Q4205-2`: word `_q42j' of `_q42l'' `: word `_q42j' of `_q42k''
+}
 
 // Summary
 // ----------------------------------------------------------------

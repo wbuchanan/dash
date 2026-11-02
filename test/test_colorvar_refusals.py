@@ -191,3 +191,27 @@ class TestTheHelp:
                 "range over {it:#} + 1, each cut a level, as {cmd:twoway} "
                 "draws them ({cmd:colorlevels(4)} over 0 to 100 cuts at 20 "
                 "40 60 80") in text
+
+
+# ---------------------------------------------------------------------------
+# CV-9: colorcuts(), colorlevels() and colorvar() through twoway's commands.
+# ---------------------------------------------------------------------------
+
+def _program(src, name):
+    start = src.index("program define %s" % name)
+    return src[start:src.index("\nend\n", start)]
+
+
+class TestTheAdoText:
+
+    def test_twoways_commands(self):
+        src = _read("dash.ado")
+        body = _program(src, "_dash_cv_value_check")
+        assert "confirm numeric variable `macval(value)'" in body
+        assert "syntax , COLORCUTs(numlist sort)" in body
+        assert "syntax [ , COLORLEVels(integer -9999) ]" in body
+        assert "_dash_so_unsafe" in body
+        vv = _program(src, "_dash_validate_value")
+        assert "_dash_cv_value_check" in vv
+        # 35-07's string-colorvar lines are given by confirm now.
+        assert "found where numeric variable expected" not in src

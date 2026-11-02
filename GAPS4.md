@@ -450,7 +450,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **CV-6 Tracked:** Closed in WP-42, BUGS.md "Two colorvar layers: dash draws a key per layer and no plot legend; twoway draws the last layer's key plus a plot legend", commit c541e9e.
 - **CV-7 Tracked:** Closed in WP-42, BUGS.md "A colorvar layer's plot-legend swatch takes row 0's level colour, not its pstyle colour", commit b554984.
 - **CV-11 Tracked:** Open (WP-42 section 42-04).
-- **CV-9 Tracked:** Open (WP-42 section 42-05).
+- **CV-9 Tracked:** Closed in WP-42, BUGS.md "colorvar refusals differ in rc or words: colorcuts(abc) r(198) vs r(121); colorvar(a b) r(198) vs r(101); colorvar(pri*) accepted vs r(198); colorlevels(abc) and nosuch in dash's words", commit pending.
 - **CV-10 Tracked:** Open (WP-42 section 42-05).
 - **CV-14 Tracked:** Open (WP-42 section 42-05).
 - **CV-15 Tracked:** Open (WP-42 section 42-03).

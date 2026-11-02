@@ -247,6 +247,7 @@ COVERAGE = {
         # WP-37 DG-1: twoway's answer to a plot with no observation, at
         # export, and the line that names the plot.
         "_dash_zero_obs_check": ("test_wp37_truth.cscript:Q3701-3",),
+        "_dash_cv_value_check": ("test_option_validation.cscript:OV-96",),
         "_dash_contour_gen": ("test_wp37_truth.cscript:Q3703-1",),
         "_dash_zo_line": ("test_wp37_truth.cscript:Q3701-3",),
         # e2e: sort(varlist)'s rank columns, against twoway's serset;

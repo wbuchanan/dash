@@ -5216,11 +5216,11 @@
   - Suggested fix: Reverse colours only; use zero-width cuts
   - Resolution: Not fixed because WP-42 section 42-04 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
 
-- [ ] Title: colorvar refusals differ in rc or words: colorcuts(abc) r(198) vs r(121); colorvar(a b) r(198) vs r(101); colorvar(pri*) accepted vs r(198); colorlevels(abc) and nosuch in dash's words
+- [x] Title: colorvar refusals differ in rc or words: colorcuts(abc) r(198) vs r(121); colorvar(a b) r(198) vs r(101); colorvar(pri*) accepted vs r(198); colorlevels(abc) and nosuch in dash's words
   - File Names and Line Numbers: dash.ado:3699-3701, 4329; run1 A1/A2/A5, C5-C7; p3out F09/F13
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids CV-9, syn:SD-9; confirmed (syn:SD-9 partly: the string colorvar is documented); tracked: untracked. Registered as GAPS4 CV-9 (WP-42, section 42-05, Fix).
   - Suggested fix: Use twoway's rc and line; refuse wildcards
-  - Resolution: Not fixed because WP-42 section 42-05 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+  - Resolution: Fixed 02nov2026 (WP-42, CV-9). _dash_validate_value hands colorcuts(), colorlevels() and colorvar() to the new _dash_cv_value_check, which runs the commands twoway runs on them (twoway_yxview_parse.class): colorcuts() through syntax's numlist sort ("colorcuts() invalid -- invalid numlist", r(121)), colorlevels() through syntax's integer -9999 ("option colorlevels() incorrectly specified", r(198), for abc and 2.5), colorvar() through confirm numeric variable ("* invalid name" and "- invalid name", r(198); "variable nosuch not found", r(111); "'make' found where numeric variable expected", r(7), the refusal WP-35's DT-15 landed, whose own lines in the var kind are removed as no longer reached; "factor-variable and time-series operators not allowed", r(101)), and a second name "foreign not allowed", r(101), as twoway answers after confirm takes the varlist; colorvar(pri) is price, as in twoway. A value holding a backtick, $, a quote, a backslash or a control byte is not put to a command. Measured: scripts/extract_colorvar_refusal_truth.do R_*. Pinned by test/test_colorvar_refusals.py::TestTheAdoText::test_twoways_commands, test_option_validation.cscript Q4205-2a..2j, OV-96, OV-98, OV-99; fixture test/fixtures/colorvar_refusal_truth.json. Closes GAPS4 CV-9 (WP-42, CV-9).
 
 - [ ] Title: Malformed clegend(bogus), plegend(bogus), zlabel(bogus) and zscale(bogus) are drawn with a note (garbled 'using not drawn') where twoway refuses r(198)
   - File Names and Line Numbers: dash.ado:8776-8782; dash_render.py:16917-16918, 53261; run1 A8, run6 P1/P5/P6/P9

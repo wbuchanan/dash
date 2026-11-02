@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- colorcuts(abc) is r(121) and colorvar(a b) r(101) in twoway's words (were r(198)); colorvar(pri*) is refused (was drawn) (WP-42, CV-9)
 - aspectratio() with by(, shrink) or overallshrink is refused r(198), as twoway refuses it; it was drawn (WP-41, BY-5)
 - A weighted marker layer under by() with a panel whose weights are all zero is refused r(198), as twoway refuses it; it was drawn (WP-41, sil:SD-7)
 - A graph whose data had no observation left at dash build reached the renderer; lpoly, lpolyci, fpfit, fpfitci, mband and mspline without bands(), histogram on no data and a by() graph with no panel are refused there with twoway's words and a line naming the plot, and function, scatteri, pci and pcarrowi under by() with no panel are refused "nothing to graph" (WP-37, DG-1)

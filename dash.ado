@@ -4213,6 +4213,50 @@ program define _dash_option_rules
     c_local _dash_rules_applies "`applies'"
 end
 
+// ================================================================
+// _dash_cv_value_check opt scalar  -- WP-42 CV-9: colorcuts(),
+// colorlevels() and colorvar() read as twoway reads them
+// (twoway_yxview_parse.class): colorcuts() by -syntax-'s numlist sort,
+// colorlevels() by -syntax-'s integer, colorvar() by -confirm numeric
+// variable-, so a refusal carries Stata's own words and return code
+// ("colorcuts() invalid -- invalid numlist", r(121); "foreign not
+// allowed", r(101); "* invalid name", r(198); "'make' found where
+// numeric variable expected", r(7); a second name "foreign not
+// allowed", r(101)).  Abbreviations are taken, as
+// twoway takes them.  The value is read from a string scalar and reaches
+// a command only through macval(); a value holding a backtick, $, a
+// quote, a backslash or a control byte (_dash_so_unsafe), or a blank
+// one, is left to _dash_validate_value's own words.
+// ================================================================
+program define _dash_cv_value_check
+    version 19
+    args opt sc
+    mata: st_local("value", st_strscalar(st_local("sc")))
+    mata: st_local("_cv_skip", strofreal(_dash_so_unsafe(st_local("value")) | strtrim(st_local("value")) == ""))
+    if `_cv_skip' exit
+    if "`opt'" == "colorvar" {
+        capture noisily confirm numeric variable `macval(value)'
+        if _rc exit _rc
+        // confirm takes a varlist; twoway then refuses the second name,
+        // r(101) (measured: colorvar(rep78 foreign) and colorvar(rep78
+        // foreign mpg) are "foreign not allowed").
+        mata: st_local("_cv_nw", strofreal(cols(tokens(st_local("value")))))
+        if `_cv_nw' > 1 {
+            mata: _dash_say("err", "", tokens(st_local("value"))[2], " not allowed")
+            exit 101
+        }
+        exit
+    }
+    local 0 `", `opt'(`macval(value)')"'
+    if "`opt'" == "colorcuts" {
+        capture noisily syntax , COLORCUTs(numlist sort)
+    }
+    else {
+        capture noisily syntax [ , COLORLEVels(integer -9999) ]
+    }
+    if _rc exit _rc
+end
+
 // ----------------------------------------------------------------
 // _dash_validate_value  prefix opt spec value ptype
 //
@@ -4244,6 +4288,15 @@ program define _dash_validate_value, rclass
     local spec   `"`_dash_a3'"'
     local ptype  `"`_dash_a4'"'
     local value : copy local _dash_txt
+
+    // WP-42 CV-9: colorcuts(), colorlevels() and colorvar() are refused by
+    // the commands twoway runs on them, in their words and return codes
+    // (_dash_cv_value_check); what they take goes on to the rules below.
+    if inlist("`opt'", "colorcuts", "colorlevels", "colorvar") {
+        tempname CV
+        mata: st_strscalar(st_local("CV"), st_local("value"))
+        _dash_cv_value_check `opt' `CV'
+    }
 
     local kind ""
     local p1 ""
@@ -4772,16 +4825,8 @@ program define _dash_validate_value, rclass
             mata: _dash_say("err", "`prefix': `opt'() must name one variable (got: ", st_local("value"), ")")
             exit 198
         }
-        // WP-35 DT-15: colorvar() naming a string variable is refused as
-        // twoway refuses it, r(7) (dash_only_words_truth.json V3;
-        // DECISIONS.md P4-7); dash drew a colour per value.
-        if "`opt'" == "colorvar" & `: word count `vv'' == 1 {
-            capture confirm string variable `vv', exact
-            if !_rc {
-                mata: _dash_say("err", "'", st_local("vv"), "' found where numeric variable expected")
-                exit 7
-            }
-        }
+        // WP-35 DT-15's string colorvar() (r(7), V3) is refused by
+        // _dash_cv_value_check's confirm numeric variable (WP-42 CV-9).
         // by()'s sub-options, refused in twoway's stages, codes and words
         // (WP-30 P1.15b); the tail is read by value from a string scalar.
         if `hastail' {
