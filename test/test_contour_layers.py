@@ -209,7 +209,9 @@ class TestContourlineDraws:
             _T["line"]["default"]["cuts"])
         assert len(cr.line_renderer.data_source.data["xs"]) == 2
         assert not _bars(figs[0])
-        assert any("contourline" in n and "not drawn" in n for n in notes)
+        # Flipped: dash noted the level keys as not drawn; WP-42 LT-22:
+        # twoway keys none for black lines and prints nothing, as dash now.
+        assert not any("contourline" in n for n in notes)
 
 
 class TestCuts:

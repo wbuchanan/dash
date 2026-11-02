@@ -210,11 +210,10 @@ class TestWhatCountsAsADiagnostic:
     def test_no_shipped_example_declares_a_diagnostic(self):
         """Every example but one is meant to run silent; a declaration is a
         decision to review, so adding one changes this test on purpose."""
-        # Flipped: plot_types_tour.do (WP-31 J3) draws contourline, whose
-        # build prints its level-keys note on every page (dash_render.py's
-        # "contourline-keys" warn_once), so it declares that note.
-        declared = {"plot_types_tour.do": (
-            "contourline: the legend's keys for its levels are not drawn",)}
+        # Flipped: plot_types_tour.do (WP-31 J3) declared contourline's
+        # level-keys note; WP-42 LT-22 draws the keys as twoway does and
+        # the note is gone, so no example declares one.
+        declared = {}
         for f in EXAMPLES:
             with open(os.path.join(ROOT, "examples", f), encoding="utf-8") as fh:
                 assert rv.allowed_in(fh.read()) == declared.get(f, ()), f

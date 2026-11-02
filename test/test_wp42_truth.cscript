@@ -882,6 +882,98 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
 }
 * ==== end S03 ====
 
+// S03 LT-22 helpers: _q4203_levels: the level legend's texts both modes
+// draw for a registered graph, top first, into q4203_ls and q4203_lv;
+// _q4203_svglev: twoway's legend texts right of the plot region, top
+// first, into q4203_lt.
+python:
+def _q4203_levels(sp, dp, app):
+    from sfi import Macro
+    from bokeh.models import Legend, Plot
+    a, b = _q4203_models(sp, dp, app)
+    for models, sfx in ((a, "s"), (b, "v")):
+        texts = []
+        for m in models:
+            if not isinstance(m, Plot):
+                continue
+            for side in (m.right, m.left, m.above, m.below, m.center):
+                for k in side:
+                    if isinstance(k, Legend) and k.visible is not False:
+                        for it in k.items:
+                            v = getattr(it.label, "value", None)
+                            texts.append(str(it.label if v is None else v))
+        Macro.setGlobal("q4203_l" + sfx, " ".join(texts))
+
+
+def _q4203_svglev(path):
+    from sfi import Macro
+    from svg_truth import svg_document
+    d = svg_document(path)
+    r = d["plotregion"]["right"]
+    ts = sorted((t for t in d["texts"] if t["x"] is not None
+                 and t["x"] > r + 1 and not t["rotate"]),
+                key=lambda t: t["y"])
+    Macro.setGlobal("q4203_lt", " ".join(t["text"] for t in ts))
+end
+
+capture program drop _q4203_lreg
+program define _q4203_lreg
+    // _q4203_lreg <dir> <dash command...>: register one graph and read
+    // the level legend both modes draw.
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4203_m; _q4203_m._q4203_levels("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
+* ==== S03 LT-22: contourline keys its levels ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03d "`w42_work'/s03l"
+    capture mkdir "`q03d'"
+    capture graph drop _all
+    sysuse sandstone, clear
+
+    // ------------------------------------------------------------
+    // Q4203-5: contourline, colorlines keys each level in the plot
+    // legend, highest first, as twoway's legend texts read (live SVG);
+    // plain contourline draws no legend (twoway: no text right of the
+    // plot region) and prints no note, saved and served.
+    // ------------------------------------------------------------
+    quietly twoway contourline depth northing easting, colorlines name(q03l, replace)
+    capture erase "`q03d'/q03l.svg"
+    cert_svg_export, name(q03l) file("`q03d'/q03l.svg")
+    python: import __main__ as _q4203_m; _q4203_m._q4203_svglev("`q03d'/q03l.svg")
+    local tw "${q4203_lt}"
+    _w42_expect Q4203-5 `"("`tw'" != "")"' "twoway's level legend: `tw'"
+    _q4203_lreg "`q03d'" contourline depth northing easting, colorlines name(q03l)
+    _w42_expect Q4203-5 `"("${q4203_ls}" == "`tw'" & "${q4203_lv}" == "`tw'")"' "saved ${q4203_ls}, served ${q4203_lv}, twoway `tw'"
+    quietly twoway contourline depth northing easting, name(q03l, replace)
+    capture erase "`q03d'/q03l.svg"
+    cert_svg_export, name(q03l) file("`q03d'/q03l.svg")
+    python: import __main__ as _q4203_m; _q4203_m._q4203_svglev("`q03d'/q03l.svg")
+    _w42_expect Q4203-5 `"("${q4203_lt}" == "")"' "twoway's plain contourline legend: ${q4203_lt}"
+    _q4203_lreg "`q03d'" contourline depth northing easting, name(q03l)
+    _w42_expect Q4203-5 `"("${q4203_ls}" == "" & "${q4203_lv}" == "")"' "plain: saved ${q4203_ls}, served ${q4203_lv}"
+    _q4201_try "`q03d'/try.log" dash contourline depth northing easting, name(q03l)
+    cert_log_has "`q03d'/try.log", needle("contourline:")
+    _w42_expect Q4203-5 "(r(found) == 0)" "plain contourline printed a note"
+    _w42_done Q4203-5 "contourline keys its levels as twoway does, saved and served"
+
+    foreach f in q03l.svg s.json d.json a.py try.log {
+        capture erase "`q03d'/`f'"
+    }
+    capture rmdir "`q03d'"
+    macro drop q4203_ls q4203_lv q4203_lt
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // S05 helpers (WP-42 42-05).  _q4205_row: a probe of
 // fixtures/colorvar_refusal_truth.json into locals q05_rc, q05_n,
 // q05_l1 .. (its printed lines, trimmed), q05_cmd (twoway's command) and

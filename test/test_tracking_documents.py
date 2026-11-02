@@ -2930,7 +2930,6 @@ GAPS4_OPEN = {
     'LT-12': 'clegend(title()) replaces the z title and prints the raw option text, quotes included, when it has sub-options',
     'AX-12': 'The z tick family: zlabels/zticks/zmlabels/zmticks are refused (twoway takes them); ztick(), zmlabel() and zmtick() are noted and not drawn, and are absent from the Unsupported list',
     'CV-17': 'colorlist() with quoted RGB colours is not applied under colorvar(): every marker is black and the key is a legend of ranges where twoway draws the listed colours with a colour bar',
-    'LT-22': 'contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line',
     'LT-1': "legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles",
     'LT-4': 'legend(ring(0) bplacement()) ignores bplacement; bplacement abbreviations (nor, nea, t, top) are not read',
     'LT-2': 'legend(nobox) removes the region box; in twoway nobox is the key-text textbox option and changes nothing',

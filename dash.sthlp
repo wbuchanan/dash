@@ -657,9 +657,13 @@ A scheme's {cmd:yesno contours_outline}, {cmd:yesno contours_colorlines},
 {cmd:yesno contours_reversekey} and {cmd:numstyle contours} are read and
 ignored, as {cmd:twoway} ignores them: a scheme that includes
 {cmd:s2color} and sets any of them draws the {cmd:s2color} picture.
-{cmd:contourline}'s legend keys are named in a note and not drawn,
-which
-{opt clabels()} and {opt format()} label.  {opt lev()} through
+Under {opt colorlines} or {opt ccolors()} {cmd:contourline} keys its
+lines in the plot legend, one key a level, highest first, labelled by
+{opt clabels()} (lowest level first) else the cut in {opt format()}
+({cmd:%9.0g} by default) and placed by {opt plegend()}, at the right by
+default; its black lines draw no legend, as {cmd:twoway} draws none.
+{it:Difference from twoway:} after a filter move the legend keeps the
+levels it was built with.  {opt lev()} through
 {opt level()} are {opt levels()} here, as {cmd:twoway} reads them, and
 {opt le()} is refused, as {cmd:twoway} refuses it; {opt levels()} above
 500, and more than 499 values in {opt ccuts()}, are refused, as

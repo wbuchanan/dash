@@ -24,6 +24,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
 sys.path.insert(0, os.path.join(_HERE, ".."))
 
+import dash_render as dr  # noqa: E402
 import test_by_axes_keys as tbk  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from conftest import make_data_json  # noqa: E402
@@ -167,3 +168,68 @@ class TestTwowaysKey:
         got = {p[2:]: _swatch_kind(r) for p, r in t.items()
                if p.startswith("S_")}
         assert got == _SWATCH_KIND
+
+
+# ---------------------------------------------------------------------------
+# LT-22: contourline keys its levels in the plot legend under colorlines,
+# as twoway does (CL_cl: one key a line, highest first, labelled 8000 ...
+# 7700 in the line's colour, at the right; CL_clp: plegend(position(6))
+# below), and plain contourline draws no legend and prints nothing (CL_ctl).
+# ---------------------------------------------------------------------------
+
+import test_contour_gen as _cg  # noqa: E402
+import test_contour_outlines as _co  # noqa: E402
+
+_CMODES = ("std", "srv")
+
+
+def _level_legends(fig):
+    return [m for s in ("right", "left", "above", "below", "center")
+            for m in getattr(fig, s)
+            if type(m).__name__ == "Legend" and m.items
+            and m.visible is not False]
+
+
+def _label(it):
+    v = getattr(it.label, "value", None)
+    return str(it.label if v is None else v)
+
+
+@pytest.mark.parametrize("mode", _CMODES)
+class TestContourlineLegend:
+
+    def test_the_fixture(self, mode):
+        t = _key_truth()
+        assert _key_texts(t["CL_cl"]) == ["8000", "7900", "7800", "7700"]
+        assert not [r for r in t["CL_ctl"]["regions"][1:]]
+        assert len(t["CL_clp"]["regions"]) == 2
+
+    def test_colorlines_keys_its_levels(self, mode):
+        """contourline z y x, colorlines: one legend at the right keying
+        each cut, highest first, in its line's colour, no note."""
+        plot = _cg._plot("contourline", {"colorlines": "colorlines"})
+        fig, msgs = _co._draw(mode, plot, _co._scatter_df())
+        [cr] = _cg._crs(fig)
+        lev = [float(v) for v in cr.line_renderer.data_source.data["levels"]]
+        cols = list(cr.line_renderer.data_source.data["line_color"])
+        (lg,) = _level_legends(fig)
+        assert lg in list(fig.right)
+        want = [dr._dash_fmt_text(v, "%9.0g") for v in reversed(lev)]
+        assert [_label(it) for it in lg.items] == want
+        got = [it.renderers[0].glyph.line_color for it in lg.items]
+        assert got == list(reversed(cols))
+        assert not [m for m in msgs if "contourline" in str(m)]
+
+    def test_plegend_places_it(self, mode):
+        """plegend(position(6)) puts the level legend below."""
+        plot = _cg._plot("contourline", {"colorlines": "colorlines"})
+        spec = tp._spec([plot], None, {"plegend": "position(6)"})
+        figs, _m = _cg._figs_msgs(mode, spec, _co._scatter_df())
+        (lg,) = _level_legends(figs[0])
+        assert lg in list(figs[0].below)
+
+    def test_plain_contourline_draws_no_legend_and_no_note(self, mode):
+        plot = _cg._plot("contourline")
+        fig, msgs = _co._draw(mode, plot, _co._scatter_df())
+        assert not _level_legends(fig)
+        assert not [m for m in msgs if "contourline" in str(m)]

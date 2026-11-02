@@ -5264,11 +5264,17 @@
   - Suggested fix: Read each quoted colour of colorlist() whole, as twoway does, and draw the levels in them under the stepped key
   - Resolution: Not fixed because WP-42 section 42-01 has not landed. Graded S2 (WP-42): a colour option twoway honours is drawn wrong, no refusal.
 
-- [ ] Title: contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line
+- [x] Title: contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line
   - File Names and Line Numbers: dash.sthlp:592-593, 5527-5533; CL_ctl, CL_cl
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 7 (major): ids LT-22; partly; tracked: documented. Registered as GAPS4 LT-22 (WP-42, section 42-03, Fix).
   - Suggested fix: Build the level legend under colorlines; drop the note on plain contourline
-  - Resolution: Not fixed because WP-42 section 42-03 has not landed. Graded S2 (WP-42): drop-in audit package 7, major.
+  - Resolution: Fixed in part 02nov2026 (WP-42, LT-22). Measured first (scripts/extract_colorvar_key_truth.do CL_ctl, CL_cl, CL_clp, test/fixtures/colorvar_key_truth.json; exported SVGs 02nov2026 for ccolors(), format(%9.2f), clabels(), legend(off) and a second layer): under colorlines or ccolors() twoway keys each line in its plot legend, one key a level, highest first (8000 7900 7800 7700 on sandstone), the line in its colour, labelled by clabels() from the lowest level else the cut in format() (%9.0g by default; 8000.00 under %9.2f), at the right, below under plegend(position(6)), kept under legend(off); black lines draw no legend. GlyphMapper._contourline_key draws that legend in both modes (a Legend of invisible line swatches named under _DASH_SWATCH_PREFIX, placed by plegend() as the coloruseplegend key is), and the note "the legend's keys for its levels are not drawn" is gone, so plain contourline prints nothing. Left open (BUGS.md "The contour colour key's title sits above it with no axis line, and contourline's level legend keeps its build's levels after a filter move"): the contour key's side title and axis line, which the axis-style key cell of CV-3 draws, and the level legend after a filter move. Pinned by test/test_colorvar_key.py::TestContourlineLegend, test/test_contour_layers.py::TestContourlineDraws::test_lines_only, test_wp42_truth.cscript Q4203-5; fixture test/fixtures/colorvar_key_truth.json.
+
+- [ ] Title: The contour colour key's title sits above it with no axis line, and contourline's level legend keeps its build's levels after a filter move
+  - File Names and Line Numbers: dash_render.py GlyphMapper._contour_key, GlyphMapper._contourline_key; dash.sthlp contour and contourline paragraph
+  - Description: Residual of GAPS4 LT-22 (WP-42, section 42-03). twoway draws the contour key's title up its right side (-90) beside an axis line (colorvar_key_truth.json C_plain: "Depth (ft.)" rotated at x 3722, a vline at 3294.7); dash's ContourColorBar puts the title above the bar and draws no axis line. After a filter move twoway relabels contourline's level legend for the levels it draws over the kept rows; dash's legend keeps the build's levels (the help says so).
+  - Suggested fix: draw the contour key as the axis-style key cell of CV-3 (42-03 D-42-03.a) and give the contour refit the level legend's items to rewrite.
+  - Resolution: Not fixed: it stays open because the axis-style key cell (CV-3) has not landed. Graded S3 (WP-42): the key's title side and a legend after a move; every level is keyed at build.
 
 - [ ] Title: legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles
   - File Names and Line Numbers: dash_render.py:39260-39304; stcolor 157.44 vs 112.56 px; s2color dknavy

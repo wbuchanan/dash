@@ -24909,12 +24909,9 @@ class GlyphMapper:
                 cr.set_data(ContourData(fill_data=None, line_data=LineData(
                     xs=[p[0] for p in _pairs], ys=[p[1] for p in _pairs],
                     levels=[float(c) for c in cuts])))
-            # twoway's key for the lines is its plot legend's level keys
-            # (labelled by clabels() and format()); not drawn, named once.
-            _dash_warn_once(
-                ("contourline-keys",),
-                "dash: contourline: the legend's keys for its levels are "
-                "not drawn; clabels() and format() label them.")
+            # WP-42 LT-22: twoway keys coloured lines in its plot
+            # legend, one key a level (colorvar_key_truth.json CL_cl).
+            self._contourline_key(fig, cuts, lcol, lwid, options)
             lo = hi = None
         else:
             lv = [0.0, 1.0] if _no_rows else \
@@ -25224,6 +25221,46 @@ class GlyphMapper:
                               dp=getattr(self, "dp", "period"))
         self._colorvar_key_place(
             fig, cb, _dash_clegend_opts(zo.get("clegend", "")), "clegend")
+
+    def _contourline_key(self, fig, cuts, colours, widths, options) -> None:
+        """contourline's level keys (WP-42 LT-22): under ``colorlines`` or
+        ``ccolors()`` twoway keys each cut's line in its plot legend --
+        one key a level, highest first, the line in its colour and width,
+        labelled by ``clabels()`` (lowest level first; a level past its
+        list keeps its number) else the cut in ``format()`` (%9.0g by
+        default), and placed by ``plegend()``, at the right by default
+        (colorvar_key_truth.json CL_cl, CL_clp; exported SVGs, 02nov2026:
+        8000 7900 7800 7700 on sandstone, 8000.00 .. under format(%9.2f),
+        the legend kept under legend(off)).  Black lines (neither option)
+        draw no legend (CL_ctl).  The keys are a legend's invisible
+        swatches, named under ``_DASH_SWATCH_PREFIX``."""
+        from bokeh.models import Legend, LegendItem
+        opts = options or {}
+        if not (str(opts.get("colorlines", "") or "").strip()
+                or str(opts.get("ccolors", "") or "").strip()):
+            return
+        fin = [float(c) for c in cuts if math.isfinite(float(c))]
+        if not fin:
+            return
+        fmt = str(opts.get("format", "") or "").strip() or "%9.0g"
+        labs = [_dash_unquoted(t) for t in _dash_by_tokens(
+            str(opts.get("clabels", "") or "").strip())]
+        items = []
+        for i in reversed(range(len(fin))):
+            text = labs[i] if i < len(labs) else _dash_fmt_text(
+                fin[i], fmt, dp=getattr(self, "dp", "period"))
+            sw = fig.line(
+                x=[float("nan")], y=[float("nan")],
+                line_color=colours[min(i, len(colours) - 1)],
+                line_width=OptionTranslator.translate_lwidth(
+                    widths[min(i, len(widths) - 1)]),
+                visible=False, name=f"{_DASH_SWATCH_PREFIX}contourline_{i}")
+            items.append(LegendItem(label=text, renderers=[sw]))
+        lg = Legend(items=items, name=_COLORVAR_LEGEND_NAME)
+        lg._dash_useplegend = True
+        pleg = str((self.z_options or {}).get("plegend", "") or "").strip()
+        self._colorvar_key_place(fig, lg, _dash_clegend_opts(pleg),
+                                 "plegend")
 
     def _contour_key_empty(self, fig, cr, zvar) -> None:
         """contour's key over no observations (WP-37 DG-1): twoway draws

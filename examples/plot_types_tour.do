@@ -10,15 +10,11 @@
 *!   you need.  test/test_examples_cover.py reads the drawn types from
 *!   dash.ado and fails when one of them has no example.
 *!
-*!   contourline prints a note at build time, every time (twoway's level
-*!   keys are not drawn); the release-gate line below allows that one note.
-*!
 *! Usage:  do examples/plot_types_tour.do
 *!         (run from the dash/ directory)
 *!
 *! Produces: plot_types_tour.html, plot_types_tour_ts.html
 *! Version: 0.1.0  18oct2026
-*! release-gate allows: contourline: the legend's keys for its levels are not drawn
 
 sysuse auto, clear
 dash clear

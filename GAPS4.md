@@ -458,7 +458,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-12 Tracked:** Open (WP-42 section 42-03).
 - **sil:SD-4 Tracked:** Closed in WP-42, BUGS.md "The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read", commit d7dffa5.
 - **CV-17 Tracked:** Open (WP-42 section 42-01).
-- **LT-22 Tracked:** Open (WP-42 section 42-03).
+- **LT-22 Tracked:** Partly closed in WP-42 (section 42-03, commit pending): contourline keys its levels under colorlines or ccolors() and plain contourline prints no note; open: the contour key's side title and axis line, and the level legend after a move (BUGS.md "The contour colour key's title sits above it with no axis line, and contourline's level legend keeps its build's levels after a filter move").
 - **LT-1 Tracked:** Open (WP-43 section 43-01).
 - **LT-4 Tracked:** Open (WP-43 section 43-02).
 - **LT-2 Tracked:** Open (WP-43 section 43-03).
