@@ -19,6 +19,17 @@ sys.path.insert(0, _ROOT)
 from scripts.corpus import extract  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _fresh_shipped_names():
+    """extract._shipped_names is cached for the process; a test that points
+    DASH_STATA_DIR at a fake Stata folder filled it with that folder's
+    datasets, and a later test on the worker read auto as not shipped
+    (webuse auto, 02nov2026).  Each test starts and ends with it empty."""
+    extract._shipped_names.cache_clear()
+    yield
+    extract._shipped_names.cache_clear()
+
+
 # ------------------------------------------------------------ help files
 
 class TestHelpLinks:
