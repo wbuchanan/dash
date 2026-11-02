@@ -441,7 +441,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **BY-7 Tracked:** Closed in WP-41, BUGS.md "by(, legend(pos(abc))) gives no note and the wrong side; by(, bgcolor()) is named although nothing visible changes under stcolor", commit 5497cfa.
 - **TR-19 Tracked:** Closed in WP-41, BUGS.md "Residuals in closed by()/span entries are filed nowhere: 'panel row taller than its panels (unfiled)', by(clegend(pos(6))) keeps panel proportions", commit 8ecc023.
 - **CV-8 Tracked:** Closed in WP-42, BUGS.md "An unbinned numeric colorvar() on 17 non-line types is a 256-step gradient with a ColorBar; twoway bins at the z ticks with a stepped key (mono schemes start near white)", commit 140c7e7.
-- **CV-8a Tracked:** Closed in WP-42, BUGS.md "Under by(), every panel draws its own contour colour key; twoway draws none under by(), and one key beside the panels under by(, clegend(on))", commit pending.
+- **CV-8a Tracked:** Closed in WP-42, BUGS.md "Under by(), every panel draws its own contour colour key; twoway draws none under by(), and one key beside the panels under by(, clegend(on))", commit 65251df.
 - **CV-1 Tracked:** Closed in WP-42, BUGS.md "colorfillonly strips the level colour from every line part (line, connected, spike, dropline, rcapsym, pc shafts and heads)", commit 8a14a8d.
 - **CV-3 Tracked:** Open (WP-42 section 42-03).
 - **CV-4 Tracked:** Open (WP-42 section 42-04).
@@ -455,10 +455,10 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **CV-14 Tracked:** Closed in WP-42, BUGS.md "Documented acceptances: string colorvar, colpalette()/colornlevels()/colormissing(), cv()/colv(), an empty layer drawing no key, '(missing)' for all-missing", commit 6ed9266.
 - **CV-15 Tracked:** Open (WP-42 section 42-03).
 - **LT-12 Tracked:** Open (WP-42 section 42-03).
-- **AX-12 Tracked:** Partly closed in WP-42 (section 42-03, commit pending): zlabels(), zticks(), zmlabels() and zmticks() are taken as their singulars, as twoway takes them; open: ztick(), zmlabel() and zmtick() are not drawn (BUGS.md "ztick(), zmlabel() and zmtick() are named in the note and not drawn on the colour key").
+- **AX-12 Tracked:** Partly closed in WP-42 (section 42-03, commit 0cf9703): zlabels(), zticks(), zmlabels() and zmticks() are taken as their singulars, as twoway takes them; open: ztick(), zmlabel() and zmtick() are not drawn (BUGS.md "ztick(), zmlabel() and zmtick() are named in the note and not drawn on the colour key").
 - **sil:SD-4 Tracked:** Closed in WP-42, BUGS.md "The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read", commit d7dffa5.
 - **CV-17 Tracked:** Open (WP-42 section 42-01).
-- **LT-22 Tracked:** Partly closed in WP-42 (section 42-03, commit pending): contourline keys its levels under colorlines or ccolors() and plain contourline prints no note; open: the contour key's side title and axis line, and the level legend after a move (BUGS.md "The contour colour key's title sits above it with no axis line, and contourline's level legend keeps its build's levels after a filter move").
+- **LT-22 Tracked:** Partly closed in WP-42 (section 42-03, commits 0df3f93 and c03c54e): contourline keys its levels under colorlines or ccolors() and plain contourline prints no note; open: the contour key's side title and axis line, and the level legend after a move (BUGS.md "The contour colour key's title sits above it with no axis line, and contourline's level legend keeps its build's levels after a filter move").
 - **LT-1 Tracked:** Open (WP-43 section 43-01).
 - **LT-4 Tracked:** Open (WP-43 section 43-02).
 - **LT-2 Tracked:** Open (WP-43 section 43-03).
