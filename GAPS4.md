@@ -445,14 +445,14 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **CV-1 Tracked:** Closed in WP-42, BUGS.md "colorfillonly strips the level colour from every line part (line, connected, spike, dropline, rcapsym, pc shafts and heads)", commit 8a14a8d.
 - **CV-3 Tracked:** Open (WP-42 section 42-03).
 - **CV-4 Tracked:** Open (WP-42 section 42-04).
-- **CV-2 Tracked:** Closed in WP-42, BUGS.md "colordiscrete with colorlevels(k) makes k-1 cuts at range/k; twoway makes k cuts at range/(k+1)", commit pending.
+- **CV-2 Tracked:** Closed in WP-42, BUGS.md "colordiscrete with colorlevels(k) makes k-1 cuts at range/k; twoway makes k cuts at range/(k+1)", commit 8a5c8b3.
 - **CV-5 Tracked:** Open (WP-42 section 42-04).
 - **CV-6 Tracked:** Closed in WP-42, BUGS.md "Two colorvar layers: dash draws a key per layer and no plot legend; twoway draws the last layer's key plus a plot legend", commit c541e9e.
 - **CV-7 Tracked:** Closed in WP-42, BUGS.md "A colorvar layer's plot-legend swatch takes row 0's level colour, not its pstyle colour", commit b554984.
 - **CV-11 Tracked:** Open (WP-42 section 42-04).
-- **CV-9 Tracked:** Closed in WP-42, BUGS.md "colorvar refusals differ in rc or words: colorcuts(abc) r(198) vs r(121); colorvar(a b) r(198) vs r(101); colorvar(pri*) accepted vs r(198); colorlevels(abc) and nosuch in dash's words", commit pending.
-- **CV-10 Tracked:** Closed in WP-42, BUGS.md "Malformed clegend(bogus), plegend(bogus), zlabel(bogus) and zscale(bogus) are drawn with a note (garbled 'using not drawn') where twoway refuses r(198)", commit pending.
-- **CV-14 Tracked:** Closed in WP-42, BUGS.md "Documented acceptances: string colorvar, colpalette()/colornlevels()/colormissing(), cv()/colv(), an empty layer drawing no key, '(missing)' for all-missing", commit pending.
+- **CV-9 Tracked:** Closed in WP-42, BUGS.md "colorvar refusals differ in rc or words: colorcuts(abc) r(198) vs r(121); colorvar(a b) r(198) vs r(101); colorvar(pri*) accepted vs r(198); colorlevels(abc) and nosuch in dash's words", commit a753ede.
+- **CV-10 Tracked:** Closed in WP-42, BUGS.md "Malformed clegend(bogus), plegend(bogus), zlabel(bogus) and zscale(bogus) are drawn with a note (garbled 'using not drawn') where twoway refuses r(198)", commit 50c4922.
+- **CV-14 Tracked:** Closed in WP-42, BUGS.md "Documented acceptances: string colorvar, colpalette()/colornlevels()/colormissing(), cv()/colv(), an empty layer drawing no key, '(missing)' for all-missing", commit 6ed9266.
 - **CV-15 Tracked:** Open (WP-42 section 42-03).
 - **LT-12 Tracked:** Open (WP-42 section 42-03).
 - **AX-12 Tracked:** Open (WP-42 section 42-03).
