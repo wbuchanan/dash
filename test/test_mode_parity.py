@@ -1401,8 +1401,15 @@ def _render_pair(name, spec):
     # where the renderer hands them over, so its markup reader can name
     # each cell's component.  Every other page embeds one root and never
     # calls components().
+    # Only a layout(bs) page (no layout root) is read from its markup, so
+    # only it is serialised: every other entry's models are built and
+    # finished without the page, about two fifths of a render (02nov2026).
     with mock.patch.object(dr, "components", wraps=dr.components) as handed:
-        r, std_w, page = _standalone_page(spec)
+        r, std_w = _standalone(spec)
+        page = None
+        if getattr(r, "_last_layout_root", None) is None:
+            handed.reset_mock()
+            r, std_w, page = _standalone_page(spec)
     embedded = {m.id: m for call in handed.call_args_list
                 for m in call.args[0]}
     doc, srv_w, trial_w = _served_build(spec, trial=name in _TRIAL_NAMES)
