@@ -109,10 +109,13 @@ def _glyphs(fig):
     and not dot's rows of dots, which are drawn in markerstyle dots and
     which no marker or colour option reaches (WP-31 B5b; twoway's
     color(), mcolor(), msymbol(), pstyle() and mstyle() leave them black:
-    test/fixtures/dot_truth.json D23-D26)."""
+    test/fixtures/dot_truth.json D23-D26), and not a colorvar layer's
+    hidden legend proxy (``__dash_keyproxy``, WP-42 CV-7), which draws no
+    rows and keys the layer in its series colour."""
     return [r for r in fig.renderers
             if getattr(r, "glyph", None) is not None
             and not dr._dash_is_swatch(r)
+            and str(getattr(r, "name", None) or "") != "__dash_keyproxy"
             and "dash_dots" not in (getattr(r, "tags", None) or ())]
 
 

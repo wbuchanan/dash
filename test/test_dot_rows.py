@@ -87,6 +87,8 @@ def _dots(f):
 def _marker(f):
     [r] = [r for r in f.renderers if not _is_dots(r)
            and not dr._dash_is_swatch(r)
+           # Flipped (WP-42 CV-7): not the layer's hidden legend proxy.
+           and str(getattr(r, "name", None) or "") != "__dash_keyproxy"
            and type(getattr(r, "glyph", None)).__name__ == "Scatter"]
     return r
 

@@ -305,9 +305,11 @@ class TestStcoloraliasIsDrawnAsStcolor:
             assert _unknown(d.warnings) == [], d.warnings
             ms = list(d.fig.select({"type": ColorMapper}))
             assert ms, "no colour mapper"
-            m = ms[0]
-            return (list(m.palette), getattr(m, "low", None),
-                    getattr(m, "high", None))
+            # Flipped (WP-42 CV-8): the glyphs' stepped mapper and the
+            # key bar's own mapper are both drawn; compare every mapper,
+            # in a fixed order (a set's order picked either one).
+            return sorted((list(m.palette), getattr(m, "low", None),
+                           getattr(m, "high", None)) for m in ms)
         assert mapper("stcoloralias") == mapper("stcolor")
 
     def test_the_help_says_so(self):

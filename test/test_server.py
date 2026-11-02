@@ -7549,6 +7549,9 @@ class TestServerFilterPreservesDerivedColumns:
                      for r in fig.renderers
                      if isinstance(r, GlyphRenderer)
                      and type(r.glyph).__name__ == "Scatter"
+                     # Flipped (WP-42 CV-7): the layer's hidden legend
+                     # proxy shares its source and is not the layer.
+                     and str(r.name or "") != "__dash_keyproxy"
                      and column in r.data_source.data]
             assert len(found) == 1, found
             return found[0]
