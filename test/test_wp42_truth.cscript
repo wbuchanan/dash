@@ -580,7 +580,8 @@ def _q4202_svg(path):
 
 def _q4202_keys(path):
     """twoway's texts right of the plot region (q4202_kt) and below it
-    (q4202_bt), "|" separated, from the SVG at *path*."""
+    (q4202_bt), and the fills of the markers below it, left to right
+    (q4202_lm), "|" separated, from the SVG at *path*."""
     from sfi import Macro
     from svg_truth import svg_document
     d = svg_document(path)
@@ -591,8 +592,13 @@ def _q4202_keys(path):
         (t for t in d["texts"] if t["y"] is not None
          and t["y"] > pr["bottom"] and t["x"] is not None
          and t["x"] <= pr["right"]), key=lambda t: (t["y"], t["x"]))]
+    marks = [c["fill"] for c in sorted(
+        (c for c in d["circles"] if c["cy"] is not None
+         and c["cy"] > pr["bottom"] and (c.get("fill") or "none") != "none"),
+        key=lambda c: c["cx"])]
     Macro.setGlobal("q4202_kt", "|".join(right))
     Macro.setGlobal("q4202_bt", "|".join(below))
+    Macro.setGlobal("q4202_lm", "|".join(marks))
 
 
 def _q4202_close(a, b):
@@ -704,6 +710,44 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w42_run' {
     _w42_done Q4202-3 "two colorvar layers: the last layer's key and a plot legend, saved and served"
 
     foreach f in q02c.svg s.json d.json a.py {
+        capture erase "`q02d'/`f'"
+    }
+    capture rmdir "`q02d'"
+    macro drop q4202_*
+    capture graph drop _all
+    dash clear
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
+* ==== S02 CV-7: the plot legend's colorvar key ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w42_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local q02d "`w42_work'/s02p"
+    capture mkdir "`q02d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4202-4: a colorvar() layer's plot-legend key is drawn in its
+    // pstyle colour, p1's #1a476f under s2color (measured live from
+    // twoway's SVG), saved and served.
+    // ------------------------------------------------------------
+    quietly twoway scatter mpg weight, colorvar(rep78) || scatter price weight, scheme(s2color) name(q02d, replace)
+    capture erase "`q02d'/q02d.svg"
+    cert_svg_export, name(q02d) file("`q02d'/q02d.svg")
+    python: import __main__ as _q4202_m; _q4202_m._q4202_keys("`q02d'/q02d.svg")
+    local lm "${q4202_lm}"
+    _w42_expect Q4202-4 `"(substr(`"`lm'"', 1, 7) == "#1a476f")"' `"twoway's legend keys `lm'"'
+    _q4202_reg "`q02d'" scatter mpg weight, colorvar(rep78) || scatter price weight, scheme(s2color) name(q02d)
+    foreach m in s v {
+        _w42_expect Q4202-4 `"(`"${q4202_p`m'}"' == "Mileage (mpg)|Price")"' `"`m': plot legend ${q4202_p`m'}"'
+        _w42_expect Q4202-4 `"(`"${q4202_c`m'}"' == `"`lm'"')"' `"`m': keys ${q4202_c`m'}, twoway `lm'"'
+    }
+    _w42_done Q4202-4 "the colorvar layer's plot-legend key is p1's colour, saved and served"
+
+    foreach f in q02d.svg s.json d.json a.py {
         capture erase "`q02d'/`f'"
     }
     capture rmdir "`q02d'"

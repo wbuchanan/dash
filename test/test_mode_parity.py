@@ -438,6 +438,9 @@ def _glyph_profile(fig):
         g = getattr(r, "glyph", None)
         if g is None:
             continue
+        # WP-42 CV-7: legend-only proxies draw nothing
+        if str(getattr(r, "name", "") or "") == "__dash_keyproxy":
+            continue
         entry = {"type": type(g).__name__, "visible": r.visible}
         # WP-28 E14: a linked figure's nonselection alpha, and whether this
         # renderer draws the link group's own shared source -- a served
@@ -4407,6 +4410,15 @@ _CVAR_MOVES = [
                {"by": "foreign, clegend(on)"}),
 ]
 MOVE_CORPUS.extend(_CVAR_MOVES)
+# WP-42 CV-7: a colorvar layer keyed through its proxy beside a plain
+# layer, after a move.  (A move that empties the layer is pinned by
+# test_colorvar_parts.py::TestTheProxySwatch::test_emptied_layer_has_no_key:
+# against the oracle built empty, the served layer keeps its mapped
+# colour spec over no rows, which this corpus would report.)
+MOVE_CORPUS.append(_move_case(
+    "colorvar beside a plain layer, dropdown to Foreign", _MOVES[0],
+    [plot_for("scatter", {"colorvar": "rep"}),
+     plot_for("scatter", yvar="price")]))
 # WP-34 PIC-1: the outline ring follows the fill through a range move.
 MOVE_CORPUS.append(_move_case("area outline after a range move", _MOVES[1],
                               [plot_for("area")]))

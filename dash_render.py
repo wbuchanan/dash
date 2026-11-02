@@ -16371,6 +16371,10 @@ class GlyphMapper:
         dom = self.colorvar_domain
         if dom is not None and len(dom) == 0:
             return
+        # WP-42 CV-7: the glyph's own colours, before colorvar() paints
+        # it, for the plot legend's key (_colorvar_key_proxy).
+        _orig = self._colorvar_orig(renderer.glyph)
+        _lvl1 = None
         # The colour rows' identities (colorvar_rows), so a filter move
         # reads the colour values of the rows it keeps -- a row with a
         # missing x or y included, which the drawn source has dropped
@@ -16705,6 +16709,7 @@ class GlyphMapper:
             while len(pal_list) < len(non_missing_factors):
                 pal_list += pal_list
             pal_colors = pal_list[:len(non_missing_factors)]
+            _lvl1 = pal_colors[0] if pal_colors else None
 
             mapper     = CategoricalColorMapper(factors=factors,
                                                 palette=pal_colors,
@@ -17046,6 +17051,18 @@ class GlyphMapper:
         # follows twoway's rule (_dash_apply_legend: two or more keys draw
         # one), so a lone colorvar() layer draws none and two layers, or a
         # colorvar() layer beside a plain one, key their series.
+        # WP-42 CV-7: the item keys a proxy in the series colour (level
+        # 1's under coloruseplegend), as twoway draws it, never the
+        # field-mapped glyph, which BokehJS draws in its first row's
+        # colour.  A line's probe is off the figure: no proxy.
+        if add_key and any(x is renderer for x in fig.renderers):
+            _kc = dict(_orig)
+            if _use_plegend and _lvl1 is not None:
+                for _p in ("fill_color", "line_color"):
+                    if _p in _kc:
+                        _kc[_p] = _lvl1
+                renderer._dash_key_level = _lvl1
+            self._colorvar_key_proxy(fig, renderer, _kc)
 
     def _colorvar_key_place(self, fig, key, place, which) -> None:
         """Add the colour *key* (a Legend or a ColorBar) to *fig* where
@@ -17143,6 +17160,68 @@ class GlyphMapper:
                     if m is key or not getattr(m, "_dash_cvar_key", False)]
             if len(kept) != len(panel):
                 setattr(fig, side, kept)
+
+    @staticmethod
+    def _colorvar_orig(glyph) -> dict:
+        """*glyph*'s constant colours and alphas (``fill_color``,
+        ``line_color``, ``fill_alpha``, ``line_alpha``), before colorvar()
+        paints it: the series colour twoway keys the layer in (WP-42
+        CV-7)."""
+        out = {}
+        for p in ("fill_color", "line_color", "fill_alpha", "line_alpha"):
+            if not hasattr(glyph, p):
+                continue
+            v = getattr(glyph, p)
+            if isinstance(v, (str, int, float)) and not isinstance(v, bool):
+                out[p] = v
+        return out
+
+    _KEY_PROXY_COORDS = ("x", "y", "x0", "y0", "x1", "y1", "top",
+                         "bottom", "left", "right")
+
+    def _colorvar_key_proxy(self, fig, renderer, colours):
+        """A legend-only copy of colorvar() *renderer* (WP-42 CV-7): the
+        same glyph class on the renderer's own source and view filter, its
+        coordinates the constant NaN (it draws nothing), its colours the
+        constants *colours*; named ``__dash_keyproxy``, its ``visible``
+        linked to the renderer's.  ``_dash_legend_keys`` keys it in the
+        renderer's place, so the plot legend draws the series colour, and
+        since it holds the layer's rows its key goes when a move leaves
+        the layer none.  None for a glyph of list coordinates."""
+        from bokeh.core.properties import value
+        from bokeh.models import CDSView, GlyphRenderer
+        g = getattr(renderer, "glyph", None)
+        if g is None:
+            return None
+        props = dict(g.properties_with_values(include_defaults=False))
+        if "xs" in props or "ys" in props:
+            return None
+        for k in list(props):
+            v = props[k]
+            fld = (v.get("field") if isinstance(v, dict)
+                   else getattr(v, "field", None))
+            if k in self._KEY_PROXY_COORDS and fld is not None:
+                props[k] = value(float("nan"))
+            elif k.endswith("_color") and fld is not None:
+                props.pop(k)
+        props.update(colours or {})
+        try:
+            glyph = type(g)(**props)
+        except (ValueError, TypeError, AttributeError):
+            return None
+        flt = getattr(getattr(renderer, "view", None), "filter", None)
+        view = CDSView(filter=flt) if flt is not None else CDSView()
+        proxy = GlyphRenderer(
+            data_source=renderer.data_source, glyph=glyph, view=view,
+            name="__dash_keyproxy",
+            x_range_name=renderer.x_range_name,
+            y_range_name=renderer.y_range_name,
+            tags=["dash_key_proxy", str(renderer.name or "")])
+        fig.renderers = list(fig.renderers) + [proxy]
+        proxy.js_link("visible", renderer, "visible")
+        proxy._dash_key_for = renderer
+        renderer._dash_key_proxy = proxy
+        return proxy
 
     def _colorvar_paint(self, glyph, source, color_spec, fill_only=False,
                         opacity=None) -> None:
@@ -17538,9 +17617,18 @@ class GlyphMapper:
                                          "transform", None) is not None),
                             None)
                 if spec is not None:
+                    _o = self._colorvar_orig(g)
                     self._colorvar_paint(
                         g, src, spec,
                         fill_only=bool(options.get("colorfillonly")))
+                    # WP-42 CV-7: keyed in its own colours, as the first.
+                    if getattr(prev[0], "_dash_key_proxy", None) is not None:
+                        _lv = getattr(prev[0], "_dash_key_level", None)
+                        if _lv is not None:
+                            for _p in ("fill_color", "line_color"):
+                                if _p in _o:
+                                    _o[_p] = _lv
+                        self._colorvar_key_proxy(fig, r, _o)
                     continue
             self._apply_colorvar(fig, r, src, options,
                                  add_key=add_key and k == 0)
@@ -58206,16 +58294,25 @@ def _dash_by_panel_matches(renderers, panels):
     first = list(getattr(panels[0], "renderers", None) or ())
     out = []
     for r in renderers or ():
+        # WP-42 CV-7: a legend proxy is placed by its renderer's place,
+        # and each panel's own proxy returned there.
+        base = getattr(r, "_dash_key_for", None)
+        at = r if base is None else base
         try:
-            j = next(i for i, x in enumerate(first) if x is r)
+            j = next(i for i, x in enumerate(first) if x is at)
         except StopIteration:
             continue
         for p in panels:
             lst = list(getattr(p, "renderers", None) or ())
-            if j < len(lst) and type(getattr(lst[j], "glyph", None)) is \
+            if j >= len(lst):
+                continue
+            m = lst[j]
+            if base is not None:
+                m = getattr(m, "_dash_key_proxy", None) or m
+            if type(getattr(m, "glyph", None)) is \
                     type(getattr(r, "glyph", None)) and \
-                    not any(lst[j] is x for x in out):
-                out.append(lst[j])
+                    not any(m is x for x in out):
+                out.append(m)
     return out
 
 
@@ -61622,6 +61719,14 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
         # WP-31 B5b: twoway keys dot's marker, not its rows of dots.
         rends = [r for r in rends if not _dash_is_swatch(r)
                  and "dash_dots" not in (getattr(r, "tags", None) or ())]
+        # WP-42 CV-7: a colorvar() renderer is keyed by its proxy, in the
+        # series colour (GlyphMapper._colorvar_key_proxy).
+        _kr = []
+        for r in rends:
+            r = getattr(r, "_dash_key_proxy", None) or r
+            if not any(r is x for x in _kr):
+                _kr.append(r)
+        rends = _kr
         ptype = str(plot.get("type", "")).lower()
         if ptype in _DASH_CI_TYPES:
             if rends:
@@ -62208,7 +62313,9 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
               and not getattr(r, "_dash_key_glyph", False)
               and "dash_join_none" not in (getattr(r, "tags", None) or [])
               # WP-31 B5b: dot's rows answer for nothing; the marker does.
-              and "dash_dots" not in (getattr(r, "tags", None) or [])]
+              and "dash_dots" not in (getattr(r, "tags", None) or [])
+              # WP-42 CV-7: a colorvar key's proxy draws nothing.
+              and "dash_key_proxy" not in (getattr(r, "tags", None) or [])]
     if not _rends:
         return
 

@@ -187,7 +187,9 @@ def _plot_renderers(fig):
     are left out."""
     return [r for r in fig.renderers
             if not str(getattr(r, "name", "") or "").startswith(
-                dr._DASH_SWATCH_PREFIX)]
+                dr._DASH_SWATCH_PREFIX)
+            # WP-42 CV-7: legend-only proxies draw nothing
+            and str(getattr(r, "name", "") or "") != "__dash_keyproxy"]
 
 
 # ---------------------------------------------------------------------------
@@ -313,7 +315,8 @@ class TestArrowHeads:
     def test_heads_take_the_shaft_colours(self, tmp, mode, ptype):
         assert len(TRUTH["types"][ptype]["head_strokes_with"]) == 5
         fig = _fig(tmp, mode, ptype, {"colorvar": "rep78"})
-        [seg] = [r for r in fig.renderers
+        # WP-42 CV-7: legend-only proxies draw nothing
+        [seg] = [r for r in _plot_renderers(fig)
                  if type(r.glyph).__name__ == "Segment"]
         [hr] = [r for r in fig.renderers
                 if "dash-arrowhead" in (r.tags or [])]

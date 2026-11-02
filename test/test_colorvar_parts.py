@@ -241,13 +241,17 @@ _AUTO_LABELS = {"mpg": "Mileage (mpg)", "weight": "Weight (lbs.)",
                 "rep78": "Repair record 1978"}
 
 
-def _auto_figs(tmp, mode, plots, go=None, df=None):
-    """_figs over the labelled auto columns."""
+def _auto_figs(tmp, mode, plots, go=None, df=None, bo=None, ifx=""):
+    """_figs over the labelled auto columns (*bo* the build options,
+    *ifx* the graph's if qualifier)."""
     df = _AUTO if df is None else df
-    key = ("auto", mode, json.dumps([plots, go], sort_keys=True), id(df))
+    key = ("auto", mode, json.dumps([plots, go, bo, ifx], sort_keys=True),
+           id(df))
     if key in _CACHE:
         return _CACHE[key]
-    spec = make_spec(plots, graph_options=go)
+    spec = make_spec(plots, graph_options=go, build_options=bo)
+    if ifx:
+        spec["graphs"][0]["if_expr"] = ifx
     tag = next(_SEQ)
     sp = tmp / f"cvp_spec_{tag}.json"
     dp = tmp / f"cvp_data_{tag}.json"
@@ -359,3 +363,128 @@ class TestOneKeyForTheGraph:
         [fig] = _auto_figs(tmp, mode, plots)
         kinds = sorted(type(k).__name__ for k in _colour_keys(fig))
         assert "ContourColorBar" in kinds, kinds
+
+
+_K9 = [_sc("mpg", colorvar="rep78"), _sc("price")]
+_K9_CASES = {
+    # probe: (plots, build options, the measured key colour)
+    "K9": (_K9, None, TRUTH["K9"]["legend_marker_fills"][0]),
+    "K9st": (_K9, {"scheme": "stcolor"},
+             [c for c in TRUTH["K9st"]["right_marker_fills"]
+              if c != "none"][2]),
+    "M2": ([_sc("mpg", colorvar="rep78", colordiscrete="colordiscrete",
+                coloruseplegend="coloruseplegend"), _sc("price")], None,
+           TRUTH["M2"]["legend_marker_fills"][0]),
+}
+
+
+def _series_item(fig, text):
+    """The drawn plot legend's item keyed *text*."""
+    [leg] = _plot_legends(fig)
+    [it] = [it for it in leg.items if _label(it) == text]
+    return it
+
+
+class TestTheProxySwatch:
+
+    def test_the_measured_colours(self):
+        """twoway keys the colorvar series in its pstyle colour: p1
+        #1a476f under s2color, #1a85ff under stcolor; under
+        coloruseplegend in level 1's (#0000ff)."""
+        assert [_K9_CASES[k][2] for k in ("K9", "K9st", "M2")] == [
+            "#1a476f", "#1a85ff", "#0000ff"]
+        assert TRUTH["K9st"]["key_texts"][:2] == ["Mileage (mpg)", "Price"]
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("probe", sorted(_K9_CASES))
+    def test_pstyle_colour(self, tmp, probe, mode):
+        plots, bo, want = _K9_CASES[probe]
+        [fig] = _auto_figs(tmp, mode, plots, bo=bo)
+        it = _series_item(fig, "Mileage (mpg)")
+        [r] = it.renderers
+        assert str(r.name) == "__dash_keyproxy"
+        assert _hex(r.glyph.fill_color) == want
+        if probe != "M2":
+            assert _hex(r.glyph.line_color) == want
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_invisible(self, tmp, mode):
+        """The proxy draws nothing (NaN coordinates), is in no HoverTool,
+        and holds its layer's rows: the layer's source and filter."""
+        [fig] = _auto_figs(tmp, mode, _K9)
+        [p] = [r for r in fig.renderers
+               if str(r.name or "") == "__dash_keyproxy"]
+        base = [r for r in fig.renderers
+                if getattr(r, "_dash_key_proxy", None) is p]
+        assert len(base) == 1
+        for f in ("x", "y"):
+            v = getattr(p.glyph, f)
+            v = v.get("value") if isinstance(v, dict) else getattr(
+                v, "value", v)
+            assert v != v, (f, v)
+        assert p.data_source is base[0].data_source
+        assert p.view.filter is base[0].view.filter
+        for t in fig.tools:
+            if type(t).__name__ == "HoverTool":
+                assert p not in list(t.renderers or []
+                                     if t.renderers != "auto" else [])
+        assert len(_rows(p)) == len(_rows(base[0])) > 0
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_emptied_layer_has_no_key(self, tmp, mode):
+        """scatter mpg weight if foreign == 1, colorvar(rep78) || scatter
+        price weight, after the move foreign == 0 that leaves the colorvar
+        layer no row: no plot-legend key with a row to draw for it, and
+        Price's key stays.  Saved: the page built with the moved qualifier,
+        as MOVE_CORPUS's saved side builds it; served: the redraw leaves
+        the proxy's view no row, so Bokeh's draw_legend skips the item."""
+        lay = dict(_sc("mpg", colorvar="rep78"), if_expr="foreign == 1")
+        plots = [lay, _sc("price")]
+        if mode == "saved":
+            [fig] = _auto_figs(tmp, mode, plots, ifx="foreign == 0")
+            keyed = [_label(it) for leg in fig.legend for it in leg.items
+                     if it.visible and any(_rows(r) for r in it.renderers)]
+            assert "Mileage (mpg)" not in keyed and "Price" in keyed
+            return
+        import test_mode_parity as tp
+        spec = make_spec(plots, build_options={"filter": "foreign"})
+        sp, dp = tmp / "cvp_emptied_s.json", tmp / "cvp_emptied_d.json"
+        sp.write_text(json.dumps(spec))
+        dp.write_text(json.dumps(make_data_json(
+            _AUTO, variable_labels=_AUTO_LABELS)))
+        ap = tmp / "cvp_emptied_app.py"
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
+            mod = load_app(str(ap), "_cvp_emptied", draw=False)
+            doc = Document()
+            mod.make_document(doc)
+            [fig] = _figures_of(doc)
+            prox = [r for r in fig.renderers
+                    if str(r.name or "") == "__dash_keyproxy"]
+            assert len(prox) == 1 and _rows(prox[0])
+            [w] = [x for x in tp._widgets_of(doc)
+                   if type(x).__name__ == "Select"]
+            tp._fire(w, tp._move_widget_value(w, "Select", "0"))
+        [fig] = _figures_of(doc)
+        assert not [p for p in prox if _rows(p)]
+        keyed = [_label(it) for leg in fig.legend for it in leg.items
+                 if it.visible and any(_rows(r) for r in it.renderers)]
+        assert "Mileage (mpg)" not in keyed and "Price" in keyed
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_by_matches_every_panel(self, tmp, mode):
+        """The proxy's visible follows its renderer's, and by()'s legend
+        cell matches it to every panel's proxy."""
+        figs = _auto_figs(tmp, mode, _K9, go={"by": "foreign"})
+        panels = [f for f in figs if any(
+            str(r.name or "") == "__dash_keyproxy" for r in f.renderers)]
+        assert len(panels) == 2
+        [p] = [r for r in panels[0].renderers
+               if str(r.name or "") == "__dash_keyproxy"]
+        cbs = p.js_property_callbacks.get("change:visible", [])
+        assert cbs, "the proxy's visible is not linked"
+        got = dr._dash_by_panel_matches([p], panels)
+        want = [r for f in panels for r in f.renderers
+                if str(r.name or "") == "__dash_keyproxy"]
+        assert got == want

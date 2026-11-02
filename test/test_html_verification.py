@@ -146,7 +146,9 @@ def _layers(fig) -> list:
     models (its glyph, nonselection and muted glyphs), so one scatter
     layer is three "Scatter" objects in the JSON (measured 24sep2026).
     """
-    return [r for r in fig.renderers if isinstance(r, GlyphRenderer)]
+    # WP-42 CV-7: legend-only proxies draw nothing
+    return [r for r in fig.renderers if isinstance(r, GlyphRenderer)
+            and str(getattr(r, "name", "") or "") != "__dash_keyproxy"]
 
 
 def _spec_value(v):

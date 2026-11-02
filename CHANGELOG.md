@@ -1007,6 +1007,7 @@ and now matches Stata.
 - The colour key's bar takes the scheme's clegend_width, 24 px under s2color (was 12 px) (WP-42, sil:SD-4)
 - colorfillonly keeps the level colours on lines, spikes, drop lines, caps and arrows (WP-42, CV-1)
 - Two colorvar() layers draw the last layer's colour key and a plot legend (was a key per layer and no legend) (WP-42, CV-6)
+- A colorvar() layer's plot-legend key is drawn in its series colour (was its first row's level colour) (WP-42, CV-7)
 
 ### Fixed in WP-41
 
