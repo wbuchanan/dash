@@ -92,3 +92,78 @@ class TestTheByContourKey:
         assert cell is not None
         assert tbk._cell_side(grid, cell) == "below"
         assert len(_contour_bars(cell[0])) == 1
+
+
+# ---------------------------------------------------------------------------
+# twoway's axis-style colour key, as measured (test/fixtures/
+# colorvar_key_truth.json, scripts/extract_colorvar_key_truth.do): what the
+# key cell of CV-3 is drawn to.
+# ---------------------------------------------------------------------------
+
+import json  # noqa: E402
+
+_KEY_FIXTURE = os.path.join(_HERE, "fixtures", "colorvar_key_truth.json")
+
+#: The swatch each plot type keys its levels with (S_<type>): a marker
+#: (circle), a rect, a line, a marker on a line, or no key at all.
+_SWATCH_KIND = {
+    "scatter": "marker", "connected": "marker+line", "line": "line",
+    "area": "none", "bar": "rect", "spike": "rect", "dropline": "marker",
+    "dot": "marker", "rarea": "none", "rbar": "rect", "rspike": "rect",
+    "rcap": "marker", "rcapsym": "marker", "rscatter": "marker",
+    "rline": "line", "rconnected": "marker+line", "pcspike": "rect",
+    "pccapsym": "marker", "pcarrow": "rect", "pcbarrow": "rect",
+    "pcscatter": "marker",
+}
+
+
+def _key_truth():
+    with open(_KEY_FIXTURE, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _key_texts(rec):
+    """twoway's unrotated key texts right of the plot region, top first."""
+    r = rec["plot"]["right"]
+    return [t["text"] for t in sorted(rec["texts"], key=lambda t: t["y"])
+            if t["x"] > r + 1 and not t["rotate"]]
+
+
+def _swatch_kind(rec):
+    k = rec["key"]
+    filled = [c for c in k.get("circles", []) if c.get("fill") != "none"]
+    lines = [h for h in k.get("hlines", []) if h.get("stroke") != "#000000"]
+    if filled and lines:
+        return "marker+line"
+    if filled:
+        return "marker"
+    if k.get("rects"):
+        return "rect"
+    return "line" if lines else "none"
+
+
+class TestTwowaysKey:
+    """The measured key: highest level at the top, labelled at the z axis'
+    ticks, no missing entry, the title up the right of the labels."""
+
+    def test_discrete_key_is_an_axis(self):
+        t = _key_truth()
+        assert _key_texts(t["K1"]) == ["5", "4", "3", "2", "1"]
+        assert _key_texts(t["K2"]) == ["1", ".8", ".6", ".4", ".2", "0"]
+        assert _key_texts(t["K7"])[0] == "Foreign"
+        assert _key_texts(t["K3"]) == ["3.66667", "2.33333"]
+        assert _key_texts(t["K4"]) == ["4", "2"]
+        assert _key_texts(t["K_cont"]) == ["15,000", "10,000", "5,000", "0"]
+        for pid in ("K1", "K8", "E_allmiss"):
+            assert not any("missing" in x["text"] or x["text"] == "rest"
+                           for x in t[pid]["texts"])
+        (title,) = [x for x in t["K1"]["texts"] if x["rotate"]
+                    and x["x"] > t["K1"]["plot"]["right"]]
+        assert title["rotate"] == -90.0
+        assert title["text"] == "Repair record 1978"
+
+    def test_swatch_kind(self):
+        t = _key_truth()
+        got = {p[2:]: _swatch_kind(r) for p, r in t.items()
+               if p.startswith("S_")}
+        assert got == _SWATCH_KIND
