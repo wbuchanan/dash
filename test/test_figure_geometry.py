@@ -104,7 +104,10 @@ class TestTheThreeCases:
         _, figs = _figs(mode, {"aspectratio": "1"})
         f = figs[0]
         assert f.sizing_mode == "stretch_width"
-        assert f.aspect_ratio == pytest.approx(7.5 / 4.5)
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis,
+        # x title and colour key labels"): the figure keeps what the graph
+        # margin leaves; its graph region box round it keeps the graph's.
+        assert f.aspect_ratio == pytest.approx(_inner(7.5 / 4.5))
         assert f.min_height is None and f.max_height is None
         # Square at the nominal 720 x 432 box (7.5 x 4.5 in at 96 px).
         fw = 720 - f.min_border_left - f.min_border_right
@@ -123,7 +126,10 @@ class TestTheThreeCases:
                                for s in f.stylesheets)
                 assert "max-height" not in css, go
         _, figs = _figs(mode, {}, scheme)
-        assert figs[0].aspect_ratio == pytest.approx(ratio)
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis,
+        # x title and colour key labels"): the figure keeps what the graph
+        # margin leaves; its graph region box round it keeps the graph's.
+        assert figs[0].aspect_ratio == pytest.approx(_inner(ratio, scheme))
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_by_box(self, mode):
@@ -201,7 +207,10 @@ class TestFxFy:
         assert _truth()["G_" + opt[:2] + "50"]["inches"] == [7.5, 4.5]
         _, figs = _figs(mode, {opt: "50"})
         f = figs[0]
-        assert f.aspect_ratio == pytest.approx(7.5 / 4.5)
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis,
+        # x title and colour key labels"): the figure keeps what the graph
+        # margin leaves; its graph region box round it keeps the graph's.
+        assert f.aspect_ratio == pytest.approx(_inner(7.5 / 4.5))
         assert "max-width" not in dict(f.styles or {})
         est = f._dash_frame_est
         # The 192 px box holds the plot region and its axes, centred: the
@@ -320,6 +329,27 @@ class TestGraphRegion:
                                          + ["%.4g%%" % pct] * 3)
         assert st["background-color"].lower() == \
             str(figs[0].border_fill_color).lower()
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_a_linked_graph_with_its_own_if(self, mode):
+        """A linked graph with its own if draws through a row view; the
+        saved page took that view for a by() panel's and gave the figure
+        neither its box nor its graph margin.  It is drawn as the linked
+        graph beside it is, in both modes."""
+        import test_mode_parity as tp
+        [p] = [p for p in tp.CORPUS if p.values[0]
+               == "colorvar() on a linked graph with its own if"]
+        if mode == "saved":
+            figs = list(tp._standalone(p.values[1])[0].figures.values())
+        else:
+            from bokeh.plotting import figure as _fcls
+            doc = tp._served(p.values[1])[0]
+            figs = [f for r in doc.roots for f in r.select({"type": _fcls})]
+        assert len(figs) == 2
+        for f in figs:
+            assert getattr(f, "_dash_nominal_px", None) == (528, 384)
+            assert f.aspect_ratio == pytest.approx(figs[0].aspect_ratio)
+            assert getattr(f, "_dash_region_cell", None) is not None
 
     def test_the_inner_ratio(self):
         pct = [2.1] * 4

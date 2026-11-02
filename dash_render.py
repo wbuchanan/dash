@@ -40319,6 +40319,22 @@ const region = (ref, labels) => {
     c = pv.canvas_view.el.getBoundingClientRect();
     x0 = g.left - c.left; y0 = g.top - c.top; gw = g.width; gh = g.height;
     if (!(gw > 0) || !(gh > 0)) { return null; }
+  } else if (pv.canvas_view != null) {
+    // A figure inside its own graph region box (GW-6's margin round it,
+    // no grid between): placed against that whole box, as above.
+    for (let q = pv.parent; q != null; q = q.parent) {
+      if (q.model != null && q.model.type === "GridBox") { break; }
+      if (q.model != null && q.el != null
+          && (q.model.tags || []).includes("dash_graph_region")) {
+        const g = q.el.getBoundingClientRect();
+        c = pv.canvas_view.el.getBoundingClientRect();
+        if (g.width > 0 && g.height > 0) {
+          x0 = g.left - c.left; y0 = g.top - c.top;
+          gw = g.width; gh = g.height;
+        }
+        break;
+      }
+    }
   }
   const u = Math.min(gw, gh) / 100;
   const r = {L: x0 + (+sd[0] || 0) * u, R: x0 + gw - (+sd[1] || 0) * u,
@@ -42404,7 +42420,19 @@ if (typeof Bokeh !== "undefined" && Bokeh.index != null) {
   try { view = Bokeh.index.find_one(fig); } catch (e) { view = null; }
 }
 const fb = (view != null && view.frame != null) ? view.frame.bbox : null;
-const unit = Math.min(w, h) / 100;
+// The graph: the figure, or the graph region box round it (GW-6's margin,
+// no grid between), whose size twoway's relative units are of.
+let gw = w, gh = h;
+for (let q = view != null ? view.parent : null; q != null; q = q.parent) {
+  if (q.model != null && q.model.type === "GridBox") { break; }
+  if (q.model != null && q.el != null
+      && (q.model.tags || []).includes("dash_graph_region")) {
+    const g = q.el.getBoundingClientRect();
+    if (g.width > 0 && g.height > 0) { gw = g.width; gh = g.height; }
+    break;
+  }
+}
+const unit = Math.min(gw, gh) / 100;
 for (const side of (item.sides || [])) {
   const want = Math.round(side[1] * unit);
   if (!isFinite(want) || want === side[2]) { continue; }
@@ -42441,7 +42469,7 @@ if (s != null && s.ar > 0) {
 }
 const x = item.fxy;
 if (x != null) {
-  const kk = x.nw > 0 ? w / x.nw : 1;
+  const kk = x.nw > 0 ? gw / x.nw : 1;
   const ax = x.fx != null ? Math.max(0, (w - x.fx / 100 * 384 * kk) / 2) : 0;
   const ay = x.fy != null ? Math.max(0, (h - x.fy / 100 * 384 * kk) / 2) : 0;
   shift(x, [ax, ax, ay, ay]);
@@ -52969,7 +52997,15 @@ def _dash_name_save(model, name=None, composite=None):
     """
     from bokeh.models import CustomAction, CustomJS, SaveTool
     filename = _dash_save_filename(name)
-    toolbar = getattr(model, "toolbar", None)
+    # A figure's graph region box (GW-6's margin round it) names its
+    # figure's save button.
+    target = model
+    kids = getattr(model, "children", None) or []
+    if getattr(model, "toolbar", None) is None and len(kids) == 1 \
+            and "dash_graph_region" in (getattr(model, "tags", None) or []) \
+            and getattr(kids[0], "toolbar", None) is not None:
+        target = kids[0]
+    toolbar = getattr(target, "toolbar", None)
     saved = False
     for tool in (getattr(toolbar, "tools", None) or ()):
         if isinstance(tool, SaveTool):
@@ -52977,7 +53013,7 @@ def _dash_name_save(model, name=None, composite=None):
             saved = True
     if not saved:
         return model
-    args = {"grid": model, "name": filename, **(composite or {})}
+    args = {"grid": target, "name": filename, **(composite or {})}
     svg_code = (_DASH_COMPOSITE_JS + _DASH_SVG_SAVE_JS if composite
                 else _DASH_SVG_SAVE_JS)
     actions = {}
@@ -53979,16 +54015,41 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
         tbl = getattr(figures[name], "_dash_table", None)
         _nom = getattr(figures[name], "_dash_nominal_px", None)
         _gm = getattr(figures[name], "_dash_gmargin", None)
+        _cell = figures[name]
         if _nom and getattr(figures[name], "sizing_mode", None) != "fixed":
             _f = figures[name]
-            # D66: the graph drawn as one picture (its box's width, the
-            # margin included, against the graph's inch width).
-            _dash_width_scale(_f, [_f], float(_nom[0]),
-                              OptionTranslator.size_ref_of(_f))
             if _gm:
-                # WP-45 GW-6: the figure's box keeps the graph's shape and
-                # draws inside the scheme's margin (its CSS padding).
-                _dash_graph_region_box(_f, _gm, _f.border_fill_color)
+                # WP-45 GW-6: the graph region keeps the graph's shape and
+                # draws the scheme's margin as its CSS padding round the
+                # figure, which keeps what the margin leaves.  The padding
+                # is a box's of its own: BokehJS lays a figure out in its
+                # whole box, padding included, but draws on a canvas only
+                # the padding's inside, so a padded figure lost its bottom
+                # and right margin's worth -- its x labels, x title and
+                # colour key labels (BUGS.md "A graph's canvas ended
+                # before its own x axis, x title and colour key labels").
+                _cell = getattr(_f, "_dash_region_cell", None)
+                if _cell is None:
+                    if isinstance(_f.aspect_ratio, (int, float)) \
+                            and _f.aspect_ratio > 0:
+                        _f.aspect_ratio = _dash_inner_ratio(
+                            float(_f.aspect_ratio), _gm)
+                        # In the box's flex column a figure's fixed
+                        # height would be its flex basis, over its ratio.
+                        _f.height_policy = "fit"
+                    _cell = column(_f, sizing_mode="stretch_width")
+                    _dash_graph_region_box(_cell, _gm, _f.border_fill_color)
+                    _f._dash_region_cell = _cell
+                # D66: the graph drawn as one picture (the figure's width
+                # against what the margin leaves of the graph's inch width).
+                _dash_width_scale(_f, [_f], float(_nom[0]) * (
+                    1.0 - (_gm[0] + _gm[1]) / 100.0),
+                    OptionTranslator.size_ref_of(_f))
+            else:
+                # D66: the graph drawn as one picture (its box's width
+                # against the graph's inch width).
+                _dash_width_scale(_f, [_f], float(_nom[0]),
+                                  OptionTranslator.size_ref_of(_f))
         elif _nom:
             # A box at 96 px an inch: twoway's unit only.
             _dash_width_scale(figures[name], [figures[name]],
@@ -54001,8 +54062,8 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
             return column(figures[name], *(tbl or ()),
                           sizing_mode="stretch_width",
                           styles={"overflow-x": "auto", "max-width": "100%"})
-        return column(figures[name], *tbl, sizing_mode="stretch_width") \
-            if tbl else figures[name]
+        return column(_cell, *tbl, sizing_mode="stretch_width") \
+            if tbl else _cell
     if name in kpi_divs:
         return kpi_divs[name]
     return (image_divs or {}).get(name)
@@ -68261,10 +68322,12 @@ class DashRenderer:
         _dash_overhangs(fig, graph_opts)
         # WP-36 DG-14: a dashed line keeps the figure on canvas.
         _dash_dashes_on_canvas(fig)
-        if facet_view is None:
-            _dash_apply_figure_size(
-                fig, graph_opts, getattr(self.scheme, "graphsize_x", None),
-                getattr(self.scheme, "graphsize_y", None))
+        # Not by facet_view: a linked graph's own if or in draws through a
+        # row view too.  A by() panel is told by its by(), which
+        # _dash_apply_figure_size leaves to _dash_layout_cell.
+        _dash_apply_figure_size(
+            fig, graph_opts, getattr(self.scheme, "graphsize_x", None),
+            getattr(self.scheme, "graphsize_y", None))
         return fig
 
     def _add_glyph(

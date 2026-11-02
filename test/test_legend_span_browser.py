@@ -67,7 +67,21 @@ function state() {
         boxes.push({type: t, text: t === 'Title' ? m.text : '',
                     box: [b.x0, b.y0, b.x1, b.y1]});
       }
-      out.push({canvas: [c.width, c.height],
+      // The graph: its graph region box (GW-6's margin round the figure)
+      // in canvas px, else the canvas.
+      let graph = [0, 0, c.width, c.height];
+      for (let q = v.parent; q != null; q = q.parent) {
+        if (q.model && q.model.type === 'GridBox') break;
+        if (q.model && q.el && (q.model.tags || []).includes(
+            'dash_graph_region')) {
+          const g = q.el.getBoundingClientRect();
+          const k = v.canvas_view.el.getBoundingClientRect();
+          graph = [g.left - k.left, g.top - k.top, g.right - k.left,
+                   g.bottom - k.top];
+          break;
+        }
+      }
+      out.push({canvas: [c.width, c.height], graph,
                 frame: [f.x0, f.y0, f.x1, f.y1], boxes});
     }
     for (const c of (v.child_views || [])) visit(c);
@@ -163,9 +177,13 @@ class TestTheLegendSpans:
             # The graph region's edge (s2color's margin graph, 3.5% of
             # min(W, H)) plus the gap the box keeps from the plot region
             # without span (its own margin, 5 px), as twoway places it.
-            edge = 0.035 * min(fig["canvas"])
+            # Flipped (BUGS.md "A graph's canvas ended before its own x
+            # axis, x title and colour key labels"): the graph is its graph
+            # region box, the canvas inside its margin.
+            g = fig["graph"]
+            edge = g[0] + 0.035 * min(g[2] - g[0], g[3] - g[1])
             # Flipped (D66): the margin is 5 px times the width scale.
-            assert abs(lg["box"][0] - (edge + 5 * _k(fig["canvas"][0],
+            assert abs(lg["box"][0] - (edge + 5 * _k(g[2] - g[0],
                                                      "s2color"))) <= 1.5, fig
 
     @pytest.mark.parametrize("pos", ("6", "12", "9"))
@@ -216,12 +234,16 @@ class TestTheTitlesSpan:
             # Against the graph region's edges, as twoway places them
             # (measured: a spanned note at the region's left plus the gap
             # it keeps from the plot region without span).
-            edge = 0.035 * min(fig["canvas"])
+            # Flipped (BUGS.md "A graph's canvas ended before its own x
+            # axis, x title and colour key labels"): the graph is its graph
+            # region box, the canvas inside its margin.
+            g = fig["graph"]
+            edge = 0.035 * min(g[2] - g[0], g[3] - g[1])
             n, c = _title(fig, "A spanned note"), _title(
                 fig, "A spanned caption")
             assert n[0] < f[0] - 30, fig
-            assert abs(n[0] - (edge + gap[0])) <= 1.5, fig
-            assert abs(c[2] - (W - edge - gap[1])) <= 1.5, fig
+            assert abs(n[0] - (g[0] + edge + gap[0])) <= 1.5, fig
+            assert abs(c[2] - (g[2] - edge - gap[1])) <= 1.5, fig
 
 
 #: by(): every legend and titled box (page px) and the by() grid's own box:

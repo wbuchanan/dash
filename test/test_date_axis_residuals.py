@@ -739,10 +739,15 @@ _PLAIN_DIGESTS = {
     # the same under both Pythons.
     # f7c8dba6... -> 36f06f41... saved, cf6d2d71... -> d5a72d60... served:
     # WP-41 41-05, the width scale's by() grid spacing pair and its --dash-by-k length (width-scale JS text only); the same under both Pythons.
+    # 36f06f41... -> 9299b510... saved, d5a72d60... -> 2ff9cd13... served:
+    # BUGS.md "A graph's canvas ended before its own x axis, x title and
+    # colour key labels", the graph region box a column of its own round
+    # the figure (the figure keeps the margin's inside ratio) and the
+    # width-scale and span JS's graph box; the same under both Pythons.
     ("saved", "plain"):
-        "36f06f41e440a71fb423956f3f8d387106dd6971585117bd90e6e5795db67a91",
+        "9299b510f9f8e31d7690b6ecf257379c7f21a9092f297089a321c8873642ddf5",
     ("saved", "yaxis2"):
-        "36f06f41e440a71fb423956f3f8d387106dd6971585117bd90e6e5795db67a91",
+        "9299b510f9f8e31d7690b6ecf257379c7f21a9092f297089a321c8873642ddf5",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -757,9 +762,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "d5a72d60b3b11949f210e833aa313b3ccf1652b9989d0267e411e08132a6af23",
+        "2ff9cd1335d2934aa43b996a63739a371171294acfe74b697cac2efd79d9f322",
     ("served", "yaxis2"):
-        "d5a72d60b3b11949f210e833aa313b3ccf1652b9989d0267e411e08132a6af23",
+        "2ff9cd1335d2934aa43b996a63739a371171294acfe74b697cac2efd79d9f322",
 }
 
 

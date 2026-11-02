@@ -632,7 +632,11 @@ _SAVED_DIGEST = (
     # 965e9046... -> 4109d373...: WP-42 CV-2, dash_cvar_relevel_bins'
     # colordiscrete colorlevels() cuts (code only: the one page line that
     # differs is that CustomJS code string); the same under both Pythons.
-    "4109d373098b81795b8567e0c7cfbec38f6dc6b1495ba8d018e7e183c5c6adfc")
+    # 4109d373... -> 4f856b60...: BUGS.md "A graph's canvas ended before
+    # its own x axis, x title and colour key labels", the graph region box
+    # a column of its own round the figure and the width-scale and span
+    # JS's graph box; the same under both Pythons.
+    "4f856b60b5841e9d38a11819131043ad4b10c4c736ca252d6f2cb2b7c46edda7")
 
 
 # ===========================================================================

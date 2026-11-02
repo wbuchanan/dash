@@ -275,16 +275,27 @@ class TestTheThreeCasesInChrome:
 
 
 
+#: Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title
+#: and colour key labels"): the graph's top is its graph region box's
+#: (GW-6's margin is a box round the figure now, not the figure's own
+#: padding).
 _PICTURE_JS = r"""
 <script>
 addEventListener('load', () => setTimeout(() => {
   const plots = [];
+  const gbox = (v) => {
+    for (let q = v; q != null; q = q.parent) {
+      if (q.model && q.el && (q.model.tags || []).includes(
+          'dash_graph_region')) return q.el;
+    }
+    return v.el;
+  };
   const visit = (v) => {
     if (!v) return;
     if (v.frame && v.model) {
       const ax = (v.model.below || []).filter(
         (a) => a.major_label_text_font_size);
-      plots.push([v.el.getBoundingClientRect().top,
+      plots.push([gbox(v).getBoundingClientRect().top,
                   ax.length ? ax[0].major_label_text_font_size : null]);
     }
     for (const c of (v.child_views || [])) visit(c);
@@ -363,3 +374,101 @@ addEventListener('load', () => setTimeout(() => {
 }, 3500));
 </script>
 """
+
+
+#: Each plot's canvas size and the laid-out box of every visible axis and
+#: colour key on it (tick labels and title included), in the plot's own
+#: canvas px: BokehJS draws nothing of a part past its canvas.
+_INSIDE_JS = r"""
+<script>
+addEventListener('load', () => setTimeout(() => {
+  const plots = [];
+  const visit = (v) => {
+    if (!v) return;
+    if (v.frame && v.renderer_views && v.canvas_view) {
+      const c = v.canvas_view.bbox;
+      const parts = [];
+      for (const [m, rv] of v.renderer_views) {
+        if (!m.visible || !rv.bbox) continue;
+        if (!(String(m.type).endsWith('Axis') || m.type === 'ColorBar'))
+          continue;
+        const b = rv.bbox;
+        if (!(b.width > 0) || !(b.height > 0)) continue;
+        parts.push([m.type, m.axis_label || m.title || '',
+                    b.x0, b.y0, b.x1, b.y1]);
+      }
+      plots.push({canvas: [c.width, c.height], parts});
+    }
+    for (const k of (v.child_views || [])) visit(k);
+  };
+  for (const v of Object.values(Bokeh.index)) { if (!v.parent) visit(v); }
+  parent.postMessage('DASHPROBE' + JSON.stringify({W: innerWidth, plots}),
+                     '*');
+}, 3500));
+</script>
+"""
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestEveryLabelInsideInChrome:
+    """BUGS.md "A graph's canvas ended before its own x axis, x title and
+    colour key labels" (f74ea1b, WP-41 41.4): BokehJS laid a figure out in
+    its whole box, GW-6's graph margin (its CSS padding) included, while
+    its canvas is only what the padding leaves, so at 1100 px the bottom
+    and right 47 px -- the x tick labels, the x title and the colour key's
+    labels -- were cut.  Every axis's and colour key's box, titles
+    included, lies inside its own canvas, as twoway draws them: a plain
+    scatter, a colorvar() scatter and a by() graph."""
+
+    @pytest.mark.parametrize("plots,go", [
+        ("one", {}), ("colour", {}), ("one", {"by": "foreign"})],
+        ids=["plain", "colorvar", "by"])
+    def test_inside_the_canvas(self, plots, go, mode, tmp_path):
+        import test_by_axes_keys as tbk
+        p = tbk._ONE if plots == "one" else [
+            tbk._p("scatter", colorvar="weight")]
+        spec = tbk._spec([tbk._graph("g1", p, go, title=False)],
+                         scheme="stcolor")
+        tag = next(ts._SEQ)
+        sp = os.path.join(str(tmp_path), "s%d.json" % tag)
+        dp = os.path.join(str(tmp_path), "d%d.json" % tag)
+        with open(sp, "w", encoding="utf-8") as fh:
+            json.dump(spec, fh)
+        with open(dp, "w", encoding="utf-8") as fh:
+            json.dump(tbk.tg._data(), fh)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if mode == "saved":
+                html = ts.dr.DashRenderer(sp, dp).render()
+            else:
+                from bokeh.document import Document
+                from bokeh.embed import file_html
+                from bokeh.resources import INLINE
+                ap = os.path.join(str(tmp_path), "a%d.py" % tag)
+                ts.dr.ServerAppBuilder(sp, dp).build(ap)
+                mod = ts.load_app(ap, "_szi_app_%d" % tag, draw=False)
+                doc = Document()
+                mod.make_document(doc)
+                html = file_html(doc, INLINE, "served")
+        mp = pytest.MonkeyPatch()
+        mp.setattr(responsive_probe, "PROBE_JS", _INSIDE_JS)
+        try:
+            rec = responsive_probe.measure_many(html, (1100,))[1100]
+        finally:
+            mp.undo()
+        parts = [q for pl in rec["plots"] for q in pl["parts"]]
+        kinds = {q[0] for q in parts}
+        assert "LinearAxis" in kinds, rec
+        if plots == "colour":
+            assert "ColorBar" in kinds, rec
+        titles = {q[1] for q in parts if q[0] == "LinearAxis"}
+        if not go:
+            # The axis titles are the figure's own (by() draws them in
+            # cells of their own).
+            assert {"Weight (lbs.)", "Mileage (mpg)"} <= titles, rec
+        for pl in rec["plots"]:
+            cw, ch = pl["canvas"]
+            for q in pl["parts"]:
+                x0, y0, x1, y1 = q[2:]
+                assert x0 >= -0.5 and y0 >= -0.5, (q, pl)
+                assert x1 <= cw + 0.5 and y1 <= ch + 0.5, (q, pl)
