@@ -448,10 +448,13 @@ def _restore_catch_warnings():
 
 #: A line that may start a top-level statement: a name or a decorator in
 #: column 0 -- not a string's prefix, and not a clause continuing a compound
-#: statement.
+#: statement.  Matched from the newline before it (the match starts one
+#: before the line): a multiline ``^`` is tried at every character of the
+#: 3 MB text, a ``\n`` is searched for, about seven times faster (02nov2026).
+#: The text's first line is the first block's start in any case.
 _APP_BLOCK_START = re.compile(
-    r"^(?![rRbBuUfFtT]{1,2}['\"])(?!(?:else|elif|except|finally)\b)"
-    r"[A-Za-z_@]", re.M)
+    r"\n(?![rRbBuUfFtT]{1,2}['\"])(?!(?:else|elif|except|finally)\b)"
+    r"[A-Za-z_@]")
 #: Every __future__ feature's compiler flag.
 _APP_FUTURE_FLAGS = 0
 for _feature in __future__.all_feature_names:
@@ -511,8 +514,8 @@ def _app_blocks(source):
     when it is to be compiled whole."""
     if "\r" in source:
         return None
-    bounds = [0] + [m.start() for m in _APP_BLOCK_START.finditer(source)
-                    if m.start()] + [len(source)]
+    bounds = [0] + [m.start() + 1 for m in _APP_BLOCK_START.finditer(source)
+                    ] + [len(source)]
     spans, imported, annotated = [], set(), -1
     i = 0
     while i < len(bounds) - 1:

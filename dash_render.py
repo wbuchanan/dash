@@ -70362,6 +70362,71 @@ def _dash_source_lines_of(obj) -> "list[str]":
     return list(hit[1])
 
 
+def _dash_copied_lines(obj) -> "list[str]":
+    """``textwrap.dedent(_dash_source_of(obj)).rstrip("\\n").split("\\n")``,
+    worked out once per text: the lines ``ServerAppBuilder`` copies for a
+    function into every app.  Dedenting the 840 or so copied texts was a
+    sixth of a build (02nov2026).  As ``_dash_source_lines_of``, the lines
+    are reused only while ``_dash_source_of`` hands back the same text
+    object.  Returns a new list each call."""
+    import textwrap as _textwrap
+    text = _dash_source_of(obj)
+    hit = _DASH_COPIED_LINES.get(id(obj))
+    if hit is None or hit[0] is not text:
+        hit = (text, tuple(_textwrap.dedent(text).rstrip("\n").split("\n")))
+        _DASH_COPIED_LINES[id(obj)] = hit
+    return list(hit[1])
+
+
+def _dash_kernels_lines() -> "list[str]":
+    """The lines of this module's ``_KERNELS = {...}`` assignment, which
+    ``_shared_stat_lines`` copies into every app (its lambdas have no
+    repr).  Finding them scanned the module's 76,000 lines twice per
+    build; they are found once per text of the module.  Returns a new list
+    each call."""
+    import sys as _sys
+    mod = _sys.modules[__name__]
+    text = _dash_source_of(mod)
+    hit = _DASH_KERNELS_LINES.get(id(mod))
+    if hit is None or hit[0] is not text:
+        src = _dash_source_lines_of(mod)
+        start = next(i for i, l in enumerate(src)
+                     if l.startswith("_KERNELS: dict = {"))
+        end = next(i for i in range(start, len(src))
+                   if src[i].rstrip() == "}")
+        hit = (text, tuple(src[start:end + 1]))
+        _DASH_KERNELS_LINES[id(mod)] = hit
+    return list(hit[1])
+
+
+def _dash_literal_text(val):
+    """``repr(val)`` when it reads back through ``ast.literal_eval`` as a
+    value equal to *val*, else None: the test ``ServerAppBuilder`` makes of
+    each module constant it writes into an app.  Each value's answer is
+    kept while that same object is the value, so a build checks a constant
+    once per process rather than once per build (02nov2026)."""
+    import ast as _ast
+    text = repr(val)
+    hit = _DASH_LITERAL_ROUND_TRIP.get(text)
+    if hit is None or hit[0] is not val:
+        try:
+            good = _ast.literal_eval(text) == val
+        except (ValueError, SyntaxError, TypeError):
+            good = False
+        hit = (val, good)
+        _DASH_LITERAL_ROUND_TRIP[text] = hit
+    return text if hit[1] else None
+
+
+#: ``_dash_copied_lines``' texts: id(obj) -> (text, lines).
+_DASH_COPIED_LINES: dict = {}
+#: ``_dash_kernels_lines``' slice: id(module) -> (text, lines).
+_DASH_KERNELS_LINES: dict = {}
+#: ``_supply_missing_constants``: a value's repr -> whether it round-trips
+#: through ``ast.literal_eval`` (02nov2026: checked anew every build).
+_DASH_LITERAL_ROUND_TRIP: dict = {}
+
+
 #: ``_dash_source_lines_of``'s splits: id(obj) -> (text, lines).
 _DASH_SOURCE_LINES: dict = {}
 
@@ -70783,7 +70848,6 @@ class ServerAppBuilder:
             The lines to write, in dependency order.
         """
         import sys as _sys
-        import textwrap as _textwrap
 
         _mod = _sys.modules[__name__]
         out: "list[str]" = [
@@ -71815,8 +71879,7 @@ class ServerAppBuilder:
             _fn = getattr(_mod, _fn_name, None)
             if _fn is None:
                 continue
-            out += _textwrap.dedent(
-                _dash_source_of(_fn)).rstrip("\n").split("\n")
+            out += _dash_copied_lines(_fn)
             out += ["", ""]
 
         # The three classes, in dependency order.
@@ -71975,7 +72038,6 @@ class ServerAppBuilder:
           did not move with ``level()``.
         """
         import sys as _sys
-        import textwrap as _textwrap
 
         out: "list[str]" = [
             "# ---- Statistical helpers, copied verbatim from dash_render.py ----",
@@ -71988,12 +72050,7 @@ class ServerAppBuilder:
 
         # _KERNELS is a module-level dict of lambdas, so repr() cannot carry
         # it; the assignment's own source is sliced out of the file instead.
-        _src_lines = _dash_source_lines_of(_sys.modules[__name__])
-        _start = next(i for i, l in enumerate(_src_lines)
-                      if l.startswith("_KERNELS: dict = {"))
-        _end = next(i for i in range(_start, len(_src_lines))
-                    if _src_lines[i].rstrip() == "}")
-        out += _src_lines[_start:_end + 1]
+        out += _dash_kernels_lines()
         out += ["", ""]
 
         out += ["_FIT_GRID = %d" % _FIT_GRID, "",
@@ -72110,8 +72167,7 @@ class ServerAppBuilder:
                     # WP-30 P1.31a: the estimator memo the app wraps
                     # lowess, fpfit and lpoly in.
                     _dash_memo_key, _dash_memo_wrap):
-            out += _textwrap.dedent(
-                _dash_source_of(_fn)).rstrip("\n").split("\n")
+            out += _dash_copied_lines(_fn)
             out += ["", ""]
 
         # Four of them are staticmethods on a class.  Their bodies reference
@@ -72130,8 +72186,7 @@ class ServerAppBuilder:
                     GlyphMapper._compute_lpoly_fit,
                     GlyphMapper._bootstrap_ci,
                     DashRenderer._kpi_statistic):
-            _lines = _textwrap.dedent(
-                _dash_source_of(_sm)).rstrip("\n").split("\n")
+            _lines = _dash_copied_lines(_sm)
             while _lines and _lines[0].strip().startswith("@"):
                 _lines = _lines[1:]
             _lines = [_l.replace("GlyphMapper._", "_")
@@ -72143,12 +72198,10 @@ class ServerAppBuilder:
         # constant to one of the copied functions cannot leave the generated
         # app raising NameError at import -- which lpoly's old rule-of-thumb
         # constant (gone since WP-29 P0.7) did.
-        import re as _re_const
         _mod = _sys.modules[__name__]
-        _names = set()
-        for _l in out:
-            _names.update(_re_const.findall(r"\b_[A-Z][A-Z0-9_]*\b", _l))
-        import ast as _ast_const
+        # The names used, read per line through _dash_scan_constants' cache
+        # (the same pattern, line by line, as this loop ran it every build).
+        _names = _dash_scan_constants(out)[0]
         _consts = []
         # The names *out* already assigns, as a plain ("NAME = ...") or an
         # annotated ("NAME: ...") assignment, read once.
@@ -72165,12 +72218,10 @@ class ServerAppBuilder:
             if _nm in _assigned:
                 continue
             _val = getattr(_mod, _nm, None)
-            try:
-                if _ast_const.literal_eval(repr(_val)) != _val:
-                    continue
-            except (ValueError, SyntaxError, TypeError):
+            _text = _dash_literal_text(_val)
+            if _text is None:
                 continue                      # not expressible as a literal
-            _consts.append("%s = %r" % (_nm, _val))
+            _consts.append("%s = %s" % (_nm, _text))
         if _consts:
             out = (out[:1]
                    + ["", "# Constants the copied helpers reference."]
@@ -72621,8 +72672,7 @@ class ServerAppBuilder:
         ]
         # _dash_dep_fail's exact source, as the copy loop writes a function
         # (_glyph_layer_lines), so the app's guard is the renderer's.
-        import textwrap as _textwrap
-        lines += _textwrap.dedent(_dash_source_of(_dash_dep_fail)).rstrip("\n").split("\n")
+        lines += _dash_copied_lines(_dash_dep_fail)
         lines += [
             "",
             "if tuple(__import__('sys').version_info[:2]) < _DASH_MIN_PYTHON:",
@@ -76434,7 +76484,6 @@ class ServerAppBuilder:
             The same lines, with any missing definitions inserted after the
             imports.
         """
-        import ast as _ast_sup
         import sys as _sys_sup
 
         used, assigned = _dash_scan_constants(lines)
@@ -76445,18 +76494,15 @@ class ServerAppBuilder:
             val = getattr(mod, name, None)
             if val is None:
                 continue
-            try:
-                if _ast_sup.literal_eval(repr(val)) != val:
-                    continue
-            except (ValueError, SyntaxError, TypeError):
+            text = _dash_literal_text(val)
+            if text is None:
                 continue
-            missing.append("%s = %r" % (name, val))
+            missing.append("%s = %s" % (name, text))
         if not missing:
             return lines
 
-        for i, line in enumerate(lines):
-            if line.startswith("import ") or line.startswith("from "):
-                last_import = i
+        last_import = [i for i, line in enumerate(lines)
+                       if line.startswith(("import ", "from "))][-1]
         out = list(lines)
         out[last_import + 1:last_import + 1] = (
             ["", "# Constants the copied helpers refer to."] + missing + [""])

@@ -131,6 +131,75 @@ class TestTheSplitIsKeptWithItsText:
             sys.modules.pop("dash_probe_lines", None)
 
 
+class TestTheCopiedLines:
+    """``_dash_copied_lines``: a copied function's dedented lines, worked
+    out once per text (02nov2026)."""
+
+    def test_they_are_the_dedented_text_and_kept(self):
+        import textwrap
+        fn = dr.GlyphMapper._histogram_grid
+        want = textwrap.dedent(dr._dash_source_of(fn)).rstrip("\n").split("\n")
+        dr._DASH_COPIED_LINES.pop(id(fn), None)
+        first = dr._dash_copied_lines(fn)
+        held = dr._DASH_COPIED_LINES[id(fn)][1]
+        assert first == dr._dash_copied_lines(fn) == want
+        assert dr._DASH_COPIED_LINES[id(fn)][1] is held
+        first.append("x")
+        assert dr._dash_copied_lines(fn) == want
+
+    def test_a_text_read_anew_is_dedented_anew(self, tmp_path):
+        path = tmp_path / "dash_probe_copied.py"
+        _write_module(path, "def f():\n    return 1\n")
+        mod = _import_from(str(path), "dash_probe_copied")
+        try:
+            assert dr._dash_copied_lines(mod.f) == ["def f():", "    return 1"]
+            _write_module(path, "def f():\n    return 22\n")
+            assert dr._dash_copied_lines(mod.f) == ["def f():", "    return 22"]
+        finally:
+            sys.modules.pop("dash_probe_copied", None)
+
+
+class TestTheKernelsSlice:
+    """``_dash_kernels_lines``: the ``_KERNELS`` assignment's lines, found
+    once per text of the module."""
+
+    def test_it_is_the_assignment(self):
+        src = dr._dash_source_lines_of(dr)
+        start = src.index(next(l for l in src
+                               if l.startswith("_KERNELS: dict = {")))
+        end = next(i for i in range(start, len(src)) if src[i].rstrip() == "}")
+        got = dr._dash_kernels_lines()
+        assert got == src[start:end + 1]
+        got.append("x")
+        assert dr._dash_kernels_lines() == src[start:end + 1]
+
+
+class TestTheLiteralText:
+    """``_dash_literal_text``: a value's repr when it reads back equal,
+    else None, checked once per value object."""
+
+    @pytest.mark.parametrize("val,want", [
+        (3, "3"), ((1, "a"), "(1, 'a')"), ({"k": [1.5]}, "{'k': [1.5]}"),
+        (float("nan"), None), (len, None)])
+    def test_the_answer(self, val, want):
+        assert dr._dash_literal_text(val) == want
+
+    def test_a_value_is_checked_once(self, monkeypatch):
+        import ast
+        val = ("probe", 7)
+        dr._DASH_LITERAL_ROUND_TRIP.pop(repr(val), None)
+        calls = []
+        real = ast.literal_eval
+        monkeypatch.setattr(ast, "literal_eval",
+                            lambda t: calls.append(t) or real(t))
+        assert dr._dash_literal_text(val) == dr._dash_literal_text(val)
+        assert calls == [repr(val)]
+        other = tuple(["probe", 7])     # an equal value, another object
+        assert other is not val
+        assert dr._dash_literal_text(other) == repr(val)
+        assert len(calls) == 2
+
+
 class TestTheConstantScan:
     """``_dash_scan_constants`` finds what the two regexes find over the
     joined text, an assignment spanning lines included."""
