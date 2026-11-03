@@ -162,8 +162,17 @@ def _p169_doc(path):
 _p169 = _p169_doc(Macro.getLocal("p169page"))
 _p169g = ([m for m in _p169.models if isinstance(m, GridPlot)]
           if _p169 is not None else [])
-_p169c = sorted((c[1], c[2], c[0].title.text
-                 if isinstance(c[0], Plot) and c[0].title is not None
+# Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title
+# and colour key labels"): a cell is the figure's graph region box, which
+# holds the figure.
+def _p169_fig(m):
+    return (m.children[0] if "dash_graph_region" in (m.tags or [])
+            else m)
+
+
+_p169c = sorted((c[1], c[2], _p169_fig(c[0]).title.text
+                 if isinstance(_p169_fig(c[0]), Plot)
+                 and _p169_fig(c[0]).title is not None
                  else type(c[0]).__name__)
                 for g in _p169g for c in g.children)
 Macro.setLocal("p169_ngrid", str(len(_p169g)))

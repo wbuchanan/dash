@@ -991,6 +991,17 @@ def _q34_cvar(page, glob):
             t = _q3409_ref(objs, a.get("ticker"))
             for v in ((t or {}).get("attributes") or {}).get("ticks") or ():
                 ticks.append(format(float(v), ".10g"))
+        # Flipped (WP-42 CV-3): the colour key is a key cell (a Plot tagged
+        # dash_key_cell) whose z axis carries the ticks, not a ColorBar.
+        if o["name"] == "Plot" and "dash_key_cell" in (a.get("tags") or []):
+            for side in ("left", "right", "above", "below"):
+                for ax in a.get(side) or ():
+                    ax = _q3409_ref(objs, ax)
+                    t = _q3409_ref(objs, ((ax or {}).get("attributes")
+                                          or {}).get("ticker"))
+                    for v in ((t or {}).get("attributes") or {}).get(
+                            "ticks") or ():
+                        ticks.append(format(float(v), ".10g"))
         if o["name"] == "Line":
             c = a.get("line_color")
             if isinstance(c, dict):

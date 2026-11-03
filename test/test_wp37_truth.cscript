@@ -222,6 +222,54 @@ def _w37s01_safe(v):
     return str(v).replace('"', "'").replace("`", "'").replace("$", "S")[:400]
 
 
+def _w37_keycells(objs):
+    """Each colour key cell of a page's models *objs* ({id: model}), as
+    (title, ticks, swatch line colour, swatches).  WP-42 CV-3: the contour
+    key is a key cell -- a Plot tagged dash_key_cell, its title a Label
+    named dash_key_title, its ticks on its z axis, its bands one Quad named
+    dash_key_swatch -- where it was a ContourColorBar."""
+    def ref(v):
+        return objs.get(v.get("id"), v) if isinstance(v, dict) else {}
+
+    def nums(v):
+        if isinstance(v, dict):
+            v = v.get("array", v.get("value", []))
+        return [float(x) for x in v] if isinstance(v, list) else []
+
+    def rows(src):
+        data = (src.get("attributes") or {}).get("data", {})
+        cols = data
+        if isinstance(data, dict) and "entries" in data:
+            cols = {e[0]: e[1] for e in data.get("entries", [])}
+        c = cols.get("c") if isinstance(cols, dict) else None
+        if isinstance(c, dict):
+            c = c.get("array", c.get("value", []))
+        return len(c) if isinstance(c, list) else 0
+    out = []
+    for b in objs.values():
+        a = b.get("attributes") or {}
+        if b.get("name") != "Plot" or "dash_key_cell" not in (a.get("tags") or []):
+            continue
+        title, ticks, lc, n = "", [], None, 0
+        for side in ("left", "right", "above", "below", "center"):
+            for m in a.get(side) or ():
+                m = ref(m)
+                ma = m.get("attributes") or {}
+                if m.get("name") == "Label" and ma.get("name") == "dash_key_title":
+                    title = ma.get("text", "")
+                elif str(m.get("name", "")).endswith("Axis"):
+                    ticks = nums((ref(ma.get("ticker")).get("attributes") or {}).get("ticks", []))
+        for r in a.get("renderers") or ():
+            ra = ref(r).get("attributes") or {}
+            if ra.get("name") == "dash_key_swatch":
+                g = ref(ra.get("glyph")).get("attributes") or {}
+                lc = g.get("line_color")
+                lc = lc.get("value") if isinstance(lc, dict) else lc
+                n = rows(ref(ra.get("data_source")))
+        out.append((title, ticks, lc, n))
+    return out
+
+
 def _w37s01_fx(path):
     with open(path, encoding="utf-8") as fh:
         return _w37s01_json.load(fh)
@@ -353,14 +401,10 @@ def _w37s01_keys(path):
                     walk(v)
 
         walk(_w37s01_json.loads(_w37s01_unescape(body)))
-        for b in bars:
-            a = b.get("attributes", {})
-            tk = a.get("ticker") or {}
-            tk = objs.get(tk.get("id"), tk) if isinstance(tk, dict) else {}
-            ticks = (tk.get("attributes") or {}).get("ticks", [])
-            if isinstance(ticks, dict):
-                ticks = ticks.get("array", ticks.get("value", []))
-            out.append("%s|%d" % (a.get("title", ""), len(ticks or [])))
+        # Flipped (WP-42 CV-3): the key is a key cell, not a
+        # ContourColorBar; its title and its z axis's ticks.
+        for title, ticks, _lc, _n in _w37_keycells(objs):
+            out.append("%s|%d" % (title, len(ticks)))
         _w37s01_M.setGlobal("w37s01_keys", _w37s01_safe(";".join(out)))
     except Exception as e:
         _w37s01_M.setGlobal("w37s01_keys", _w37s01_safe("error " + str(e)))
@@ -736,14 +780,10 @@ def _w37s02_bars(path):
     out = []
     try:
         objs = _w37s02_objs(path)
-        for b in objs.values():
-            if b.get("name") != "ContourColorBar":
-                continue
-            a = b.get("attributes", {})
-            tk = _w37s02_ref(objs, a.get("ticker")).get("attributes", {})
-            ticks = _w37s02_dec(tk.get("ticks", []))
-            out.append("%s|%s" % (a.get("title", ""),
-                                  " ".join("%g" % t for t in ticks)))
+        # Flipped (WP-42 CV-3): the key is a key cell, not a
+        # ContourColorBar; its title and its z axis's ticks.
+        for title, ticks, _lc, _n in _w37_keycells(objs):
+            out.append("%s|%s" % (title, " ".join("%g" % t for t in ticks)))
         _w37s02_M.setGlobal("w37s02_bars", _w37s02_safe(";".join(out)))
     except Exception as e:
         _w37s02_M.setGlobal("w37s02_bars", _w37s02_safe("error " + str(e)))
@@ -1646,18 +1686,11 @@ def _w37s06_page(path):
             data = src.get("data", {})
             return {e[0]: e[1] for e in data.get("entries", [])} \
                 if isinstance(data, dict) and "entries" in data else data
-        for b in objs.values():
-            if b.get("name") != "ContourColorBar":
-                continue
-            a = b.get("attributes", {})
-            lr = _w37s02_ref(objs, a.get("line_renderer")).get("attributes", {})
-            g = _w37s02_ref(objs, lr.get("glyph")).get("attributes", {})
-            src = _w37s02_ref(objs, lr.get("data_source")).get("attributes", {})
-            lc = g.get("line_color")
-            lc = lc.get("value") if isinstance(lc, dict) else lc
-            out.append("%s %s %d %d" % (a.get("bar_line_color"), lc,
-                                        len(cols(src).get("xs", [])),
-                                        len(_w37s02_dec(a.get("levels", [])))))
+        # Flipped (WP-42 CV-3): the key is a key cell, not a
+        # ContourColorBar: its swatches' outline colour and how many boxes
+        # it draws, as twoway's key boxes are counted.
+        for _t, _tk, lc, n in _w37_keycells(objs):
+            out.append("%s %d" % (lc, n))
         nl = 0
         for o in objs.values():
             a = o.get("attributes") or {}
@@ -1752,7 +1785,9 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w37_run' {
     capture noisily dash contour `s06_c', outlines saving("`s06_h'", replace)
     _w37_expect Q3706-2 "(_rc == 0)" "dash contour, outlines rc `=_rc'"
     python: _w37s06_page(r"`s06_h'")
-    _w37_expect Q3706-2 `"("${w37s06_v}" == "#000000 #000000 6 6;lines=0")"' "dash: ${w37s06_v}"
+    // Flipped (WP-42 CV-3): the key cell's boxes, outlined black, one a
+    // box twoway strokes (was a ContourColorBar's outline and level lines).
+    _w37_expect Q3706-2 `"("${w37s06_v}" == "#000000 `=word("`s06_twoutlines'", 1)';lines=0")"' "dash: ${w37s06_v}, twoway `s06_twoutlines'"
     python: _w37s03_fill(r"`s06_h'")
     local got "${w37s03_v}"
     python: _w37s03_fix("sandstone.default", "polys_per_band")
@@ -1780,7 +1815,9 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w37_run' {
     capture noisily dash contour price mpg weight, outlines saving("`s06_h'", replace)
     _w37_expect Q3706-3 "(_rc == 0)" "dash contour, outlines rc `=_rc'"
     python: _w37s06_page(r"`s06_h'")
-    _w37_expect Q3706-3 `"("${w37s06_v}" == "#000000 #000000 4 4;lines=0")"' "dash: ${w37s06_v}"
+    // Flipped (WP-42 CV-3): the key cell's boxes, outlined black, one a
+    // box twoway strokes.
+    _w37_expect Q3706-3 `"("${w37s06_v}" == "#000000 `=word("`s06_twoutlines'", 1)';lines=0")"' "dash: ${w37s06_v}, twoway `s06_twoutlines'"
     _w37_done Q3706-3 "auto outlines: the key outlined, no boundary lines (${w37s06_v})"
 
     // Q3706-4 retired with the option contour no longer takes (D65).

@@ -1038,8 +1038,20 @@ def _w41_s05_geometry():
                 _bad.append("xsize(4) ysize(4): %s %s x %s, twoway %s x %s in" % (_f.sizing_mode, _f.width, _f.height, _w, _h))
         elif _k == 2:
             _f = _figs[0]
-            if _f.sizing_mode != "stretch_width" or abs((_f.aspect_ratio or 0) - _w / _h) > 0.01:
-                _bad.append("default: %s ratio %s, twoway %s" % (_f.sizing_mode, _f.aspect_ratio, _w / _h))
+            # Flipped (BUGS.md "A graph's canvas ended before its own x
+            # axis, x title and colour key labels"): the figure keeps what
+            # its graph region box's padding (the scheme's graph margin, in
+            # % of the width, CSS t r b l) leaves; the graph's ratio is the
+            # figure's with that margin added back.
+            _ar = float(_f.aspect_ratio or 0)
+            for _bx in _ms:
+                if "dash_graph_region" in (getattr(_bx, "tags", None) or []) \
+                        and _f in (getattr(_bx, "children", None) or []):
+                    _pd = [float(_v) for _v in _re.findall(r"-?[0-9.]+(?=%)", str((_bx.styles or {}).get("padding", "")))]
+                    if len(_pd) == 4 and _ar > 0:
+                        _ar = 1.0 / ((1.0 - (_pd[1] + _pd[3]) / 100.0) / _ar + (_pd[0] + _pd[2]) / 100.0)
+            if _f.sizing_mode != "stretch_width" or abs(_ar - _w / _h) > 0.01:
+                _bad.append("default: %s ratio %s, twoway %s" % (_f.sizing_mode, _ar, _w / _h))
         else:
             _grids = [_g for _g in _ms if isinstance(_g, _Grid) and any(_c[0] in _figs for _c in _g.children)]
             _st = dict(_grids[0].styles or {}) if _grids else {}

@@ -889,8 +889,14 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     _r = _cvdr.DashRenderer(Macro.getGlobal("cv_spec"), Macro.getGlobal("cv_data"))
     _page = _r.render()
-_bar = [b for f in _r.figures.values() for b in f.select({"type": _CB})][0]
-_ok = (_bar.title == "Repair" and list(_bar.ticker.ticks) == [4000.0, 8000.0, 12000.0, 16000.0] and _bar.color_mapper.low == 0.0 and _bar.color_mapper.high == 20000.0)
+# Flipped (WP-42 CV-3): the colour key was a ColorBar; twoway draws
+# swatches beside a z axis, the key cell: its title Label, its z axis's
+# ticks and its axis line's ends (bounds) as the range.
+_cell = [f._dash_key_cell for f in _r.figures.values()
+         if getattr(f, "_dash_key_cell", None) is not None][0]
+_ax = _cell._dash_key_axis
+_tl = getattr(_cell, "_dash_key_title", None)
+_ok = ((_tl.text if _tl is not None else "") == "Repair" and list(_ax.ticker.ticks) == [4000.0, 8000.0, 12000.0, 16000.0] and tuple(float(v) for v in _ax.bounds) == (0.0, 20000.0))
 Macro.setGlobal("cv5_drawn", "1" if _ok else "0")
 end
     _gt_expect CV-05 "(`cv5_rc' == 0 & `cv5_note' == 0)" "rc `cv5_rc', note `cv5_note'"

@@ -389,11 +389,23 @@ for _c3name, _c3cell in zip(_c3reg, _c3cells):
     # was wrong for a graph at its xsize()/ysize() box, which sits in a
     # Column of its own that scrolls sideways (with its data table, if
     # any): the figure is that Column's Plot child.
-    if not isinstance(_c3cell, (Plot, GridPlot)):
-        _c3in = [c for c in (getattr(_c3cell, "children", None) or [])
-                 if isinstance(c, Plot)]
-        if len(_c3in) == 1:
-            _c3cell = _c3in[0]
+    # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x
+    # title and colour key labels", WP-42 CV-3): the figure sits in its
+    # graph region box, beside its colour key cell when it has one; the
+    # cell's one figure or grid is read through any such layout.
+    _c3walk = [_c3cell]
+    while not isinstance(_c3cell, (Plot, GridPlot)) and _c3walk:
+        _c3in = [c for w in _c3walk
+                 for c in (getattr(w, "children", None) or [])]
+        _c3in = [c[0] if isinstance(c, tuple) else c for c in _c3in]
+        _c3hit = [c for c in _c3in if isinstance(c, (Plot, GridPlot))
+                  and "dash_key_cell" not in (c.tags or [])]
+        if len(_c3hit) == 1:
+            _c3cell = _c3hit[0]
+            break
+        if _c3hit:
+            break
+        _c3walk = _c3in
     if isinstance(_c3cell, Plot):
         _c3figs = [_c3cell]
     elif isinstance(_c3cell, GridPlot):

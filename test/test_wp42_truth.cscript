@@ -609,6 +609,13 @@ def _q4202_draw(sp, dp, app):
     for figs, sfx in ((a, "s"), (b, "v")):
         ls, os_, keys, titles, labs, kc = set(), set(), 0, [], [], []
         for f in figs:
+            # WP-42 CV-3: the colour key is the figure's key cell (was a
+            # ColorBar or a Legend named _COLORVAR_LEGEND_NAME).
+            _cell = getattr(f, "_dash_key_cell", None)
+            if _cell is not None and _cell.visible:
+                keys += 1
+                _tl = getattr(_cell, "_dash_key_title", None)
+                titles.append(str(_tl.text if _tl is not None else ""))
             for side in (f.right, f.left, f.above, f.below, f.center):
                 for m in side:
                     tn = type(m).__name__
