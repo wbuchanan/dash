@@ -943,8 +943,14 @@ class TestTabsAreWhereTheHelpSaysTheyAre:
             html = r.render()
         body = html[html.index('<div class="db-container">'):]
         tabs_cell = '<div class="db-row db-section"><div class="db-col-md-12">'
-        g1_root = 'data-root-id="%s"' % r.figures["g1"].id
-        g2_root = 'data-root-id="%s"' % r.figures["g2"].id
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x
+        # title and colour key labels"): a graph is embedded as its graph
+        # region box, which holds the figure.
+        def _root(f):
+            return 'data-root-id="%s"' % (
+                getattr(f, "_dash_region_cell", None) or f).id
+        g1_root = _root(r.figures["g1"])
+        g2_root = _root(r.figures["g2"])
         assert body.count(tabs_cell) == 1, "no tabs section was rendered"
         assert body.count(g2_root) == 1, "the unassigned g2 was not placed"
         assert g1_root not in body, "the tabbed g1 was also placed outside"

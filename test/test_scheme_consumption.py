@@ -1491,8 +1491,13 @@ class TestDirectivesOnlyAUserSchemeCarries:
         assert (pair.graphsize_x, pair.graphsize_y) == (6.0, 3.0)
         fig_s2, _l = self._lines(wd, "w26gs2", 1)
         fig_pair, _l = self._lines(wd, "w26d4", 1)
-        assert fig_s2.aspect_ratio == pytest.approx(5.5 / 4.0)
-        assert fig_pair.aspect_ratio == pytest.approx(6.0 / 3.0)
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and
+        # colour key labels"): the figure keeps what the graph margin leaves; its
+        # graph region box round it keeps the graph's shape.
+        assert fig_s2.aspect_ratio == pytest.approx(dash_render._dash_inner_ratio(
+            5.5 / 4.0, fig_s2._dash_gmargin))
+        assert fig_pair.aspect_ratio == pytest.approx(dash_render._dash_inner_ratio(
+            6.0 / 3.0, fig_pair._dash_gmargin))
 
     # -- 4. #include ---------------------------------------------------------
 
@@ -1515,7 +1520,11 @@ class TestDirectivesOnlyAUserSchemeCarries:
         fig, lines = self._lines(wd, "w26inc", 3)
         assert [str(g.line_color).lower() for g in lines] == self._S2_P123
         assert str(fig.border_fill_color).lower() == "#eaf2f3"
-        assert fig.aspect_ratio == pytest.approx(5.5 / 4.0)
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and
+        # colour key labels"): the figure keeps what the graph margin leaves; its
+        # graph region box round it keeps the graph's shape.
+        assert fig.aspect_ratio == pytest.approx(dash_render._dash_inner_ratio(
+            5.5 / 4.0, fig._dash_gmargin))
 
     def test_an_include_overwrites_the_directives_above_it(self, wd):
         """Stata splices an #include in where it stands: setscheme reads the

@@ -1183,7 +1183,11 @@ class TestTheHeightBand:
             assert (fig.sizing_mode, fig.width, fig.height) == (
                 "fixed", 960, 192)
         else:
-            assert fig.aspect_ratio == pytest.approx(5.5 / 4.0)
+            # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and
+            # colour key labels"): the figure keeps what the graph margin leaves; its
+            # graph region box round it keeps the graph's shape.
+            assert fig.aspect_ratio == pytest.approx(dr._dash_inner_ratio(
+                5.5 / 4.0, fig._dash_gmargin))
         assert "The shape is kept at every width, with no height band" \
             in " ".join(open(os.path.join(os.path.dirname(os.path.abspath(
                 __file__)), "..", "dash.sthlp"), encoding="utf-8").read()

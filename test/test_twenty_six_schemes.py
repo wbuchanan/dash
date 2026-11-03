@@ -264,7 +264,11 @@ class TestTheSixDrawWhatTwowayDraws:
     def test_the_proportions_are_the_graphsize(self, name, mode):
         d = _draw(_scheme_spec({"scheme": name}), mode)
         x, y = _TWOWAY[name]["graphsize"]
-        assert d.fig.aspect_ratio == pytest.approx(x / y, abs=1e-9)
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and
+        # colour key labels"): the figure keeps what the graph margin leaves; its
+        # graph region box round it keeps the graph's shape.
+        assert d.fig.aspect_ratio == pytest.approx(dr._dash_inner_ratio(
+            x / y, d.fig._dash_gmargin), abs=1e-9)
 
     @pytest.mark.parametrize("mode", MODES)
     def test_metas_tick_labels_are_twoways_ratio(self, mode):
