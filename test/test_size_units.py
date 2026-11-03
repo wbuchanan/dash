@@ -231,6 +231,17 @@ def _legends(fig):
 
 
 def _colorbar(fig):
+    """The colour key's text sizes.  Flipped (WP-42 CV-3): the key was a
+    ColorBar; twoway draws swatches beside a z axis, the figure's key cell,
+    whose axis labels and title Label carry the sizes a bar's labels and
+    title did."""
+    cell = getattr(fig, "_dash_key_cell", None)
+    if cell is not None:
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            major_label_text_font_size=(
+                cell._dash_key_axis.major_label_text_font_size),
+            title_text_font_size=cell._dash_key_title.text_font_size)
     cb = _of_type(fig, "ColorBar")
     assert len(cb) == 1, cb
     return cb[0]

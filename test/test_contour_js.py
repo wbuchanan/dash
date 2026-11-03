@@ -743,13 +743,16 @@ class TestDateZ:
         zmin, zmax = float(df["zd"].min()), float(df["zd"].max())
         cuts, ticks = dr._dash_contour_cuts({}, zmin, zmax)
         assert list(cr.levels[1:-1]) == pytest.approx(cuts)
-        [bar] = [m for side in (figs[0].right, figs[0].left, figs[0].above,
-                                figs[0].below, figs[0].center)
-                 for m in side if type(m).__name__ == "ContourColorBar"]
-        assert list(bar.ticker.ticks) == pytest.approx(
-            [t for t in ticks if bar.levels[0] <= t <= bar.levels[-1]])
-        assert all(v == dr._dash_fmt_text(float(t), "%8.0gc")
-                   for t, v in bar.major_label_overrides.items())
+        # Flipped (WP-42 CV-3): the key was a ContourColorBar; twoway draws
+        # swatches beside a z axis, the figure's key cell, ticked and
+        # labelled the same, in days and %8.0gc.
+        kc = figs[0]._dash_key_cell._dash_keycell
+        lo, hi = kc["axis"].bounds
+        assert list(kc["ticker"].ticks) == pytest.approx(
+            [t for t in ticks if lo <= t <= hi])
+        ovr = dict(kc["axis"].major_label_overrides or {})
+        assert ovr and all(v == dr._dash_fmt_text(float(t), "%8.0gc")
+                           for t, v in ovr.items())
 
     @pytest.mark.parametrize("ptype", ["contour", "contourline"])
     def test_a_move_matches_the_served_app_and_the_build(self, ptype):

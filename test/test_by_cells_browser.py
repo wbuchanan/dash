@@ -60,16 +60,20 @@ addEventListener('load', () => setTimeout(() => {
       let dark = 0;
       if (cv.width > 0 && cv.height > 0) {
         const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
-        const bg = d[0] + d[1] + d[2];
+        // WP-42 CV-3: a key cell's canvas is transparent; its corner is
+        // read as white, so its swatches and labels count.
+        const bg = d[3] === 0 ? 765 : d[0] + d[1] + d[2];
         for (let i = 0; i < d.length; i += 4) {
           if (d[i + 3] > 0 && d[i] + d[i + 1] + d[i + 2] < bg - 150) dark++;
         }
       }
-      const bars = [];
+      const bars = [], axes = [];
       for (const [m, rv] of (v.renderer_views || [])) {
         if (m.type === 'ColorBar' && rv.bbox) bars.push(rv.bbox.height);
+        // WP-42 CV-3: a key cell's z axis.
+        if ((m.type || '').endsWith('Axis') && rv.bbox) axes.push(rv.bbox.height);
       }
-      out.push({name, w: cv.width / r, h: cv.height / r, dark, bars,
+      out.push({name, w: cv.width / r, h: cv.height / r, dark, bars, axes,
                 mh: v.model.height});
     }
     for (const c of (v.child_views || [])) visit(c);
@@ -100,7 +104,8 @@ class TestTheTitleIsPainted:
         """At 1200 px: the y title's canvas is at least 100 px tall and
         painted; a vertical legend's canvas is taller than 1 px; the
         default colour key's canvas is the y title's height (both fill
-        the panels' track) with its ColorBar drawn; under clegend(on
+        the panels' track) with its z axis drawn (a ColorBar before WP-42
+        CV-3); under clegend(on
         pos(6)) the key's canvas is the fixed height its branch and the
         span hook set."""
         go = {"by": "foreign", "ytitle": '"Price"'}
@@ -115,7 +120,10 @@ class TestTheTitleIsPainted:
         assert yt["h"] >= 100 and yt["dark"] >= 50, yt
         assert leg["h"] > 1, leg
         assert abs(key["h"] - yt["h"]) <= 2, (key, yt)
-        assert key["bars"] and max(key["bars"]) > 1, key
+        # Flipped (WP-42 CV-3): the key drew a ColorBar; twoway draws
+        # swatches beside a z axis, a key cell with its axis drawn.
+        assert not key["bars"] and key["axes"] and max(key["axes"]) > 1, key
+        assert key["dark"] >= 50, key
 
         c = _cells(mode, _KEYED[:1], {"by": "foreign, clegend(on pos(6))",
                                   "ytitle": '"Price"'})

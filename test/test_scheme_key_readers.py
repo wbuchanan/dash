@@ -30,19 +30,18 @@ from test_scheme_review_fixes import _user_scheme  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
 
-def _keys(fig):
-    """{side: [type name, ...]} of the legends and colour bars, in order."""
-    out = {}
-    for side in ("left", "right", "above", "below", "center"):
-        names = [type(m).__name__ for m in getattr(fig, side)
-                 if type(m).__name__ in ("Legend", "ColorBar",
-                                         "ContourColorBar")]
-        if names:
-            out[side] = names
-    return out
-
-
 def _bar(fig):
+    """(side, key) of the colour key.  Flipped (WP-42 CV-3): it was a
+    ColorBar on a side panel; twoway draws swatches beside a z axis, the
+    figure's key cell, beside the figure on *side* or, at ring(0), over
+    the plot region (``center``, at its right or left: the key's
+    ``location`` center_right or center_left)."""
+    cell = getattr(fig, "_dash_key_cell", None)
+    if cell is not None:
+        r0 = getattr(cell, "_dash_key_ring0", None)
+        if r0 in ("left", "right"):
+            return "center", type("K", (), {"location": "center_" + r0})()
+        return cell._dash_key_side, cell
     for side in ("left", "right", "above", "below", "center"):
         for m in getattr(fig, side):
             if type(m).__name__ in ("ColorBar", "ContourColorBar"):
@@ -62,7 +61,10 @@ class TestTheColourKeysRing:
 
     def _side(self, mode, kind, go=None, bo=None):
         spec = tp._spec(_PLOTS[kind](), bo or {}, go or {})
-        side, bar = _bar(_draw(spec, mode).figures[0])
+        # WP-42 CV-3: the served document's Plots include the key cell.
+        [fig] = [f for f in _draw(spec, mode).figures
+                 if "dash_key_cell" not in (f.tags or [])]
+        side, bar = _bar(fig)
         return side, (bar.location if side == "center" else None)
 
     def test_s2color_draws_it_outside(self, mode, kind):
@@ -96,11 +98,22 @@ def test_the_ring_orders_the_key_beside_the_legend(mode):
     def order(go):
         figs = _draw(tp._spec(plots, {}, dict(go, legend="pos(3)")),
                      mode).figures
-        return _keys(figs[0]).get("right")
+        # Flipped (WP-42 CV-3): the key was a ColorBar in the side panel;
+        # it is a key cell, beside the figure (after its panel) or, inside
+        # the legend's ring, laid over its spacer in the panel.
+        fig = [f for f in figs if "dash_key_cell" not in (f.tags or [])][0]
+        cell = fig._dash_key_cell
+        names = ["Key" if getattr(m, "name", None) == "dash_key_spacer"
+                 else type(m).__name__ for m in fig.right
+                 if type(m).__name__ in ("Legend", "ColorBar")]
+        if "Key" not in names and cell is not None \
+                and cell._dash_key_side == "right":
+            names.append("Key")
+        return names
 
     # Bokeh draws a side's first model nearest the plot.
-    assert order({}) == ["Legend", "ColorBar"]
-    assert order({"clegend": "ring(2)"}) == ["ColorBar", "Legend"]
+    assert order({}) == ["Legend", "Key"]
+    assert order({"clegend": "ring(2)"}) == ["Key", "Legend"]
 
 
 # ---------------------------------------------------------------------------

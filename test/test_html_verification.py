@@ -517,11 +517,13 @@ class TestColorvar:
         fig = figure()
         src = self._src()
         gm = GlyphMapper()
-        gm.map_scatter(fig, src, "y", "x", {"colorvar": "grp"})
-        # A ColorBar backed by a LinearColorMapper must be on the right
-        right_bars = [r for r in fig.right if isinstance(r, ColorBar)]
-        assert len(right_bars) == 1
-        assert isinstance(right_bars[0].color_mapper, LinearColorMapper)
+        r = gm.map_scatter(fig, src, "y", "x", {"colorvar": "grp"})
+        # Flipped (WP-42 CV-3): a ColorBar on the right was the key; twoway
+        # draws swatches beside a z axis, a key cell, and the layer's own
+        # mapper is the LinearColorMapper.
+        assert fig._dash_key_cell is not None
+        assert not [m for m in fig.right if isinstance(m, ColorBar)]
+        assert isinstance(r.glyph.fill_color["transform"], LinearColorMapper)
 
     def test_colorvar_colorbar_added_to_figure(self):
         """CV-02: colorvar adds a ColorBar on the right of the figure."""
@@ -530,8 +532,11 @@ class TestColorvar:
         src = self._src()
         gm = GlyphMapper()
         gm.map_scatter(fig, src, "y", "x", {"colorvar": "grp"})
-        right_bars = [r for r in fig.right if isinstance(r, ColorBar)]
-        assert len(right_bars) == 1
+        # Flipped (WP-42 CV-3): the key is a key cell beside the figure, on
+        # its right, not a ColorBar on it.
+        assert fig._dash_key_cell is not None
+        assert fig._dash_key_cell._dash_key_side == "right"
+        assert not [m for m in fig.right if isinstance(m, ColorBar)]
 
     def test_colorvar_categorical_mapper(self):
         """CV-03: colorvar(cat) on string variable creates CategoricalColorMapper.
@@ -547,9 +552,11 @@ class TestColorvar:
         r = gm.map_scatter(fig, src, "y", "x", {"colorvar": "cat"})
         mapper = r.glyph.fill_color["transform"]
         assert isinstance(mapper, CategoricalColorMapper)
-        # Discrete data → Legend on the right (no ColorBar)
-        legends = [lay for lay in fig.right if isinstance(lay, Legend)]
-        assert len(legends) == 1
+        # Flipped (WP-42 CV-3): a Legend on the right; a key cell labelling
+        # each value on its z axis.
+        assert not [lay for lay in fig.right if isinstance(lay, Legend)]
+        ovr = fig._dash_key_cell._dash_key_axis.major_label_overrides
+        assert sorted(ovr.values()) == ["A", "B"]
 
     def test_colorvar_categorical_has_both_factors(self):
         """CV-04: CategoricalColorMapper for 'cat' has factors ['A', 'B']."""
@@ -598,7 +605,9 @@ class TestColorvar:
                    if isinstance(m, LinearColorMapper)]
         # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); two mappers, the layer's levels and
         # the key's bar, each holding grp's range 0 to 2.
-        assert len(mappers) == 2, f"{len(mappers)} LinearColorMappers"
+        # Flipped (WP-42 CV-3): the key is a key cell of swatches, no bar,
+        # so one mapper, the layer's levels.
+        assert len(mappers) == 1, f"{len(mappers)} LinearColorMappers"
         assert all(m.low <= 0.0 and m.high >= 2.0 for m in mappers)
         layers = _layers(fig)
         assert len(layers) == 1, f"{len(layers)} layers, not 1"
@@ -619,15 +628,19 @@ class TestColorvar:
         # BokehJS 22 times in a page with no colorvar() (measured
         # 24sep2026).  One bar, on the right, keyed to the layer's mapper.
         fig = _page_figure(html)
-        bars = [m for m in fig.document.models if isinstance(m, ColorBar)]
-        assert len(bars) == 1, f"{len(bars)} ColorBars"
-        assert bars[0] in fig.right
+        # Flipped (WP-42 CV-3): one ColorBar on the right was the key;
+        # twoway draws swatches beside a z axis, a key cell in the page,
+        # its swatches the layer's level colours.
+        assert not [m for m in fig.document.models if isinstance(m, ColorBar)]
+        cells = [m for m in fig.document.models
+                 if "dash_key_cell" in (getattr(m, "tags", None) or [])]
+        assert len(cells) == 1, f"{len(cells)} key cells"
         mapped = _layers(fig)[0].glyph.fill_color
-        # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); the bar is its own mapper of the
-        # layer's level colours, over twoway's axis range.
         tr = getattr(mapped, "transform", None)
-        assert bars[0].color_mapper.id != getattr(tr, "id", None)
-        assert list(bars[0].color_mapper.palette) == list(tr.palette)
+        [sw] = [r for r in cells[0].renderers
+                if "c" in getattr(r.data_source, "data", {})]
+        cols = list(sw.data_source.data["c"])
+        assert cols and cols == list(tr.palette)[:len(cols)]
 
 
     def test_colorvar_palette_viridis_default(self):
@@ -637,16 +650,18 @@ class TestColorvar:
         fig = figure()
         src = self._src()
         gm = GlyphMapper()
-        gm.map_scatter(fig, src, "y", "x", {"colorvar": "grp"})
-        bar = fig.right[0]
-        mapper = bar.color_mapper
+        r = gm.map_scatter(fig, src, "y", "x", {"colorvar": "grp"})
+        # Flipped (WP-42 CV-3): the key's ColorBar mapper; the layer's own
+        # mapper, its cuts the key cell's ticks.
+        kc = fig._dash_key_cell._dash_keycell
+        mapper = r.glyph.fill_color["transform"]
         assert isinstance(mapper, LinearColorMapper)
         # Flipped (WP-31 C8b): Viridis256 by default was wrong because
         # twoway draws the key in its colour rule, hue from blue to red
         # (colorvar_options_truth.json D01).
         pal = list(mapper.palette)
         # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); one step of the rule a level.
-        cuts = [t for t in bar.ticker.ticks if t >= min(src.data["grp"])]
+        cuts = [t for t in kc["ticker"].ticks if t >= min(src.data["grp"])]
         assert len(pal) == len(cuts) + 1
         assert pal[0] == "#0000ff" and pal[-1] == "#ff0000"
 
@@ -659,10 +674,11 @@ class TestColorvar:
         gm = GlyphMapper()
         gm.map_scatter(fig, src, "y", "x",
                        {"colorvar": "grp", "colpalette": "magma"})
-        bar = fig.right[0]
-        mapper = bar.color_mapper
+        # Flipped (WP-42 CV-3): the key's ColorBar; the key cell's swatches.
+        cols = fig._dash_key_cell._dash_keycell["src"].data["c"]
         # Magma256[0] is a dark color different from Viridis256[0]
-        assert list(mapper.palette)[0] != list(palettes.Viridis256)[0]
+        assert list(cols)[0] != list(palettes.Viridis256)[0]
+        assert list(cols)[0].lower() == palettes.Magma256[0].lower()
 
 
 # ============================================================

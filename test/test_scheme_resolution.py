@@ -209,7 +209,9 @@ def _draw(spec, mode):
         return _Drawn(list(r.figures.values()), r.scheme,
                       _div_css(r.kpi_divs.values()), page, msgs)
     doc, mod, msgs = _served(spec)
-    figs = list(doc.select(dict(type=Plot)))
+    # WP-42 CV-3: a colour key cell is a Plot beside its figure, not one.
+    figs = [p for p in doc.select(dict(type=Plot))
+            if "dash_key_cell" not in (p.tags or [])]
     return _Drawn(figs, mod._DASH_SCHEME,
                   _div_css(doc.select(dict(type=Div))), None, msgs)
 

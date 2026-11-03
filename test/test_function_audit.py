@@ -807,7 +807,9 @@ def _figures(tmp_path, plots, mode):
         r, _w = _saved(tmp_path, spec, _Q)
         return list(r.figures.values())
     doc, _w = _served(tmp_path, spec, _Q)
-    return list(doc.select({"type": Plot}))
+    # WP-42 CV-3: a colour key cell is a Plot beside its figure, not one.
+    return [p for p in doc.select({"type": Plot})
+            if "dash_key_cell" not in (p.tags or [])]
 
 
 @pytest.mark.parametrize("mode", ["saved", "served"])
@@ -833,10 +835,14 @@ class TestAColourKeyDoesNotWidenTheFirstAxis:
              "options": {"colorvar": "x", "colordiscrete": "1"}},
             {"type": "line", "yvar": "w", "xvar": "weight",
              "options": {"yaxis": "2"}}], mode)
+        # Flipped (WP-42 CV-3): the key's swatches were renderers of the
+        # figure; twoway draws them beside a z axis, in the key cell, a
+        # plot of its own, so none can widen the figure's axis.
+        assert fig._dash_key_cell is not None, "no colour key was drawn"
         swatches = [r for r in fig.renderers
                     if str(getattr(r, "name", "") or "").startswith(
                         dr._DASH_SWATCH_PREFIX)]
-        assert swatches, "no colour key was drawn"
+        assert not swatches
         # WP-30 P1.3a: the y axis is now a Range1d over its layers' hull and
         # ticks (it listed renderers); the swatches are no part of it and
         # the scatter the key belongs to is.

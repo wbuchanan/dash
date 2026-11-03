@@ -487,16 +487,20 @@ class TestColourKeyUntouched:
                                       "colordiscrete": "yes"},
                           yvar="mpg", xvar="weight"), _sc("price")]
 
+        # Flipped (WP-42 CV-3): the colour key was a Legend; twoway draws
+        # swatches beside a z axis, the figure's key cell, which legend()'s
+        # options leave as they leave the Legend.
         def cv(legend):
             fig, _ = _build(mode, plots, legend)
-            lgs = [m for m in fig.select({"type": Legend})
-                   if str(m.name or "") == dr._COLORVAR_LEGEND_NAME]
-            assert len(lgs) == 1
-            lg = lgs[0]
-            return (lg.glyph_width, lg.glyph_height, lg.spacing,
-                    lg.label_standoff, lg.border_line_color,
-                    lg.background_fill_color, lg.title, len(lg.items),
-                    lg.location, lg.visible)
+            assert not [m for m in fig.select({"type": Legend})
+                        if str(m.name or "") == dr._COLORVAR_LEGEND_NAME]
+            cell = fig._dash_key_cell
+            kc = cell._dash_keycell
+            return (cell.width, cell.min_border_left, cell.min_border_right,
+                    cell._dash_key_side, cell._dash_key_title.text,
+                    list(kc["src"].data["c"]), list(kc["src"].data["y"]),
+                    dict(kc["axis"].major_label_overrides or {}),
+                    cell.visible, cell.background_fill_color)
 
         assert cv("") == cv('symxsize(5) keygap(1) rowgap(3) holes(1) '
                             'colfirst nobox title("K") '

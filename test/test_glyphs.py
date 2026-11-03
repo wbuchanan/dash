@@ -3518,6 +3518,13 @@ class TestHardeningGuards:
 # Regression tests: colordiscrete, coloruseplegend, colornlevels,
 # colorcuts, colormissing (P1A-46 Python-side coverage)
 # ================================================================
+def _key_labels(fig):
+    """The colour key cell's axis labels, lowest level first (WP-42 CV-3:
+    twoway labels its key's levels on a z axis)."""
+    ovr = dict(fig._dash_key_cell._dash_key_axis.major_label_overrides or {})
+    return [str(ovr[k]) for k in sorted(ovr, key=float)]
+
+
 def _legend_label_text(item) -> str:
     """Extract the plain string label from a Bokeh LegendItem.
 
@@ -3729,12 +3736,14 @@ class TestApplyColorvarOptions:
         assert mapper.nan_color == "#ff0000"
         field = r.glyph.fill_color["field"]
         assert cds.data[field][1] is None
-        import dash_render as dr
-        keys = [m for m in fig.right if type(m).__name__ == "Legend"
-                and str(m.name or "") == dr._COLORVAR_LEGEND_NAME]
-        labels = [str(getattr(i.label, "value", i.label))
-                  for i in keys[0].items]
-        assert labels[-1] == "(missing)"
+        # Flipped (WP-42 CV-3): the Legend ended "(missing)"; twoway's key
+        # draws no missing entry (CV-3, K1): the key cell labels the levels
+        # only (1 .. 2 at twoway's #5 rule, as K2's 0 .. 1), the missing
+        # colour on the mapper.
+        labels = _key_labels(fig)
+        assert "(missing)" not in labels
+        assert labels[0] == "1" and labels[-1] == "2"
+        assert len(fig._dash_key_cell._dash_keycell["src"].data["c"]) == 2
 
     # ------------------------------------------------------------------
     # coloruseplegend
@@ -3817,12 +3826,10 @@ class TestApplyColorvarOptions:
             {"colorvar": "foreign", "colordiscrete": "colordiscrete"},
         )
         right = list(fig.right)
-        assert any(isinstance(lay, Legend) for lay in right), (
-            "colordiscrete should render a Bokeh Legend by default"
-        )
-        assert not any(isinstance(lay, ColorBar) for lay in right), (
-            "ColorBar should not be added for discrete mappings"
-        )
+        # Flipped (WP-42 CV-3): a Legend was drawn; twoway draws swatches
+        # beside a z axis, a key cell, and no Legend or ColorBar.
+        assert fig._dash_key_cell is not None
+        assert not any(isinstance(lay, (Legend, ColorBar)) for lay in right)
 
     def test_colordiscrete_legend_uses_value_labels(self):
         """REGRESSION: legend entries display Stata value labels, not raw codes.
@@ -3838,14 +3845,17 @@ class TestApplyColorvarOptions:
         gm  = self._gm()
         gm.value_label_names = {"foreign": "origin"}
         gm.value_labels      = {"origin": {"0": "Domestic", "1": "Foreign"}}
+        # Flipped (WP-42 CV-3): the Legend wrote the value labels unasked;
+        # twoway's key writes the levels (K1) and their value labels under
+        # zlabel(, valuelabel) (K7).
+        gm.z_options = {"zlabel": ", valuelabel"}
         gm._apply_colorvar(
             fig, r, cds,
             {"colorvar": "foreign", "colordiscrete": "colordiscrete"},
         )
-        legend = next(lay for lay in fig.right if isinstance(lay, Legend))
-        labels = [_legend_label_text(it) for it in legend.items]
+        labels = _key_labels(fig)
         assert "Domestic" in labels and "Foreign" in labels, (
-            f"Expected value labels in legend; got {labels}"
+            f"Expected value labels on the key; got {labels}"
         )
 
     def test_colordiscrete_legend_title_uses_variable_label(self):
@@ -3863,9 +3873,10 @@ class TestApplyColorvarOptions:
             fig, r, cds,
             {"colorvar": "foreign", "colordiscrete": "colordiscrete"},
         )
-        legend = next(lay for lay in fig.right if isinstance(lay, Legend))
-        assert legend.title == "Car origin", (
-            f"Legend title should be the variable label; got {legend.title!r}"
+        # Flipped (WP-42 CV-3): the Legend's title; the key cell's.
+        title = fig._dash_key_cell._dash_key_title.text
+        assert title == "Car origin", (
+            f"The key's title should be the variable label; got {title!r}"
         )
 
     def test_colordiscrete_value_label_fallback_to_numeric(self):
@@ -3880,9 +3891,8 @@ class TestApplyColorvarOptions:
             fig, r, cds,
             {"colorvar": "x", "colordiscrete": "colordiscrete"},
         )
-        legend = next(lay for lay in fig.right if isinstance(lay, Legend))
-        labels = [_legend_label_text(it) for it in legend.items]
-        assert set(labels) >= {"0", "1", "2"}
+        # Flipped (WP-42 CV-3): the Legend's items; the key cell's axis.
+        assert set(_key_labels(fig)) >= {"0", "1", "2"}
 
     def test_colordiscrete_two_distinct_colors_for_two_values(self):
         """REGRESSION: two distinct values → two distinct palette colors."""
@@ -3966,10 +3976,9 @@ class TestApplyColorvarOptions:
         assert len(auto_items_post) == 1, (
             "the layer's legend_label item is kept once colorvar is applied"
         )
-        # And the colorvar Legend is still present on the right
-        assert any(isinstance(lay, Legend) for lay in fig.right), (
-            "Colorvar Legend should still be on fig.right"
-        )
+        # And the colour key is still drawn.  Flipped (WP-42 CV-3): it was
+        # a Legend on fig.right; it is the key cell beside the figure.
+        assert fig._dash_key_cell is not None
 
     def test_no_colorvar_keeps_auto_legend(self):
         """REGRESSION: scatter without colorvar keeps its auto-legend item.

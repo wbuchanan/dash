@@ -16910,10 +16910,17 @@ class GlyphMapper:
                         _lay = _dash_key_bins_layout(
                             dom_units, eff_cuts, bool(force_discrete),
                             _key_fmt, _dp)
+                    _kcols = list(pal_colors)[:len(_lay[2])]
+                    if _keys_rev and (force_discrete or not is_numeric):
+                        # colorkeysreverse on a discrete key: its colours
+                        # reversed, its levels and labels where they are,
+                        # the plot as it is (measured 03nov2026, K1 with
+                        # colorkeysreverse: #0000ff at 5's place .. #ffcc00
+                        # at 1's); a binned key is drawn the same (C8e).
+                        _kcols.reverse()
                     _kc = self._colorvar_key_cell(
                         fig, renderer, _legend, _side, _lay[0], _lay[1],
-                        _lay[2], list(pal_colors)[:len(_lay[2])], _lay[3],
-                        _lay[4])
+                        _lay[2], _kcols, _lay[3], _lay[4])
                     if _kc is not None:
                         # One record every plan holds (by() re-sides it).
                         _kc.update(pos=_pos_of, numeric=bool(is_numeric),
@@ -17176,6 +17183,14 @@ class GlyphMapper:
         swatch kind when not the type's.  Returns the cell's ``keycell`` relevel record, or None
         when no cell is drawn (inside the plot, ``ring(0)``)."""
         ring0 = None
+        _was = getattr(fig, "_dash_key_cell", None)
+        if getattr(key, "_dash_cvar_key", False) and _was is not None and \
+                not getattr(_was, "_dash_cvar_key_cell", False):
+            # A colorvar() layer beside a contour (colorallowmultiple; twoway
+            # stops with r(198), colorvar_parts_truth.json M3): contour's key
+            # cell stays, and the layer's key is drawn as it was before
+            # WP-42 CV-3, beside it.
+            return None
         if side == "center":
             # clegend(ring(0)) (D-42-03.b): the key drawn inside the plot
             # region, at its left (7 to 11 o'clock) or its right, as
@@ -17266,6 +17281,13 @@ class GlyphMapper:
         cell = _dash_key_cell(spec)
         cell._dash_key_place = place
         cell._dash_key_ring0 = ring0
+        cell._dash_cvar_key_cell = bool(getattr(key, "_dash_cvar_key", False))
+        for _t in getattr(key, "tags", None) or []:
+            if str(_t).startswith("ring="):
+                try:
+                    cell._dash_key_ring = int(str(_t)[5:])
+                except ValueError:
+                    pass
         fig._dash_key_cell = cell
         # The key the cell replaces leaves the figure, its swatches with it
         # (no Legend or ColorBar is drawn for it).
@@ -17378,8 +17400,10 @@ class GlyphMapper:
         CV-6, colorvar_parts_truth.json M1).  contour's own key is not
         marked and stays.  A removed key's relevel plan keeps its
         reference and updates a model no longer drawn.  An earlier layer's
-        key cell (WP-42 CV-3, ``fig._dash_key_cell``) goes with it."""
-        if getattr(fig, "_dash_key_cell", None) is not None:
+        key cell (WP-42 CV-3, ``fig._dash_key_cell``) goes with it; a
+        contour's stays."""
+        cell = getattr(fig, "_dash_key_cell", None)
+        if cell is not None and getattr(cell, "_dash_cvar_key_cell", False):
             fig._dash_key_cell = None
         for side in ("right", "left", "above", "below", "center"):
             panel = list(getattr(fig, side))
@@ -46391,19 +46415,30 @@ function dash_key_bin_centres(lo, hi, cuts, ticks, log) {
   const edges = [e[0]].concat(cs, [e[1]]);
   const geo = !!log && edges.every((v) => v > 0);
   const out = [];
+  const last = edges.length - 2;
   for (let i = 0; i + 1 < edges.length; i++) {
-    out.push(geo ? Math.sqrt(edges[i] * edges[i + 1])
+    // A level the values lo .. hi do not reach draws no swatch.
+    out.push((i > 0 && edges[i] >= Number(hi)) || (i < last && edges[i + 1] < Number(lo)) ? NaN
+      : geo ? Math.sqrt(edges[i] * edges[i + 1])
       : (edges[i] + edges[i + 1]) / 2);
   }
   return out;
 }
 function dash_key_cell_data(centres, colours, vert, mid, bands, band) {
   // _dash_key_cell_data: the swatch columns.
-  const n = Math.min(centres.length, colours.length);
-  const cs = centres.slice(0, n).map(Number);
+  let n = Math.min(centres.length, colours.length);
+  let cs = centres.slice(0, n).map(Number);
+  let bd = Array.from(bands || []).slice(0, n);
+  // A level the values do not reach (NaN, dash_key_bin_centres) draws none.
+  const keep = cs.map((c, i) => i).filter((i) => !Number.isNaN(cs[i]));
+  if (keep.length < n) {
+    colours = keep.map((i) => colours[i]);
+    bd = bd.length === n ? keep.map((i) => bd[i]) : [];
+    cs = keep.map((i) => cs[i]);
+    n = cs.length;
+  }
   const m = cs.map(() => Number(mid));
   const w = (band !== null && band !== undefined) ? Number(band) : 2 * Number(mid);
-  let bd = Array.from(bands || []).slice(0, n);
   if (bd.length !== n) bd = cs.map((c) => [c, c]);
   const lo = bd.map((p) => Number(p[0])), hi = bd.map((p) => Number(p[1]));
   const zero = cs.map(() => 0), full = cs.map(() => w);
@@ -46551,16 +46586,20 @@ function dash_cvar_keycell_levels(pl, kept, pal) {
   const l = dash_key_levels_layout(kept, dash_key_get(kc, "pos") || {},
     !!dash_key_get(kc, "numeric"), dash_key_get(kc, "fmt"),
     dash_key_get(kc, "dp") || "period", dash_key_get(kc, "zl"));
-  dash_cvar_keycell_update(kc, l[0], l[1], l[2], Array.from(pal || []).slice(0, l[2].length),
-                           l[3], l[4]);
+  const cols = Array.from(pal || []).slice(0, l[2].length);
+  // colorkeysreverse: the discrete key's colours reversed.
+  if (pl.rev) cols.reverse();
+  dash_cvar_keycell_update(kc, l[0], l[1], l[2], cols, l[3], l[4]);
 }
 function dash_cvar_keycell_bins(pl, dom, eff, pal) {
   // _dash_cvar_keycell_bins.
   const kc = pl.keycell;
   if (!kc) return;
   const l = dash_key_bins_layout(dom, eff, !!pl.discrete, pl.fmt, pl.dp || "period");
-  dash_cvar_keycell_update(kc, l[0], l[1], l[2], Array.from(pal || []).slice(0, l[2].length),
-                           l[3], l[4]);
+  const cols = Array.from(pal || []).slice(0, l[2].length);
+  // colorkeysreverse: a discrete key's colours reversed (a binned one's not).
+  if (pl.rev && pl.discrete) cols.reverse();
+  dash_cvar_keycell_update(kc, l[0], l[1], l[2], cols, l[3], l[4]);
 }
 function dash_cvar_ticks(lo, hi, ts) {
   // _dash_cvar_ticks: by the tick spec, in the variable's Stata units.
@@ -54810,8 +54849,36 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
     _dash_apply_scale(cell, getattr(fig, "_dash_scale", None))
     nom = getattr(fig, "_dash_nominal_px", None)
     ring0 = getattr(cell, "_dash_key_ring0", None)
+    _ring = getattr(cell, "_dash_key_ring", None)
+    if not ring0 and vert and isinstance(_ring, int) and _ring < 3:
+        # A ring inside the series legend's 3 on the legend's side
+        # (scheme_key_readers: clegend(ring(2)) beside legend(pos(3))):
+        # twoway draws the key between the plot and the legend.  A
+        # transparent spacer of the key's width holds its place in the
+        # figure's side panel, before the legend, and the cell is laid over
+        # it (_DASH_KEY_CELL_JS, "inner").
+        from bokeh.models import ColorBar, FixedTicker, Legend, \
+            LinearColorMapper
+        _panel = list(getattr(fig, side))
+        _at = next((i for i, m in enumerate(_panel)
+                    if isinstance(m, Legend) and m.visible
+                    and getattr(m, "name", None) != _COLORVAR_LEGEND_NAME),
+                   None)
+        if _at is not None:
+            _sp = ColorBar(
+                color_mapper=LinearColorMapper(palette=["#ffffff"], low=0,
+                                               high=1),
+                ticker=FixedTicker(ticks=[]), title=None, width=1,
+                padding=0, margin=0, scale_alpha=0.0, bar_line_alpha=0.0,
+                border_line_alpha=0.0, background_fill_alpha=0.0,
+                major_label_text_alpha=0.0, major_tick_line_alpha=0.0,
+                minor_tick_line_alpha=0.0, name="dash_key_spacer")
+            _panel.insert(_at, _sp)
+            setattr(fig, side, _panel)
+            cell._dash_key_spacer = _sp
+            cell._dash_key_ring0 = ring0 = "inner"
     gapl = 0.0
-    if nom and vert and ring0:
+    if nom and vert and ring0 in ("left", "right"):
         # Inside the plot region (P_bp_*): the figure keeps its width;
         # at the left the swatches sit K1's gap from the plot region's
         # edge, at the right the key's edge at the plot region's.
@@ -54831,6 +54898,12 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
         if not ring0:
             setattr(fig, "min_border_" + side, max(0, int(round(
                 _DASH_KEY_GAP_PLOT * mpx - band / 2.0))))
+        elif ring0 == "inner":
+            # The plot region to the swatches inside the cell.
+            cell._dash_key_near = int(getattr(cell, "_dash_key_near", 0)
+                                      or 0) + max(0, int(round(
+                                          _DASH_KEY_GAP_PLOT * mpx
+                                          - band / 2.0)))
         ax = cell._dash_key_axis
         lpx = (OptionTranslator.css_to_pt(ax.major_label_text_font_size)
                or 9.0) * 4.0 / 3.0
@@ -54877,6 +54950,8 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
     # The cell is upright wherever it sits (G01): its thickness is its
     # width, its axis in the border on its axis side.
     cell.width = ext
+    if getattr(cell, "_dash_key_spacer", None) is not None:
+        cell._dash_key_spacer.width = int(ext)
     setattr(cell, "min_border_" + getattr(cell, "_dash_key_side", "right"),
             far)
     _near = int(getattr(cell, "_dash_key_near", 0) or 0)
@@ -54938,6 +55013,7 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
     _reg = getattr(cell, "_dash_key_region", None) or {}
     cb = CustomJS(args={"fig": fig, "cell": cell, "vert": bool(vert),
                         "ar": 0.0, "ring0": ring0 or "",
+                        "spacer": getattr(cell, "_dash_key_spacer", None),
                         "gapl": float(gapl), "wbase": float(cell.width),
                         "region": {k: v for k, v in _reg.items()
                                    if v is not None},
@@ -54954,7 +55030,7 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
         # through to the plot.
         cell.styles = {**dict(cell.styles or {}), "position": "absolute",
                        "top": "0px", "pointer-events": "none",
-                       ring0: "0px"}
+                       ("left" if ring0 == "inner" else ring0): "0px"}
     for prop in ("outer_width", "outer_height", "inner_width",
                  "inner_height"):
         fig.js_on_change(prop, cb)
@@ -56041,7 +56117,11 @@ def _dash_cvar_keycell_levels(plan, kept, pal):
             kc.get("dp") or "period", kc.get("zl"))
     except (KeyError, TypeError, ValueError):
         return
-    _dash_cvar_keycell_update(kc, lo, hi, cs, list(pal)[:len(cs)], pos, ovr)
+    cols = list(pal)[:len(cs)]
+    if plan.get("rev"):
+        # colorkeysreverse: the discrete key's colours reversed.
+        cols.reverse()
+    _dash_cvar_keycell_update(kc, lo, hi, cs, cols, pos, ovr)
 
 
 def _dash_cvar_keycell_bins(plan, dom, eff, pal):
@@ -56057,7 +56137,12 @@ def _dash_cvar_keycell_bins(plan, dom, eff, pal):
             plan.get("dp") or "period")
     except (TypeError, ValueError):
         return
-    _dash_cvar_keycell_update(kc, lo, hi, cs, list(pal)[:len(cs)], pos, ovr)
+    cols = list(pal)[:len(cs)]
+    if plan.get("rev") and plan.get("discrete"):
+        # colorkeysreverse: a discrete key's colours reversed (a binned
+        # one's not, C8e).
+        cols.reverse()
+    _dash_cvar_keycell_update(kc, lo, hi, cs, cols, pos, ovr)
 
 #: The lines a continuous colorvar() line keeps for its levels after a
 #: move: natscale #5 gives at most 6 cuts, so 7 levels, and the missing one.
@@ -60077,6 +60162,26 @@ if (ring0 === "right" || ring0 === "left") {
   if (JSON.stringify(st) !== JSON.stringify(cell.styles || {})) {
     cell.styles = st;
   }
+} else if (ring0 === "inner" && spacer) {
+  // Between the plot and the legend (a ring inside the legend's): the
+  // cell over its spacer in the figure's side panel, the spacer the
+  // cell's width.
+  if ((cell.width || 0) > 0 && spacer.width !== cell.width) {
+    spacer.width = cell.width;
+  }
+  let x0 = null;
+  for (const [m, rv] of (v.renderer_views || new Map())) {
+    if (m === spacer && rv.bbox) x0 = rv.bbox.left;
+  }
+  if (x0 !== null) {
+    const st = Object.assign({}, cell.styles || {});
+    st.left = Math.max(0, Math.round(x0)) + "px";
+    delete st.right;
+    st.top = "0px";
+    if (JSON.stringify(st) !== JSON.stringify(cell.styles || {})) {
+      cell.styles = st;
+    }
+  }
 }
 if (vert) {
   // Beside the figure: the cell's frame is the figure's.
@@ -60405,6 +60510,14 @@ def _dash_key_cell(spec):
     cell._dash_key_len = spec.get("length_px")
     cell._dash_key_side = side
     cell._dash_key_spec = spec
+    # Its canvas text drawn as typed (WP-30 P1.11a), here, by its creator:
+    # a cell is built again after the graph text pass (_dash_key_cell_
+    # reside), and the pass walks no cell (WP-42 CV-3).
+    _dash_finish_graph_text({str(spec.get("graph") or ""): cell})
+    for lab in texts:
+        _d = dict(lab.data_source.data)
+        _d["text"] = [_dash_graph_text(str(t))[0] for t in _d["text"]]
+        lab.data_source.data = _d
     ext = _dash_key_cell_extent(cell, band)
     far = max(0, ext - band)
     if vert:
@@ -60431,9 +60544,17 @@ def _dash_key_cell_data(centres, colours, vert, mid, bands=None, band=None):
     *bands* along the axis (a contour key's), the swatch band across."""
     n = min(len(centres), len(colours))
     cs = [float(c) for c in centres][:n]
+    bd = list(bands or [])[:n]
+    # A level the values do not reach (NaN, _dash_key_bin_centres) draws
+    # no swatch.
+    keep = [i for i, c in enumerate(cs) if c == c]
+    if len(keep) < n:
+        colours = [list(colours)[i] for i in keep]
+        bd = [bd[i] for i in keep] if len(bd) == n else []
+        cs = [cs[i] for i in keep]
+        n = len(cs)
     m = [float(mid)] * n
     w = float(band) if band is not None else 2.0 * float(mid)
-    bd = list(bands or [])[:n]
     if len(bd) != n:
         bd = [(c, c) for c in cs]
     lo = [float(a) for a, _b in bd]
@@ -60530,15 +60651,29 @@ def _dash_key_bin_centres(lo, hi, cuts, ticks=(), log=False):
     bins between the key's axis ends (``_dash_key_ends`` over *lo*, *hi*
     and *ticks*) and the *cuts*, n cuts n + 1 levels (K3: colorlevels(3)
     of 1..5 centred at 1.67, 3 and 4.33; K_cont: price's levels at 2,500,
-    7,500, 12,500 and 15,453 on an axis from its 0 tick to 15,906)."""
+    7,500, 12,500 and 15,453 on an axis from its 0 tick to 15,906).  A
+    level the values *lo* .. *hi* do not reach -- above *hi* or below
+    *lo*, a value on a cut the level below's -- is NaN: twoway draws no
+    swatch for it and keeps its colour unused (measured 03nov2026: z of
+    1,000 .. 2,300 cut at 1,000 .. 2,500 draws four swatches of five
+    colours, the top one unused; decades of 1 .. 10,000 under
+    zscale(log), cut at 2,000 .. 10,000, five of six)."""
     zlo, zhi = _dash_key_ends(lo, hi, list(ticks or []) + list(cuts or []))
     if zlo is None:
         return []
     edges = [zlo] + sorted(float(c) for c in cuts or []) + [zhi]
-    if log and all(e > 0 for e in edges):
-        # On a log axis a level's middle is its ends' geometric mean.
-        return [math.sqrt(a * b) for a, b in zip(edges[:-1], edges[1:])]
-    return [(a + b) / 2.0 for a, b in zip(edges[:-1], edges[1:])]
+    geo = log and all(e > 0 for e in edges)
+    last = len(edges) - 2
+    out = []
+    for i, (a, b) in enumerate(zip(edges[:-1], edges[1:])):
+        if (i > 0 and a >= float(hi)) or (i < last and b < float(lo)):
+            out.append(float("nan"))
+        elif geo:
+            # On a log axis a level's middle is its ends' geometric mean.
+            out.append(math.sqrt(a * b))
+        else:
+            out.append((a + b) / 2.0)
+    return out
 
 
 def _dash_cvar_keycell_steps(plan, lo, hi, cuts, colours):

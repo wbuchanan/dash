@@ -443,6 +443,39 @@ def _figs_and_cells(root):
 
 @pytest.mark.usefixtures("_auto")
 @pytest.mark.parametrize("mode", _MODES)
+class TestColorkeysreverse:
+    """Measured 03nov2026 (s2color, SVG): twoway scatter mpg weight,
+    colorvar(rep78) colordiscrete colorkeysreverse draws K1's key with its
+    colours reversed -- #0000ff at 5's place .. #ffcc00 at 1's -- its labels
+    where they are and the markers unchanged; colorvar(price)
+    colorkeysreverse draws price's key as without it (C8e).  The key cell
+    went silent on it (WP-42 CV-3)."""
+
+    def _cell(self, mode, opts):
+        root = _render_root(tp._spec([plot_for("scatter", opts, yvar="mpg",
+                                               xvar="weight")]), mode)
+        (cell,) = _key_cells(root)
+        kc = cell._dash_keycell
+        return (list(kc["src"].data["c"]), list(kc["src"].data["y"]),
+                dict(kc["axis"].major_label_overrides or {}))
+
+    def test_a_discrete_key_reverses_its_colours(self, mode):
+        base = dict(_KEY_OPTS["K1"])
+        c0, y0, l0 = self._cell(mode, base)
+        c1, y1, l1 = self._cell(mode, dict(base,
+                                           colorkeysreverse="colorkeysreverse"))
+        assert c1 == list(reversed(c0)) and c1 != c0
+        assert (y1, l1) == (y0, l0)
+
+    def test_a_continuous_key_is_unchanged(self, mode):
+        base = {"colorvar": "price"}
+        assert self._cell(mode, dict(
+            base, colorkeysreverse="colorkeysreverse")) == \
+            self._cell(mode, base)
+
+
+@pytest.mark.usefixtures("_auto")
+@pytest.mark.parametrize("mode", _MODES)
 class TestTheLayoutIsUnchanged:
     """CV-3: a graph with no colour key lays out as before; a key cell
     sits beside its figure inside the graph region, at a width known at
@@ -688,6 +721,55 @@ class TestTheKeyCellHelpers:
         assert dr._dash_key_bin_centres(1, 100, [10], log=True) == [
             pytest.approx(math.sqrt(10)), pytest.approx(math.sqrt(1000))]
         assert dr._dash_key_bin_centres(None, None, []) == []
+
+    def test_a_level_no_value_reaches_is_not_drawn(self):
+        # Measured 03nov2026 (twoway line y x, colorvar(z)): z of 1,000 ..
+        # 2,300 cut at 1,000 .. 2,500 draws four swatches, #0000ff ..
+        # #ffff00, the level above 2,500 none; z of 1 .. 10,000 under
+        # zscale(log) cut at 2,000 .. 10,000 five of six, the level above
+        # 10,000 none.  Its centre is NaN and _dash_key_cell_data drops it
+        # with its colour.
+        c = dr._dash_key_bin_centres(1000, 2300, [1000, 1500, 2000, 2500])
+        assert c[:4] == [1000.0, 1250.0, 1750.0, 2250.0] and math.isnan(c[4])
+        c = dr._dash_key_bin_centres(1, 10000, [2000, 4000, 6000, 8000,
+                                                10000], log=True)
+        assert len(c) == 6 and math.isnan(c[5]) and \
+            not any(math.isnan(v) for v in c[:5])
+        d = dr._dash_key_cell_data(c, ["a", "b", "c", "d", "e", "f"], True,
+                                   12.0)
+        assert d["c"] == ["a", "b", "c", "d", "e"] and len(d["y"]) == 5
+        # Below the smallest value too.
+        c = dr._dash_key_bin_centres(5, 9, [2, 4, 6, 8])
+        assert math.isnan(c[0]) and math.isnan(c[1]) and c[2] == 5.0
+
+    def test_the_js_twin_leaves_out_the_same_levels(self):
+        import re as _re
+        from js_runner import run_js
+        js = dr._DASH_CVAR_RELEVEL_JS
+        fns = []
+        for name in ("dash_key_ends", "dash_key_bin_centres",
+                     "dash_key_cell_data"):
+            m = _re.search(r"\nfunction %s\(.*?\n\}\n" % name, js, _re.S)
+            assert m, name
+            fns.append(m.group(0))
+        cases = [(1000, 2300, [1000, 1500, 2000, 2500], False),
+                 (1, 10000, [2000, 4000, 6000, 8000, 10000], True),
+                 (5, 9, [2, 4, 6, 8], False)]
+        script = "".join(fns) + (
+            "const out = [];\n"
+            "for (const [lo, hi, cuts, log] of %s) {\n"
+            "  const c = dash_key_bin_centres(lo, hi, cuts, [], log);\n"
+            "  const d = dash_key_cell_data(c, ['a','b','c','d','e','f'],"
+            " true, 12, null, null);\n"
+            "  out.push([c.map((v) => Number.isNaN(v) ? null : v), d.c]);\n"
+            "}\nconsole.log(JSON.stringify(out));\n"
+            % json.dumps([list(c) for c in cases]))
+        got = run_js(script)
+        for (lo, hi, cuts, log), (jc, jd) in zip(cases, got):
+            pc = dr._dash_key_bin_centres(lo, hi, cuts, log=log)
+            assert [None if v != v else pytest.approx(v) for v in pc] == jc
+            assert dr._dash_key_cell_data(pc, list("abcdef"), True,
+                                          12.0)["c"] == jd
 
     def test_levels_layout(self):
         lo, hi, cs, pos, ovr = dr._dash_key_levels_layout(

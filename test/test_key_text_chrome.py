@@ -2,7 +2,7 @@
 test_key_text_chrome.py -- the colour key's tick texts as the browser
 draws them (WP-30 P1.23b).
 
-A ColorBar's ``major_label_overrides`` is a map keyed by the tick's float
+A key cell's axis's (a ColorBar's before WP-42 CV-3) ``major_label_overrides`` is a map keyed by the tick's float
 position; BokehJS writes a tick's override only when the key equals the
 tick exactly, else it falls back to its own text.  The deserialized map is
 read from the saved page in headless Chrome (``range_probe.RangeProbe``)
@@ -34,12 +34,18 @@ if responsive_probe.find_chrome() is None:
 #: Headless Chrome: the release tier, not the default run (WP-30 D).
 pytestmark = pytest.mark.release
 
+#: Flipped (WP-42 CV-3): the key was a ColorBar; twoway draws swatches
+#: beside a z axis, a key cell (a Plot tagged dash_key_cell) whose axis
+#: carries the same FixedTicker and override map.
 _KEY_TEXTS_JS = """(() => {
   const doc = Bokeh.documents[0];
-  const bars = [...doc.all_models].filter(
-      m => m.constructor.__name__ === "ColorBar");
-  if (bars.length !== 1) { return JSON.stringify(["bars", bars.length]); }
-  const cb = bars[0];
+  const cells = [...doc.all_models].filter(
+      m => (m.tags || []).includes("dash_key_cell"));
+  if (cells.length !== 1) { return JSON.stringify(["cells", cells.length]); }
+  const c = cells[0];
+  const cb = [...c.left, ...c.right, ...c.above, ...c.below].find(
+      a => a.ticker && a.major_label_overrides);
+  if (!cb) { return JSON.stringify(["no axis"]); }
   const ticks = cb.ticker.ticks;
   if (!ticks) { return JSON.stringify(["no fixed ticks"]); }
   const ov = cb.major_label_overrides;

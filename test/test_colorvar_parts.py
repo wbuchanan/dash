@@ -283,8 +283,13 @@ def _sc(yvar, **o):
 
 def _colour_keys(fig):
     """The figure's colour keys: ColorBars (a by() label box's excepted)
-    and colour-key Legends."""
+    and colour-key Legends.
+
+    Flipped (WP-42 CV-3): twoway draws a key of swatches beside a z axis,
+    the figure's key cell (fig._dash_key_cell), which counts with them."""
     out = []
+    if getattr(fig, "_dash_key_cell", None) is not None:
+        out.append(fig._dash_key_cell)
     for side in (fig.right, fig.left, fig.above, fig.below, fig.center):
         for m in side:
             tn = type(m).__name__
@@ -328,8 +333,9 @@ class TestOneKeyForTheGraph:
         assert "Repair record 1978" not in truth["key_texts"]
         [fig] = _auto_figs(tmp, mode, _M1)
         keys = _colour_keys(fig)
-        assert len(keys) == 1, [str(k.title) for k in keys]
-        assert str(keys[0].title) == "Car origin"
+        assert len(keys) == 1, keys
+        # Flipped (WP-42 CV-3): the key's title is the key cell's Label.
+        assert keys[0]._dash_key_title.text == "Car origin"
 
     @pytest.mark.parametrize("mode", MODES)
     def test_plot_legend(self, tmp, mode):
@@ -361,8 +367,12 @@ class TestOneKeyForTheGraph:
                  _sc("mpg", colorvar="price",
                      colorallowmultiple="colorallowmultiple")]
         [fig] = _auto_figs(tmp, mode, plots)
-        kinds = sorted(type(k).__name__ for k in _colour_keys(fig))
-        assert "ContourColorBar" in kinds, kinds
+        # Flipped (WP-42 CV-3): contour's key was a ContourColorBar; it is
+        # the figure's key cell, which the colorvar layer's key leaves.
+        cell = fig._dash_key_cell
+        assert cell is not None and cell._dash_key_spec["kind"] == "band"
+        assert not cell._dash_cvar_key_cell
+        assert len(_colour_keys(fig)) == 2
 
 
 _K9 = [_sc("mpg", colorvar="rep78"), _sc("price")]

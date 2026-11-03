@@ -914,8 +914,21 @@ def _keys(figs):
     """Each colour key's ticks, figure by figure (a ColorBar or a contour's
     ContourColorBar)."""
     from bokeh.models.annotations.legends import BaseColorBar
-    return [list(m.ticker.ticks) for f in figs for m in f.right + f.left
-            + f.above + f.below + f.center if isinstance(m, BaseColorBar)]
+    # Flipped (WP-42 CV-3): twoway draws swatches beside a z axis, a key
+    # cell (fig._dash_key_cell; in a served document's Plots, itself);
+    # its axis's ticks are the key's.  A by() label box is no key.
+    out, seen = [], set()
+    for f in figs:
+        cells = [f] if "dash_key_cell" in (f.tags or []) else \
+            [getattr(f, "_dash_key_cell", None)]
+        for c in cells:
+            if c is not None and id(c) not in seen:
+                seen.add(id(c))
+                out.append(list(c._dash_keycell["ticker"].ticks))
+        out += [list(m.ticker.ticks) for m in f.right + f.left + f.above
+                + f.below + f.center if isinstance(m, BaseColorBar)
+                and m.name != "dash_by_label_box"]
+    return out
 
 
 def _minor_pos(f, letter):

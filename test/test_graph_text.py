@@ -659,8 +659,11 @@ class TestEverySinkBothModes:
         axes = [a for a in _of(models, LinearAxis) if a.axis_label == "X"]
         assert axes and axes[0].axis_label_text_font == dr._DASH_GT_FONTS[
             "stSerif"]
-        bars = [c for c in _of(models, ColorBar) if c.title == "Z"]
-        assert bars and bars[0].title_text_font_style == "bold"
+        # Flipped (WP-42 CV-3): the key's title was a ColorBar's; twoway
+        # draws swatches beside a z axis, a key cell titled by a Label.
+        from bokeh.models import Label as _Label
+        keys = [c for c in _of(models, _Label) if c.text == "Z"]
+        assert keys and keys[0].text_font_style == "bold"
 
     @pytest.mark.parametrize("mode", MODES)
     def test_by_panel_labels_and_overall_text_are_translated(self, mode):

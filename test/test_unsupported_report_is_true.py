@@ -653,8 +653,14 @@ LIVE_VALUES = {
                        dict(_CVD), "scatter", {}),
     "colorkeysreverse": ({**_CVD, "colorkeysreverse": "colorkeysreverse"},
                          dict(_CVD), "scatter", {}),
-    "colorotherlabel": ({**_CVD, "colorcuts": "0", "colorotherlabel": "rest"},
-                        {**_CVD, "colorcuts": "0", "colorotherlabel": "other"},
+    # Flipped (WP-42 CV-3): twoway's axis-style colour key draws no
+    # "Other" entry (colorvar_key_truth.json K8: 3, 4 and the title), so
+    # colorotherlabel() is seen where twoway draws it, the plot legend's
+    # gray entry under coloruseplegend (C8b).
+    "colorotherlabel": ({**_CVD, "colorcuts": "0", "colorotherlabel": "rest",
+                         "coloruseplegend": "coloruseplegend"},
+                        {**_CVD, "colorcuts": "0", "colorotherlabel": "other",
+                         "coloruseplegend": "coloruseplegend"},
                         "scatter", {}),
     # ---- graph-level (WP-31 C8b) ------------------------------------------
     "clegend": (dict(_CV), dict(_CV), "scatter",

@@ -626,6 +626,15 @@ def _records(pid):
 
 def _axis_of(fig, side):
     if side == "cbar":
+        # Flipped (WP-42 CV-3): the key was a ColorBar titled on its own;
+        # twoway draws swatches beside a z axis, the figure's key cell,
+        # titled by a Label (none when the title is empty).
+        cell = getattr(fig, "_dash_key_cell", None)
+        if cell is not None:
+            t = cell._dash_key_title
+            if t is None:
+                return "", None, None
+            return t.text, t.text_font_size, t.text_color
         (bar,) = fig.select({"type": ColorBar})
         return bar.title, bar.title_text_font_size, bar.title_text_color
     if side in ("right", "above"):

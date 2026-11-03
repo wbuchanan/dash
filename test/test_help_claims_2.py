@@ -323,8 +323,11 @@ class TestTheHelpSaysWhatWasMeasured:
         """TestLabelsUsedAutomatically."""
         v = self._values()
         assert "categorical tick labels" not in v
-        assert "{cmd:by()} panels, marker labels, the legend of a discrete" \
-            in v
+        # Flipped (WP-42 CV-3): a discrete key is labelled with its levels,
+        # as twoway's, and its value labels under zlabel(, valuelabel).
+        assert "{cmd:by()} panels, marker labels and the CSV download)" in v
+        assert "its levels, as in {cmd:twoway}, and with their value " \
+            "labels under {cmd:zlabel(, valuelabel)}" in v
         assert "An axis is labelled with numbers, as in {cmd:twoway}" in v
 
     def test_dash_serve_says_what_each_mode_recomputes(self):
@@ -588,9 +591,10 @@ class TestAnUnknownSubOptionWordIsNamedAndDrawnWithout:
 
 class TestLabelsUsedAutomatically:
     """dash.sthlp: variable labels for axis titles and filter titles; value
-    labels for filter dropdowns, by() panel titles, marker labels, the
-    legend of a discrete colorvar() and the CSV download.  An axis, as in
-    twoway, is labelled with numbers, and so is a hover tooltip."""
+    labels for filter dropdowns, by() panel titles, marker labels and the
+    CSV download; a discrete colorvar() key with its levels, and their
+    value labels under zlabel(, valuelabel).  An axis, as in twoway, is
+    labelled with numbers, and so is a hover tooltip."""
 
     def test_axis_titles_are_the_variable_labels(self, tmp_path):
         spec = _spec([plot_for("scatter")])
@@ -634,24 +638,26 @@ class TestLabelsUsedAutomatically:
             assert text == {"Domestic", "Foreign"}, text
 
     def test_a_discrete_colorvar_legend_shows_the_labels(self, tmp_path):
-        spec = _spec([plot_for("scatter", {"colorvar": "foreign",
-                                           "colordiscrete": "colordiscrete"})])
-        r, _, _, doc, _, _ = _both(tmp_path, spec)
-        for fig in (_saved_figure(r), _served_figure(doc)):
-            legs = [x for x in fig.renderers + list(fig.center)
-                    + list(fig.right) if isinstance(x, Legend)]
-            items = []
-            for leg in legs:
-                for it in leg.items:
-                    lab = it.label
-                    items.append(lab.get("value") if isinstance(lab, dict)
-                                 else getattr(lab, "value", str(lab)))
-            got = set(items)
-            assert {"Domestic", "Foreign"} <= got, got
-            # A superset passed a leftover layer item ("mpg") or the raw
-            # codes beside the labels.  Measured 24sep2026: one legend, two
-            # items, the two labels, in both modes.
-            assert sorted(items) == ["Domestic", "Foreign"], items
+        # Flipped (WP-42 CV-3): a Legend of the two labels unasked; twoway
+        # draws swatches beside a z axis labelled 0 .2 .. 1 (K2), and
+        # Domestic and Foreign at the levels under zlabel(, valuelabel)
+        # (K7).  The help says so.
+        plot = plot_for("scatter", {"colorvar": "foreign",
+                                    "colordiscrete": "colordiscrete"})
+        for go, want in (({}, None),
+                         ({"zlabel": ", valuelabel"},
+                          ["Domestic", "Foreign"])):
+            r, _, _, doc, _, _ = _both(tmp_path, _spec([plot], go))
+            for fig in (_saved_figure(r), _served_figure(doc)):
+                assert not [x for x in fig.renderers + list(fig.center)
+                            + list(fig.right) if isinstance(x, Legend)]
+                ovr = dict(fig._dash_key_cell._dash_key_axis
+                           .major_label_overrides or {})
+                got = [ovr[k] for k in sorted(ovr, key=float)]
+                if want is None:
+                    assert "Domestic" not in got and got[0] == "0", got
+                else:
+                    assert [t for t in got if t in want] == want, got
 
     def test_an_axis_is_labelled_with_numbers(self, tmp_path):
         """Flipped (WP-30 P1.5): BasicTickFormatter was wrong because

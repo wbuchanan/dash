@@ -358,8 +358,11 @@ class TestTheStepmapRelevel:
         dr._dash_cvar_relevel_stepmap(plan, [4749.0, 4816.0, 4453.0,
                                              10372.0, 11385.0])
         src = plan["keycell"]["src"]
-        assert len(src.data["c"]) == len(
-            [t for t in plan["cbar"].ticker.ticks if t >= 4453.0]) + 1
+        # A level no price reaches draws no swatch, as twoway's (measured
+        # 03nov2026): the levels from the lowest to the one holding the
+        # highest, 11,385.
+        cuts = [t for t in plan["cbar"].ticker.ticks if t >= 4453.0]
+        assert len(src.data["c"]) == 1 + sum(1 for t in cuts if t < 11385.0)
         assert plan["cbar"].bounds[0] <= min(plan["cbar"].ticker.ticks)
 
 

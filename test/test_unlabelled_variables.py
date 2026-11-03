@@ -422,8 +422,13 @@ class TestBothModesNameAnUnlabelledVariable:
     def test_a_colour_key_is_titled_by_name(self, mode, tmp_path):
         assert "z" in _rotated("ul_colorvar")
         obj = _build(mode, tmp_path, _one([_sc(colorvar="z")]))
-        bars = _select(mode, obj, ColorBar)
-        assert [b.title for b in bars] == ["z"]
+        # Flipped (WP-42 CV-3): the key was a ColorBar titled z; twoway
+        # draws swatches beside a z axis, a key cell titled by its Label.
+        assert not _select(mode, obj, ColorBar)
+        from bokeh.models import Plot
+        cells = [p for p in _select(mode, obj, Plot)
+                 if "dash_key_cell" in (p.tags or [])]
+        assert [c._dash_key_title.text for c in cells] == ["z"]
 
     @pytest.mark.parametrize("mode", MODES)
     def test_filter_widgets_are_titled_by_name(self, mode, tmp_path):

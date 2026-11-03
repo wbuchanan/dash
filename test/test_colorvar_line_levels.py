@@ -88,7 +88,17 @@ def _paths(fig):
 
 
 def _key_colours(fig):
-    """{label: colour} of the colorvar() key."""
+    """{label: colour} of the colorvar() key.
+
+    Flipped (WP-42 CV-3): the key was a Legend, an item a level; twoway
+    draws swatches beside a z axis, so the key cell's swatch at each
+    labelled level gives that label's colour."""
+    cell = getattr(fig, "_dash_key_cell", None)
+    if cell is not None:
+        ovr = dict(cell._dash_key_axis.major_label_overrides or {})
+        d = cell._dash_keycell["src"].data
+        return {str(ovr[float(y)]): c for y, c in zip(d["y"], d["c"])
+                if float(y) in ovr}
     for side in (fig.right, fig.left, fig.above, fig.below, fig.center):
         for m in side:
             if isinstance(m, Legend) and m.name == dr._COLORVAR_LEGEND_NAME:
@@ -152,7 +162,8 @@ class TestOneLinePerLevel:
                                   fig.below, fig.center)
                    for m in side if isinstance(m, Legend)
                    and m.name == dr._COLORVAR_LEGEND_NAME]
-        assert len(legends) == 1
+        # Flipped (WP-42 CV-3): one Legend; one key cell, no Legend.
+        assert legends == [] and fig._dash_key_cell is not None
 
 
 def _moved_paths(mode, plots):
@@ -254,14 +265,15 @@ def test_the_key_has_twoways_levels(mode):
         fig = _figs_of(_saved(spec, df)._last_layout_root)[0]
     else:
         fig = _served_figs(_served(spec, df))[0]
-    [bar] = [m for side in (fig.right, fig.left, fig.above, fig.below,
-                            fig.center) for m in side
-             if isinstance(m, ColorBar)]
-    m = bar.color_mapper
-    assert [str(c).lower() for c in m.palette] == [
-        "#0000ff", "#00ffff", "#00ff00", "#ffff00", "#ff0000"]
-    # Five bins of 500 from 500: (.., 1000], (1000, 1500], ... (2500, ..).
-    assert (m.low, m.high) == pytest.approx((500.0, 3000.0))
+    # Flipped (WP-42 CV-3): the key was a ColorBar over its mapper; it is
+    # a key cell, a swatch a level and its axis ticked at the cuts.
+    cell = fig._dash_key_cell
+    kc = cell._dash_keycell
+    # The levels the values reach (measured 03nov2026, twoway line y x,
+    # colorvar(z) on these z: four swatches, #0000ff .. #ffff00; the
+    # fifth colour, above 2,500, holds no value and is not drawn).
+    assert [str(c).lower() for c in kc["src"].data["c"]] == [
+        "#0000ff", "#00ffff", "#00ff00", "#ffff00"]
     # A value on a cut takes the level below, as twoway's (c0, c1] does.
     # Flipped (WP-42 CV-8): the bar was the levels' own mapper; it is now
     # its own mapper over twoway's axis range exactly (so a tick on its low
@@ -269,11 +281,12 @@ def test_the_key_has_twoways_levels(mode):
     [plan] = [r._dash_cvar for r in fig.renderers
               if (getattr(r, "_dash_cvar", None) or {}).get("kind")
               == "steps"]
-    assert plan["bar"] is m and plan["mapper"] is not m
+    assert plan["keycell"] is kc
+    # Five bins of 500: (.., 1000], (1000, 1500], ... (2500, ..).
     assert dr.GlyphMapper._colorvar_level_index(
         {"field": "z", "transform": plan["mapper"]},
         [1000.0, 1000.5, 1500.0]).tolist() == [0, 1, 1]
-    assert list(bar.ticker.ticks) == [1000.0, 1500.0, 2000.0, 2500.0]
+    assert list(kc["ticker"].ticks) == [1000.0, 1500.0, 2000.0, 2500.0]
 
 
 #: Measured 18oct2026 (StataNow 19.5, s2color, SVG export of ``twoway
@@ -323,7 +336,7 @@ def test_zscale_log_keeps_twoways_levels(mode, name, z, want):
 def test_zscale_log_key_is_stepped_on_a_log_bar(mode):
     """The key stays on a log axis, its colours the levels' (each bin the
     colour of the level its centre falls in), ticked at the cuts."""
-    from bokeh.models import ColorBar, LogColorMapper
+    from bokeh.models import LogAxis
     spec = tp._spec(graphs=[("g1", [_pl(colorvar="z")], {"zscale": "log"},
                              {})])
     df = _continuous(np.float32(10 ** (np.arange(101) / 25.0)))
@@ -331,17 +344,21 @@ def test_zscale_log_key_is_stepped_on_a_log_bar(mode):
         fig = _figs_of(_saved(spec, df)._last_layout_root)[0]
     else:
         fig = _served_figs(_served(spec, df))[0]
-    [bar] = [m for side in (fig.right, fig.left, fig.above, fig.below,
-                            fig.center) for m in side
-             if isinstance(m, ColorBar)]
-    m = bar.color_mapper
-    assert isinstance(m, LogColorMapper)
+    # Flipped (WP-42 CV-3): the key was a ColorBar on a LogColorMapper;
+    # it is a key cell on a log axis, a swatch a level.
+    cell = fig._dash_key_cell
+    kc = cell._dash_keycell
+    assert isinstance(cell._dash_key_axis, LogAxis) and kc["log"]
+    [plan] = [r._dash_cvar for r in fig.renderers
+              if (getattr(r, "_dash_cvar", None) or {}).get("kind")
+              == "steps"]
     lev = dr.GlyphMapper._colorvar_level_index(
-        {"field": "z", "transform": m}, [1.0, 2500.0, 4500.0, 9000.0])
-    pal = [str(c).lower() for c in m.palette]
-    assert len({pal[k] for k in lev}) == 4
-    # The bar holds the five levels the data reach (1 to 10,000), not the
+        {"field": "z", "transform": plan["mapper"]},
+        [1.0, 2500.0, 4500.0, 9000.0])
+    assert len(set(lev.tolist())) == 4
+    # The key holds the five levels the data reach (1 to 10,000), not the
     # rule's 256 steps.
+    pal = [str(c).lower() for c in kc["src"].data["c"]]
     assert len(set(pal)) == 5
-    assert [t for t in bar.ticker.ticks if t > 0] == [
+    assert [t for t in kc["ticker"].ticks if t > 0] == [
         2000.0, 4000.0, 6000.0, 8000.0, 10000.0]

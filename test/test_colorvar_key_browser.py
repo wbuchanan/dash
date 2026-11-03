@@ -188,3 +188,77 @@ class TestTheKeyAsDrawn:
                 _down(rec, tw[k]["y"], cell["frame"]), abs=2.0), (k, cell)
             assert x - fig["frame"][2] == pytest.approx(
                 (tw[k]["x"] - pl["right"]) * s, abs=2.0), (k, cell)
+
+
+#: The plot region's, the series legend's and the key cell's boxes across
+#: the page (page px).
+_RING_JS = r"""
+<script>
+function state() {
+  const out = {legend: null, frame: null, cell: null};
+  const visit = (v) => {
+    if (!v) return;
+    if (v.frame && v.canvas_view && v.model) {
+      const cr = v.canvas_view.el.getBoundingClientRect();
+      if ((v.model.tags || []).includes('dash_key_cell')) {
+        out.cell = [cr.left, cr.left + cr.width];
+      } else if (v.renderer_views) {
+        out.frame = [cr.left + v.frame.bbox.x0, cr.left + v.frame.bbox.x1];
+        for (const [m, rv] of v.renderer_views) {
+          if (m.type === 'Legend' && rv.bbox && m.visible) {
+            out.legend = [cr.left + rv.bbox.left, cr.left + rv.bbox.right];
+          }
+        }
+      }
+    }
+    for (const c of (v.child_views || [])) visit(c);
+  };
+  for (const v of Object.values(Bokeh.index)) visit(v);
+  return out;
+}
+addEventListener('load', () => setTimeout(() => {
+  parent.postMessage('DASHPROBE' + JSON.stringify({W: innerWidth, wide: state()}), '*');
+}, 3000));
+</script>
+"""
+
+
+def _ring_boxes(mode, clegend):
+    plots = [plot_for("scatter", {"colorvar": "price"}, yvar="mpg",
+                      xvar="weight"),
+             plot_for("scatter", {}, yvar="price", xvar="weight")]
+    go = {"legend": "pos(3)"}
+    if clegend:
+        go["clegend"] = clegend
+    spec = tp._spec(plots, {"scheme": "s2color"}, go)
+    if mode == "saved":
+        page = tp._standalone_page(spec)[2]
+    else:
+        from bokeh.embed import file_html
+        from bokeh.resources import INLINE
+        doc, _w = tp._served(spec)
+        page = file_html(doc, INLINE, "served")
+    mp = pytest.MonkeyPatch()
+    mp.setattr(responsive_probe, "PROBE_JS", _RING_JS)
+    try:
+        return responsive_probe.measure_many(page, (1100,))[1100]["wide"]
+    finally:
+        mp.undo()
+
+
+@pytest.mark.usefixtures("_auto")
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestTheKeysRingBesideTheLegend:
+    """scheme_key_readers' measurement: beside legend(pos(3)) (ring 3)
+    twoway draws clegend(ring(2)) between the plot and the legend, and its
+    default ring 4 outside the legend.  The key cell drew outside the
+    legend at any ring (WP-42 CV-3)."""
+
+    def test_ring_2_is_between_the_plot_and_the_legend(self, mode):
+        b = _ring_boxes(mode, "ring(2)")
+        assert b["frame"][1] <= b["cell"][0] + 1.0, b
+        assert b["cell"][1] <= b["legend"][0] + 1.0, b
+
+    def test_the_default_ring_is_outside_the_legend(self, mode):
+        b = _ring_boxes(mode, "")
+        assert b["legend"][1] <= b["cell"][0] + 1.0, b

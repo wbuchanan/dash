@@ -656,7 +656,11 @@ _SAVED_DIGEST = (
     # texts as Text glyphs in the relevel JS (code only: the base's
     # relevel, span and filter JS give the old digest on the new tree);
     # the same under both Pythons.
-    "114746954cca1d3edd3a02d7243e5784c3c28fc8d257f31ad4ff11a085b3fc18")
+    # 11474695... -> 24ba49fd...: WP-42 CV-3's follow-up, a level no value
+    # reaches left out and colorkeysreverse's colours in the relevel JS
+    # (code only: the base's relevel, span and filter JS give the old
+    # digest on the new tree); the same under both Pythons.
+    "24ba49fd9e8f7647a0a5e7b1c412a602cf8dd547985f8d2b5565bdb22de84c0e")
 
 
 # ===========================================================================

@@ -307,8 +307,14 @@ class TestDefault:
         # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); one step of the rule a level, n cuts
         # n + 1 levels, from the rule's start to its end.
         cuts = [t for t in cb.ticker.ticks if t >= min(_DF["price"])]
-        assert len(pal) == len(cuts) + 1
-        assert _close([pal[0], pal[-1]], ["#0000ff", "#ff0000"]), pal[:2]
+        # A level no value reaches draws no swatch, its colour unused, as
+        # twoway's (measured 03nov2026): the rule's n + 1 colours from its
+        # start, as many as the levels the prices reach.
+        reach = 1 + sum(1 for t in cuts if t < max(_DF["price"]))
+        assert len(pal) == reach
+        rule = dr._dash_colorrule_palette("hue", "#0000ff", "#ff0000",
+                                          len(cuts) + 1)
+        assert _close(list(pal), list(rule)[:reach]), pal
 
 
 class TestColorlist:

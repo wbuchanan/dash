@@ -422,9 +422,13 @@ class TestBothModes:
         disc = _spec([plot_for("scatter", {"colorvar": "rep",
                                            "colordiscrete": "yes"})], None,
                      {"ztitle": '"\\[d\\]"'})
+        # Flipped (WP-42 CV-3): the keys were a ColorBar and a Legend;
+        # twoway draws swatches beside a z axis, a key cell whose title is
+        # a Label and whose labels are its axis's.
+        cell_kinds = (bm.Label, bm.LinearAxis, bm.LogAxis)
         for spec, wants, kinds in (
-                (cont, {"\\(c\\)", "$$a$$"}, (bm.ColorBar,)),
-                (disc, {"\\[d\\]"}, (bm.Legend, bm.LegendItem))):
+                (cont, {"\\(c\\)", "$$a$$"}, cell_kinds),
+                (disc, {"\\[d\\]"}, cell_kinds)):
             seen = set()
             for m in _models(mode, spec):
                 if isinstance(m, kinds):

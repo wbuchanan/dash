@@ -294,12 +294,20 @@ class TestSwatchesAreSkipped:
                                     "colordiscrete": "colordiscrete",
                                     "horizontal": "horizontal"})])]),
             "saved")
-        sw = [[_props(r.glyph) for r in f.renderers if dr._dash_is_swatch(r)]
-              for f in figs]
+        # Flipped (WP-42 CV-3): the key's swatches were the figure's
+        # renderers beside a Legend; twoway draws them beside a z axis, in
+        # the figure's key cell, which horizontal leaves as drawn.
+        cells = [f._dash_key_cell for f in figs]
+        assert all(c is not None for c in cells)
+        state = [(c._dash_key_side, dict(c._dash_keycell["src"].data),
+                  dict(c._dash_keycell["axis"].major_label_overrides or {}))
+                 for c in cells]
+        assert state[0] == state[1]
+        sw = [[_props(r.glyph) for r in c.renderers] for c in cells]
         assert sw[0] and _spec_eq(sw[0], sw[1])
         keys = [[type(a).__name__ for a in list(f.right) + list(f.center)
                  if type(a).__name__ in ("Legend", "ColorBar")] for f in figs]
-        assert keys[0] == keys[1]
+        assert keys == [[], []]
         assert {type(r.glyph).__name__ for r in figs[1].renderers
                 if not dr._dash_is_swatch(r)} == {"Scatter"}
 

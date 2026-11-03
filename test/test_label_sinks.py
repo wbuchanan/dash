@@ -344,7 +344,11 @@ def hostile_inputs(payload):
             # WP-30 P1.15c: g2's by() panels draw their axis titles once,
             # in the grid's title cells; a plain graph still carries them
             # on its axes.
-            xtitle=textbox("xtitle"), ytitle=textbox("ytitle")),
+            # Flipped (WP-42 CV-3): twoway's discrete key writes the levels
+            # (K1) and their value labels under zlabel(, valuelabel) (K7);
+            # the Legend wrote the value labels unasked.
+            xtitle=textbox("xtitle"), ytitle=textbox("ytitle"),
+            zlabel=", valuelabel"),
         graph("g4", [
             {"type": "scatter", "yvar": "mpg", "xvar": "weight",
              "options": {"colorvar": "price"}},
@@ -679,22 +683,27 @@ SINKS = (
     Sink("by_xtitle_cell", "xtitle", ("Title",), "text", "text"),
     Sink("by_label_box_from_value_label", "vlo0", ("ColorBar",),
          "major_label_overrides", "text"),
-    Sink("colorbar_title_from_variable_label", "vlprice", ("ColorBar",),
-         "title", "text"),
+    # Flipped (WP-42 CV-3): the colour key was a ColorBar (its title) or a
+    # Legend (its title and items); twoway draws swatches beside a z axis,
+    # so a key cell carries the title as a Label and the value labels as
+    # its axis's tick labels -- the same texts, canvas text.
+    Sink("colorbar_title_from_variable_label", "vlprice", ("Label",),
+         "text", "text"),
     # WP-28 X2: ztitle() is a second source for the same (model, property)
     # pair -- the key title gains a second source, none removed.
-    Sink("colorbar_title_from_ztitle", "zt", ("ColorBar",), "title", "text"),
+    Sink("colorbar_title_from_ztitle", "zt", ("Label",), "text", "text"),
     # DOM text nodes.
     Sink("legend_key_from_variable_label", "vlmpg", ("LegendItem",),
          "label", "text"),
     Sink("legend_label_override", "leglab", ("LegendItem",), "label", "text"),
     Sink("legend_title", "legtitle", ("Legend",), "title", "text"),
-    Sink("colorvar_legend_title_from_variable_label", "vlrep", ("Legend",),
-         "title", "text"),
-    Sink("colorvar_legend_title_from_ztitle", "zt", ("Legend",), "title",
+    # Flipped (WP-42 CV-3): see colorbar_title_from_variable_label.
+    Sink("colorvar_legend_title_from_variable_label", "vlrep", ("Label",),
+         "text", "text"),
+    Sink("colorvar_legend_title_from_ztitle", "zt", ("Label",), "text",
          "text"),
-    Sink("colorvar_legend_key_from_value_label", "vlr1", ("LegendItem",),
-         "label", "text"),
+    Sink("colorvar_legend_key_from_value_label", "vlr1", ("LinearAxis",),
+         "major_label_overrides", "text"),
     Sink("tab_title", "tab1", ("TabPanel",), "title", "text"),
     Sink("dropdown_title_from_label", "fdd", ("Select",), "title", "text"),
     Sink("dropdown_title_from_variable_label", "vlmake", ("Select",),

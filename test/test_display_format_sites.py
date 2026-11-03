@@ -678,15 +678,20 @@ class TestColorvarLabels:
             _graph("g2", [_scatter("mpg", "weight2", colorvar="price",
                                    colordiscrete="yes")]),
         ]), df=_DF.assign(weight2=_DF["mpg"] * 100))
-        items = []
-        for leg in [m for m in b.models if type(m).__name__ == "Legend"]:
-            for it in leg.items:
-                lab = it.label
-                items.append(getattr(lab, "value", lab))
-        joined = " | ".join(str(i) for i in items)
-        assert "≤4,000" in joined and ">6,000" in joined, joined
-        assert "4,000–6,000" in joined, joined
-        assert "10,372" in joined, joined
+        # Flipped (WP-42 CV-3): the keys were Legends of intervals and
+        # levels ("≤4,000", "4,000–6,000", "10,372"); twoway draws swatches
+        # beside a z axis labelled at the cuts (K4) or at its #5 rule (K1),
+        # each label in the variable's format, price's %8.0gc.
+        cells = [m for m in b.models
+                 if "dash_key_cell" in (getattr(m, "tags", None) or [])]
+        labels = [sorted(dict(c._dash_keycell["axis"]
+                              .major_label_overrides or {}).items())
+                  for c in cells]
+        cut = [[t for _v, t in lab] for lab in labels
+               if [v for v, _t in lab] == [4000.0, 6000.0]]
+        assert cut == [["4,000", "6,000"]], labels
+        big = [t for lab in labels for v, t in lab if abs(v) >= 1000]
+        assert big and all("," in t for t in big), labels
 
 
 # ---------------------------------------------------------------------------

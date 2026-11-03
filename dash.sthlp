@@ -1504,8 +1504,10 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:dash} reads variable labels (they title the axes, key the legend,
     name the tooltip rows and the colour key, and title filter widgets)
     and value labels (for filter dropdowns, the titles of
-    {cmd:by()} panels, marker labels, the legend of a discrete
-    {cmd:colorvar()} and the CSV download) without any additional options.
+    {cmd:by()} panels, marker labels and the CSV download) without any
+    additional options.  A discrete {cmd:colorvar()} key is labelled with
+    its levels, as in {cmd:twoway}, and with their value labels under
+    {cmd:zlabel(, valuelabel)}.
     An axis is labelled with numbers, as in {cmd:twoway}, unless its
     {cmd:xlabel()}/{cmd:ylabel()}, on either axis,
     gives the sub-option {cmd:valuelabel} (minimum {cmd:val}): then each
@@ -6058,7 +6060,8 @@ the rule.  A rule's name abbreviates as
 no rule for, such as {cmd:colorrule(hsv)}, is refused as {cmd:twoway}
 refuses it when it draws, after its two notes, {cmd:r(198)}.
 {cmd:colorkeysreverse} reverses a
-{cmd:colordiscrete} key; on any other key -- a colour bar, binned by
+{cmd:colordiscrete} key's colours, its levels, labels and markers where
+they are, as in {cmd:twoway}; on any other key -- a colour bar, binned by
 {cmd:colorlevels()} or with {cmd:colorkeysrange} -- {cmd:twoway} draws the
 same key with it as without it, and so does {cmd:dash}, in silence; under
 {cmd:coloruseplegend} it is taken in silence too, as {cmd:twoway}'s plot

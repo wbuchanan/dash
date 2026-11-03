@@ -84,7 +84,33 @@ def _labels(drawn):
             if isinstance(m, LabelSet)]
 
 
+def _key_chrome(cell):
+    """A key cell's chrome as a ColorBar's attributes: its axis's labels and
+    ticks, its title Label, its own background (WP-42 CV-3)."""
+    from types import SimpleNamespace
+    ax, tl = cell._dash_key_axis, cell._dash_key_title
+    return SimpleNamespace(
+        major_label_text_color=ax.major_label_text_color,
+        major_label_text_font_size=ax.major_label_text_font_size,
+        title_text_color=tl.text_color,
+        title_text_font_size=tl.text_font_size,
+        title_text_font_style=tl.text_font_style,
+        background_fill_alpha=cell.background_fill_alpha,
+        major_tick_line_color=ax.major_tick_line_color,
+        major_tick_in=ax.major_tick_in, major_tick_out=ax.major_tick_out)
+
+
 def _colorbar(drawn):
+    """The colour key's chrome.  Flipped (WP-42 CV-3): it was a ColorBar;
+    twoway draws swatches beside a z axis, a key cell, whose axis and
+    title carry the same chrome."""
+    cells = [c for f in drawn.figures
+             for c in ([f] if "dash_key_cell" in (f.tags or [])
+                       else [getattr(f, "_dash_key_cell", None)])
+             if c is not None]
+    if cells:
+        (cell,) = {id(c): c for c in cells}.values()
+        return _key_chrome(cell)
     (bar,) = [m for f in drawn.figures for m in f.select({"type": ColorBar})]
     return bar
 
@@ -341,13 +367,16 @@ class TestAfterAFilterMove:
         doc = tlv._served_doc(tmp_path, spec)
         tlv._fire(doc, "foreign", "1")
         (ls,) = doc.select({"type": LabelSet})
-        (bar,) = doc.select({"type": ColorBar})
+        # Flipped (WP-42 CV-3): the key was a ColorBar; it is a key cell.
+        (cell,) = [p for p in doc.select({"tags": "dash_key_cell"})]
+        bar = _key_chrome(cell)
         assert (str(ls.text_color).lower(), ls.text_font_size) == \
             ("#ffff00", "8pt")
         assert str(bar.major_label_text_color).lower() == "#ffffff"
 
     def test_no_saved_script_writes_label_or_key_style(self):
-        """No saved page script writes a LabelSet's or ColorBar's style, so
+        """No saved page script writes a LabelSet's or ColorBar's style (nor
+        a key cell's axis or title, WP-42 CV-3), so
         the construction defaults hold after a move: no CustomJS of a built
         page and no JavaScript string of the module assigns one."""
         # An assignment to a model property; a KPI card's ``k.text_color``

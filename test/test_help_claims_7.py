@@ -509,9 +509,23 @@ def _colour_mapped(fig):
             if (isinstance(v, dict) and v.get("transform") is not None) or \
                     getattr(v, "transform", None) is not None:
                 out["field"] = True
+    # Flipped (WP-42 CV-3): "bar" was a ColorBar and "key" the colorvar
+    # Legend; twoway draws one key of swatches beside a z axis, a key cell
+    # (fig._dash_key_cell).  "bar" is now a binned key -- its swatches
+    # between its ticks (K_cont, CV-8) -- and "key" a discrete one, its
+    # swatches at its levels, each labelled on the axis (K1).
+    # A contour's own key (a ContourColorBar before) is not colorvar()'s.
+    cell = getattr(fig, "_dash_key_cell", None)
+    if any(type(r).__name__ == "ContourRenderer" for r in fig.renderers):
+        cell = None
+    if cell is not None:
+        sp = cell._dash_key_spec
+        at = {round(float(v), 9) for v in (sp.get("labels") or {})}
+        levels = all(round(float(c), 9) in at for c in sp.get("centres") or [])
+        out["key" if levels else "bar"] = True
     for side in ("right", "left", "above", "below", "center"):
         for m in getattr(fig, side):
-            if isinstance(m, ColorBar):
+            if isinstance(m, ColorBar) and m.name != "dash_by_label_box":
                 out["bar"] = True
             if isinstance(m, Legend) and \
                     str(m.name or "") == dr._COLORVAR_LEGEND_NAME:
@@ -549,10 +563,13 @@ class TestWhereColorvarIsDrawn:
         fig, _ = _render(mode, [plot_for("scatter", {"colorvar": "foreign",
                                                      "colordiscrete": "1"}),
                                 plot_for("lfit")], {"legend": "off"})
-        keys = [m for m in fig.legend
-                if str(m.name or "") == dr._COLORVAR_LEGEND_NAME]
-        plots = [m for m in fig.legend if m not in keys]
-        assert keys and all(k.visible for k in keys)
+        # Flipped (WP-42 CV-3): the colour key was a Legend among the
+        # figure's; it is the key cell beside the figure, drawn.
+        cell = fig._dash_key_cell
+        assert cell is not None and cell.visible
+        assert not [m for m in fig.legend
+                    if str(m.name or "") == dr._COLORVAR_LEGEND_NAME]
+        plots = list(fig.legend)
         assert plots and not any(p.visible for p in plots)
 
     @pytest.mark.parametrize("mode", _MODES)
@@ -575,9 +592,10 @@ class TestAStringColorvar:
         for fig in tw._figures(r, doc):
             assert _colour_mapped(fig) == {"field": True, "bar": False,
                                            "key": True}
-            key = [m for m in fig.right if isinstance(m, Legend)
-                   and str(m.name or "") == dr._COLORVAR_LEGEND_NAME][0]
-            assert len(key.items) == tw._DF["make"].nunique()
+            # Flipped (WP-42 CV-3): a Legend entry a value; the key cell
+            # labels each value on its z axis.
+            ovr = fig._dash_key_cell._dash_key_axis.major_label_overrides
+            assert sorted(ovr.values()) == sorted(tw._DF["make"].unique())
 
     def test_a_repeated_value_is_one_level(self, monkeypatch):
         """The string path took every OBSERVATION for a level: a variable
@@ -592,11 +610,12 @@ class TestAStringColorvar:
         r, doc, _, _ = tw._both([plot_for("scatter", {
             "colorvar": "make", "colormissing": "red"})])
         for fig in tw._figures(r, doc):
-            key = [m for m in fig.right if isinstance(m, Legend)
-                   and str(m.name or "") == dr._COLORVAR_LEGEND_NAME][0]
-            labels = [str(getattr(i.label, "value", i.label))
-                      for i in key.items]
-            assert labels == ["D", "F", "(missing)"], labels
+            # Flipped (WP-42 CV-3): the Legend ended "(missing)"; twoway's
+            # key draws no missing entry (CV-3, K1), so the key cell labels
+            # D and F, bottom to top; the missing colour stays on the mapper.
+            ovr = fig._dash_key_cell._dash_key_axis.major_label_overrides
+            labels = [ovr[k] for k in sorted(ovr, key=float)]
+            assert labels == ["D", "F"], labels
             mapper = [r_.glyph.fill_color for r_ in _glyphs(fig)
                       if type(r_.glyph).__name__ == "Scatter"][0]
             mapper = (mapper.get("transform") if isinstance(mapper, dict)
@@ -1241,8 +1260,10 @@ class TestColourPalettes:
         if name:
             opts["colpalette"] = name
         fig, _ = _render(mode, [plot_for("scatter", opts)])
-        bars = [m for m in fig.right if isinstance(m, ColorBar)]
-        assert bars, "no colour bar"
+        # Flipped (WP-42 CV-3): the key was a ColorBar; it is a key cell of
+        # swatches, one a level, its axis ticked at the cuts.
+        cell = fig._dash_key_cell
+        assert cell is not None, "no colour key"
         # Flipped (WP-31 C8b): viridis with no colpalette() was wrong
         # because twoway draws the key in its colour rule, hue from blue to
         # red under s2color (colorvar_options_truth.json D01); colpalette()
@@ -1253,7 +1274,7 @@ class TestColourPalettes:
         import colour_bins as _cb
         [rend] = _cb.colour_renderers(fig)
         vmin = min(float(v) for v in _cb.colour_values(rend))
-        cuts = [t for t in bars[0].ticker.ticks if t >= vmin]
+        cuts = [t for t in cell._dash_keycell["ticker"].ticks if t >= vmin]
         n = len(cuts) + 1
         if name:
             full = list(getattr(palettes, name.capitalize() + "256"))
@@ -1261,7 +1282,16 @@ class TestColourPalettes:
                     for k in range(n)]
         else:
             want = dr._dash_colorrule_palette("hue", "#0000ff", "#ff0000", n)
-        assert list(bars[0].color_mapper.palette) == list(want)
+        # twoway draws only the levels the values reach (measured
+        # 03nov2026): a level wholly above the largest value, or below the
+        # smallest, keeps its colour unused.
+        vmax = max(float(v) for v in _cb.colour_values(rend))
+        edges = [-math.inf] + cuts + [math.inf]
+        reach = [k for k in range(n)
+                 if not (k > 0 and edges[k] >= vmax)
+                 and not (k < n - 1 and edges[k + 1] < vmin)]
+        assert [c.lower() for c in cell._dash_keycell["src"].data["c"]] == \
+            [want[k].lower() for k in reach]
 
 
 # ===========================================================================

@@ -141,8 +141,13 @@ def _mapped(r):
 
 
 def _keys(fig):
-    """The colour keys on *fig*: ColorBars and colorvar() Legends."""
+    """The colour keys on *fig*: ColorBars and colorvar() Legends.
+
+    Flipped (WP-42 CV-3): twoway draws one key of swatches beside a z
+    axis, a key cell (fig._dash_key_cell), which counts with them."""
     out = []
+    if getattr(fig, "_dash_key_cell", None) is not None:
+        out.append(fig._dash_key_cell)
     for side in (fig.right, fig.left, fig.above, fig.below, fig.center):
         for m in side:
             if isinstance(m, ColorBar):
@@ -152,34 +157,14 @@ def _keys(fig):
     return out
 
 
-def _bar(fig):
-    [cb] = [k for k in _keys(fig) if isinstance(k, ColorBar)]
-    return cb
-
-
-def _mapper_colour(mapper, v):
-    """The colour BokehJS's LinearColorMapper gives value *v*."""
-    pal = list(mapper.palette)
-    if v is None or (isinstance(v, float) and math.isnan(v)):
-        return mapper.nan_color
-    lo, hi = float(mapper.low), float(mapper.high)
-    if v < lo:
-        return pal[0]
-    if v > hi:
-        return pal[-1]
-    k = int(math.floor((v - lo) / (hi - lo) * len(pal))) if hi > lo else 0
-    return pal[min(len(pal) - 1, max(0, k))]
-
-
-def _bar_level_colour(mapper, v):
-    """The colour of the key level holding *v* on a stepped key's bar.
-
-    Flipped (WP-42 CV-8): the bar was the lines' own mapper; it is now its
-    own mapper over twoway's axis range exactly, binned closed below as
-    BokehJS bins, so a value on a cut -- twoway's level below -- is read a
-    millionth of the bar's range below it."""
-    lo, hi = float(mapper.low), float(mapper.high)
-    return _mapper_colour(mapper, v - (hi - lo) * 1e-6)
+def _key_level_colour(fig, v):
+    """The colour of the key level holding *v* on *fig*'s binned key cell
+    (WP-42 CV-3: the key was a ColorBar read through its mapper): one
+    swatch a level, cut at the axis's ticks, a value on a cut twoway's
+    level below (CV-8)."""
+    kc = fig._dash_key_cell._dash_keycell
+    cuts = list(kc["ticker"].ticks)
+    return list(kc["src"].data["c"])[sum(1 for t in cuts if t < v)]
 
 
 def _plot_renderers(fig):
@@ -302,8 +287,12 @@ class TestEveryColouredType:
                 if type(r.glyph).__name__ == "VBar"]
         assert _mapped(vb) == ["fill_color", "line_color"]
         assert vb.glyph.fill_color.field.startswith(dr._DASH_CVAR_PREFIX)
-        [leg] = _keys(fig)
-        assert isinstance(leg, Legend) and len(leg.items) == 5
+        # Flipped (WP-42 CV-3): a Legend of five items; the key cell's five
+        # swatches, each level labelled on its axis.
+        [cell] = _keys(fig)
+        assert len(cell._dash_keycell["src"].data["c"]) == 5
+        assert sorted(cell._dash_key_axis.major_label_overrides) == \
+            [1.0, 2.0, 3.0, 4.0, 5.0]
 
 
 class TestArrowHeads:
@@ -391,18 +380,16 @@ class TestLinePerLevel:
     @pytest.mark.parametrize("ptype", ["line", "tsline"])
     def test_each_line_is_one_level(self, tmp, mode, ptype):
         fig = _fig(tmp, mode, ptype, {"colorvar": "rep78"})
-        mapper = _bar(fig).color_mapper
         lines = _level_lines(fig)
         assert len(lines) == len(set(_DF["rep78"]))
         for colour, vals in lines.items():
-            assert {_bar_level_colour(mapper, v) for v in vals} == {colour}
+            assert {_key_level_colour(fig, v) for v in vals} == {colour}
 
     @pytest.mark.parametrize("mode", MODES)
     def test_connected_line_and_markers(self, tmp, mode):
         fig = _fig(tmp, mode, "connected", {"colorvar": "rep78"})
-        mapper = _bar(fig).color_mapper
         for colour, vals in _level_lines(fig).items():
-            assert {_bar_level_colour(mapper, v) for v in vals} == {colour}
+            assert {_key_level_colour(fig, v) for v in vals} == {colour}
         [sc] = [r for r in _plot_renderers(fig)
                 if type(r.glyph).__name__ == "Scatter"]
         assert _mapped(sc)
