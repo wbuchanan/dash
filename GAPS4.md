@@ -458,7 +458,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-12 Tracked:** Closed in WP-42, BUGS.md "The z tick family: zlabels/zticks/zmlabels/zmticks are refused (twoway takes them); ztick(), zmlabel() and zmtick() are noted and not drawn, and are absent from the Unsupported list", commit 4b76b44.
 - **sil:SD-4 Tracked:** Closed in WP-42, BUGS.md "The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read", commit d7dffa5.
 - **CV-17 Tracked:** Open (WP-42 section 42-01).
-- **LT-22 Tracked:** Closed in WP-42, BUGS.md "contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line", commit pending.
+- **LT-22 Tracked:** Closed in WP-42, BUGS.md "contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line", commit 514098a.
 - **LT-1 Tracked:** Open (WP-43 section 43-01).
 - **LT-4 Tracked:** Open (WP-43 section 43-02).
 - **LT-2 Tracked:** Open (WP-43 section 43-03).
