@@ -5314,6 +5314,26 @@ Summarised from .ultraplan/sections/index.md (WP-41) and .ultraplan/review/DECIS
 - **Left open:** BY-10's orientation() (BUGS.md "A by() panel label's orientation() is named, not drawn"); by(, subtitle(, position(3))) label placement and plot widths (BUGS.md "by(, subtitle(, position(3))) panel labels sit right of their strips and the two plot regions are narrower and unequal"), deferred by the maintainer on accepting the 41-05 screenshot pairs (01nov2026); VF-4's and GW-6's residuals, filed under WP-45, among them the corpus guard's help-added_text_options-0a48288d plot region (BUGS.md "A line graph with a title, subtitle, note and a boxed text() has a wider plot region than twoway's", measured 02nov2026).
 - **Gate (01nov2026):** `make test-all` on a3d132d -- pytest 40,766 passed and 9 failed (626 s; the suite was cut from 2,344 s by 09c369f..9243eb4), cert 74 of 74 (531 s), 1,157 s in all; the nine were fixed in 041d05a (a copied conftest runs without the new memory guard), 776708a (an unused import) and 37caf94 (a fake Popen counted another test's thread), and their files pass. `make cert-all` on a3d132d -- 76 of 77 registered scripts passed (3 sessions, all tier): test_wp31_truth U39-08 read margin(large)'s inset against the whole padding GW-6 now draws; fixed in 2a39b77, and block S39 passes on it.
 
+## WP-42 · Colour variables (P7) — DONE
+
+**GAPS4 closed:** CV-8, sil:SD-4, CV-17, CV-1, CV-6, CV-7, CV-2, CV-9, CV-10, CV-14, CV-3, CV-15, LT-12, AX-12, LT-22, CV-8a, CV-4, CV-5, CV-11
+
+As a Stata user who colours a graph by a variable, I want the levels, their colours and the colour key drawn as twoway draws them -- binned at twoway's cuts, keyed on twoway's axis-style key, and every colour option twoway honours honoured or refused in twoway's words -- so that a colorvar() or contour dashboard reads as the graph twoway draws.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (WP-42) and .ultraplan/review/DECISIONS.md (D68, M11), which hold them in full.
+
+- **Levels and colours (42-01, 42-05).** An unbinned numeric colorvar() is binned at twoway's z ticks on every type twoway colours, mono schemes starting near white; colordiscrete colorlevels(k) cuts at range/(k+1); the key is as thick as the scheme's clegend_width; a colorlist() or ccolors() of quoted RGB colours takes each colour whole (CV-17, registered by WP-33's corpus run).
+- **Line parts and layers (42-02).** colorfillonly keeps the level colours on lines, spikes, caps and arrows; two colorvar() layers draw the last layer's key and a plot legend; a colorvar layer's plot-legend key is drawn in its series colour.
+- **twoway's axis-style key (42-03, M11).** The colour key is swatches beside a z axis, highest at the top, ticked at the natscale ticks or the cuts, its title up its side, no missing entry and no frame; zlabel(), zscale(), the z tick family and clegend()'s sub-options are drawn on it; clegend(title()) is drawn above it; a by() contour draws twoway's one key (D68); contourline keys its levels and follows a filter move.
+- **The plot legend and the key (42-04).** coloruseplegend keys the levels highest first, then Other, untitled, in the display format; legend()'s size(), rows() and cols() leave every colour key; colorkeysreverse reverses the key's colours only; colorlevels() over one value cuts at zero width.
+- **Refusals (42-05).** colorvar(), colorcuts(), colorlevels() and malformed clegend()/plegend()/zlabel()/zscale() are refused with twoway's rc and words; the documented acceptances are answered as twoway answers them.
+
+- **Entries.** 19 WP-42 entries; 19 closed, 0 documented, 0 partly closed; BUGS.md holds 110 open entries.
+- **Left open:** a colorlist() shorter than the levels that starts with a quoted colour (BUGS.md "A colorlist() shorter than the levels that starts with a quoted colour repeats its last colour; twoway gives the unlisted levels the hue rule's colours", measured 03nov2026, S3).
+- **Gate (03nov2026):** `make test-all` on 0fdf722 -- pytest 41,412 passed (511 s), cert 68 of 75 (537 s), 1,057 s in all; the seven were readers that predated CV-3's key cell and d088459's graph region box (test_conformance, test_e2e_multi, test_gaps2_truth, test_wp34_truth, test_wp37_truth, test_wp41_truth, test_wp42_truth), fixed in 6757e2c, each passing under the runner. `make cert-all` -- first on 6757e2c, 75 of 78 (test_wp29_truth, test_wp30_truth and test_wp31_truth read the same old models; fixed in 4f51cf0); then on 4f51cf0, 78 of 78 registered scripts passed (3 sessions, all tier, 1,082 s). Before the gate, the full pytest suite on 1491225 had 22 failures, fixed in 9f4ab08.
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.
