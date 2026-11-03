@@ -10195,6 +10195,10 @@ program define _dash_plot
     // WP-31 H2t: table()'s sub-options, rows(#) and open (_dash_table_check).
     if `"`macval(g_table)'"' != "" _dash_table_check `"`macval(g_table)'"'
     _dash_subopt_check zlabel
+    // WP-42 AX-12: the z tick family's, as twoway checks them.
+    _dash_subopt_check ztick
+    _dash_subopt_check zmlabel
+    _dash_subopt_check zmtick
     // WP-42 CV-10: clegend() is read when a layer has colorvar(), plegend()
     // when one has coloruseplegend, zscale() always, as twoway reads them
     // (measured, colorvar_refusal_truth.json K_*: clegend(bogus) and
@@ -10206,7 +10210,7 @@ program define _dash_plot
     // test/fixtures/axis_look_truth.json ref_*): r(198) "invalid label
     // specifier, :  <the part>:" (two blanks, as twoway writes it), and
     // zlabel()'s (WP-42 CV-10).
-    foreach _alo in xlabel ylabel xtick ytick xlabel2 ylabel2 xtick2 ytick2 zlabel {
+    foreach _alo in xlabel ylabel xtick ytick xlabel2 ylabel2 xtick2 ytick2 zlabel ztick zmlabel zmtick {
         mata: st_local("_alr", _dash_axlabel_refusal(st_local("g_`_alo'")))
         if `"`macval(_alr)'"' != "" {
             mata: _dash_say("err", "invalid label specifier, :  ", st_local("_alr"), ":")
@@ -10219,8 +10223,12 @@ program define _dash_plot
     // label specifier, :  bogus:", r(198), with or without colorvar()).
     // Read by value; a text holding a backtick, $, a quote or a control
     // byte is not put to -numlist-.
-    if `: length local g_zlabel' {
-        mata: _dash_zl_v = st_local("g_zlabel"); _dash_zl_c = strpos(_dash_zl_v, ","); _dash_zl_v = (_dash_zl_c ? substr(_dash_zl_v, 1, _dash_zl_c - 1) : _dash_zl_v)
+    // WP-42 AX-12: and ztick()'s, zmlabel()'s and zmtick()'s (measured,
+    // K_ztic_bogus, K_ztic_mixed, K_zmlab_bogus, K_zmtic_bogus: the same
+    // words, r(198)).
+    foreach _zlo in zlabel ztick zmlabel zmtick {
+    if `: length local g_`_zlo'' {
+        mata: _dash_zl_v = st_local("g_`_zlo'"); _dash_zl_c = strpos(_dash_zl_v, ","); _dash_zl_v = (_dash_zl_c ? substr(_dash_zl_v, 1, _dash_zl_c - 1) : _dash_zl_v)
         mata: st_local("_zlh", strtrim(ustrregexra(_dash_zl_v, char(34) + "[^" + char(34) + "]*" + char(34) + "|#[0-9]+|\bminmax\b|\bnone\b", " "))); st_local("_zlbad", strofreal(_dash_so_unsafe(st_local("_zlh"))))
         capture mata: mata drop _dash_zl_v _dash_zl_c
         if `: length local _zlh' & !`_zlbad' {
@@ -10230,6 +10238,7 @@ program define _dash_plot
                 exit 198
             }
         }
+    }
     }
     _dash_subopt_check title
 

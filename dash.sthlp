@@ -6170,7 +6170,10 @@ are {cmd:twoway}'s spellings of {cmd:zlabel()}, {cmd:ztick()},
 {cmd:zmlabel()} minor ticks each with its label, upright and smaller;
 each widens the axis to its values, as in {cmd:twoway}:
 {cmd:zmtick(2500(5000)17500)} on {cmd:colorvar(price)} runs the key to
-17,500.
+17,500.  On a date key they are read in the variable's units, as
+{cmd:twoway} reads them, and on a {cmd:contour}'s key too; a form
+{cmd:twoway} refuses, such as {cmd:ztick(bogus)}, is refused as it refuses
+{cmd:zlabel()}'s, {cmd:r(198)}.
 {cmd:ztitle()} given only sub-options styles the key's default title, the
 colour variable's label; {cmd:suffix} and {cmd:prefix} add lines to it.
 

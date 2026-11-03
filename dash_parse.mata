@@ -12014,8 +12014,16 @@ void _dash_subreq_add(string scalar opts, real scalar seg)
             kind = "legend"
             sub  = v
         }
-        else if (strlen(nm) >= 4 & substr("zlabel", 1, strlen(nm)) == nm) {
-            kind = "zlabel"
+        else if ((strlen(nm) >= 4 & substr("zlabel", 1, strlen(nm)) == nm) |
+                 (strlen(nm) >= 4 & substr("ztick", 1, strlen(nm)) == nm) |
+                 (strlen(nm) >= 3 & substr("zmlabel", 1, strlen(nm)) == nm) |
+                 (strlen(nm) >= 3 & substr("zmtick", 1, strlen(nm)) == nm)) {
+            // WP-42 AX-12: the z tick family's sub-options are an axis
+            // label's too (colorvar_refusal_truth.json K_ztic_subopt:
+            // ztick(5000, bogus) is "option bogus not allowed", r(198)).
+            kind = (substr(nm, 1, 2) == "zl" ? "zlabel" :
+                    (substr(nm, 1, 2) == "zt" ? "ztick" :
+                     (substr(nm, 1, 3) == "zml" ? "zmlabel" : "zmtick")))
             sub  = ""
             if (_dash_rep_split(v, body, sub)) {
                 if (_dash_rep_split(sub, b2, s2)) sub = b2
@@ -12255,9 +12263,9 @@ real scalar _dash_subreq_check(string scalar kind)
         _dash_subreq_drop("region:plotregion")
         return(0)
     }
-    if (kind == "zlabel") {
+    if (anyof(("zlabel", "ztick", "zmlabel", "zmtick"), kind)) {
         for (i = 1; i <= rows(_dash_subreq); i++) {
-            if (_dash_subreq[i, 1] != "zlabel") continue
+            if (_dash_subreq[i, 1] != kind) continue
             toks = _dash_rep_toks(_dash_subreq[i, 4], 1)
             if (cols(toks) == 0) continue
             if (_dash_so_resolve(toks, J(1, cols(toks), 1), "axlabel",
@@ -12267,7 +12275,7 @@ real scalar _dash_subreq_check(string scalar kind)
                 return(198)
             }
         }
-        _dash_subreq_drop("zlabel")
+        _dash_subreq_drop(kind)
         return(0)
     }
     if (kind == "clegend" | kind == "plegend" | kind == "zscale") {

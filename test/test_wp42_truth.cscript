@@ -1369,6 +1369,20 @@ def _q4205_keys(sp, dp, app):
     a, b = _q4201_docs(sp, dp, app)
     for figs, sfx in ((a, "s"), (b, "v")):
         texts = []
+        # Flipped (WP-42 CV-3): the key was a Legend or a ColorBar on the
+        # figure; twoway draws swatches beside a z axis, the figure's key
+        # cell (in a served document's Plots, itself), labelled on its axis.
+        seen = set()
+        for f in figs:
+            own = "dash_key_cell" in (getattr(f, "tags", None) or [])
+            cells = [f] if own else [getattr(f, "_dash_key_cell", None)]
+            for c in cells:
+                if c is None or id(c) in seen:
+                    continue
+                seen.add(id(c))
+                over = dict(c._dash_keycell["axis"].major_label_overrides or {})
+                texts += [str(over[k]) for k in sorted(over, key=float)
+                          if str(over[k]) != ""]
         for f in figs:
             for side in (f.right, f.left, f.above, f.below, f.center):
                 for m in side:

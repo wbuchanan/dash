@@ -16504,6 +16504,9 @@ class GlyphMapper:
         # epoch milliseconds).
         _cv_kind = (getattr(self, "date_vars", {}) or {}).get(varname)
         _cv_kind = _cv_kind if _cv_kind in _STATA_DATE_KINDS else ""
+        # The key cell places the z tick family in the key's units (WP-42
+        # AX-12, Z_date).
+        self._colorvar_key_kind = _cv_kind
         _key_fmt, _key_bad = _dash_key_format(self.z_options)
         _num_text = (lambda v: _dash_fmt_text(v, _key_fmt,
                                               dp=getattr(self, "dp",
@@ -17140,7 +17143,9 @@ class GlyphMapper:
                                 _dash_key_zextras(
                                     self.z_options,
                                     _dash_key_format(self.z_options)[0],
-                                    getattr(self, "dp", "period"))),
+                                    getattr(self, "dp", "period"),
+                                    getattr(self, "_colorvar_key_kind", "")
+                                    or "")),
                             log=_log),
                         list(_cols), _kp, _ko, log=_log)
                     if _kc is not None:
@@ -17278,7 +17283,8 @@ class GlyphMapper:
                 # ztick(), zmtick() and zmlabel() (WP-42 AX-12).
                 "zx": _dash_key_zextras(
                     self.z_options, _dash_key_format(self.z_options)[0],
-                    getattr(self, "dp", "period")),
+                    getattr(self, "dp", "period"),
+                    getattr(self, "_colorvar_key_kind", "") or ""),
                 "title_box": bool(cleg.get("title")) and "box" in
                 _parse_textbox_opt(str(cleg.get("title")))[1],
                 "box_fill": str(self.scheme._props.get(
@@ -56144,13 +56150,16 @@ def _dash_key_zlabel(zopts, vlabels=None):
             "vlabels": {str(k): str(v) for k, v in (vlabels or {}).items()},
             "reverse": bool(re.search(r"\brev(e(r(s(e)?)?)?)?\b", sc))}
 
-def _dash_key_zextras(zopts, fmt="%8.0gc", dp="period"):
+def _dash_key_zextras(zopts, fmt="%8.0gc", dp="period", kind=""):
     """ztick(), zmtick() and zmlabel() as the colour key cell draws them
     (WP-42 AX-12, colorvar_key_truth.json Z1b, Z2, Z3): ``{"zt": major
     ticks without labels, "zmt": minor ticks, "zml": {position: text}}``,
     each a numlist (``_dash_parse_axis_spec``), zmlabel()'s texts its own
     labels else the values in the key's format *fmt*; every value widens
-    the axis (``_dash_key_ends``)."""
+    the axis (``_dash_key_ends``).  Each is placed where the key places its
+    own ticks (``_dash_key_ticks``): a date key's (*kind*, Z_date) at the
+    days' epoch milliseconds, its texts still the days in *fmt* (twoway's
+    16,000)."""
     zo = zopts or {}
 
     def _vals(k):
@@ -56168,14 +56177,24 @@ def _dash_key_zextras(zopts, fmt="%8.0gc", dp="period"):
                 out.append(f)
         return out, dict(sp.get("labels") or {})
 
+    def _at(vals):
+        return [float(v) for v in
+                _dash_key_ticks(vals, kind, fmt or "%8.0gc", dp=dp)[0]] \
+            if vals else []
+
     zt, _l = _vals("ztick")
     zmt, _l = _vals("zmtick")
     zv, zl = _vals("zmlabel")
     zml = {}
     if zv:
+        # The texts as the days or values (a date key's in *fmt*, not as
+        # dates), at the key's positions.
         _p, ovr = _dash_key_ticks(zv, "", fmt or "%8.0gc", labels=zl, dp=dp)
-        zml = {float(k): str(v) for k, v in ovr.items()}
-    return {"zt": sorted(set(zt)), "zmt": sorted(set(zmt)), "zml": zml}
+        pos = _at(zv)
+        txt = [ovr[k] for k in sorted(ovr)]
+        zml = {float(p_): str(t) for p_, t in zip(pos, txt)}
+    return {"zt": sorted(set(_at(zt))), "zmt": sorted(set(_at(zmt))),
+            "zml": zml}
 
 
 def _dash_key_zx_ends(zx):

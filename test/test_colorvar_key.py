@@ -505,6 +505,67 @@ class TestZTickFamily:
         assert d["x"][0] - cell._dash_key_band == pytest.approx(
             (tw["x"] - ax_x) / 99.99 * lpx, abs=0.5)
 
+    def test_on_a_date_key(self, mode, monkeypatch):
+        # Z_date (colorvar(zd), zd %td = td(01jan2000) + 3*price): twoway
+        # keys the days in %8.0gc and reads ztick(20000), zmlabel(16000)
+        # and zmtick(15000(2000)21000) in days too -- 16,000 written so, the
+        # axis down to 15,000.  dash's date key is in epoch milliseconds,
+        # where the three went in as days.
+        rec = _key_truth()["Z_date"]
+        r = rec["plot"]["right"]
+        assert [t["text"] for t in rec["texts"] if t["x"] > r
+                and t["rotate"] and t["size"] < 80] == ["16,000"]
+        df = _tct._auto_frame().copy()
+        df["zd"] = 14610.0 + 3.0 * df["price"]
+        monkeypatch.setattr(tp, "_DF", df)
+        spec = tp._spec([plot_for("scatter", {"colorvar": "zd"}, yvar="mpg",
+                                  xvar="weight")],
+                        {"scheme": "s2color", "formats": {"zd": "%td"}},
+                        {"ztick": "20000", "zmlabel": "16000",
+                         "zmtick": "15000(2000)21000"})
+        if mode == "saved":
+            root = tp._standalone(spec)[0]._last_layout_root
+        else:
+            root = tp._served(spec)[0]
+        (_fig,), (cell,) = _figs_and_cells(root)
+        ms = lambda d: (d - 3653.0) * 86400000.0  # noqa: E731
+        kc = cell._dash_keycell
+        assert sorted(kc["ticker"].minor_ticks) == [
+            ms(v) for v in (15000, 16000, 17000, 19000, 21000)]
+        # ztick(20000) is the labelled 20,000 tick, which keeps its label.
+        assert ms(20000) in kc["ticker"].ticks
+        assert kc["axis"].major_label_overrides[ms(20000)] == "20,000"
+        assert kc["axis"].bounds[0] == pytest.approx(ms(15000))
+        [t] = [x for x in cell.renderers if x.name == "dash_key_zmlabel"]
+        assert t.data_source.data["y"] == [ms(16000)]
+        assert t.data_source.data["text"] == ["16,000"]
+
+    def test_on_a_contour_key(self, mode):
+        # C_zt (sandstone contour, ztick(7650) zmlabel(7750)
+        # zmtick(7550(100)8150)): twoway draws the family on a contour's key
+        # as on colorvar()'s -- seven minor ticks and zmlabel()'s, half a
+        # major's length, one more major, the axis to 8,150.
+        rec = _key_truth()["C_zt"]
+        hl = rec["key"]["hlines"]
+        longest = max(h["x2"] - h["x1"] for h in hl)
+        assert sum(1 for h in hl if h["x2"] - h["x1"] < 0.75 * longest) == 8
+        spec = tp._spec([{"type": "contour", "zvar": "temp", "yvar": "lat",
+                          "xvar": "lon", "options": {}}], None,
+                        {"ztick": "5", "zmlabel": "7", "zmtick": "1(2)15"})
+        data = make_data_json(_surface())
+        roots, _n, _o = tbk._build(mode, spec, data)
+        cells = [m for r_ in roots for m in r_.references()
+                 if "dash_key_cell" in (getattr(m, "tags", None) or [])]
+        (cell,) = cells
+        kc = cell._dash_keycell
+        assert sorted(kc["ticker"].minor_ticks) == [1.0, 3.0, 5.0, 7.0, 9.0,
+                                                    11.0, 13.0, 15.0]
+        assert kc["axis"].major_label_overrides.get(5.0, "") == "" or \
+            5.0 in kc["ticker"].ticks
+        assert kc["axis"].bounds[1] >= 15.0
+        [t] = [x for x in cell.renderers if x.name == "dash_key_zmlabel"]
+        assert t.data_source.data["text"] == ["7"]
+
     def test_zmtick(self, mode):
         fig, cell, warns = _z_build(mode, {"zmtick": "2500(5000)17500"})
         assert not [w for w in warns if "zmtick" in w], warns

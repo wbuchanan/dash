@@ -159,10 +159,17 @@ _zk_probe Z3 `sc' colorvar(price) zmtick(2500(5000)17500)
 _zk_probe Z3p `sc' colorvar(price) zmticks(2500(5000)17500)
 _zk_probe Z4 `sc' colorvar(price) zlabels(4000 8000 12000)
 _zk_probe Z4s `sc' colorvar(price) zlabel(4000 8000 12000)
+// WP-42 AX-12: the z tick family on a date colorvar (%td, in days) and on
+// a contour's key.
+generate zd = td(01jan2000) + 3 * price
+format zd %td
+_zk_probe Z_date `sc' colorvar(zd) ztick(20000) zmlabel(16000) zmtick(15000(2000)21000)
+drop zd
 sysuse sandstone, clear
 _zk_probe C_plain contour depth northing easting,
 _zk_probe C_ti contour depth northing easting, clegend(title("Z"))
 _zk_probe C_cbx contour depth northing easting, clegend(title("Z", box))
+_zk_probe C_zt contour depth northing easting, ztick(7650) zmlabel(7750) zmtick(7550(100)8150)
 _zk_probe CL_ctl contourline depth northing easting,
 _zk_probe CL_cl contourline depth northing easting, colorlines
 _zk_probe CL_clp contourline depth northing easting, colorlines plegend(position(6))

@@ -1564,6 +1564,7 @@ FUNCTIONS = {
  '_dash_key_zlabel': 'test/test_colorvar_key.py::TestTheKeyCellHelpers::test_zlabel',
  '_dash_key_range': 'test/test_colorvar_key.py::TestTheKeyCellHelpers::test_range',
  '_dash_key_zextras': 'test/test_colorvar_key.py::TestZTickFamily::test_zmlabel',
+ '_dash_key_zextras.<locals>._at': 'test/test_colorvar_key.py::TestZTickFamily::test_on_a_date_key',
  '_dash_key_zextras.<locals>._vals': 'test/test_colorvar_key.py::TestZTickFamily::test_zmtick',
  '_dash_key_zx_ends': 'test/test_colorvar_key.py::TestZTickFamily::test_zmtick',
  '_dash_key_suboptions': 'test/test_colorvar_key.py::TestClegendSuboptions::test_altaxis',

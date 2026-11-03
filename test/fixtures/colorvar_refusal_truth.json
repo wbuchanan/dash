@@ -274,8 +274,8 @@
  },
  "_meta": {
   "born_date": "14 Oct 2026",
-  "dash_commit": "155878165bd3dfdb15422dded0eb954c38dc51b9",
-  "extracted": "2026-11-02",
+  "dash_commit": "eed7305014a060156ce161cec5d31c28dbd22761",
+  "extracted": "2026-11-03",
   "method": "each probe run drawn under capture noisily; rc and every non-blank printed line; key_texts are the SVG texts right of the plot region, top to bottom; marker_fills the in-region circle fills in document order; path_strokes the path strokes by colour",
   "scheme": "s2color",
   "source": "scripts/extract_colorvar_refusal_truth.do",
@@ -2404,6 +2404,34 @@
    ],
    "rc": 198
   },
+  "K_zmlab_bogus": {
+   "command": "     twoway scatter mpg weight, colorvar(price) zmlabel(bogus)",
+   "lines": [
+    "invalid label specifier, :  bogus:"
+   ],
+   "rc": 198
+  },
+  "K_zmlab_bogus_nocv": {
+   "command": " twoway scatter mpg weight, zmlabel(bogus)",
+   "lines": [
+    "invalid label specifier, :  bogus:"
+   ],
+   "rc": 198
+  },
+  "K_zmtic_bogus": {
+   "command": "     twoway scatter mpg weight, colorvar(price) zmtick(bogus)",
+   "lines": [
+    "invalid label specifier, :  bogus:"
+   ],
+   "rc": 198
+  },
+  "K_zmtic_bogus_nocv": {
+   "command": " twoway scatter mpg weight, zmtick(bogus)",
+   "lines": [
+    "invalid label specifier, :  bogus:"
+   ],
+   "rc": 198
+  },
   "K_zsc_bogus": {
    "command": "       twoway scatter mpg weight, colorvar(price) zscale(bogus)",
    "lines": [
@@ -2592,6 +2620,34 @@
    ],
    "path_strokes": {},
    "rc": 0
+  },
+  "K_ztic_bogus": {
+   "command": "      twoway scatter mpg weight, colorvar(price) ztick(bogus)",
+   "lines": [
+    "invalid label specifier, :  bogus:"
+   ],
+   "rc": 198
+  },
+  "K_ztic_bogus_nocv": {
+   "command": " twoway scatter mpg weight, ztick(bogus)",
+   "lines": [
+    "invalid label specifier, :  bogus:"
+   ],
+   "rc": 198
+  },
+  "K_ztic_mixed": {
+   "command": "      twoway scatter mpg weight, colorvar(price) ztick(5000 x)",
+   "lines": [
+    "invalid label specifier, :  5000 x:"
+   ],
+   "rc": 198
+  },
+  "K_ztic_subopt": {
+   "command": "     twoway scatter mpg weight, colorvar(price) ztick(5000, bogus)",
+   "lines": [
+    "option bogus not allowed"
+   ],
+   "rc": 198
   },
   "L1": {
    "command": " twoway scatter mpg weight, colorvar(rep78) colordiscrete colorlevels(4)",

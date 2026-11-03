@@ -149,6 +149,15 @@ _zr_run K_zlab_bogus_disc `sc', colorvar(rep78) colordiscrete zlabel(bogus)
 _zr_run K_zsc_log         `cv' zscale(log)
 _zr_run K_zsc_range       `cv' zscale(range(0 20000))
 _zr_run K_zsc_bogus       `cv' zscale(bogus)
+* WP-42 AX-12: the z tick family's malformed forms.
+_zr_run K_ztic_bogus      `cv' ztick(bogus)
+_zr_run K_ztic_mixed      `cv' ztick(5000 x)
+_zr_run K_ztic_subopt     `cv' ztick(5000, bogus)
+_zr_run K_zmlab_bogus     `cv' zmlabel(bogus)
+_zr_run K_zmtic_bogus     `cv' zmtick(bogus)
+_zr_run K_ztic_bogus_nocv `sc', ztick(bogus)
+_zr_run K_zmlab_bogus_nocv `sc', zmlabel(bogus)
+_zr_run K_zmtic_bogus_nocv `sc', zmtick(bogus)
 * The same words where no colour key is drawn: no colorvar(), and a
 * plot legend without coloruseplegend.
 _zr_run K_cleg_bogus_nocv `sc', clegend(bogus)
