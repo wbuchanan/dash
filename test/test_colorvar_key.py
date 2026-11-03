@@ -252,6 +252,7 @@ class TestContourlineLegend:
 import math  # noqa: E402
 
 import test_colorvar_truth as _tct  # noqa: E402
+import colour_bins as cb  # noqa: E402
 from test_mode_parity import plot_for  # noqa: E402
 
 #: The probes' plot options (colorvar_key_truth.json "command").
@@ -416,8 +417,14 @@ class TestTheAxisKey:
                      yvar="price", xvar="weight")],
             None, {"clegend": "ring(0)"})
         root = _render_root(spec, mode)
-        assert not _key_cells(root)
-        assert len(_figure_keys(root)) == 1
+        # Flipped (WP-42 CV-3, D-42-03.b): the ring(0) key was the old
+        # Legend inside the plot; twoway draws its axis-style key there:
+        # one key cell, the last layer's (foreign: 0 .. 1), no Legend or
+        # ColorBar.
+        (cell,) = _key_cells(root)
+        assert not _figure_keys(root)
+        assert cell._dash_key_ring0 == "right"
+        assert cb.axis_key_texts(cell)[0] == "1"
 
 
 def _layout_of(mode, plots, go=None):
@@ -923,8 +930,10 @@ class TestTheKeyAsTwowayDrawsIt:
                     and x["x"] > t["plot"]["right"]]
         assert dr._DASH_KEY_GAP_PLOT == pytest.approx(
             (sw - t["plot"]["right"]) / side)
+        # The title's letters' middle (its SVG x is its baseline).
         assert dr._DASH_KEY_GAP_TITLE == pytest.approx(
-            (title["x"] - ax) / side)
+            (title["x"] - dr._DASH_KEY_TITLE_INK * title["size"] - ax)
+            / side)
         fig, cell = self._parts(mode)
         nom = fig._dash_nominal_px
         mpx = min(nom) / (dr.OptionTranslator.size_ref_of(fig) / 4.0)
@@ -996,3 +1005,109 @@ def _no_warn():
         _warnings.simplefilter("always")
         yield out
     out.extend(str(w.message) for w in caught)
+
+
+@pytest.mark.usefixtures("_auto")
+@pytest.mark.parametrize("mode", _MODES)
+@pytest.mark.parametrize("scheme,pid", [("s2color", "K1"),
+                                        ("stcolor", "K1_stcolor")])
+def test_the_key_gaps_follow_the_scheme(mode, scheme, pid):
+    """K1 under s2color and stcolor (colorvar_key_truth.json K1,
+    K1_stcolor): the plot region to the swatches and the axis to the
+    title, as shares of the graph's smaller side, are twoway's under each
+    scheme (stcolor's title sits further out by its larger axis title
+    gap, tiny against s2color's minuscule)."""
+    t = _key_truth()[pid]
+    side = min(t["canvas"]["w"], t["canvas"]["h"])
+    k = t["key"]
+    sw = [c["cx"] for c in k["circles"] if c.get("fill") not in
+          (None, "none")][0]
+    ax = k["vlines"][0]["x1"]
+    (title,) = [x for x in t["texts"] if x["rotate"]
+                and x["x"] > t["plot"]["right"]]
+    root = _layout_of(mode, [plot_for("scatter", _KEY_OPTS["K1"],
+                                      yvar="mpg", xvar="weight")])
+    spec = tp._spec([plot_for("scatter", _KEY_OPTS["K1"], yvar="mpg",
+                              xvar="weight")], {"scheme": scheme}, {})
+    root = _render_root(spec, mode)
+    (fig,), (cell,) = _figs_and_cells(root)
+    mpx = min(fig._dash_nominal_px) / (
+        dr.OptionTranslator.size_ref_of(fig) / 4.0)
+    band = cell._dash_key_band
+    assert abs(fig.min_border_right + band / 2.0
+               - (sw - t["plot"]["right"]) / side * mpx) <= 1.0
+    mid = title["x"] - dr._DASH_KEY_TITLE_INK * title["size"]
+    assert abs(cell._dash_key_title.x - band
+               - (mid - ax) / side * mpx) <= 0.6
+
+
+
+#: The ring(0) pairs (colorvar_key_truth.json P_bp_1, P_bp_7): twoway draws
+#: the key inside the plot region where the outside key's texts are, at
+#: the graph region's right (pos 1) or its swatches K1's gap from the plot
+#: region's left (pos 7, bplacement(sw)).
+@pytest.mark.usefixtures("_auto")
+@pytest.mark.parametrize("mode", _MODES)
+@pytest.mark.parametrize("pos,place", [("1", "right"), ("7", "left")])
+def test_a_ring0_key_is_a_key_cell_over_the_plot(mode, pos, place):
+    t = _key_truth()
+    # pos(1): the key's texts at K1's x; pos(7): its swatches from the
+    # plot region's left by K1's gap (labels 757.1 = 390.8 + 220.9 +
+    # 145.41, K1's swatch-to-label 3546.68 - 3401.27).
+    k1 = [x["x"] for x in t["K1"]["texts"] if x["text"] == "1"
+          and x["x"] > t["K1"]["plot"]["right"]][0]
+    p1 = [x["x"] for x in t["P_bp_1"]["texts"] if x["text"] == "1"
+          and x["y"] > 2000 and x["x"] > 3000][0]
+    p7 = [x["x"] for x in t["P_bp_7"]["texts"] if x["text"] == "1"
+          and x["y"] > 2000 and x["x"] < 1000][0]
+    assert p1 == k1
+    assert p7 - t["P_bp_7"]["plot"]["left"] == pytest.approx(
+        k1 - t["K1"]["plot"]["right"], abs=0.1)
+    go = {"clegend": "ring(0) position(%s)%s" % (
+        pos, " bplacement(sw)" if pos == "7" else "")}
+    root = _layout_of(mode, [plot_for("scatter", _KEY_OPTS["K1"],
+                                      yvar="mpg", xvar="weight")], go)
+    (fig,), (cell,) = _figs_and_cells(root)
+    assert not _figure_keys(root)
+    assert cell._dash_key_ring0 == place
+    st = dict(cell.styles or {})
+    assert st.get("position") == "absolute"
+    assert st.get("pointer-events") == "none"
+    refs = root.references() if hasattr(root, "references") else [
+        m for r in root.roots for m in r.references()]
+    (row,) = [m for m in refs if "dash_key_row" in (m.tags or [])]
+    # Over the figure: after it, the figure keeping its whole width.
+    assert list(row.children) == [fig, cell]
+    assert fig.min_border_right != getattr(fig, "_dash_key_border", "x")
+
+
+@pytest.mark.usefixtures("_auto")
+@pytest.mark.parametrize("mode", _MODES)
+def test_the_save_button_writes_the_key_too(mode):
+    """The page's save button (the grid's one SaveTool, D67) exports the
+    grid, the key row in it (measured 03nov2026 in headless Chrome: the
+    grid's PNG export holds the key's swatches, axis and title).  A graph
+    embedded as a cell of its own (_dash_name_save on its graph region
+    box) swaps its figure's SaveTool, which writes the figure alone, for a
+    PNG action of the key row."""
+    from bokeh.models import CustomAction, GridPlot, SaveTool
+    root = _layout_of(mode, [plot_for("scatter", {"colorvar": "price"},
+                                      yvar="mpg", xvar="weight")])
+    refs = root.references() if hasattr(root, "references") else [
+        m for r in root.roots for m in r.references()]
+    (row,) = [m for m in refs if "dash_key_row" in (m.tags or [])]
+    grids = [m for m in refs if isinstance(m, GridPlot)
+             and row in m.references()]
+    assert grids
+    saves = [t for g in grids for t in g.toolbar.tools
+             if isinstance(t, SaveTool)]
+    assert saves
+    (reg,) = [m for m in refs if "dash_graph_region" in (m.tags or [])
+              and list(getattr(m, "children", []) or []) == [row]]
+    dr._dash_name_save(reg, "g1")
+    fig = row.children[0]
+    assert not [t for t in fig.toolbar.tools if isinstance(t, SaveTool)]
+    (png,) = [t for t in fig.toolbar.tools if isinstance(t, CustomAction)
+              and "dash_key_png" in (t.tags or [])]
+    assert png.callback.args["grid"] is row
+    assert png.callback.code == dr._DASH_KEY_PNG_SAVE_JS

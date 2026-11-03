@@ -81,7 +81,9 @@ program define _zk_probe
     capture erase "${ZK_WORK}/`id'.log"
     capture log close zkl
     quietly log using "${ZK_WORK}/`id'.log", text replace name(zkl)
-    capture noisily twoway `0' scheme(s2color) name(zk1, replace)
+    local zsch "s2color"
+    if `"${ZK_SCHEME}"' != "" local zsch "${ZK_SCHEME}"
+    capture noisily twoway `0' scheme(`zsch') name(zk1, replace)
     local rc = _rc
     quietly log close zkl
     global ZK_RC_`id' = `rc'
@@ -105,6 +107,13 @@ _zk_probe K7 `sc' colorvar(foreign) colordiscrete zlabel(, valuelabel)
 _zk_probe K8 `sc' colorvar(rep78) colordiscrete colorcuts(3 4) colorotherlabel("rest")
 _zk_probe K_cont `sc' colorvar(price)
 _zk_probe K_box `sc' colorvar(rep78) colordiscrete xsize(6) ysize(4)
+// WP-42 CV-3: the key's place under other schemes (K1 under stcolor,
+// s1color and economist), for the gaps per scheme.
+foreach sch in stcolor s1color economist {
+    global ZK_SCHEME "`sch'"
+    _zk_probe K1_`sch' `sc' colorvar(rep78) colordiscrete
+}
+global ZK_SCHEME ""
 _zk_probe E_allmiss `sc' colorvar(zmiss)
 _zk_probe T1 bar mpg weight, colorvar(rep78) colordiscrete
 _zk_probe T5 rconnected mpg turn weight, colorvar(rep78) colordiscrete

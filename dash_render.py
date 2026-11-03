@@ -17175,6 +17175,15 @@ class GlyphMapper:
         axis, *bands* each level's extent along it (contour's), *kind* the
         swatch kind when not the type's.  Returns the cell's ``keycell`` relevel record, or None
         when no cell is drawn (inside the plot, ``ring(0)``)."""
+        ring0 = None
+        if side == "center":
+            # clegend(ring(0)) (D-42-03.b): the key drawn inside the plot
+            # region, at its left (7 to 11 o'clock) or its right, as
+            # twoway draws it (P_bp_1, P_bp_7: the key's texts where the
+            # outside key's are, over the plot region).
+            ck = getattr(key, "_dash_ring0_clock", 3)
+            ring0 = "left" if ck in (7, 8, 9, 10, 11) else "right"
+            side = ring0
         if side not in ("right", "left", "above", "below"):
             return None
         if kind is None and getattr(self, "_colorvar_keysrange", False):
@@ -17206,9 +17215,10 @@ class GlyphMapper:
                 chrome[_a] = _v
         # Upright wherever it sits: twoway keeps the key upright below the
         # plot too (G01), its axis at the swatches' right (left at the
-        # figure's left).
+        # figure's left; inside the plot region always at the right, as
+        # P_bp_7's texts are).
         place = side
-        side = "left" if place == "left" else "right"
+        side = "left" if place == "left" and not ring0 else "right"
         band = getattr(key, "width", None) \
             if type(key).__name__ in ("ColorBar", "ContourColorBar") \
             else None
@@ -17232,6 +17242,7 @@ class GlyphMapper:
                 "length_px": getattr(fig, "height", None)}
         cell = _dash_key_cell(spec)
         cell._dash_key_place = place
+        cell._dash_key_ring0 = ring0
         fig._dash_key_cell = cell
         # The key the cell replaces leaves the figure, its swatches with it
         # (no Legend or ColorBar is drawn for it).
@@ -17296,6 +17307,8 @@ class GlyphMapper:
         if ring == 0 and clock in _DASH_CLOCK_INSIDE:
             key.location = _DASH_CLOCK_INSIDE[clock]
             side = "center"
+            # WP-42 CV-3: the key cell inside the plot region takes it.
+            key._dash_ring0_clock = clock
         elif clock in _DASH_CLOCK_SIDE:
             side = _DASH_CLOCK_SIDE[clock]
         if side == "center":
@@ -53630,9 +53643,46 @@ def _dash_name_save(model, name=None, composite=None):
                 callback=CustomJS(args=dict(args),
                                   code=(_DASH_COMPOSITE_JS
                                         + _DASH_COMPOSITE_SAVE_JS))))
+    if export is not None:
+        # WP-42 CV-3: the save button writes the figure with its key cell
+        # (BokehJS's SaveTool exports its own plot alone): a PNG action of
+        # the key row in its place.
+        tools = [t for t in toolbar.tools if not isinstance(t, SaveTool)]
+        if not any("dash_key_png" in (getattr(t, "tags", None) or [])
+                   for t in tools):
+            tools.append(CustomAction(
+                description="Save", icon="save", tags=["dash_key_png"],
+                callback=CustomJS(args={"grid": export, "name": filename},
+                                  code=_DASH_KEY_PNG_SAVE_JS)))
+        toolbar.tools = tools
     if new:
         toolbar.tools = list(toolbar.tools) + new
     return model
+
+
+#: WP-42 CV-3: the save button of a figure with a colour key cell -- the
+#: key row as one PNG, named as the SaveTool's file.
+_DASH_KEY_PNG_SAVE_JS = r"""
+const stem = (typeof name === "string"
+              && /^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name)) ? name : "dashboard";
+try {
+  const view = Bokeh.index.find_one(grid);
+  if (view == null) { return; }
+  view.export("png").to_blob().then((blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = stem + ".png";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  });
+} catch (e) {
+  return;
+}
+"""
 
 
 def _dash_layout_walk(model, inside=False):
@@ -54656,7 +54706,8 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
                 _nw = float(_nom[0])
             _wmodels = [_f]
             if _kcell is not None and _kw is not _f:
-                _nw = _dash_key_hold_shape(_f, _kcell, _nw)
+                if not getattr(_kcell, "_dash_key_ring0", None):
+                    _nw = _dash_key_hold_shape(_f, _kcell, _nw)
                 _wmodels.append(_kcell)
             _wcb = _dash_width_scale(_f, _wmodels, _nw,
                                      OptionTranslator.size_ref_of(_f))
@@ -54718,6 +54769,16 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
     vert = side in ("right", "left")
     _dash_apply_scale(cell, getattr(fig, "_dash_scale", None))
     nom = getattr(fig, "_dash_nominal_px", None)
+    ring0 = getattr(cell, "_dash_key_ring0", None)
+    gapl = 0.0
+    if nom and vert and ring0:
+        # Inside the plot region (P_bp_*): the figure keeps its width;
+        # at the left the swatches sit K1's gap from the plot region's
+        # edge, at the right the key's edge at the plot region's.
+        unit = OptionTranslator.size_ref_of(fig) / 4.0 or 1.0
+        mpx = min(float(nom[0]), float(nom[1])) / unit
+        gapl = max(0.0, _DASH_KEY_GAP_PLOT * mpx
+                   - float(cell._dash_key_band) / 2.0)
     if nom and vert:
         # twoway's key geometry (colorvar_key_truth.json K1, of the
         # graph's smaller side): the plot region's edge to the swatches'
@@ -54727,8 +54788,9 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
         unit = OptionTranslator.size_ref_of(fig) / 4.0 or 1.0
         mpx = min(float(nom[0]), float(nom[1])) / unit
         band = float(cell._dash_key_band)
-        setattr(fig, "min_border_" + side, max(0, int(round(
-            _DASH_KEY_GAP_PLOT * mpx - band / 2.0))))
+        if not ring0:
+            setattr(fig, "min_border_" + side, max(0, int(round(
+                _DASH_KEY_GAP_PLOT * mpx - band / 2.0))))
         ax = cell._dash_key_axis
         lpx = (OptionTranslator.css_to_pt(ax.major_label_text_font_size)
                or 9.0) * 4.0 / 3.0
@@ -54739,7 +54801,14 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
         n = max((len(str(t)) for t in dict(ax.major_label_overrides
                                             or {}).values()), default=0)
         tl = getattr(cell, "_dash_key_title", None)
-        gap = _DASH_KEY_GAP_TITLE * mpx
+        # The title sits out by the scheme's axis title gap past K1's
+        # (s2color's minuscule): K1_stcolor's title is stcolor's tiny less
+        # minuscule further out, the rest of the key in place.
+        _sch = getattr(fig, "_dash_scheme", None)
+        _tg = getattr(_sch, "axis_title_gap_px", None)
+        gap = _DASH_KEY_GAP_TITLE * mpx + (
+            float(_tg) - _DASH_KEY_S2_TITLE_GAP_PX
+            if isinstance(_tg, (int, float)) else 0.0)
         if tl is not None:
             # In the band's px (its x range is its width): the axis to the
             # title's centre, K1's.
@@ -54749,7 +54818,8 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
             # draws in the scheme's size): the cell's frame stays the band.
             cell._dash_key_far = int(math.ceil(gap + max(
                 tpx / 2.0 + 2, _DASH_KEY_GAP_END * mpx)))
-        fig._dash_key_border = side
+        if not ring0:
+            fig._dash_key_border = side
     ext = _dash_key_cell_extent(cell, cell._dash_key_band)
     far = max(0, ext - int(cell._dash_key_band),
               int(getattr(cell, "_dash_key_far", 0) or 0))
@@ -54778,7 +54848,7 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
     fixed = getattr(fig, "sizing_mode", None) == "fixed" \
         and isinstance(fig.width, (int, float)) \
         and isinstance(fig.height, (int, float))
-    if fixed:
+    if fixed and not ring0:
         ar = _dash_frame_aspect(go)
         box = getattr(fig, "_dash_frame_box", None)
         if box and ar:
@@ -54811,15 +54881,28 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
         mb = int(math.ceil(lpx / 2.0 + 2))
         cell.min_border_top = cell.min_border_bottom = mb
     cb = CustomJS(args={"fig": fig, "cell": cell, "vert": bool(vert),
-                        "ar": 0.0}, code=_DASH_KEY_CELL_JS)
+                        "ar": 0.0, "ring0": ring0 or "",
+                        "gapl": float(gapl), "wbase": float(cell.width)},
+                  code=_DASH_KEY_CELL_JS)
+    if ring0:
+        # Over the figure, outside the layout's flow, letting the pointer
+        # through to the plot.
+        cell.styles = {**dict(cell.styles or {}), "position": "absolute",
+                       "top": "0px", "pointer-events": "none",
+                       ring0: "0px"}
     for prop in ("outer_width", "outer_height", "inner_width",
                  "inner_height"):
         fig.js_on_change(prop, cb)
     kids = {"right": (fig, cell), "left": (cell, fig),
             "above": (cell, fig), "below": (fig, cell)}[side]
+    if ring0:
+        # Over the figure: after it, so it is drawn on top.
+        kids = (fig, cell)
     mode = "fixed" if fixed else "stretch_width"
     wrap = (row if vert else column)(*kids, sizing_mode=mode)
     wrap.tags = list(wrap.tags or []) + ["dash_key_row"]
+    if ring0:
+        wrap.styles = {**dict(wrap.styles or {}), "position": "relative"}
     fig._dash_key_row = wrap
     return wrap
 
@@ -59671,16 +59754,27 @@ _DASH_KEY_SWATCH_KIND = {
 #: from 236.12 to 2353.80 of a plot region from 100.86 to 2489.19).
 _DASH_KEY_AXIS_INSET = 135.3 / 2388.33
 
+#: WP-42 CV-3: a turned title's SVG x is its baseline; its letters' middle
+#: is this share of its size inside it (twoway's stcolor key title in the
+#: 1100-px export of K1_stcolor: baseline 1043.8 px, letters 1028 to 1043
+#: at a 22.9-px size).
+_DASH_KEY_TITLE_INK = 0.37
+
 #: WP-42 CV-3: the key's place beside the plot, of the graph's smaller side
 #: (colorvar_key_truth.json K1, a 2880-unit side): the plot region's right
 #: edge to the swatches' centre (3401.27 - 3180.37) and the z axis to the
 #: title's centre (3713.87 - 3486.78).
 _DASH_KEY_GAP_PLOT = (3401.27 - 3180.37) / 2880.0
-_DASH_KEY_GAP_TITLE = (3713.87 - 3486.78) / 2880.0
+_DASH_KEY_GAP_TITLE = (3713.87 - _DASH_KEY_TITLE_INK * 99.99 - 3486.78) / 2880.0
+#: s2color's gsize axis_title_gap (minuscule) in the 4-inch model's px:
+#: the gap K1's title gap holds.
+_DASH_KEY_S2_TITLE_GAP_PX = 1.333248
 #: ... and the title's centre to the key's edge: to the graph's right edge
-#: (3960 - 3713.87) less s2color's graph margin there (2.5454% of the
-#: 3960-unit width, the margin dash's region box draws for s2color).
-_DASH_KEY_GAP_END = (3960.0 - 3713.87 - 0.025454545 * 3960.0) / 2880.0
+#: (3960 - 3713.87, from the title's baseline) less s2color's graph margin
+#: there (2.5454% of the 3960-unit width, the margin dash's region box
+#: draws for s2color).
+_DASH_KEY_GAP_END = (3960.0 - 3713.87 + _DASH_KEY_TITLE_INK * 99.99
+                     - 0.025454545 * 3960.0) / 2880.0
 
 #: WP-42 CV-3: an upright key below or above the plot runs its axis line
 #: this share of the graph's height (colorvar_options_truth.json G01,
@@ -59715,6 +59809,27 @@ if (ar > 0) {
     ? Math.round(((fig.outer_width || 0) + (cell.width || 0)) / ar)
     : Math.round((fig.outer_width || 0) / ar - (cell.height || 0));
   if (want > 0 && fig.height !== want) { fig.height = want; }
+}
+if (ring0 === "right" || ring0 === "left") {
+  // Inside the plot region (clegend(ring(0))): over the figure, the key's
+  // edge at the graph region's right, or its swatches the scaled gap from
+  // the plot region's left.
+  const k = wbase > 0 ? (cell.width || wbase) / wbase : 1;
+  const st = Object.assign({}, cell.styles || {});
+  const W = Math.round(fig.outer_width || 0);
+  if (ring0 === "right") {
+    // twoway draws the key where the outside key is (P_bp_1's texts at
+    // K1's x): its edge at the graph region's.
+    st.right = "0px";
+    delete st.left;
+  } else {
+    st.left = Math.max(0, Math.round(fb.left + gapl * k)) + "px";
+    delete st.right;
+  }
+  st.top = "0px";
+  if (JSON.stringify(st) !== JSON.stringify(cell.styles || {})) {
+    cell.styles = st;
+  }
 }
 if (vert) {
   // Beside the figure: the cell's frame is the figure's.
@@ -73031,8 +73146,9 @@ class ServerAppBuilder:
                       "_DASH_KEY_SWATCH_KIND", "_DASH_KEY_AXIS_INSET",
                       "_DASH_KEY_TITLE_UP", "_DASH_KEY_SWATCH_PX",
                       "_DASH_KEY_CELL_JS", "_DASH_KEY_BELOW_SHARE",
-                      "_DASH_KEY_GAP_PLOT", "_DASH_KEY_GAP_TITLE",
-                      "_DASH_KEY_GAP_END",
+                      "_DASH_KEY_TITLE_INK", "_DASH_KEY_GAP_PLOT",
+                      "_DASH_KEY_GAP_TITLE",
+                      "_DASH_KEY_GAP_END", "_DASH_KEY_S2_TITLE_GAP_PX",
                       # twoway's weight acceptance per layer, read by
                       # GlyphMapper._layer_weights.
                       "_DASH_WEIGHT_ACCEPTS", "_DASH_WEIGHT_INERT",
@@ -73269,6 +73385,7 @@ class ServerAppBuilder:
                       "_DASH_FIGURE_TOOLS", "_DASH_SAVE_NAME",
                       "_DASH_SAVE_NAME_RE",
                       "_DASH_SVG_SAVE_JS", "_DASH_SVG_SAVE_ICON",
+                      "_DASH_KEY_PNG_SAVE_JS",
                       "_DASH_TOOLBAR_OVERLAY_CSS", "_DASH_WIDTH_SCALE_JS",
                       "_DASH_WIDTH_SCALE_PROPS",
                       # The whole-dashboard export and the print layout
