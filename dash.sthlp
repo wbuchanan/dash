@@ -6002,8 +6002,8 @@ given; a ring inside the legend's 3 between the plot and the legend, as in
 {cmd:ring()} is not given), {cmd:title()}, and on the colour bar {cmd:width()} and {cmd:height()}.
 {cmd:altaxis} moves the z axis to the swatches' other side,
 {cmd:region()} draws the key's box, {cmd:bmargin()} is the space around
-it, {cmd:bplacement()} is taken and the key keeps its clock position,
-and {cmd:subtitle()}, {cmd:note()} and {cmd:caption()} are drawn with the
+it, {cmd:bplacement()} is taken and, as in {cmd:twoway}, does not move the
+key from its clock position, and {cmd:subtitle()}, {cmd:note()} and {cmd:caption()} are drawn with the
 key, as in {cmd:twoway}.  {cmd:plegend()} does the same for
 the keys {cmd:coloruseplegend} puts in the plot legend, where
 {cmd:clegend()} has no key to place and is named.  {cmd:pcycle(}{it:#}{cmd:)}

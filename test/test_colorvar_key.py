@@ -1126,8 +1126,14 @@ _P_OPTS = {
     "P_alt": "altaxis",
     "P_reg": "region(fcolor(gs14) lcolor(red))",
     "P_bm": "bmargin(large)",
+    "P_bm_m": "bmargin(medium)",
+    "P_bm_v": "bmargin(vlarge)",
     "P_sub": 'subtitle("S") note("N") caption("C")',
     "P_bp_7": "ring(0) position(7) bplacement(sw)",
+    "P_bp_7c": "ring(0) position(7)",
+    "P_bp_n": "bplacement(north)",
+    "P_bp_s": "bplacement(south)",
+    "K1": "",
 }
 
 
@@ -1192,34 +1198,74 @@ class TestClegendSuboptions:
         assert reg["inset"] == pytest.approx(ins, abs=0.1)
         assert fig.min_border_right == round(ins)
 
-    def test_bmargin(self, mode):
-        rec = _key_truth()["P_bm"]
-        fig, cell, mpx, warns = _p_build(mode, "P_bm")
+    @pytest.mark.parametrize("pid", ("P_bm_m", "P_bm", "P_bm_v"))
+    def test_bmargin(self, mode, pid):
+        # Three sizes (medium, large, vlarge): twoway's line ends, its
+        # axis and its swatches move with the margin, linearly.
+        rec = _key_truth()[pid]
+        fig, cell, mpx, warns = _p_build(mode, pid)
         assert not [w for w in warns if "clegend" in w], warns
         it, ib = cell._dash_keycell["inset"]
         want_t, want_b = _line_fracs(rec)
         assert abs(it - want_t) <= 0.012 and abs(ib - want_b) <= 0.012, (
             it, ib, want_t, want_b)
-        # The swatches toward the axis (P_bm: 3.3 units apart).
-        assert cell._dash_keycell["mid"] < cell._dash_key_band / 2.0
+        s = mpx / 2880.0
+        ax = rec["key"]["vlines"][0]["x1"]
+        cx = rec["key"]["circles"][0]["cx"]
+        band = cell._dash_key_band
+        # The plot region to the axis line (the axis at the band's end).
+        assert fig.min_border_right + (cell.min_border_left or 0) + band \
+            == pytest.approx((ax - rec["plot"]["right"]) * s, abs=1.0)
+        # Flipped (WP-42 CV-15): the swatches moved away from the axis;
+        # twoway moves them toward it, across it at vlarge (P_bm_v).
+        assert band - cell._dash_keycell["mid"] == pytest.approx(
+            (ax - cx) * s, abs=1.0)
+        # Drawn whole where they cross the axis: over the frame.
+        (sw,) = [r for r in cell.renderers
+                 if r.data_source is cell._dash_keycell["src"]]
+        assert sw.level == "overlay"
 
     def test_subtitle_note_caption(self, mode):
         rec = _key_truth()["P_sub"]
         fig, cell, mpx, warns = _p_build(mode, "P_sub")
         assert not [w for w in warns if "clegend" in w], warns
-        texts = {l.text: l for l in cell._dash_key_texts}
+        # Flipped (WP-42 CV-15): Labels in the cell's foot panel, which
+        # raised its frame's foot 13 px above the plot region's; Text
+        # glyphs over the frame, the cell's panels left to its axis.
+        texts = {r.data_source.data["text"][0]: r
+                 for r in cell._dash_key_texts}
         assert set(texts) == {"S", "N", "C"}
-        assert texts["S"].text_align == "center"
+        assert all(r in cell.renderers and r.level == "overlay"
+                   for r in texts.values())
+        assert not cell.below and not cell.above
+        assert texts["S"].glyph.text_align == "center"
         it, ib = cell._dash_keycell["inset"]
         want_t, want_b = _line_fracs(rec)
         assert abs(it - want_t) <= 0.012 and abs(ib - want_b) <= 0.012
         rng = cell._dash_keycell["range"]
         # S above the line, N then C below it.
         lo, hi = cell._dash_key_axis.bounds
-        assert texts["S"].y > hi and texts["N"].y < lo
-        assert texts["C"].y < texts["N"].y
+        y = {k: r.data_source.data["y"][0] for k, r in texts.items()}
+        assert y["S"] > hi and y["N"] < lo
+        assert y["C"] < y["N"]
 
-    def test_bplacement_is_silent(self, mode):
-        fig, cell, mpx, warns = _p_build(mode, "P_bp_7")
+    @pytest.mark.parametrize("pid,base", (("P_bp_7", "P_bp_7c"),
+                                          ("P_bp_n", "K1"),
+                                          ("P_bp_s", "K1")))
+    def test_bplacement_is_silent(self, mode, pid, base):
+        # twoway draws the same key with bplacement() as without it, at
+        # ring(0) and beside the plot (P_bp_7 against P_bp_7c; P_bp_n and
+        # P_bp_s against K1): every text where its control's is.
+        tw = _key_truth()
+        assert [(t["text"], t["x"], t["y"]) for t in tw[pid]["texts"]] == \
+            [(t["text"], t["x"], t["y"]) for t in tw[base]["texts"]]
+        assert tw[pid]["key"] == tw[base]["key"]
+        fig, cell, mpx, warns = _p_build(mode, pid)
         assert not [w for w in warns if "clegend" in w], warns
-        assert cell._dash_key_ring0 == "left"
+        fig0, cell0, _m, _w = _p_build(mode, base)
+        for a, b in ((fig, fig0), (cell, cell0)):
+            assert (a.width, a.min_border_right, a.min_border_left) == \
+                (b.width, b.min_border_right, b.min_border_left)
+        assert cell._dash_keycell["mid"] == cell0._dash_keycell["mid"]
+        assert getattr(cell, "_dash_key_ring0", None) == \
+            getattr(cell0, "_dash_key_ring0", None)

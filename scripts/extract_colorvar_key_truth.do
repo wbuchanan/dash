@@ -21,7 +21,8 @@
 *!             every type twoway colours.
 *!   C24, C26  zlabel(1 3 5) and zscale(reverse) on a discrete key.
 *!   P_*       clegend()'s sub-options: altaxis, region(), ring(0)
-*!             position() bplacement(), bmargin(), subtitle() note()
+*!             position() bplacement() (and its controls), bmargin() at
+*!             three sizes, subtitle() note()
 *!             caption(), width() height().
 *!   Z*        the z tick family: ztick(), zticks(), zmlabel(), zmtick(),
 *!             zmticks(), zlabels(), zlabel() on colorvar(price).
@@ -134,6 +135,13 @@ _zk_probe P_reg `sc' colorvar(rep78) colordiscrete clegend(region(fcolor(gs14) l
 _zk_probe P_bp_1 `sc' colorvar(rep78) colordiscrete clegend(ring(0) position(1))
 _zk_probe P_bp_7 `sc' colorvar(rep78) colordiscrete clegend(ring(0) position(7) bplacement(sw))
 _zk_probe P_bm `sc' colorvar(rep78) colordiscrete clegend(bmargin(large))
+// WP-42 CV-15: bplacement() against its control (P_bp_7c), on a side
+// key (P_bp_n, P_bp_s), and bmargin() at two more sizes (P_bm_m, P_bm_v).
+_zk_probe P_bp_7c `sc' colorvar(rep78) colordiscrete clegend(ring(0) position(7))
+_zk_probe P_bp_n `sc' colorvar(rep78) colordiscrete clegend(bplacement(north))
+_zk_probe P_bp_s `sc' colorvar(rep78) colordiscrete clegend(bplacement(south))
+_zk_probe P_bm_m `sc' colorvar(rep78) colordiscrete clegend(bmargin(medium))
+_zk_probe P_bm_v `sc' colorvar(rep78) colordiscrete clegend(bmargin(vlarge))
 _zk_probe P_sub `sc' colorvar(rep78) colordiscrete clegend(subtitle("S") note("N") caption("C"))
 _zk_probe P_w `sc' colorvar(rep78) colordiscrete clegend(width(5) height(40))
 _zk_probe Z1 `sc' colorvar(price) ztick(5000 10000)

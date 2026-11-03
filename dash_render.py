@@ -46461,7 +46461,12 @@ function dash_cvar_keycell_update(kc, lo, hi, centres, colours, ticks, labels, b
     let r = dash_key_range(e[0], e[1], dash_key_get(kc, "inset"), log);
     if (dash_key_get(kc, "reverse")) r = [r[1], r[0]];
     for (const tf of Array.from(dash_key_get(kc, "texts") || [])) {
-      if (tf && tf[0]) tf[0].y = r[0] + Number(tf[1]) * (r[1] - r[0]);
+      if (tf && tf[0] && tf[0].data) {
+        const y = r[0] + Number(tf[1]) * (r[1] - r[0]);
+        if (!(tf[0].data.y && tf[0].data.y[0] === y)) {
+          tf[0].data = Object.assign({}, tf[0].data, {y: [y]});
+        }
+      }
     }
     if (rng.start !== r[0]) rng.start = r[0];
     if (rng.end !== r[1]) rng.end = r[1];
@@ -54935,8 +54940,15 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
                         "ar": 0.0, "ring0": ring0 or "",
                         "gapl": float(gapl), "wbase": float(cell.width),
                         "region": {k: v for k, v in _reg.items()
-                                   if v is not None}},
+                                   if v is not None},
+                        "kpx": getattr(cell, "_dash_key_px", None) or {}},
                   code=_DASH_KEY_CELL_JS)
+    _kpx = getattr(cell, "_dash_key_px", None)
+    if _kpx:
+        # A relevel's range (or the server's) is put back on the drawn
+        # frame's px.
+        _kpx["range"].js_on_change("start", cb)
+        _kpx["range"].js_on_change("end", cb)
     if ring0:
         # Over the figure, outside the layout's flow, letting the pointer
         # through to the plot.
@@ -54951,12 +54963,9 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
     if ring0:
         # Over the figure: after it, so it is drawn on top.
         kids = (fig, cell)
-    # BokehJS aligns the frames of plots in one row: the cell's own needs
-    # (clegend()'s texts) must not move the figure; _DASH_KEY_CELL_JS
+    # BokehJS aligns the frames of plots in one row: _DASH_KEY_CELL_JS
     # aligns the cell to the figure instead.
     cell.frame_align = False
-    if getattr(cell, "_dash_key_texts", None):
-        fig.frame_align = False
     mode = "fixed" if fixed else "stretch_width"
     wrap = (row if vert else column)(*kids, sizing_mode=mode)
     wrap.tags = list(wrap.tags or []) + ["dash_key_row"]
@@ -55015,15 +55024,20 @@ def _dash_key_suboptions(fig, cell, mpx, band, gap, tpx, ring0=None):
         cell._dash_key_far = int(math.ceil(gap + max(
             tpx / 2.0 + 2, _DASH_KEY_GAP_END * mpx - shift)))
     if dm:
-        # The swatches toward the axis by the band's share.
-        kc["mid"] = max(0.0, band / 2.0 - _DASH_KEY_BM_BAND * dm) \
-            if not alt else min(band, band / 2.0 + _DASH_KEY_BM_BAND * dm)
+        # The swatches toward the axis (the band's end, its start under
+        # altaxis) by the margin's share, across it at vlarge (P_bm_m,
+        # P_bm, P_bm_v), drawn whole over the frame.
+        kc["mid"] = band / 2.0 + _DASH_KEY_BM_BAND * dm \
+            if not alt else band / 2.0 - _DASH_KEY_BM_BAND * dm
         cell._dash_key_bm = dm
         _d = dict(kc["src"].data)
         n = len(_d.get("y", []))
         if kc.get("vert", True):
             _d["x"] = [kc["mid"]] * n
         kc["src"].data = _d
+        for r in cell.renderers:
+            if getattr(r, "data_source", None) is kc["src"]:
+                r.level = "overlay"
     reg = spec.get("region")
     if reg and not ring0:
         ins = _DASH_KEY_BOX_INSET * mpx
@@ -55073,21 +55087,34 @@ def _dash_key_suboptions(fig, cell, mpx, band, gap, tpx, ring0=None):
                 rlo, rhi = rhi, rlo
             kc["range"].start, kc["range"].end = rlo, rhi
             box_c = _DASH_KEY_BOX_W * mpx / 2.0
-            out = []
+            out, px = [], []
             below = 0
             for lab in texts:
                 k = lab._dash_key_text
                 if k == "subtitle":
-                    frac = 1.0 - it + _DASH_KEY_SUB_BASE * mpx / fh
-                    lab.x = box_c - plot_to_frame
+                    off = -_DASH_KEY_SUB_BASE * mpx
+                    frac = 1.0 - it - off / fh
+                    x = box_c - plot_to_frame
+                    px.append([lab.data_source, "top", off])
                 else:
-                    frac = ib - (_DASH_KEY_NOTE_BASE
-                                 + below * _DASH_KEY_NOTE_STEP) * mpx / fh
+                    off = (_DASH_KEY_NOTE_BASE
+                           + below * _DASH_KEY_NOTE_STEP) * mpx
+                    frac = ib - off / fh
                     below += 1
-                    lab.x = _DASH_KEY_NOTE_X * mpx - plot_to_frame
-                lab.y = rlo + frac * (rhi - rlo)
-                out.append([lab, frac])
+                    x = _DASH_KEY_NOTE_X * mpx - plot_to_frame
+                    px.append([lab.data_source, "foot", off])
+                lab.data_source.data = dict(lab.data_source.data, x=[x],
+                                            y=[rlo + frac * (rhi - rlo)])
+                out.append([lab.data_source, frac])
             kc["texts"] = out
+            # The same in px of the drawn frame, which _DASH_KEY_CELL_JS
+            # reads (this frame's height is _dash_frame_borders's estimate).
+            cell._dash_key_px = {"top": top, "bot": bot,
+                                 "ai": _DASH_KEY_AXIS_INSET,
+                                 "log": bool(kc.get("log")),
+                                 "reverse": bool(kc.get("reverse")),
+                                 "axis": cell._dash_key_axis,
+                                 "range": kc["range"], "texts": px}
 
 
 def _dash_key_scale_entries(cell):
@@ -59987,7 +60014,7 @@ _DASH_KEY_ALT_END = (3859.2 - 3552.74) / 2880.0
 _DASH_KEY_BOX_INSET = 34.53 / 2880.0
 _DASH_KEY_BOX_MARGIN_RS = 1.2
 _DASH_KEY_BM_AXIS = 31.56 / 195.9
-_DASH_KEY_BM_BAND = 88.8 / 195.9
+_DASH_KEY_BM_BAND = (85.51 - 3.34) / 195.9
 _DASH_KEY_SUB_TOP = 144.55 / 2880.0
 _DASH_KEY_SUB_BASE = 50.27 / 2880.0
 _DASH_KEY_NOTE_BOTTOM = 248.99 / 2880.0
@@ -60060,6 +60087,50 @@ if (vert) {
   if (cell.height !== H) { cell.height = H; }
   if (cell.min_border_top !== t) { cell.min_border_top = t; }
   if (cell.min_border_bottom !== b) { cell.min_border_bottom = b; }
+  if (kpx && kpx.axis && kpx.range && fb.height > 1) {
+    // clegend()'s bmargin(), subtitle(), note() and caption() (WP-42
+    // CV-15): the axis line's ends and the texts in px of the drawn frame
+    // (the figure's), at the width scale.
+    const kk = wbase > 0 ? (cell.width || wbase) / wbase : 1;
+    const FH = fb.height;
+    const it = Number(kpx.ai) + Number(kpx.top) * kk / FH;
+    const ib = Number(kpx.ai) + Number(kpx.bot) * kk / FH;
+    const bd = kpx.axis.bounds;
+    const span = (lo, hi) => {
+      if (hi < lo) { const q = lo; lo = hi; hi = q; }
+      if (hi === lo) { lo -= 0.5; hi += 0.5; }
+      const w = (hi - lo) / Math.max(1e-9, 1 - it - ib);
+      return [lo - ib * w, hi + it * w];
+    };
+    let r = null;
+    if (Array.isArray(bd) && Number.isFinite(bd[0]) && Number.isFinite(bd[1])) {
+      if (kpx.log) {
+        if (bd[0] > 0 && bd[1] > 0) {
+          const q = span(Math.log10(bd[0]), Math.log10(bd[1]));
+          r = [Math.pow(10, q[0]), Math.pow(10, q[1])];
+        }
+      } else {
+        r = span(Number(bd[0]), Number(bd[1]));
+      }
+    }
+    if (r) {
+      if (kpx.reverse) r = [r[1], r[0]];
+      const rng = kpx.range;
+      if (rng.start !== r[0]) rng.start = r[0];
+      if (rng.end !== r[1]) rng.end = r[1];
+      for (const tx of Array.from(kpx.texts || [])) {
+        const src = tx[0];
+        const down = tx[1] === "top" ? it * FH + Number(tx[2]) * kk
+          : FH - ib * FH + Number(tx[2]) * kk;
+        const lin = (v) => kpx.log ? Math.log10(v) : v;
+        const y0 = lin(r[1]) + (lin(r[0]) - lin(r[1])) * down / FH;
+        const y = kpx.log ? Math.pow(10, y0) : y0;
+        if (src && src.data && !(src.data.y && src.data.y[0] === y)) {
+          src.data = Object.assign({}, src.data, {y: [y]});
+        }
+      }
+    }
+  }
   if (region && region.inset !== undefined) {
     // clegend(region()) (WP-42 CV-15): the key's box, painted behind the
     // cell's transparent canvas -- its fill and its outline, in from the
@@ -60196,7 +60267,7 @@ def _dash_key_cell(spec):
     ``minor``, ``title_above``) without a new structure."""
     from bokeh.models import (ColumnDataSource, FixedTicker, GlyphRenderer,
                               LinearAxis, LinearScale, LogAxis, LogScale,
-                              Plot, Quad, Range1d, Scatter)
+                              Plot, Quad, Range1d, Scatter, Text)
     side = spec.get("side") or "right"
     if side not in ("right", "left", "above", "below"):
         side = "right"
@@ -60307,8 +60378,10 @@ def _dash_key_cell(spec):
         # In the axis's side panel, which does not clip it to the frame.
         cell.add_layout(tlab, side)
     cell._dash_key_title = tlab
-    # clegend()'s subtitle(), note() and caption() (P_sub): Labels in the
-    # axis's panel, placed with the key in _dash_key_wrap.
+    # clegend()'s subtitle(), note() and caption() (P_sub): Text glyphs
+    # over the frame (the overlay level, which BokehJS does not clip to
+    # it), placed with the key in _dash_key_wrap; in a side panel they
+    # stacked and raised the frame's foot above the plot region's.
     texts = []
     sizes = {"subtitle": 1.1, "note": 0.8, "caption": 1.0}
     pt0 = OptionTranslator.css_to_pt(axis.major_label_text_font_size) or 10.0
@@ -60316,16 +60389,15 @@ def _dash_key_cell(spec):
         t = (spec.get("texts") or {}).get(k)
         if not t:
             continue
-        lab = Label(x=0.0, y=0.0, text=str(t),
-                    text_align="center" if k == "subtitle" else "left",
-                    text_baseline="alphabetic",
-                    text_font_size="%gpt" % round(pt0 * sizes[k], 3),
-                    text_color=axis.major_label_text_color,
-                    name="dash_key_" + k)
+        lab = cell.add_glyph(
+            ColumnDataSource({"x": [0.0], "y": [0.0], "text": [str(t)]}),
+            Text(x="x", y="y", text="text",
+                 text_align="center" if k == "subtitle" else "left",
+                 text_baseline="alphabetic",
+                 text_font_size="%gpt" % round(pt0 * sizes[k], 3),
+                 text_color=axis.major_label_text_color),
+            level="overlay", name="dash_key_" + k)
         lab._dash_key_text = k
-        # In the head or the foot panel (the figure's title's and x axis's
-        # room), which do not clip it and leave the key's width alone.
-        cell.add_layout(lab, "below")
         texts.append(lab)
     cell._dash_key_texts = texts
     cell._dash_key_axis = axis
@@ -60445,10 +60517,10 @@ def _dash_cvar_keycell_update(kc, lo, hi, centres, colours, ticks, labels,
             rng.end = rhi
         # clegend()'s subtitle(), note() and caption() keep their place in
         # the frame (a share of it from its foot).
-        for lab, frac in kc.get("texts") or []:
+        for src, frac in kc.get("texts") or []:
             y = rlo + float(frac) * (rhi - rlo)
-            if lab.y != y:
-                lab.y = y
+            if list(src.data.get("y", [])) != [y]:
+                src.data = dict(src.data, y=[y])
     except (KeyError, AttributeError, TypeError, ValueError, IndexError):
         return
 
