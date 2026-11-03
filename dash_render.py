@@ -41951,20 +41951,14 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
             legend.spacing = _geom["colgap"]
     elif legend is not None and colfirst:
         legend.orientation = "vertical"
-    for lg in cv_legends:
-        # A colour key keeps the rule it had: the one the user gave.
-        try:
-            if n_rows is not None:
-                lg.nrows = n_rows
-                lg.ncols = "auto"
-            elif n_cols is not None:
-                lg.ncols = n_cols
-                lg.nrows = "auto"
-        except (ValueError, AttributeError):
-            pass
+    # WP-42 CV-5: rows() and cols() leave a colour key, which twoway
+    # keeps in one column (M4: coloruseplegend's key under
+    # legend(rows(1)); P12: the key cell).
 
-    # 7. size() on every legend, including a colour key: the user asked
-    #    for a legend text size, not a plot-legend text size.
+    # 7. size() on the plot legend.  WP-42 CV-5: not on a colour key,
+    #    which twoway draws at its own size (Q3: the coloruseplegend key's
+    #    texts at 99.99 units beside the plot legend's 199.98 under
+    #    legend(size(huge)); Q1: the key cell's).
     m_size = _dash_legend_arg(_calls, ("size",), r"([^)]+?)")
     _size_typed = next((t for n, _a, t in _calls if n == "size"), "size")
     if m_size:
@@ -41974,7 +41968,7 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         T = OptionTranslator
         _lref = T.size_ref_of(fig)
         _bad = False
-        for lg in fig.legend:
+        for lg in plot_legends:
             try:
                 lg.label_text_font_size = T.css_pt(T.resolve_size(
                     m_size.group(1), "text",
@@ -41983,7 +41977,7 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
             except (ValueError, TypeError):
                 _bad = True
                 lg.label_text_font_size = T.css_pt(T.size_medium_pt("text"))
-        if not _bad and not list(fig.legend):
+        if not _bad and not plot_legends:
             try:
                 T.resolve_size(m_size.group(1), "text",
                                T.size_medium_pt("text"), _lref)

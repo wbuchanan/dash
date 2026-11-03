@@ -187,12 +187,23 @@ class TestTheSchemeChromeIsStillApplied:
             assert str(leg.border_line_color) == want
 
     def test_an_explicit_legend_size_still_wins(self):
+        from dash_render import _COLORVAR_LEGEND_NAME
         fig, _ = _render(_DISCRETE, scheme="economist",
                          gopts={"legend": "on size(4)"})
-        sizes = {str(l.label_text_font_size) for l in _legends(fig)}
+        plain, _ = _render(_DISCRETE, scheme="economist",
+                           gopts={"legend": "on"})
+        sizes = {str(l.label_text_font_size) for l in _legends(fig)
+                 if l.name != _COLORVAR_LEGEND_NAME}
         # WP-30 P1.12a (Evidence E4): legend(size(4)) is 4 % of the 4-inch
         # reference, twoway's 11.52 pt (was '4px').
         assert "11.52pt" in sizes, sizes
+        # Flipped (WP-42 CV-5): legend(size()) reached the colour key too;
+        # twoway's legend(size()) leaves the colour key at its own size
+        # (CV-5, colorvar_plegend_truth.json Q1, Q3).
+        def key_size(f):
+            return str(_cell(f)._dash_keycell["axis"]
+                       .major_label_text_font_size)
+        assert key_size(fig) == key_size(plain)
 
 
 class TestTheMixedCase:

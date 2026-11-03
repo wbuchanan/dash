@@ -267,3 +267,99 @@ class TestAfterAMove:
         session.set(w, tp._move_widget_value(w, kind, label))
         session.run(cb)
         assert _legend_record(r._last_layout_root.references()) == want
+
+
+# ---------------------------------------------------------------------------
+# CV-5: legend()'s size and grid sub-options leave every colour key
+# ---------------------------------------------------------------------------
+
+_LFIT = plot_for("lfit", {})
+#: probe: (its layers and graph options, the probe it draws its key as).
+_LEGEND_PROBES = {
+    "M3": (([_sc(**_K5)], {"legend": "off"}), "K5"),
+    "M4": (([_sc(**_K5)], {"legend": "rows(1)"}), "K5"),
+    "Q3": (([_sc(**_K5), _LFIT], {"legend": "size(huge)"}), "K5"),
+}
+_CELL_PROBES = {
+    "Q1": (([_sc(colorvar="price"), _LFIT], {"legend": "size(huge)"}), "Q0"),
+    "P12": (([_sc(colorvar="price"), _LFIT], {"legend": "rows(1)"}), "Q0"),
+}
+
+
+def _plot_legends(fig):
+    return [m for m in fig.legend if m.name != dr._COLORVAR_LEGEND_NAME]
+
+
+def _legend_style(lg):
+    return (str(lg.label_text_font_size), lg.orientation, lg.nrows,
+            lg.ncols, lg.visible is not False)
+
+
+def _kv(fig):
+    """The figure's colour key cell, as colour_bins.KeyView."""
+    import colour_bins
+    [kv] = colour_bins.key_views(fig)
+    return kv
+
+
+class TestLegendLeavesTheKey:
+    """CV-5: legend(off), legend(rows()) and legend(size()) leave the
+    colour key as twoway leaves it (M3, M4, Q3: the coloruseplegend key's
+    texts at K5's size and places; Q1, P12: the key cell's at Q0's)."""
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("probe", sorted(_LEGEND_PROBES))
+    def test_probe(self, tmp, probe, mode):
+        (plots, go), base = _LEGEND_PROBES[probe]
+        tw, tw0 = PROBES[probe]["key"], PROBES[base]["key"]
+        assert tw["texts"] == tw0["texts"] and tw["sizes"] == tw0["sizes"]
+        # Stacked one under another, as without the option (M4: one x).
+        assert len({round(x) for x, _y in tw["text_pos"]}) == 1
+        [f] = _build(tmp, mode, plots, go)
+        [f0] = _build(tmp, mode, [_sc(**_K5)])
+        [lg] = _cv_legends(f)
+        [lg0] = _cv_legends(f0)
+        assert _legend_style(lg) == _legend_style(lg0), \
+            (_legend_style(lg), _legend_style(lg0))
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_the_plot_legend_takes_it(self, tmp, mode):
+        # Q3: the plot legend's texts at twice the key's size (199.98).
+        assert {t["size"] for t in PROBES["Q3"]["texts"]
+                if t["text"] == "Fitted values"} == {199.98}
+        (plots, go), _b = _LEGEND_PROBES["Q3"]
+        [f] = _build(tmp, mode, plots, go)
+        [f0] = _build(tmp, mode, plots)
+        T = dr.OptionTranslator
+        [p] = [m for m in _plot_legends(f) if m.visible is not False]
+        [p0] = [m for m in _plot_legends(f0) if m.visible is not False]
+        assert T.css_to_pt(p.label_text_font_size) > \
+            T.css_to_pt(p0.label_text_font_size)
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("probe", sorted(_CELL_PROBES))
+    def test_cell(self, tmp, probe, mode):
+        (plots, go), base = _CELL_PROBES[probe]
+        tw, tw0 = PROBES[probe]["key"], PROBES[base]["key"]
+        assert tw["texts"] == tw0["texts"] and tw["sizes"] == tw0["sizes"]
+        [f] = _build(tmp, mode, plots, go)
+        [f0] = _build(tmp, mode, plots)
+        kv, kv0 = _kv(f), _kv(f0)
+        assert kv.major_label_overrides == kv0.major_label_overrides
+        assert str(kv.cell._dash_keycell["axis"].major_label_text_font_size) \
+            == str(kv0.cell._dash_keycell["axis"].major_label_text_font_size)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_contourline_levels(self, tmp, mode):
+        """contourline's colorlines key is a colour key too: measured
+        03nov2026 (sysuse sandstone, ``twoway contourline depth northing
+        easting, colorlines``), its texts 8000 7900 .. at 112.56 units in
+        one column with and without legend(size(huge)) or
+        legend(rows(1))."""
+        cl = [plot_for("contourline", {"colorlines": "colorlines"})]
+        [f0] = _build(tmp, mode, cl)
+        [lg0] = _cv_legends(f0)
+        for go in ({"legend": "size(huge)"}, {"legend": "rows(1)"}):
+            [f] = _build(tmp, mode, cl, go)
+            [lg] = _cv_legends(f)
+            assert _legend_style(lg) == _legend_style(lg0), go

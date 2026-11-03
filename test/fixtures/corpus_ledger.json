@@ -1,7 +1,7 @@
 {
   "_meta": {
     "born_date": "22 Oct 2026",
-    "dash_commit": "3477466601ee4cde1f329ee34f00b0d75320e05a",
+    "dash_commit": "1dbc2e9d563d9c5356f77386d3340a878df73342",
     "extracted": "03 Nov 2026",
     "source": "scripts/corpus/ledger.py",
     "stata_version": "19.5",

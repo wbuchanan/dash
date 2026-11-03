@@ -446,7 +446,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **CV-3 Tracked:** Closed in WP-42, BUGS.md "The discrete/binned clegend differs: ascending top to bottom, value labels and interval texts instead of a z axis, an extra '(missing)'/otherlabel entry, circles for every type, a frame", commit 729f762.
 - **CV-4 Tracked:** Closed in WP-42, BUGS.md "The coloruseplegend key: ascending order, '(missing)' for 'Other', an extra title, value labels; legend() sub-options and colorkeysrange applied", commit pending.
 - **CV-2 Tracked:** Closed in WP-42, BUGS.md "colordiscrete with colorlevels(k) makes k-1 cuts at range/k; twoway makes k cuts at range/(k+1)", commit 8a5c8b3.
-- **CV-5 Tracked:** Open (WP-42 section 42-04).
+- **CV-5 Tracked:** Closed in WP-42, BUGS.md "legend(size()) and legend(rows()/cols()) restyle the colour key; twoway's key ignores them", commit pending.
 - **CV-6 Tracked:** Closed in WP-42, BUGS.md "Two colorvar layers: dash draws a key per layer and no plot legend; twoway draws the last layer's key plus a plot legend", commit c541e9e.
 - **CV-7 Tracked:** Closed in WP-42, BUGS.md "A colorvar layer's plot-legend swatch takes row 0's level colour, not its pstyle colour", commit b554984.
 - **CV-11 Tracked:** Open (WP-42 section 42-04).

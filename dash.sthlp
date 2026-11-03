@@ -6204,7 +6204,8 @@ have drawn -- keeps its key apart, while {cmd:mlabel()} does not.  The
 merged key answers to the first plot's number: {cmd:label(1 "A")} renames
 it, and {cmd:label(2 "B")} and {cmd:order(2)} find no key, as in
 {cmd:twoway}.
-A {cmd:colorvar()} key is not the legend: it stays.
+A {cmd:colorvar()} key is not the legend: it stays, and {cmd:legend()}'s
+{cmd:size()}, {cmd:rows()} and {cmd:cols()} leave it, as in {cmd:twoway}.
 {cmd:legend()}'s sub-options are read under {cmd:twoway}'s spellings in
 lower case: {cmd:legend(c(2) r(1) lab(1 "A") posi(6) s(small) lastlab(2 "Z"))}
 draws as its full names, and in {cmd:legend(cols(1) c(red))} the second

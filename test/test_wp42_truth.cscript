@@ -1442,6 +1442,59 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w42_run' {
 }
 * ==== end S04 ====
 
+* ==== S04 CV-5: legend() leaves the colour key ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w42_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    local q04d "`w42_work'/s04l"
+    capture mkdir "`q04d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4204-2: legend(off), legend(rows(1)) and legend(size(huge)) leave
+    // the colour key -- twoway's key texts keep their size and places,
+    // and dash's key (the coloruseplegend Legend, the key cell) keeps its
+    // text size and grid, saved and served.
+    // ------------------------------------------------------------
+    local pl "colorvar(rep78) colordiscrete coloruseplegend"
+    local k 0
+    local sc "scatter mpg weight,"
+    local p2 "(scatter mpg weight, `pl') (lfit mpg weight),"
+    local c2 "(scatter mpg weight, colorvar(price)) (lfit mpg weight),"
+    local k 0
+    foreach c in "`sc' `pl'|`sc' `pl' legend(off)" "`sc' `pl'|`sc' `pl' legend(rows(1))" "`p2'|`p2' legend(size(huge))" "`c2'|`c2' legend(size(huge))" "`c2'|`c2' legend(rows(1))" {
+        local ++k
+        gettoken base opt : c, parse("|")
+        local opt = substr(`"`opt'"', 2, .)
+        foreach w in base opt {
+            local cmd `"``w'' name(q04l`k'`w', replace)"'
+            quietly twoway `cmd'
+            capture erase "`q04d'/q04l`k'`w'.svg"
+            cert_svg_export, name(q04l`k'`w') file("`q04d'/q04l`k'`w'.svg")
+            python: import __main__ as _q4204_m; _q4204_m._q4204_svg("`q04d'/q04l`k'`w'.svg")
+            local tw_`w' "${q4204_kt}|${q4204_kz}"
+            _q4204_reg "`q04d'" `cmd'
+            local zs_`w' "${q4204_zs}"
+            local zv_`w' "${q4204_zv}"
+            capture erase "`q04d'/q04l`k'`w'.svg"
+        }
+        _w42_expect Q4204-2 `"("`tw_base'" == "`tw_opt'")"' `"`opt': twoway's key `tw_opt', without it `tw_base'"'
+        _w42_expect Q4204-2 `"("`zs_base'" == "`zs_opt'" & "`zv_base'" == "`zv_opt'" & "`zs_opt'" != "")"' `"`opt': saved `zs_opt' (was `zs_base'), served `zv_opt' (was `zv_base')"'
+    }
+    _w42_done Q4204-2 "legend() leaves the colour key, saved and served"
+
+    foreach f in s.json d.json a.py {
+        capture erase "`q04d'/`f'"
+    }
+    capture rmdir "`q04d'"
+    macro drop q4204_*
+    capture graph drop _all
+    dash clear
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 // S05 helpers (WP-42 42-05).  _q4205_row: a probe of
 // fixtures/colorvar_refusal_truth.json into locals q05_rc, q05_n,
 // q05_l1 .. (its printed lines, trimmed), q05_cmd (twoway's command) and
