@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'CV-4': "The coloruseplegend key: ascending order, '(missing)' for 'Other', an extra title, value labels; legend() sub-options and colorkeysrange applied",
     'CV-5': "legend(size()) and legend(rows()/cols()) restyle the colour key; twoway's key ignores them",
     'CV-11': 'colorkeysreverse reverses entries and labels (twoway reverses colours only); colorlevels() over one value prints nonsense intervals',
     'CV-17': 'colorlist() with quoted RGB colours is not applied under colorvar(): every marker is black and the key is a legend of ranges where twoway draws the listed colours with a colour bar',

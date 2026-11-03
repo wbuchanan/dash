@@ -16603,6 +16603,9 @@ class GlyphMapper:
         # DISCRETE path — CategoricalColorMapper
         # ------------------------------------------------------------------
         _dom_labels = None
+        # WP-42 CV-4: each numeric level's value, by its factor, for the
+        # coloruseplegend key's texts (the level in the variable's format).
+        _lev_vals = {}
         if use_discrete:
             # A column of this layer's own under the reserved prefix: a
             # second colorvar layer on the same source, or a user variable
@@ -16641,6 +16644,8 @@ class GlyphMapper:
                         dom_units, eff_cuts, force_discrete, _vlookup,
                         closed_ends=_closed, number_text=_num_text,
                         bin_values=col_units)
+                    if force_discrete:
+                        _lev_vals = dict(zip(labels, eff_cuts))
 
                 else:
                     # colordiscrete: each distinct numeric value → its own category.
@@ -16656,6 +16661,7 @@ class GlyphMapper:
                         _num_text = (lambda v: f"{v:g}")
                         val_label = {v: _vlookup(v) for v in unique_sorted}
                     labels = [val_label[v] for v in unique_sorted]
+                    _lev_vals = dict(zip(labels, unique_sorted))
                     # A row outside the domain's levels is None too.
                     binned = [
                         None if np.isnan(v) else val_label.get(v)
@@ -16744,7 +16750,9 @@ class GlyphMapper:
             # holds missing values and every value no level takes, as
             # twoway's one "Other" entry does (D05p, D13).
             def _swatch(color, name):
-                if _keys_range:
+                # WP-42 CV-4: the plot legend's keys stay markers under
+                # colorkeysrange (C28).
+                if _keys_range and not _use_plegend:
                     return fig.quad(left=[float("nan")], right=[float("nan")],
                                     top=[float("nan")],
                                     bottom=[float("nan")], color=color,
@@ -16753,23 +16761,44 @@ class GlyphMapper:
                                    color=color, size=0, visible=False,
                                    name=name)
 
+            # WP-42 CV-4: under coloruseplegend each key's text is its
+            # level in the variable's display format, as twoway's
+            # string(cut, fmt) writes it (K5: 1 .. 5; K6: foreign 0 and 1,
+            # not its value labels), or its value label under
+            # zlabel(, valuelabel); a string's level, and an interval, as
+            # it is.
+            _pfmt = ((getattr(self, "formats", None) or {}).get(varname)
+                     or "%9.0g")
+            _pvl = bool(_dash_key_zlabel(self.z_options,
+                                         vlabels).get("valuelabel"))
+
+            def _ptext(factor):
+                if not _use_plegend or factor not in _lev_vals:
+                    return factor
+                v = float(_lev_vals[factor])
+                if _pvl:
+                    k = str(int(v)) if v.is_integer() else f"{v:g}"
+                    if k in (vlabels or {}):
+                        return str(vlabels[k])
+                return _dash_fmt_text(v, _pfmt,
+                                      dp=getattr(self, "dp", "period"))
+
             legend_items = []
             for factor, color in (zip(non_missing_factors, pal_colors)
                                   if add_key else ()):
                 _r = _swatch(color, f"{_DASH_SWATCH_PREFIX}{factor}")
-                legend_items.append(LegendItem(label=factor, renderers=[_r]))
-            # colorkeysreverse: the levels' order reversed, the gray entry
-            # last; twoway's plot legend keeps its order (D13r).
-            if _keys_rev and not _use_plegend:
-                legend_items.reverse()
+                legend_items.append(LegendItem(label=_ptext(factor),
+                                               renderers=[_r]))
             _miss_item = None
             if has_missing and add_key:
-                # A model name, never a factor.
+                # A model name, never a factor.  twoway's plot legend names
+                # its gray entry Other (K5), colorotherlabel() renaming it.
                 _rm = _swatch(missing_color,
                               f"{_DASH_SWATCH_PREFIX}__missing__")
                 _miss_item = LegendItem(
-                    label=_other_label or "(missing)", renderers=[_rm])
-                legend_items.append(_miss_item)
+                    label=_other_label or ("Other" if _use_plegend
+                                           else "(missing)"),
+                    renderers=[_rm])
             # A layer of its own levels (colordiscrete, a string) is
             # levelled again over the rows a filter move keeps, as twoway
             # levels the rows it draws (BUGS.md "A colordiscrete key and its
@@ -16777,10 +16806,7 @@ class GlyphMapper:
             # plan both modes' relevel reads (_dash_cvar_relevel).
             if (not is_numeric) or (force_discrete and cuts is None
                                     and nlevels is None):
-                _lv_items = [it for it in legend_items
-                             if it is not _miss_item]
-                if _keys_rev and not _use_plegend:
-                    _lv_items = list(reversed(_lv_items))
+                _lv_items = list(legend_items)
                 _pals = {}
                 for _k in range(1, len(non_missing_factors) + 1):
                     if _c_list:
@@ -16795,6 +16821,9 @@ class GlyphMapper:
                     "levels": [str(f) for f in non_missing_factors],
                     "pals": _pals, "mapper": mapper,
                     "rev": bool(_keys_rev and not _use_plegend),
+                    # WP-42 CV-4: the plot legend keys its levels highest
+                    # first.
+                    "desc": bool(_use_plegend),
                     "keys": [{"legend": None, "items": _lv_items,
                               "miss": _miss_item, "fig": fig,
                               "anchor": renderer}] if add_key else [],
@@ -16808,10 +16837,7 @@ class GlyphMapper:
                 # 15 18 21; each by() panel over its own rows).  A record
                 # on every binned renderer, the keyed one's with its key;
                 # _dash_cvar_bins_layer makes the layer's plan of them.
-                _lv_items = [it for it in legend_items
-                             if it is not _miss_item]
-                if _keys_rev and not _use_plegend:
-                    _lv_items = list(reversed(_lv_items))
+                _lv_items = list(legend_items)
                 _own = bool(force_discrete)
                 # colorcuts() under colorvarminmax can cut the rows a move
                 # keeps into one bin more than the build's (measured
@@ -16847,9 +16873,17 @@ class GlyphMapper:
                     "fmt": _key_fmt, "dp": getattr(self, "dp", "period"),
                     "vlabels": {str(k): str(v) for k, v in
                                 (vlabels or {}).items()},
+                    "ptext": ({"fmt": _pfmt,
+                               "vl": ({str(k): str(v) for k, v in
+                                       (vlabels or {}).items()}
+                                      if _pvl else {})}
+                              if _use_plegend and force_discrete else None),
                     "pals": _pals, "mapper": mapper,
                     "missing": str(missing_color),
                     "rev": bool(_keys_rev and not _use_plegend),
+                    # WP-42 CV-4: the plot legend keys its levels highest
+                    # first.
+                    "desc": bool(_use_plegend),
                     "keys": [{"legend": None, "items": _lv_items,
                               "miss": _miss_item, "fig": fig,
                               "anchor": renderer}] if add_key else [],
@@ -16860,9 +16894,22 @@ class GlyphMapper:
             # plot and a plain plot in one figure) wrong.
             # Raw: a Legend title is a DOM text node in BokehJS, and the
             # factor labels above are too, so escaping only showed entities.
-            _legend = Legend(items=legend_items, title=var_display,
+            # WP-42 CV-4: twoway's plot legend keys the levels highest
+            # first, then Other, untitled (K5: 5 4 3 2 1 Other);
+            # colorkeysreverse leaves its order (D13r).
+            _shown = (list(reversed(legend_items)) if _use_plegend
+                      else list(legend_items))
+            if _miss_item is not None:
+                _shown.append(_miss_item)
+            _legend = Legend(items=_shown,
+                             title=None if _use_plegend else var_display,
                              name=_COLORVAR_LEGEND_NAME)
             _legend._dash_useplegend = bool(_use_plegend)  # WP-41 BY-14
+            # WP-42 CV-4: its levels run highest first, untitled; by()'s
+            # colour key (_dash_by_colour_bar_cell) reads them ascending,
+            # titled with the variable's label.
+            _legend._dash_desc = bool(_use_plegend)
+            _legend._dash_cvar_title = var_display
             _legend._dash_cvar_key = True  # WP-42 CV-6
             for _ks in ((getattr(renderer, "_dash_cvar", None)
                          or {}).get("keys", [])
@@ -47168,7 +47215,18 @@ function dash_cvar_relevel_bins(pl, kv) {
     if (k > items.length) continue;
     const keep = items.slice(0, k);
     keep.forEach((it, j) => {
-      it.label = {value: labels[j]};
+      // WP-42 CV-4: the plot legend writes a level in the variable's
+      // format, or its value label under zlabel(, valuelabel).
+      let lab = labels[j];
+      if (pl.ptext && j < eff.length) {
+        const v = eff[j];
+        const vk = Number.isInteger(v) ? String(v) : dash_cvar_pyg(v);
+        const vl = pl.ptext.vl || {};
+        lab = (vk in vl) ? vl[vk]
+          : dash_fmt_text(v, pl.ptext.fmt || "%9.0g", null,
+                          pl.dp || "period", null);
+      }
+      it.label = {value: lab};
       const rr = (it.renderers || [])[0];
       const g = rr ? rr.glyph : null;
       if (!g) return;
@@ -47179,7 +47237,7 @@ function dash_cvar_relevel_bins(pl, kv) {
         }
       }
     });
-    const order = pl.rev ? keep.slice().reverse() : keep.slice();
+    const order = pl.desc ? keep.slice().reverse() : keep.slice();
     const miss = ks.miss || null;
     if (miss && missing) order.push(miss);
     if (ks.legend) ks.legend.items = order;
@@ -47292,7 +47350,7 @@ function dash_cvar_relevel(plans) {
           }
         }
       });
-      const order = pl.rev ? keep.slice().reverse() : keep.slice();
+      const order = pl.desc ? keep.slice().reverse() : keep.slice();
       const miss = ks.miss || null;
       if (miss && missing) order.push(miss);
       const lg = ks.legend;
@@ -55040,8 +55098,6 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
         tpx = (OptionTranslator.css_to_pt(
             _tl0.text_font_size if _tl0 is not None
             else ax.axis_label_text_font_size) or 10.0) * 4.0 / 3.0
-        n = max((len(str(t)) for t in dict(ax.major_label_overrides
-                                            or {}).values()), default=0)
         tl = getattr(cell, "_dash_key_title", None)
         # The title sits out by the scheme's axis title gap past K1's
         # (s2color's minuscule): K1_stcolor's title is stcolor's tiny less
@@ -56152,7 +56208,8 @@ def _dash_cvar_relevel(plan, kept=None):
                     if g is not None and prop in g.properties() \
                             and getattr(g, prop) != pal[j]:
                         setattr(g, prop, pal[j])
-        order = list(reversed(keep)) if plan.get("rev") else list(keep)
+        # WP-42 CV-4: the plot legend's levels highest first.
+        order = list(reversed(keep)) if plan.get("desc") else list(keep)
         miss = ks.get("miss")
         if miss is not None and missing:
             order.append(miss)
@@ -56888,15 +56945,27 @@ def _dash_cvar_relevel_bins(plan, kv=None):
             continue
         keep = items[:k]
         for j, it in enumerate(keep):
-            if str(getattr(it.label, "value", it.label)) != labels[j]:
-                it.label = _bkv(labels[j])
+            lab = labels[j]
+            pt = plan.get("ptext")
+            if pt and j < len(eff):
+                # WP-42 CV-4: the plot legend writes a level in the
+                # variable's format, or its value label under
+                # zlabel(, valuelabel).
+                v = float(eff[j])
+                vk = str(int(v)) if v.is_integer() else f"{v:g}"
+                lab = (str(pt["vl"][vk]) if vk in (pt.get("vl") or {})
+                       else _dash_fmt_text(v, pt.get("fmt") or "%9.0g",
+                                           dp=plan.get("dp") or "period"))
+            if str(getattr(it.label, "value", it.label)) != lab:
+                it.label = _bkv(lab)
             for rr in list(it.renderers or [])[:1]:
                 g = getattr(rr, "glyph", None)
                 for prop in ("fill_color", "line_color"):
                     if g is not None and prop in g.properties() \
                             and getattr(g, prop) != pal[j]:
                         setattr(g, prop, pal[j])
-        order = list(reversed(keep)) if plan.get("rev") else list(keep)
+        # WP-42 CV-4: the plot legend's levels highest first.
+        order = list(reversed(keep)) if plan.get("desc") else list(keep)
         miss = ks.get("miss")
         if miss is not None and has_missing:
             order.append(miss)
@@ -60211,6 +60280,10 @@ def _dash_by_colour_bar_cell(scheme, legend):
         labs.append(lab)
     if not cols:
         return None
+    if getattr(legend, "_dash_desc", False):
+        # WP-42 CV-4: the plot legend's levels run highest first.
+        cols.reverse()
+        labs.reverse()
     chrome = {}
     try:
         chrome = dict(scheme.colorbar_chrome()) if scheme is not None \
@@ -60220,7 +60293,8 @@ def _dash_by_colour_bar_cell(scheme, legend):
     if getattr(legend, "label_text_font_size", None):
         chrome["major_label_text_font_size"] = legend.label_text_font_size
     pos = [float(i + 1) for i in range(len(cols))]
-    title = getattr(legend, "title", None)
+    title = (getattr(legend, "_dash_cvar_title", None)
+             or getattr(legend, "title", None))
     return _dash_key_cell({
         "kind": "rect", "side": "right", "lo": pos[0], "hi": pos[-1],
         "centres": pos, "colours": cols, "ticks": pos,

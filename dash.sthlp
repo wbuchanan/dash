@@ -5992,7 +5992,9 @@ With more than one y variable, {cmd:colorvar()} is refused on
 {synopt:{cmdab:colorotherlab:el(}{it:text}{cmd:)}}the text of the key's gray
     entry, the missing values and every value no level takes{p_end}
 {synopt:{cmdab:colorusepleg:end}}the keys in the plot legend, placed by
-    {cmd:plegend()}; it needs {cmd:colordiscrete}, as in {cmd:twoway}{p_end}
+    {cmd:plegend()}, highest first and then Other, untitled, numbers in the
+    variable's display format, as in {cmd:twoway}; it needs
+    {cmd:colordiscrete}, as in {cmd:twoway}{p_end}
 {synoptline}
 
 {pstd}

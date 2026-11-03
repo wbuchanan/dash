@@ -522,7 +522,9 @@ class TestAfterAFilterMove:
         relevel = dr._DASH_CVAR_RELEVEL_JS
         assert [m.group(0) for m in _JS_TITLE_WRITE.finditer(relevel)] \
             == [".label ="], relevel
-        key_write = "it.label = {value: labels[j]};"
+        # WP-42 CV-4: the text is the bin's label, or under
+        # coloruseplegend its level in the variable's format.
+        key_write = "it.label = {value: lab};"
         assert key_write in relevel
         codes = [c.replace(key_write, "") for c in codes]
         module_js = [c.replace(key_write, "") for c in module_js]

@@ -1008,6 +1008,7 @@ and now matches Stata.
 
 ### Fixed in WP-42
 
+- coloruseplegend keys 5 4 3 2 1 Other with no title (was ascending with (missing) and the variable's label) (WP-42, CV-4)
 - zlabel() and zscale(reverse) are drawn on a discrete colour key (were named) (WP-42, CV-15)
 - clegend(title("Z", box)) draws a boxed Z above the key and keeps the z title (was the raw text replacing it) (WP-42, LT-12)
 - zlabel(), zscale() and clegend(altaxis region() bplacement() bmargin() subtitle() note() caption()) are drawn on the colour key (were named) (WP-42, CV-15)

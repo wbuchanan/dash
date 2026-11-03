@@ -500,20 +500,15 @@ _CV_DRAWN = tuple(p for p in _CV_PROBES if p not in _CV_REFUSALS)
 #: the same in both modes (WP-42 CV-1 closed colorfillonly's line
 #: colours, WP-42 CV-2 the colordiscrete + colorlevels(k) cuts; WP-42
 #: CV-3 the discrete/binned clegend's form: ascending, value labels and
-#: interval texts, '(missing)', a frame); CV-4: the coloruseplegend key (WP-42 CV-6
-#: closed the key a layer of two colorvar layers); CV-8: the continuous default's gradient and ColorBar
+#: interval texts, '(missing)', a frame; WP-42 CV-4 the coloruseplegend key;
+#: WP-42 CV-6 the key a layer of two colorvar layers); CV-8: the continuous default's gradient and ColorBar
 #: (zscale(log) and zscale(reverse) included); WP-42 CV-10 closed
 #: zlabel(bogus), refused r(198) as twoway refuses it.
 COLORVAR_KNOWN = {
     # WP-42 CV-3 closed the discrete, binned and stepped keys' form (the
-    # axis-style key cell), WP-42 CV-15 zscale(reverse) on it.
-    "cv16_line_plegend:key_texts": "CV-4",
-    "cv16_line_plegend:key_frame": "CV-4",
-    # The one key left is the last layer's, twoway's texts (5 .. 1); the
-    # two layers' plot legend beside it (twoway's two Mileage (mpg) keys
-    # among the key's texts) is the plot legend's interplay with the key
-    # (42-04, CV-4).
-    "cv16_two_layers:key_texts": "CV-4",
+    # axis-style key cell), WP-42 CV-15 zscale(reverse) on it, WP-42 CV-4
+    # the coloruseplegend key (cv16_line_plegend) and, with the probes
+    # drawn under their session's stcolor, cv16_two_layers.
 }
 COLORVAR_DELIBERATE = {}
 
@@ -627,7 +622,10 @@ def _cv_models(mode, pid):
     """The models dash draws for probe *pid* in *mode* (saved: the
     renderer's layout root; served: the app's Document)."""
     plots, graph = _cv_spec(_truth()["probes"][pid])
-    spec = tp._spec(plots, None, graph or None)
+    # Drawn as dash.ado sends it from the session the probes ran in:
+    # Stata 19's default scheme, stcolor (the probes set none; their key
+    # texts are stcolor's 112.56 units).
+    spec = tp._spec(plots, {"session_scheme": "stcolor"}, graph or None)
     saved_df = tp._DF
     tp._DF = _cv_frame()
     try:
@@ -770,7 +768,10 @@ def _dash_key(models):
                 # hidden plot Legend is passed over: it is not drawn.
                 if tn == "Legend" and a.items and a.visible is not False:
                     texts = [_cv_label(it.label) for it in a.items]
+                    # A white frame is no frame, as _twoway_key reads
+                    # twoway's (stcolor's legend box is white on white).
                     framed = bool(a.border_line_color) and \
+                        _cv_hex(a.border_line_color) != "#ffffff" and \
                         (a.border_line_alpha or 0) > 0
                     return texts, framed
                 if tn == "ColorBar" and a.name != "dash_by_label_box":
@@ -794,9 +795,20 @@ def _twoway_key(probe):
     them all."""
     right = max([probe["plot"]["right"]]
                 + [g["right"] for g in probe.get("panels", [])])
+    # The colour key is unboxed (CV-3) unless coloruseplegend puts it in
+    # the plot legend's box (CV-4); otherwise a box right of the plot holds
+    # the series legend (cv16_two_layers: its two keys at 3 o'clock under
+    # stcolor), which is not the key _dash_key reads.
+    boxes = [] if "coloruseplegend" in probe["command"] else [
+        r for r in probe["rects"] if r["w"] and r["h"] and r["x"] > right]
+
+    def _boxed(t):
+        return any(r["x"] <= t["x"] <= r["x"] + r["w"]
+                   and r["y"] <= t["y"] <= r["y"] + r["h"] for r in boxes)
     key = sorted((t for t in probe["texts"]
                   if t["x"] is not None and t["x"] > right + 1
-                  and not t["rotate"]), key=lambda t: (t["y"], t["x"]))
+                  and not t["rotate"] and not _boxed(t)),
+                 key=lambda t: (t["y"], t["x"]))
     texts = [t["text"] for t in key]
     framed = bool(key) and any(
         r["stroke"] not in ("#ffffff", "none") and r["w"] and r["h"]

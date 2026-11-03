@@ -1875,6 +1875,10 @@ CORPUS = [
     _case("colorvar colorfillonly on spike",
           [plot_for("spike", {"colorvar": "rep",
                               "colorfillonly": "colorfillonly"})]),
+    # WP-42 CV-4: the coloruseplegend key, highest level first, untitled.
+    _case("colorvar coloruseplegend",
+          [_sc(colorvar="rep", colordiscrete="colordiscrete",
+               coloruseplegend="coloruseplegend")]),
     # WP-42 CV-6: two colorvar layers draw one key and a plot legend.
     _case("two colorvar layers",
           [_sc(colorvar="rep"),

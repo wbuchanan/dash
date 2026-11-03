@@ -672,7 +672,10 @@ _SAVED_DIGEST = (
     # extent scatter's move taken back out of the filter JS (code only: the
     # base's relevel, span and filter JS give the old digest on the new
     # tree); the same under both Pythons.
-    "62d2de2adb72cb3f9a583211deca402560d6ffbdd548ffd16f498ca2e8726862")
+    # 62d2de2a... -> dec1cbf7...: WP-42 CV-4, the relevel's coloruseplegend
+    # order (desc) and level texts (ptext) (code only: the base's relevel
+    # JS gives the old digest on the new tree).
+    "dec1cbf7ab6e0cd682d45c169daf6474feb45ef49a6e4042f03dc28f3924b8f1")
 
 
 # ===========================================================================

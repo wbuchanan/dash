@@ -1326,6 +1326,122 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
 }
 * ==== end S03 ====
 
+// S04 helpers (WP-42 42-04).  _q4204_keys: the colour keys both modes
+// draw for a registered graph (S03's _q4203_models builds them) -- the
+// coloruseplegend Legend's texts top first into q4204_t<s|v>, its title
+// into q4204_h<s|v>, its swatches' glyph kinds into q4204_g<s|v>; each
+// colour key's text size and grid (a Legend's size, orientation, rows
+// and columns, a key cell's label size) into q4204_z<s|v>; the key cell's
+// swatch colours top first into q4204_c<s|v>.  _q4204_svg: twoway's
+// texts right of the plot region top first into q4204_kt, and their sizes
+// into q4204_kz.
+python:
+def _q4204_keys(sp, dp, app):
+    from sfi import Macro
+    from bokeh.models import Legend, Plot
+    import dash_render as dr
+    a, b = _q4203_models(sp, dp, app)
+    for models, sfx in ((a, "s"), (b, "v")):
+        texts, title, kinds, style, cols = [], "", [], [], []
+        for m in models:
+            if isinstance(m, Legend) and m.name == dr._COLORVAR_LEGEND_NAME \
+                    and m.items and m.visible is not False:
+                for it in m.items:
+                    lab = it.label
+                    v = getattr(lab, "value", None)
+                    if v is None and isinstance(lab, dict):
+                        v = lab.get("value")
+                    texts.append(str(lab if v is None else v))
+                    kinds.append(type(it.renderers[0].glyph).__name__)
+                title = str(m.title or "")
+                style.append("%s/%s/%s/%s" % (m.label_text_font_size,
+                                              m.orientation, m.nrows,
+                                              m.ncols))
+            if isinstance(m, Plot) and "dash_key_cell" in (m.tags or []):
+                ax = m._dash_keycell["axis"]
+                style.append(str(ax.major_label_text_font_size))
+                up = m.y_range.start <= m.y_range.end
+                for r in m.renderers:
+                    d = r.data_source.data
+                    if "y" in d and ("c" in d or "colour" in d) \
+                            and not (r.name or "").startswith("dash_key_"):
+                        cc = d.get("c", d.get("colour"))
+                        cols += [str(c) for _y, c in sorted(
+                            zip(d["y"], cc), key=lambda t: t[0],
+                            reverse=up)]
+        Macro.setGlobal("q4204_t" + sfx, " ".join(texts))
+        Macro.setGlobal("q4204_h" + sfx, title)
+        Macro.setGlobal("q4204_g" + sfx, " ".join(sorted(set(kinds))))
+        Macro.setGlobal("q4204_z" + sfx, " ".join(style))
+        Macro.setGlobal("q4204_c" + sfx, " ".join(c.lower() for c in cols))
+
+
+def _q4204_svg(path):
+    from sfi import Macro
+    from svg_truth import svg_document
+    d = svg_document(path)
+    r = d["plotregion"]["right"]
+    ts = sorted((t for t in d["texts"] if t["x"] is not None
+                 and t["x"] > r + 1 and not t["rotate"]),
+                key=lambda t: (t["y"], t["x"]))
+    Macro.setGlobal("q4204_kt", " ".join(t["text"] for t in ts))
+    Macro.setGlobal("q4204_kz", " ".join("%g" % t["size"] for t in ts))
+end
+
+capture program drop _q4204_reg
+program define _q4204_reg
+    // _q4204_reg <dir> <dash command...>: register one graph and read the
+    // colour keys both modes draw.
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4204_m; _q4204_m._q4204_keys("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
+* ==== S04 CV-4: the coloruseplegend key ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w42_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    local q04d "`w42_work'/s04p"
+    capture mkdir "`q04d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4204-1: under coloruseplegend the key's texts, top first, are
+    // twoway's -- the highest level first, then Other (or
+    // colorotherlabel()), the levels in the variable's format, not its
+    // value labels -- untitled, with marker swatches under colorkeysrange
+    // too, saved and served.
+    // ------------------------------------------------------------
+    local k 0
+    foreach o in "colorvar(rep78) colordiscrete coloruseplegend" "colorvar(foreign) colordiscrete coloruseplegend" `"colorvar(rep78) colordiscrete coloruseplegend colorotherlabel("rest")"' "colorvar(rep78) colordiscrete coloruseplegend colorkeysrange" {
+        local ++k
+        quietly twoway scatter mpg weight, `o' name(q04p`k', replace)
+        capture erase "`q04d'/q04p`k'.svg"
+        cert_svg_export, name(q04p`k') file("`q04d'/q04p`k'.svg")
+        python: import __main__ as _q4204_m; _q4204_m._q4204_svg("`q04d'/q04p`k'.svg")
+        local tw "${q4204_kt}"
+        _q4204_reg "`q04d'" scatter mpg weight, `o' name(q04p`k')
+        _w42_expect Q4204-1 `"("${q4204_ts}" == "`tw'" & "${q4204_tv}" == "`tw'")"' `"`o': twoway `tw', saved ${q4204_ts}, served ${q4204_tv}"'
+        _w42_expect Q4204-1 `"("${q4204_hs}" == "" & "${q4204_hv}" == "")"' `"`o': titled saved ${q4204_hs}, served ${q4204_hv}"'
+        _w42_expect Q4204-1 `"("${q4204_gs}" == "Scatter" & "${q4204_gv}" == "Scatter")"' `"`o': swatches saved ${q4204_gs}, served ${q4204_gv}"'
+    }
+    _w42_done Q4204-1 "the coloruseplegend key is twoway's, saved and served"
+
+    foreach f in q04p1.svg q04p2.svg q04p3.svg q04p4.svg s.json d.json a.py {
+        capture erase "`q04d'/`f'"
+    }
+    capture rmdir "`q04d'"
+    macro drop q4204_*
+    capture graph drop _all
+    dash clear
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 // S05 helpers (WP-42 42-05).  _q4205_row: a probe of
 // fixtures/colorvar_refusal_truth.json into locals q05_rc, q05_n,
 // q05_l1 .. (its printed lines, trimmed), q05_cmd (twoway's command) and
