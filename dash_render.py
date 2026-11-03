@@ -16892,6 +16892,8 @@ class GlyphMapper:
                 # Legend: 42-04).
                 if not _use_plegend:
                     _dp = getattr(self, "dp", "period")
+                    # WP-42 CV-15: zlabel() and zscale() on the key.
+                    _zl = _dash_key_zlabel(self.z_options, vlabels)
                     _numeric_own = bool(is_numeric and force_discrete
                                         and cuts is None and nlevels is None)
                     _pos_of = {}
@@ -16903,7 +16905,7 @@ class GlyphMapper:
                                        zip(labels, unique_sorted)}
                         _lay = _dash_key_levels_layout(
                             [str(lb) for lb in labels], _pos_of,
-                            bool(is_numeric), _key_fmt, _dp)
+                            bool(is_numeric), _key_fmt, _dp, _zl)
                     else:
                         _lay = _dash_key_bins_layout(
                             dom_units, eff_cuts, bool(force_discrete),
@@ -16915,7 +16917,7 @@ class GlyphMapper:
                     if _kc is not None:
                         # One record every plan holds (by() re-sides it).
                         _kc.update(pos=_pos_of, numeric=bool(is_numeric),
-                                   fmt=_key_fmt, dp=_dp)
+                                   fmt=_key_fmt, dp=_dp, zl=_zl)
                         for _p in (getattr(renderer, "_dash_cvar", None),
                                    getattr(renderer, "_dash_cvar_bins",
                                            None)):
@@ -17218,6 +17220,7 @@ class GlyphMapper:
         _ms = getattr(getattr(renderer, "glyph", None), "size", None)
         _ms = _ms.get("value") if isinstance(_ms, dict) else _ms
         spec = {"kind": kind, "side": side, "lo": lo, "hi": hi,
+                "reverse": bool(_dash_key_zlabel(self.z_options)["reverse"]),
                 "msize": float(_ms) if isinstance(_ms, (int, float))
                 and not isinstance(_ms, bool) and _ms > 0 else None,
                 "log": bool(log), "bands": list(bands or []),
@@ -46410,7 +46413,8 @@ function dash_cvar_keycell_update(kc, lo, hi, centres, colours, ticks, labels, b
       const b0 = axis.bounds[0], b1 = axis.bounds[1];
       tl.y = (log && b0 > 0 && b1 > 0) ? Math.sqrt(b0 * b1) : (b0 + b1) / 2;
     }
-    const r = dash_key_range(e[0], e[1], dash_key_get(kc, "inset"), log);
+    let r = dash_key_range(e[0], e[1], dash_key_get(kc, "inset"), log);
+    if (dash_key_get(kc, "reverse")) r = [r[1], r[0]];
     if (rng.start !== r[0]) rng.start = r[0];
     if (rng.end !== r[1]) rng.end = r[1];
   } catch (err) {
@@ -46431,8 +46435,9 @@ function dash_cvar_keycell_steps(pl, lo, hi, cuts, colours) {
   dash_cvar_keycell_update(kc, lo, hi, dash_key_bin_centres(lo, hi, cuts, pos, log),
                            colours, pos, o);
 }
-function dash_key_levels_layout(kept, posOf, numeric, fmt, dp) {
+function dash_key_levels_layout(kept, posOf, numeric, fmt, dp, zl) {
   // _dash_key_levels_layout: [lo, hi, centres, positions, labels].
+  zl = zl || {};
   if (numeric) {
     const cs = [];
     for (const lv of kept) {
@@ -46442,9 +46447,28 @@ function dash_key_levels_layout(kept, posOf, numeric, fmt, dp) {
     if (!cs.length) return [null, null, [], [], {}];
     let lo = Infinity, hi = -Infinity;
     for (const c of cs) { if (c < lo) lo = c; if (c > hi) hi = c; }
-    let t = dash_natscale(lo, hi, 5) || [];
-    if (!t.length) t = [lo];
+    const zt = Array.from(dash_key_get(zl, "ticks") || []).map(Number);
+    let t;
+    if (dash_key_get(zl, "mode") === "explicit") t = zt;
+    else if (dash_key_get(zl, "mode") === "count" && dash_key_get(zl, "count")) {
+      t = Array.from(new Set((dash_natscale(lo, hi, Number(dash_key_get(zl, "count"))) || []).concat(zt)))
+        .sort((a, b) => a - b);
+    } else {
+      t = dash_natscale(lo, hi, 5) || [];
+      if (!t.length) t = [lo];
+    }
     const tp = dash_key_ticks_plain(t, fmt, dp);
+    const zlab = dash_key_get(zl, "labels") || {};
+    const vl = dash_key_get(zl, "valuelabel") ? (dash_key_get(zl, "vlabels") || {}) : null;
+    for (const q of tp[0]) {
+      const k1 = Number.isInteger(q) ? q.toFixed(1) : String(q);
+      const own = dash_key_get(zlab, k1);
+      if (own !== undefined) { tp[1][String(q)] = String(own); continue; }
+      if (vl && Number.isInteger(q)) {
+        const v = dash_key_get(vl, String(q));
+        if (v !== undefined) tp[1][String(q)] = String(v);
+      }
+    }
     return [lo, hi, cs, tp[0], tp[1]];
   }
   const cs = kept.map((lv, i) => i + 1);
@@ -46473,7 +46497,7 @@ function dash_cvar_keycell_levels(pl, kept, pal) {
   if (!kc) return;
   const l = dash_key_levels_layout(kept, dash_key_get(kc, "pos") || {},
     !!dash_key_get(kc, "numeric"), dash_key_get(kc, "fmt"),
-    dash_key_get(kc, "dp") || "period");
+    dash_key_get(kc, "dp") || "period", dash_key_get(kc, "zl"));
   dash_cvar_keycell_update(kc, l[0], l[1], l[2], Array.from(pal || []).slice(0, l[2].length),
                            l[3], l[4]);
 }
@@ -55621,27 +55645,67 @@ def _dash_cvar_relevel(plan, kept=None):
 
 
 
-def _dash_key_levels_layout(kept, pos_of, numeric, fmt, dp="period"):
+def _dash_key_levels_layout(kept, pos_of, numeric, fmt, dp="period",
+                            zl=None):
     """A key of the layer's own levels (WP-42 CV-3): ``(lo, hi, centres,
     positions, labels)`` for the *kept* levels -- each at its value
     (*pos_of*, a level's text to its number) and the axis ticked by
     natscale #5 over them in *fmt* when *numeric* (K1: rep78's 1..5
     ticked 1 2 3 4 5; K2: foreign's 0 and 1 ticked 0 .2 .4 .6 .8 1), a
-    string's levels at 1..k labelled with their texts."""
+    string's levels at 1..k labelled with their texts.  *zl* (WP-42
+    CV-15, ``_dash_key_zlabel``) is zlabel() on the key: its list
+    (C24: zlabel(1 3 5) ticks 1 3 5) or #N, its own labels, and
+    valuelabel, which writes a tick's value label where it has one (K7:
+    Domestic and Foreign at 0 and 1, .2 .. .8 as numbers)."""
+    zl = zl or {}
     if numeric:
         cs = [float(pos_of[lv]) for lv in kept if lv in pos_of]
         if cs:
             lo, hi = min(cs), max(cs)
-            t = list(_dash_axis_count_ticks(lo, hi, 5, None) or [lo])
+            if zl.get("mode") == "explicit":
+                t = [float(v) for v in zl.get("ticks") or []]
+            elif zl.get("mode") == "count" and zl.get("count"):
+                t = sorted(set(_dash_axis_count_ticks(
+                    lo, hi, int(zl["count"]), None) or [])
+                    | {float(v) for v in zl.get("ticks") or []})
+            else:
+                t = list(_dash_axis_count_ticks(lo, hi, 5, None) or [lo])
         else:
             lo = hi = None
             t = []
-        pos, ovr = _dash_key_ticks(t, "", fmt or "%8.0gc", dp=dp)
+        pos, ovr = _dash_key_ticks(t, "", fmt or "%8.0gc",
+                                   zl.get("labels") or None, dp=dp)
+        vl = zl.get("vlabels") if zl.get("valuelabel") else None
+        if vl:
+            for p in list(ovr):
+                k = str(int(p)) if float(p).is_integer() else None
+                if k is not None and k in vl and str(float(p)) not in (
+                        zl.get("labels") or {}):
+                    ovr[p] = str(vl[k])
         return lo, hi, cs, pos, ovr
     cs = [float(i + 1) for i in range(len(kept))]
     lo, hi = (1.0, float(len(kept))) if kept else (None, None)
     return lo, hi, cs, list(cs), {c: str(lv) for c, lv in zip(cs, kept)}
 
+
+def _dash_key_zlabel(zopts, vlabels=None):
+    """zlabel() and zscale() as the colour key cell draws them (WP-42
+    CV-15): ``{"mode", "ticks", "count", "labels", "valuelabel",
+    "vlabels", "reverse"}`` -- zlabel()'s list or #N, its labels (keyed as
+    ``_dash_parse_axis_spec`` keys them), valuelabel with the variable's
+    value labels *vlabels*, and zscale(reverse)."""
+    zo = zopts or {}
+    raw = str(zo.get("zlabel", "") or "").strip()
+    sp = _dash_parse_axis_spec(raw) if raw else {"mode": "default"}
+    sc = str(zo.get("zscale", "") or "").strip().lower()
+    return {"mode": sp.get("mode") or "default",
+            "ticks": [float(v) for v in sp.get("ticks") or []],
+            "count": sp.get("count"),
+            "labels": {str(k): str(v) for k, v in
+                       (sp.get("labels") or {}).items()},
+            "valuelabel": bool(sp.get("valuelabel")),
+            "vlabels": {str(k): str(v) for k, v in (vlabels or {}).items()},
+            "reverse": bool(re.search(r"\brev(e(r(s(e)?)?)?)?\b", sc))}
 
 def _dash_key_bins_layout(dom, eff, discrete, fmt, dp="period"):
     """A binned key (WP-42 CV-3): ``(lo, hi, centres, positions,
@@ -55679,7 +55743,7 @@ def _dash_cvar_keycell_levels(plan, kept, pal):
     try:
         lo, hi, cs, pos, ovr = _dash_key_levels_layout(
             kept, kc.get("pos") or {}, kc.get("numeric"), kc.get("fmt"),
-            kc.get("dp") or "period")
+            kc.get("dp") or "period", kc.get("zl"))
     except (KeyError, TypeError, ValueError):
         return
     _dash_cvar_keycell_update(kc, lo, hi, cs, list(pal)[:len(cs)], pos, ovr)
@@ -59779,7 +59843,10 @@ def _dash_key_cell(spec):
         labels = {k: v for k, v in labels.items() if k > 0}
     lo, hi = _dash_key_ends(spec.get("lo"), spec.get("hi"), ticks)
     rlo, rhi = _dash_key_range(lo, hi, log=log)
-    zr = Range1d(start=rlo, end=rhi)
+    # zscale(reverse): the lowest level at the top, its colour with it
+    # (C26: 1 at the top in #0000ff).
+    rev = bool(spec.get("reverse"))
+    zr = Range1d(start=rhi, end=rlo) if rev else Range1d(start=rlo, end=rhi)
     br = Range1d(start=0.0, end=float(band))
     mid = band / 2.0
     bands = [(float(a), float(b)) for a, b in spec.get("bands") or []]
@@ -59886,7 +59953,7 @@ def _dash_key_cell(spec):
     cell._dash_keycell = {"src": src, "ticker": axis.ticker, "axis": axis,
                           "range": zr, "vert": bool(vert), "mid": mid,
                           "title": tlab,
-                          "band": float(band), "log": log,
+                          "band": float(band), "log": log, "reverse": rev,
                           "inset": float(_DASH_KEY_AXIS_INSET)}
     return cell
 
@@ -59976,6 +60043,8 @@ def _dash_cvar_keycell_update(kc, lo, hi, centres, colours, ticks, labels,
         rlo, rhi = _dash_key_range(zlo, zhi, kc.get("inset",
                                                     _DASH_KEY_AXIS_INSET),
                                    log=log)
+        if kc.get("reverse"):
+            rlo, rhi = rhi, rlo
         if rng.start != rlo:
             rng.start = rlo
         if rng.end != rhi:
@@ -61868,7 +61937,17 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key,
                          and not (set(_dspec.get("typed", {}))
                                   - {"format"})
                          and _kbad is None)
-            if not _fmt_only:
+            # WP-42 CV-15: the key cell draws zlabel()'s list, #N, its
+            # labels and valuelabel (_dash_key_zlabel); the rest is named.
+            _drawn = (_dspec.get("mode") in ("default", "explicit", "count")
+                      and not _dspec.get("unsupported")
+                      and not _dspec.get("labsize")
+                      and not _dspec.get("angle")
+                      and not _dspec.get("grid")
+                      and not (set(_dspec.get("typed", {}))
+                               - {"format", "valuelabels"})
+                      and _kbad is None)
+            if not (_fmt_only or _drawn):
                 _dash_report_suboptions("zlabel", [zlabel_raw], seen, key)
         else:
             spec = _dash_parse_axis_spec(zlabel_raw)
@@ -61943,7 +62022,10 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key,
     zscale_raw = zopts.get("zscale", "")
     if zscale_raw:
         if is_discrete:
-            _dash_report_suboptions("zscale", [zscale_raw], seen, key)
+            # WP-42 CV-15: the key cell draws zscale(reverse).
+            if not re.fullmatch(r"\s*rev(e(r(s(e)?)?)?)?\s*",
+                                str(zscale_raw)):
+                _dash_report_suboptions("zscale", [zscale_raw], seen, key)
         else:
             zspec = _dash_scale_spec(zscale_raw, "zscale", seen, key)
             lo, hi = zspec.get("lo"), zspec.get("hi")
@@ -73835,6 +73917,7 @@ class ServerAppBuilder:
                          "_dash_cvar_keycell_update",
                          "_dash_key_bin_centres", "_dash_cvar_keycell_steps",
                          "_dash_key_levels_layout", "_dash_key_bins_layout",
+                         "_dash_key_zlabel",
                          "_dash_cvar_keycell_levels",
                          "_dash_cvar_keycell_bins", "_dash_key_wrap",
                          "_dash_key_hold_shape", "_dash_key_scale_entries",

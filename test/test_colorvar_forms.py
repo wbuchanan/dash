@@ -366,14 +366,24 @@ class TestZOptions:
     def test_a_z_option_on_a_discrete_key_is_named_once(self):
         plots = [tp.plot_for("scatter", {"colorvar": "rep",
                                          "colordiscrete": "colordiscrete"})]
-        _r, _d, std_w, srv_w = _both(go={"zlabel": "1(1)5"}, plots=plots)
-        assert len([w for w in std_w if "zlabel" in w]) == 1
-        assert len([w for w in srv_w if "zlabel" in w]) == 1
+        # Flipped (WP-42 CV-15): zlabel(1(1)5) was named, the discrete key
+        # having no axis; twoway draws it on the key's z axis (C24), and
+        # so does the key cell, in silence.  What the cell does not draw
+        # (angle()) is named once.
+        r, _d, std_w, srv_w = _both(go={"zlabel": "1(1)5"}, plots=plots)
+        assert not [w for w in std_w + srv_w if "zlabel" in w]
+        (cell,) = cb.axis_key_cells(r._last_layout_root)
+        assert cb.axis_key_texts(cell) == ["5", "4", "3", "2", "1"]
+        _r1, _d1, std_w1, srv_w1 = _both(go={"zlabel": "1(1)5, angle(45)"},
+                                         plots=plots)
+        assert len([w for w in std_w1 if "zlabel" in w]) == 1
+        assert len([w for w in srv_w1 if "zlabel" in w]) == 1
 
         plots_by = [tp.plot_for("scatter", {"colorvar": "rep",
                                             "colordiscrete": "colordiscrete"})]
         _r2, _d2, std_w2, _srv_w2 = _both(
-            go={"zlabel": "1(1)5", "by": "foreign"}, plots=plots_by)
+            go={"zlabel": "1(1)5, angle(45)", "by": "foreign"},
+            plots=plots_by)
         assert len([w for w in std_w2 if "zlabel" in w]) == 1
 
     def test_an_unknown_z_sub_option_is_named(self):

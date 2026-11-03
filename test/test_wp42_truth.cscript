@@ -863,7 +863,8 @@ def _q4203_cells(sp, dp, app):
             if "dash_key_cell" in (m.tags or []):
                 ax = (list(m.right) + list(m.left))[0]
                 ovr = dict(ax.major_label_overrides or {})
-                keys = sorted(ovr, key=float, reverse=True)
+                up = m.y_range.start <= m.y_range.end
+                keys = sorted(ovr, key=float, reverse=up)
                 texts += [str(ovr[k]) for k in keys]
                 continue
             for side in (m.right, m.left, m.above, m.below, m.center):
@@ -929,6 +930,46 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
     _w42_done Q4203-1 "the colour key is twoway's axis-style key, saved and served"
 
     foreach f in q03k1.svg q03k2.svg q03k3.svg q03k4.svg s.json d.json a.py {
+        capture erase "`q03d'/`f'"
+    }
+    capture rmdir "`q03d'"
+    macro drop q4203_ks q4203_kv q4203_os q4203_ov q4203_kt
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+* ==== S03 CV-15: zlabel() and zscale() drawn on the colour key ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03d "`w42_work'/s03z"
+    capture mkdir "`q03d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4203-2: zlabel(1 3 5) relabels a discrete key, zscale(reverse)
+    // puts its lowest level at the top and zlabel(, valuelabel) writes
+    // the value labels -- the key's texts top first are twoway's, saved
+    // and served, and no figure draws a Legend or ColorBar key.
+    // ------------------------------------------------------------
+    local k 0
+    foreach o in "colorvar(rep78) colordiscrete zlabel(1 3 5)" "colorvar(rep78) colordiscrete zscale(reverse)" "colorvar(foreign) colordiscrete zlabel(, valuelabel)" {
+        local ++k
+        quietly twoway scatter mpg weight, `o' name(q03z`k', replace)
+        capture erase "`q03d'/q03z`k'.svg"
+        cert_svg_export, name(q03z`k') file("`q03d'/q03z`k'.svg")
+        python: import __main__ as _q4203_m; _q4203_m._q4203_svgk("`q03d'/q03z`k'.svg")
+        local tw "${q4203_kt}"
+        _q4203_kreg "`q03d'" scatter mpg weight, `o' name(q03z`k')
+        _w42_expect Q4203-2 `"("${q4203_ks}" == "`tw'" & "${q4203_kv}" == "`tw'")"' `"`o': twoway `tw', saved ${q4203_ks}, served ${q4203_kv}"'
+        _w42_expect Q4203-2 "(${q4203_os} == 0 & ${q4203_ov} == 0)" "`o': Legend or ColorBar keys saved ${q4203_os}, served ${q4203_ov}"
+    }
+    _w42_done Q4203-2 "zlabel() and zscale() are drawn on the colour key, saved and served"
+
+    foreach f in q03z1.svg q03z2.svg q03z3.svg s.json d.json a.py {
         capture erase "`q03d'/`f'"
     }
     capture rmdir "`q03d'"

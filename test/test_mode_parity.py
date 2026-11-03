@@ -1842,6 +1842,13 @@ CORPUS = [
           [_sc(colorvar="rep", colorlevels="3")]),
     _case("CV-3 K_cont: colorvar(price) stepped key cell",
           [_sc(colorvar="price")]),
+    # WP-42 CV-15: zlabel() and zscale() on the key cell (C24, C26).
+    _case("CV-15 C24: colordiscrete zlabel(1 3 5)",
+          [_sc(colorvar="rep", colordiscrete="colordiscrete")],
+          go={"zlabel": "1 3 5"}),
+    _case("CV-15 C26: colordiscrete zscale(reverse)",
+          [_sc(colorvar="rep", colordiscrete="colordiscrete")],
+          go={"zscale": "reverse"}),
     _case("colorvar() stepped on bar",
           [plot_for("bar", {"colorvar": "price"})]),
     _case("colorvar() with a palette",

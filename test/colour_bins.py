@@ -148,9 +148,11 @@ def key_title(cell):
 
 
 def axis_key_texts(cell):
-    """A key cell's label texts, top to bottom (WP-42 CV-3)."""
+    """A key cell's label texts, top to bottom (WP-42 CV-3; a reversed z
+    axis, zscale(reverse), the lowest at the top: WP-42 CV-15)."""
     ovr = dict(cell._dash_key_axis.major_label_overrides or {})
-    return [str(ovr[k]) for k in sorted(ovr, key=float, reverse=True)]
+    up = cell.y_range.start <= cell.y_range.end
+    return [str(ovr[k]) for k in sorted(ovr, key=float, reverse=up)]
 
 
 def colour_bars(model):

@@ -6130,10 +6130,14 @@ key's title alone.
 
 {pstd}
 The colour key's own axis options, {cmd:ztitle()}, {cmd:zlabel()} and
-{cmd:zscale()}, are taken as graph options and drawn on the key: the title on
-either key; ticks, {cmd:#}{it:N}, {cmd:none} and {cmd:minmax}, and
-{cmd:range()} (widening only), {cmd:log} and {cmd:reverse}, on the colour bar.
-{cmd:zlabel(, labsize())} is drawn on the colour bar's labels.
+{cmd:zscale()}, are taken as graph options and drawn on the key: the title;
+ticks, {cmd:#}{it:N}, {cmd:none} and {cmd:minmax}, a list of values with its
+labels ({cmd:zlabel(1 3 5)} relabels a {cmd:colordiscrete} key 5 3 1) and
+{cmd:valuelabel} ({cmd:zlabel(, valuelabel)} writes {it:Domestic} and
+{it:Foreign} at the ends of {cmd:foreign}'s key), {cmd:range()} (widening
+only), {cmd:log} and {cmd:reverse} (the lowest level at the top, its colour
+with it), on a discrete key as on a continuous one.
+{cmd:zlabel(, labsize())} is drawn on a continuous key's labels.
 The key's numbers are {it:varname}'s values in its own units, written as
 {cmd:twoway} writes its colour key: in {cmd:%8.0gc} whatever {it:varname}'s
 display format ({cmd:5,000} for a {cmd:%9.0g} {cmd:price}), or in

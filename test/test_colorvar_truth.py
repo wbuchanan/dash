@@ -506,9 +506,7 @@ _CV_DRAWN = tuple(p for p in _CV_PROBES if p not in _CV_REFUSALS)
 #: zlabel(bogus), refused r(198) as twoway refuses it.
 COLORVAR_KNOWN = {
     # WP-42 CV-3 closed the discrete, binned and stepped keys' form (the
-    # axis-style key cell).  zscale(reverse) drawn on the key cell is
-    # CV-15's (42-03).
-    "zscale_rev:key_texts": "CV-15",
+    # axis-style key cell), WP-42 CV-15 zscale(reverse) on it.
     "cv16_line_plegend:key_texts": "CV-4",
     "cv16_line_plegend:key_frame": "CV-4",
     # The one key left is the last layer's, twoway's texts (5 .. 1); the

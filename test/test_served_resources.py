@@ -644,7 +644,11 @@ _SAVED_DIGEST = (
     # place in the relevel twin and the hole width in _DASH_SPAN_JS (code
     # only: the base's relevel, span and filter JS give the old digest on
     # the new tree); the same under both Pythons.
-    "353854447309149fead2e84c05425cf378a214210e82dacf8846f031373d74af")
+    # 35385444... -> 259650ab...: WP-42 CV-15, zlabel() and zscale() in
+    # the key cell's levels relevel (relevel JS text only: the base's
+    # relevel, span and filter JS give the old digest on the new tree);
+    # the same under both Pythons.
+    "259650abb35c52f17b105d47f9e6deed7f44e2b386b195ee08dcc2a23d80b0a6")
 
 
 # ===========================================================================

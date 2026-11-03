@@ -498,13 +498,25 @@ def _cell_record(models):
     return sorted(out, key=repr)
 
 
+#: WP-42 CV-15: zlabel()'s list and valuelabel and zscale(reverse) on a
+#: discrete key after a move, the twins against a fresh build.
+_EXTRA_MOVES = {
+    "CV-15 colordiscrete zlabel() zscale(reverse), range": tp._move_case(
+        "CV-15 colordiscrete zlabel() zscale(reverse), range", tp._MOVES[1],
+        [plot_for("scatter", {"colorvar": "rep",
+                              "colordiscrete": "colordiscrete"})],
+        {"zlabel": "1 2 4, valuelabel", "zscale": "reverse"}),
+}
+
+
 @pytest.mark.parametrize("name", [
     "scatter colordiscrete, range to 4500-11385",
     "scatter colorlevels(4), rep dropdown to 3",
     "scatter colorcuts(), rep dropdown to 3",
     "scatter colorvar stepped price, rep dropdown to 3",
-    "line colorvar levels (D-15f), rep dropdown to 3"],
-    ids=["levels", "bins", "cuts", "stepmap", "steps"])
+    "line colorvar levels (D-15f), rep dropdown to 3",
+    "CV-15 colordiscrete zlabel() zscale(reverse), range"],
+    ids=["levels", "bins", "cuts", "stepmap", "steps", "zlabel"])
 class TestTheKeyAfterAMove:
     """CV-3 (D-42-03.d): after a filter move the key cell's labels and
     swatches equal a fresh build over the kept rows, served (the Python
@@ -513,7 +525,10 @@ class TestTheKeyAfterAMove:
     def test_twins_agree(self, name):
         import json as _json
         import js_runner
-        case = [c for c in tp.MOVE_CORPUS if c.values[0] == name][0]
+        if name in _EXTRA_MOVES:
+            case = _EXTRA_MOVES[name]
+        else:
+            case = [c for c in tp.MOVE_CORPUS if c.values[0] == name][0]
         _name, spec, action, oracle = case.values
         q = _json.loads(_json.dumps(spec))
         q["build_options"]["filter"] = ""
@@ -685,6 +700,20 @@ class TestTheKeyCellHelpers:
                                         None)[2] == [3.0, 4.0]
         assert dr._dash_key_bins_layout([float("nan")], [2.0], False,
                                         None)[2:] == ([], [], {})
+
+    def test_zlabel(self):
+        """WP-42 CV-15: zlabel() and zscale() as the key cell reads them;
+        a list relabels the key, valuelabel writes the value labels."""
+        z = dr._dash_key_zlabel({"zlabel": "1 3 5", "zscale": "reverse"})
+        assert z["mode"] == "explicit" and z["ticks"] == [1.0, 3.0, 5.0]
+        assert z["reverse"] is True
+        z = dr._dash_key_zlabel({"zlabel": ", valuelabel"},
+                                {"0": "Domestic", "1": "Foreign"})
+        lay = dr._dash_key_levels_layout(["0", "1"], {"0": 0.0, "1": 1.0},
+                                         True, "%8.0gc", "period", z)
+        assert lay[4][0.0] == "Domestic" and lay[4][1.0] == "Foreign"
+        assert lay[4][0.2] == ".2"
+        assert dr._dash_key_zlabel({})["reverse"] is False
 
     def _cell(self, **kw):
         spec = {"kind": "marker", "side": "right", "lo": 1.0, "hi": 5.0,
@@ -906,3 +935,64 @@ class TestTheKeyAsTwowayDrawsIt:
             band + dr._DASH_KEY_GAP_TITLE * mpx)
         assert cell.width >= band + math.ceil(
             (dr._DASH_KEY_GAP_TITLE + dr._DASH_KEY_GAP_END) * mpx)
+
+
+# ---------------------------------------------------------------------------
+# CV-15: zlabel() and zscale() drawn on the key cell (colorvar_key_truth.json
+# C24: zlabel(1 3 5) relabels the discrete key 5 3 1; C26: zscale(reverse)
+# puts 1 at the top, its colour with it; K7: zlabel(, valuelabel) writes
+# Foreign and Domestic at the ends), with no note.
+# ---------------------------------------------------------------------------
+
+_Z_OPTS = {
+    "C24": ({"colorvar": "rep78", "colordiscrete": "colordiscrete"},
+            {"zlabel": "1 3 5"}),
+    "C26": ({"colorvar": "rep78", "colordiscrete": "colordiscrete"},
+            {"zscale": "reverse"}),
+    "K7": ({"colorvar": "foreign", "colordiscrete": "colordiscrete"},
+           {"zlabel": ", valuelabel"}),
+}
+
+
+@pytest.mark.usefixtures("_auto")
+class TestZOptionsOnTheKey:
+
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("pid", sorted(_Z_OPTS))
+    def test_probe(self, pid, mode):
+        rec = _key_truth()[pid]
+        opts, go = _Z_OPTS[pid]
+        spec = tp._spec([plot_for("scatter", opts, yvar="mpg",
+                                  xvar="weight")], None, go)
+        if mode == "saved":
+            r, warns = tp._standalone(spec)
+            root = r._last_layout_root
+        else:
+            root, warns = tp._served(spec)
+        (cell,) = _key_cells(root)
+        ovr = dict(cell._dash_key_axis.major_label_overrides or {})
+        rng = cell._dash_keycell["range"]
+        rev = rng.start > rng.end
+        # Top first: on a reversed axis the lowest value is at the top.
+        texts = [ovr[k] for k in sorted(ovr, key=float, reverse=not rev)]
+        assert texts == _key_texts(rec), (pid, texts)
+        if pid == "C26":
+            # 1 at the top, in level 1's colour (#0000ff).
+            d = cell._dash_keycell["src"].data
+            low = min(zip(d["y"], d["c"]))
+            assert rev and low[0] == 1.0 and low[1].lower() == "#0000ff"
+        assert not [w for w in warns if "zlabel" in w or "zscale" in w], \
+            warns
+
+
+import contextlib  # noqa: E402
+import warnings as _warnings  # noqa: E402
+
+
+@contextlib.contextmanager
+def _no_warn():
+    out = []
+    with _warnings.catch_warnings(record=True) as caught:
+        _warnings.simplefilter("always")
+        yield out
+    out.extend(str(w.message) for w in caught)

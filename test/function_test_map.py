@@ -1561,6 +1561,7 @@ FUNCTIONS = {
  '_dash_key_ends': 'test/test_colorvar_key.py::TestTheKeyCellHelpers::test_ends',
  '_dash_key_hold_shape': 'test/test_colorvar_key.py::TestTheKeyCellHelpers::test_scale_entries_and_shape',
  '_dash_key_levels_layout': 'test/test_colorvar_key.py::TestTheKeyCellHelpers::test_levels_layout',
+ '_dash_key_zlabel': 'test/test_colorvar_key.py::TestTheKeyCellHelpers::test_zlabel',
  '_dash_key_range': 'test/test_colorvar_key.py::TestTheKeyCellHelpers::test_range',
  '_dash_key_scale_entries': 'test/test_colorvar_key.py::TestTheKeyCellHelpers::test_scale_entries_and_shape',
  '_dash_key_wrap': 'test/test_colorvar_key.py::TestTheLayoutIsUnchanged::test_the_cell_has_a_width',
