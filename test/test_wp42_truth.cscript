@@ -956,7 +956,7 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
     // and served, and no figure draws a Legend or ColorBar key.
     // ------------------------------------------------------------
     local k 0
-    foreach o in "colorvar(rep78) colordiscrete zlabel(1 3 5)" "colorvar(rep78) colordiscrete zscale(reverse)" "colorvar(foreign) colordiscrete zlabel(, valuelabel)" {
+    foreach o in "colorvar(rep78) colordiscrete zlabel(1 3 5)" "colorvar(rep78) colordiscrete zscale(reverse)" "colorvar(foreign) colordiscrete zlabel(, valuelabel)" "colorvar(rep78) colordiscrete clegend(altaxis)" "colorvar(rep78) colordiscrete clegend(region(fcolor(gs14) lcolor(red)))" "colorvar(rep78) colordiscrete clegend(bmargin(large))" {
         local ++k
         quietly twoway scatter mpg weight, `o' name(q03z`k', replace)
         capture erase "`q03d'/q03z`k'.svg"
@@ -967,9 +967,10 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
         _w42_expect Q4203-2 `"("${q4203_ks}" == "`tw'" & "${q4203_kv}" == "`tw'")"' `"`o': twoway `tw', saved ${q4203_ks}, served ${q4203_kv}"'
         _w42_expect Q4203-2 "(${q4203_os} == 0 & ${q4203_ov} == 0)" "`o': Legend or ColorBar keys saved ${q4203_os}, served ${q4203_ov}"
     }
-    _w42_done Q4203-2 "zlabel() and zscale() are drawn on the colour key, saved and served"
+    // clegend()'s sub-options are drawn and nothing is named.
+    _w42_done Q4203-2 "zlabel(), zscale() and clegend()'s sub-options are drawn on the colour key, saved and served"
 
-    foreach f in q03z1.svg q03z2.svg q03z3.svg s.json d.json a.py {
+    foreach f in q03z1.svg q03z2.svg q03z3.svg q03z4.svg q03z5.svg q03z6.svg s.json d.json a.py {
         capture erase "`q03d'/`f'"
     }
     capture rmdir "`q03d'"

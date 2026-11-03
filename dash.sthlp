@@ -5999,8 +5999,12 @@ o'clock, as in {cmd:twoway}), {cmd:ring()} ({cmd:ring(0)} inside the
 plot at the position, the scheme's 3 o'clock unless {cmd:position()} is
 given; a ring inside the legend's 3 between the plot and the legend, as in
 {cmd:twoway}; the scheme's {cmd:gridringstyle zyx2legend_ring} where
-{cmd:ring()} is not given), {cmd:title()}, and on the colour bar {cmd:width()} and {cmd:height()}; its
-other sub-options are named in the note.  {cmd:plegend()} does the same for
+{cmd:ring()} is not given), {cmd:title()}, and on the colour bar {cmd:width()} and {cmd:height()}.
+{cmd:altaxis} moves the z axis to the swatches' other side,
+{cmd:region()} draws the key's box, {cmd:bmargin()} is the space around
+it, {cmd:bplacement()} is taken and the key keeps its clock position,
+and {cmd:subtitle()}, {cmd:note()} and {cmd:caption()} are drawn with the
+key, as in {cmd:twoway}.  {cmd:plegend()} does the same for
 the keys {cmd:coloruseplegend} puts in the plot legend, where
 {cmd:clegend()} has no key to place and is named.  {cmd:pcycle(}{it:#}{cmd:)}
 is the number of plot styles before {cmd:p1} recurs:
@@ -6150,8 +6154,9 @@ variable keys {cmd:15,000} ... {cmd:15,400} and {cmd:colorcuts(15100 15200)}
 cuts at those days, as in {cmd:twoway}; {cmd:zlabel(, format(%td))} writes
 the dates.  A format {cmd:twoway} accepts that {cmd:dash} cannot write
 ({cmd:%12s}, {cmd:%21x}) is drawn as {cmd:%9.0g} and named in the note.
-On a discrete key {cmd:zlabel()}'s ticks and {cmd:zscale()} are named in the
-note.  {cmd:zlabels()}, {cmd:zticks()}, {cmd:zmlabels()} and {cmd:zmticks()}
+On a discrete key {cmd:zlabel()}'s ticks pick the levels that are
+labelled and {cmd:zscale(reverse)} puts the lowest level at the top, as in
+{cmd:twoway}.  {cmd:zlabels()}, {cmd:zticks()}, {cmd:zmlabels()} and {cmd:zmticks()}
 are {cmd:twoway}'s spellings of {cmd:zlabel()}, {cmd:ztick()},
 {cmd:zmlabel()} and {cmd:zmtick()} and are taken as them;
 {cmd:ztick()}, {cmd:zmlabel()} and {cmd:zmtick()} are named in the note and

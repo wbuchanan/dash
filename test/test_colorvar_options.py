@@ -463,7 +463,16 @@ class TestClegendOpts:
         assert o["position"] == 6 and o["ring"] == 1
         assert o["width"] == "5" and o["height"] == "20"
         assert o["title"] == "Z" and o["off"] is False
-        assert o["other"] == ["altaxis"]
+        # Flipped (WP-42 CV-15): altaxis was named (not a recognised
+        # sub-option); twoway draws it (P_alt), and so does the key cell.
+        assert o["other"] == [] and o["altaxis"] is True
+        o = dr._dash_clegend_opts('region(fcolor(gs14)) bmargin(large) '
+                                  'bplacement(sw) subtitle("S") note("N") '
+                                  'caption("C") boxed')
+        assert o["region"] == "fcolor(gs14)" and o["bmargin"] == "large"
+        assert o["bplacement"] == "sw" and o["subtitle"] == "S"
+        assert o["note"] == "N" and o["caption"] == "C"
+        assert o["other"] == ["boxed"]
         assert dr._dash_clegend_opts("off")["off"] is True
 
 

@@ -648,7 +648,11 @@ _SAVED_DIGEST = (
     # the key cell's levels relevel (relevel JS text only: the base's
     # relevel, span and filter JS give the old digest on the new tree);
     # the same under both Pythons.
-    "259650abb35c52f17b105d47f9e6deed7f44e2b386b195ee08dcc2a23d80b0a6")
+    # 259650ab... -> b5ee0c48...: WP-42 CV-15's rest, clegend()'s texts
+    # and insets in the key's range JS (code only: the base's relevel,
+    # span and filter JS give the old digest on the new tree); the same
+    # under both Pythons.
+    "b5ee0c487e32e6998feae57905dfbbd6d5bfc35dcd7b5c5d82be8fb924d52254")
 
 
 # ===========================================================================

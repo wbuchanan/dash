@@ -776,7 +776,10 @@ class TestTheKeyCellHelpers:
     def test_scale_entries_and_shape(self):
         c = self._cell()
         ents = dr._dash_key_scale_entries(c)
-        assert [e[1] for e in ents] == ["width", "min_border_right"]
+        # Both borders (WP-42 CV-15: the swatches' side holds altaxis's
+        # band and region()'s room).
+        assert [e[1] for e in ents] == ["width", "min_border_right",
+                                        "min_border_left"]
         from bokeh.plotting import figure
         f = figure(sizing_mode="stretch_width", aspect_ratio=2.0)
         fw = dr._dash_key_hold_shape(f, c, 720.0)
@@ -1111,3 +1114,112 @@ def test_the_save_button_writes_the_key_too(mode):
               and "dash_key_png" in (t.tags or [])]
     assert png.callback.args["grid"] is row
     assert png.callback.code == dr._DASH_KEY_PNG_SAVE_JS
+
+
+# ---------------------------------------------------------------------------
+# CV-15: clegend()'s altaxis, region(), bmargin(), bplacement(), subtitle(),
+# note() and caption() drawn on the key cell (colorvar_key_truth.json P_*),
+# nothing named.
+# ---------------------------------------------------------------------------
+
+_P_OPTS = {
+    "P_alt": "altaxis",
+    "P_reg": "region(fcolor(gs14) lcolor(red))",
+    "P_bm": "bmargin(large)",
+    "P_sub": 'subtitle("S") note("N") caption("C")',
+    "P_bp_7": "ring(0) position(7) bplacement(sw)",
+}
+
+
+def _p_build(mode, pid):
+    spec = tp._spec([plot_for("scatter", _KEY_OPTS["K1"], yvar="mpg",
+                              xvar="weight")], {"scheme": "s2color"},
+                    {"clegend": _P_OPTS[pid]})
+    if mode == "saved":
+        r, warns = tp._standalone(spec)
+        root = r._last_layout_root
+    else:
+        root, warns = tp._served(spec)
+    (fig,), (cell,) = _figs_and_cells(root)
+    mpx = min(fig._dash_nominal_px) / (
+        dr.OptionTranslator.size_ref_of(fig) / 4.0)
+    return fig, cell, mpx, warns
+
+
+def _line_fracs(rec):
+    """twoway's axis line ends as shares of the plot region from its top
+    and its foot."""
+    pl = rec["plot"]
+    v = rec["key"]["vlines"][0]
+    h = pl["bottom"] - pl["top"]
+    return ((min(v["y1"], v["y2"]) - pl["top"]) / h,
+            (pl["bottom"] - max(v["y1"], v["y2"])) / h)
+
+
+@pytest.mark.usefixtures("_auto")
+@pytest.mark.parametrize("mode", _MODES)
+class TestClegendSuboptions:
+
+    def test_altaxis(self, mode):
+        rec = _key_truth()["P_alt"]
+        fig, cell, mpx, warns = _p_build(mode, "P_alt")
+        assert not [w for w in warns if "clegend" in w], warns
+        # The axis before the swatches, its labels and title with it.
+        assert cell._dash_key_side == "left"
+        ax = rec["key"]["vlines"][0]["x1"]
+        assert abs(fig.min_border_right + cell.min_border_left
+                   - (ax - rec["plot"]["right"]) / 2880.0 * mpx) <= 1.0
+        (title,) = [t for t in rec["texts"] if t["rotate"]
+                    and t["x"] > rec["plot"]["right"]]
+        mid = title["x"] - dr._DASH_KEY_TITLE_INK * title["size"]
+        assert cell._dash_key_title.x == pytest.approx(
+            -(ax - mid) / 2880.0 * mpx, abs=0.6)
+        sw = rec["key"]["circles"][0]["cx"]
+        assert cell._dash_keycell["mid"] == pytest.approx(
+            cell._dash_key_band / 2.0)
+        assert sw - ax == pytest.approx(85.51, abs=0.1)
+
+    def test_region(self, mode):
+        rec = _key_truth()["P_reg"]
+        box = rec["regions"][1]
+        assert box["fill"] == "#e0e0e0"
+        fig, cell, mpx, warns = _p_build(mode, "P_reg")
+        assert not [w for w in warns if "clegend" in w], warns
+        reg = cell._dash_key_region
+        assert reg["fill"].lower() == "#e0e0e0"
+        assert reg["line"].lower() == "#ff0000"
+        ins = (box["left"] - rec["plot"]["right"]) / 2880.0 * mpx
+        assert reg["inset"] == pytest.approx(ins, abs=0.1)
+        assert fig.min_border_right == round(ins)
+
+    def test_bmargin(self, mode):
+        rec = _key_truth()["P_bm"]
+        fig, cell, mpx, warns = _p_build(mode, "P_bm")
+        assert not [w for w in warns if "clegend" in w], warns
+        it, ib = cell._dash_keycell["inset"]
+        want_t, want_b = _line_fracs(rec)
+        assert abs(it - want_t) <= 0.012 and abs(ib - want_b) <= 0.012, (
+            it, ib, want_t, want_b)
+        # The swatches toward the axis (P_bm: 3.3 units apart).
+        assert cell._dash_keycell["mid"] < cell._dash_key_band / 2.0
+
+    def test_subtitle_note_caption(self, mode):
+        rec = _key_truth()["P_sub"]
+        fig, cell, mpx, warns = _p_build(mode, "P_sub")
+        assert not [w for w in warns if "clegend" in w], warns
+        texts = {l.text: l for l in cell._dash_key_texts}
+        assert set(texts) == {"S", "N", "C"}
+        assert texts["S"].text_align == "center"
+        it, ib = cell._dash_keycell["inset"]
+        want_t, want_b = _line_fracs(rec)
+        assert abs(it - want_t) <= 0.012 and abs(ib - want_b) <= 0.012
+        rng = cell._dash_keycell["range"]
+        # S above the line, N then C below it.
+        lo, hi = cell._dash_key_axis.bounds
+        assert texts["S"].y > hi and texts["N"].y < lo
+        assert texts["C"].y < texts["N"].y
+
+    def test_bplacement_is_silent(self, mode):
+        fig, cell, mpx, warns = _p_build(mode, "P_bp_7")
+        assert not [w for w in warns if "clegend" in w], warns
+        assert cell._dash_key_ring0 == "left"

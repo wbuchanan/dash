@@ -17219,6 +17219,24 @@ class GlyphMapper:
         # P_bp_7's texts are).
         place = side
         side = "left" if place == "left" and not ring0 else "right"
+        cleg = dict(getattr(key, "_dash_cleg", None) or {})
+        if cleg.get("altaxis") and side == "right":
+            # clegend(altaxis) (P_alt): the axis, its labels and the title
+            # on the swatches' plot side.
+            side = "left"
+        region = None
+        if cleg.get("region"):
+            reg = {}
+            for nm, arg in re.findall(r"(\w+)\(([^()]*)\)",
+                                      str(cleg["region"])):
+                c, _a = self.tr.parse_color_alpha(arg.strip(), "clegend")
+                if not c:
+                    continue
+                if nm.startswith("fc") or nm.startswith("col"):
+                    reg["fill"] = c
+                if nm.startswith("lc") or nm.startswith("col"):
+                    reg["line"] = c
+            region = reg or None
         band = getattr(key, "width", None) \
             if type(key).__name__ in ("ColorBar", "ContourColorBar") \
             else None
@@ -17230,6 +17248,11 @@ class GlyphMapper:
         _ms = getattr(getattr(renderer, "glyph", None), "size", None)
         _ms = _ms.get("value") if isinstance(_ms, dict) else _ms
         spec = {"kind": kind, "side": side, "lo": lo, "hi": hi,
+                "altaxis": bool(cleg.get("altaxis")), "region": region,
+                "bmargin": cleg.get("bmargin"),
+                "texts": {k: cleg.get(k) for k in ("subtitle", "note",
+                                                   "caption")
+                          if cleg.get(k)},
                 "reverse": bool(_dash_key_zlabel(self.z_options)["reverse"]),
                 "msize": float(_ms) if isinstance(_ms, (int, float))
                 and not isinstance(_ms, bool) and _ms > 0 else None,
@@ -17269,6 +17292,7 @@ class GlyphMapper:
         went on (``center`` inside the plot), None when it is not drawn."""
         if place.get("off"):
             return None
+        key._dash_cleg = place
         if getattr(key, "_dash_cvar_key", False):
             self._colorvar_drop_earlier_keys(fig, key)
         if place.get("title") is not None:
@@ -17290,8 +17314,10 @@ class GlyphMapper:
             # The key stays upright wherever it is placed, as twoway's
             # does below the plot (G01): width() is its thickness.
             setattr(key, _k, max(1, int(round(_pt * 96.0 / 72.0))))
-        for _n in _named:
-            _dash_style_note(which, _n, "sub-option", "not drawn")
+        if _named:
+            # WP-42 CV-15: what the key does not draw is named once.
+            _zc = getattr(self, "z_context", None) or (None, "")
+            _dash_report_suboptions(which, _named, _zc[0], _zc[1])
         # The scheme's `clockdir zyx2legend_position' and `gridringstyle
         # zyx2legend_ring' (s2color 3 and 4) where clegend() gives no
         # position() or ring() (WP-32, measured 18oct2026: a scheme's ring
@@ -46347,6 +46373,12 @@ function dash_key_range(lo, hi, inset, log) {
   }
   if (hi < lo) { const t = lo; lo = hi; hi = t; }
   if (hi === lo) { lo -= 0.5; hi += 0.5; }
+  if (Array.isArray(inset)) {
+    // _dash_key_range's top and bottom shares (WP-42 CV-15).
+    const it = Number(inset[0]), ib = Number(inset[1]);
+    const span = (hi - lo) / Math.max(1e-9, 1 - it - ib);
+    return [lo - ib * span, hi + it * span];
+  }
   const f = Number(inset);
   const pad = (hi - lo) * f / (1 - 2 * f);
   return [lo - pad, hi + pad];
@@ -46428,6 +46460,9 @@ function dash_cvar_keycell_update(kc, lo, hi, centres, colours, ticks, labels, b
     }
     let r = dash_key_range(e[0], e[1], dash_key_get(kc, "inset"), log);
     if (dash_key_get(kc, "reverse")) r = [r[1], r[0]];
+    for (const tf of Array.from(dash_key_get(kc, "texts") || [])) {
+      if (tf && tf[0]) tf[0].y = r[0] + Number(tf[1]) * (r[1] - r[0]);
+    }
     if (rng.start !== r[0]) rng.start = r[0];
     if (rng.end !== r[1]) rng.end = r[1];
   } catch (err) {
@@ -54820,15 +54855,30 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
                 tpx / 2.0 + 2, _DASH_KEY_GAP_END * mpx)))
         if not ring0:
             fig._dash_key_border = side
+        _dash_key_suboptions(fig, cell, mpx, band, gap, tpx, ring0)
     ext = _dash_key_cell_extent(cell, cell._dash_key_band)
     far = max(0, ext - int(cell._dash_key_band),
               int(getattr(cell, "_dash_key_far", 0) or 0))
-    ext = int(cell._dash_key_band) + far
+    if getattr(cell, "_dash_key_alt_right", None) is not None \
+            and not getattr(cell, "_dash_key_ring0", None):
+        # altaxis: the measured border (the title a Label, not counted
+        # by the axis's own room), the figure's border the rest of P_alt's
+        # plot-to-axis gap.
+        far = int(cell._dash_key_far)
+        fig.min_border_right = max(0, int(round(
+            cell._dash_key_to_axis - far)))
+    ext = int(cell._dash_key_band) + far + int(
+        getattr(cell, "_dash_key_near", 0) or 0)
     # The cell is upright wherever it sits (G01): its thickness is its
     # width, its axis in the border on its axis side.
     cell.width = ext
     setattr(cell, "min_border_" + getattr(cell, "_dash_key_side", "right"),
             far)
+    _near = int(getattr(cell, "_dash_key_near", 0) or 0)
+    if _near:
+        # The border on the swatches' side (altaxis, region()).
+        setattr(cell, "min_border_" + ("right" if getattr(
+            cell, "_dash_key_side", "right") == "left" else "left"), _near)
     if not vert:
         # Above or below the plot: an upright key, centred across the
         # graph, its axis line _DASH_KEY_BELOW_SHARE of the graph's height
@@ -54880,9 +54930,12 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
     else:
         mb = int(math.ceil(lpx / 2.0 + 2))
         cell.min_border_top = cell.min_border_bottom = mb
+    _reg = getattr(cell, "_dash_key_region", None) or {}
     cb = CustomJS(args={"fig": fig, "cell": cell, "vert": bool(vert),
                         "ar": 0.0, "ring0": ring0 or "",
-                        "gapl": float(gapl), "wbase": float(cell.width)},
+                        "gapl": float(gapl), "wbase": float(cell.width),
+                        "region": {k: v for k, v in _reg.items()
+                                   if v is not None}},
                   code=_DASH_KEY_CELL_JS)
     if ring0:
         # Over the figure, outside the layout's flow, letting the pointer
@@ -54898,6 +54951,12 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
     if ring0:
         # Over the figure: after it, so it is drawn on top.
         kids = (fig, cell)
+    # BokehJS aligns the frames of plots in one row: the cell's own needs
+    # (clegend()'s texts) must not move the figure; _DASH_KEY_CELL_JS
+    # aligns the cell to the figure instead.
+    cell.frame_align = False
+    if getattr(cell, "_dash_key_texts", None):
+        fig.frame_align = False
     mode = "fixed" if fixed else "stretch_width"
     wrap = (row if vert else column)(*kids, sizing_mode=mode)
     wrap.tags = list(wrap.tags or []) + ["dash_key_row"]
@@ -54905,6 +54964,130 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
         wrap.styles = {**dict(wrap.styles or {}), "position": "relative"}
     fig._dash_key_row = wrap
     return wrap
+
+
+def _dash_key_suboptions(fig, cell, mpx, band, gap, tpx, ring0=None):
+    """clegend()'s sub-options on a key cell beside its figure (WP-42
+    CV-15), in the 4-inch model's px (*mpx* the graph's smaller side,
+    *band* the swatch band, *gap* the axis-to-title gap, *tpx* the
+    title's size): altaxis -- the axis, its labels and title before the
+    swatches (P_alt); region() -- the key's box (P_reg), painted by
+    _DASH_KEY_CELL_JS, the figure's border then the box's inset and the
+    rest the cell's; bmargin() -- the axis line's ends moved in and the
+    axis and band across (P_bm); subtitle(), note() and caption() --
+    Labels above and below the line (P_sub).  Sets the cell's near
+    border (``_dash_key_near``, the swatches' side), its far border
+    (``_dash_key_far``), the record's top and bottom insets (``inset``)
+    and its texts (``texts``)."""
+    spec = getattr(cell, "_dash_key_spec", None) or {}
+    kc = cell._dash_keycell
+    tl = getattr(cell, "_dash_key_title", None)
+    alt = getattr(cell, "_dash_key_side", "right") == "left" and \
+        getattr(cell, "_dash_key_place", "right") == "right"
+    bm_rs = None
+    if spec.get("bmargin"):
+        bm_rs = _DASH_MARGIN_RS.get(str(spec["bmargin"]).strip().lower())
+    dm = max(0.0, ((bm_rs if bm_rs is not None else _DASH_KEY_BOX_MARGIN_RS)
+                   - _DASH_KEY_BOX_MARGIN_RS) / 100.0) * mpx
+    shift = _DASH_KEY_BM_AXIS * dm
+    border = getattr(fig, "min_border_right", 0) or 0
+    plot_to_frame = float(border)
+    if alt:
+        # Plot region -> axis (the frame's left edge, the axis's side).
+        to_axis = _DASH_KEY_ALT_PLOT_AXIS * mpx + shift
+        tgap = gap - _DASH_KEY_GAP_TITLE * mpx + _DASH_KEY_ALT_AXIS_TITLE * mpx
+        if tl is not None:
+            tl.x = -tgap
+        near_total = to_axis
+        cell._dash_key_to_axis = near_total
+        cell._dash_key_far = int(math.ceil(tgap + tpx / 2.0 + 2))
+        cell._dash_key_near = 0
+        # The band after the axis to the graph's inner edge.
+        right = max(0, int(round(_DASH_KEY_ALT_END * mpx - band - shift)))
+        cell._dash_key_alt_right = right
+        plot_to_frame = to_axis
+    elif shift:
+        if not ring0:
+            fig.min_border_right = int(round(border + shift))
+        plot_to_frame = border + shift
+        if tl is not None:
+            tl.x = band + gap
+        cell._dash_key_far = int(math.ceil(gap + max(
+            tpx / 2.0 + 2, _DASH_KEY_GAP_END * mpx - shift)))
+    if dm:
+        # The swatches toward the axis by the band's share.
+        kc["mid"] = max(0.0, band / 2.0 - _DASH_KEY_BM_BAND * dm) \
+            if not alt else min(band, band / 2.0 + _DASH_KEY_BM_BAND * dm)
+        cell._dash_key_bm = dm
+        _d = dict(kc["src"].data)
+        n = len(_d.get("y", []))
+        if kc.get("vert", True):
+            _d["x"] = [kc["mid"]] * n
+        kc["src"].data = _d
+    reg = spec.get("region")
+    if reg and not ring0:
+        ins = _DASH_KEY_BOX_INSET * mpx
+        pf = float(fig.min_border_right or 0)
+        if pf > ins:
+            # The figure's border is the box's inset; the rest is the
+            # cell's, so the box is the cell's to paint.
+            fig.min_border_right = int(round(ins))
+            extra = int(round(pf - ins))
+            if alt:
+                cell._dash_key_far = int(cell._dash_key_far) + extra
+            else:
+                cell._dash_key_near = int(getattr(cell, "_dash_key_near", 0)
+                                          or 0) + extra
+        cell._dash_key_region = dict(reg, inset=ins, left=0.0)
+    if alt:
+        cell._dash_key_near = int(getattr(cell, "_dash_key_near", 0) or 0) \
+            + int(getattr(cell, "_dash_key_alt_right", 0) or 0)
+    # Above and below the line: bmargin()'s margin and the texts' room,
+    # as shares of the frame (the plot region) at the nominal size.
+    texts = list(getattr(cell, "_dash_key_texts", None) or [])
+    if dm or texts:
+        try:
+            est = _dash_frame_borders(fig)
+        except (AttributeError, TypeError, ValueError):
+            est = {"above": 0, "below": 0}
+        # The frame's height at the nominal size: the graph's less its
+        # margin (a share of its width) and the figure's borders.
+        nom = getattr(fig, "_dash_nominal_px", None) or (0, 0)
+        unit = OptionTranslator.size_ref_of(fig) / 4.0 or 1.0
+        gm = getattr(fig, "_dash_gmargin", None) or (0, 0, 0, 0)
+        fh = (float(nom[1]) - (float(gm[2]) + float(gm[3])) / 100.0
+              * float(nom[0])) / unit \
+            - est.get("above", 0) - est.get("below", 0)
+        if fh > 1:
+            names = {getattr(t, "_dash_key_text", "") for t in texts}
+            top = dm + (_DASH_KEY_SUB_TOP * mpx if "subtitle" in names else 0)
+            bot = dm + (_DASH_KEY_NOTE_BOTTOM * mpx
+                        if names & {"note", "caption"} else 0)
+            it = _DASH_KEY_AXIS_INSET + top / fh
+            ib = _DASH_KEY_AXIS_INSET + bot / fh
+            kc["inset"] = [it, ib]
+            lo, hi = cell._dash_key_axis.bounds
+            rlo, rhi = _dash_key_range(lo, hi, [it, ib],
+                                       log=bool(kc.get("log")))
+            if kc.get("reverse"):
+                rlo, rhi = rhi, rlo
+            kc["range"].start, kc["range"].end = rlo, rhi
+            box_c = _DASH_KEY_BOX_W * mpx / 2.0
+            out = []
+            below = 0
+            for lab in texts:
+                k = lab._dash_key_text
+                if k == "subtitle":
+                    frac = 1.0 - it + _DASH_KEY_SUB_BASE * mpx / fh
+                    lab.x = box_c - plot_to_frame
+                else:
+                    frac = ib - (_DASH_KEY_NOTE_BASE
+                                 + below * _DASH_KEY_NOTE_STEP) * mpx / fh
+                    below += 1
+                    lab.x = _DASH_KEY_NOTE_X * mpx - plot_to_frame
+                lab.y = rlo + frac * (rhi - rlo)
+                out.append([lab, frac])
+            kc["texts"] = out
 
 
 def _dash_key_scale_entries(cell):
@@ -54916,7 +55099,9 @@ def _dash_key_scale_entries(cell):
     border = "min_border_" + {"above": "top", "below": "bottom"}.get(side,
                                                                     side)
     out = []
-    for prop in ("width", border):
+    other = "min_border_right" if border == "min_border_left" \
+        else "min_border_left"
+    for prop in ("width", border, other):
         v = getattr(cell, prop, None)
         if isinstance(v, int) and not isinstance(v, bool):
             out.append([cell, prop, float(v), "int"])
@@ -56831,7 +57016,12 @@ def _dash_zyx2_derive(scheme):
 #: clegend_option.sthlp): full name -> shortest spelling.
 _DASH_CLEGEND_SUBOPTS = {"position": "pos", "ring": "ring",
                          "width": "width", "height": "height",
-                         "title": "ti", "off": "off", "on": "on"}
+                         "title": "ti", "off": "off", "on": "on",
+                         # WP-42 CV-15: drawn on the key cell.
+                         "altaxis": "altaxis", "region": "region",
+                         "bmargin": "bmargin", "bplacement": "bplacement",
+                         "subtitle": "subtitle", "note": "note",
+                         "caption": "caption"}
 
 
 def _dash_clegend_opts(text):
@@ -56842,7 +57032,9 @@ def _dash_clegend_opts(text):
     caller names once.  A sub-option is read at any spelling from its
     shortest to its full name, as twoway reads it."""
     out = {"position": None, "ring": None, "width": None, "height": None,
-           "title": None, "off": False, "on": False, "other": []}
+           "title": None, "off": False, "on": False, "altaxis": False,
+           "region": None, "bmargin": None, "bplacement": None,
+           "subtitle": None, "note": None, "caption": None, "other": []}
     for tok in _dash_by_tokens(str(text or "").strip()):
         nm, arg = tok, None
         if "(" in tok:
@@ -56851,18 +57043,19 @@ def _dash_clegend_opts(text):
         nm = nm.strip()
         full = next((f for f, m in _DASH_CLEGEND_SUBOPTS.items()
                      if f.startswith(nm) and nm.startswith(m)), None)
-        if full is None or (arg is None) != (full in ("off", "on")):
+        if full is None or (arg is None) != (full in ("off", "on",
+                                                      "altaxis")):
             out["other"].append(nm)
             continue
-        if full in ("off", "on"):
+        if full in ("off", "on", "altaxis"):
             out[full] = True
         elif full in ("position", "ring"):
             try:
                 out[full] = int(float(arg.strip()))
             except ValueError:
                 out["other"].append(nm)
-        elif full == "title":
-            out["title"] = _dash_unquoted(arg.strip())
+        elif full in ("title", "subtitle", "note", "caption"):
+            out[full] = _dash_unquoted(arg.strip())
         else:
             out[full] = arg.strip()
     return out
@@ -59776,6 +59969,33 @@ _DASH_KEY_S2_TITLE_GAP_PX = 1.333248
 _DASH_KEY_GAP_END = (3960.0 - 3713.87 + _DASH_KEY_TITLE_INK * 99.99
                      - 0.025454545 * 3960.0) / 2880.0
 
+#: WP-42 CV-15: clegend()'s sub-options on the key, of the graph's
+#: 2880-unit smaller side (colorvar_key_truth.json): altaxis (P_alt) puts
+#: the axis 372.37 past the plot region, the title's letters' middle
+#: 147.13 + 0.37 x 99.99 before it, the band after it to the graph's
+#: inner edge (3859.2 - 3552.74); region() (P_reg) is the key's box 34.53
+#: in from the plot region and the graph's inner edge; bmargin() (P_bm,
+#: large) moves the axis line's ends in by the margin less clegend's own
+#: small box margin (1.2), and the axis 31.56 and the swatches' band 88.8
+#: across by large's 6.8 (one probe's ratios); subtitle() (P_sub) takes
+#: 144.55 above the line, its baseline 50.27 over it, centred on the box;
+#: note() and caption() 248.99 below, their baselines 73.1 and 128.63
+#: apart, 152.59 past the plot region.
+_DASH_KEY_ALT_PLOT_AXIS = (3552.74 - 3180.37) / 2880.0
+_DASH_KEY_ALT_AXIS_TITLE = (3552.74 - 3405.61 + 0.37 * 99.99) / 2880.0
+_DASH_KEY_ALT_END = (3859.2 - 3552.74) / 2880.0
+_DASH_KEY_BOX_INSET = 34.53 / 2880.0
+_DASH_KEY_BOX_MARGIN_RS = 1.2
+_DASH_KEY_BM_AXIS = 31.56 / 195.9
+_DASH_KEY_BM_BAND = 88.8 / 195.9
+_DASH_KEY_SUB_TOP = 144.55 / 2880.0
+_DASH_KEY_SUB_BASE = 50.27 / 2880.0
+_DASH_KEY_NOTE_BOTTOM = 248.99 / 2880.0
+_DASH_KEY_NOTE_BASE = 73.1 / 2880.0
+_DASH_KEY_NOTE_STEP = 128.63 / 2880.0
+_DASH_KEY_NOTE_X = 152.59 / 2880.0
+_DASH_KEY_BOX_W = (3859.2 - 3180.37) / 2880.0
+
 #: WP-42 CV-3: an upright key below or above the plot runs its axis line
 #: this share of the graph's height (colorvar_options_truth.json G01,
 #: ``clegend(position(6))``: levels 1 to 5 from 2573.47 to 2151.84 of a
@@ -59840,6 +60060,38 @@ if (vert) {
   if (cell.height !== H) { cell.height = H; }
   if (cell.min_border_top !== t) { cell.min_border_top = t; }
   if (cell.min_border_bottom !== b) { cell.min_border_bottom = b; }
+  if (region && region.inset !== undefined) {
+    // clegend(region()) (WP-42 CV-15): the key's box, painted behind the
+    // cell's transparent canvas -- its fill and its outline, in from the
+    // plot region's ends and the graph's inner edge.
+    const k = wbase > 0 ? (cell.width || wbase) / wbase : 1;
+    const ins = Number(region.inset) * k, lft = Number(region.left || 0) * k;
+    const W = Math.round(cell.width || 0);
+    const x0 = Math.round(lft), x1 = Math.round(W - ins);
+    const y0 = Math.round(t + ins), y1 = Math.round(H - b - ins);
+    const w = Math.max(0, x1 - x0), h = Math.max(0, y1 - y0);
+    const layers = [], pos = [], size = [];
+    if (region.line) {
+      const L = "linear-gradient(" + region.line + "," + region.line + ")";
+      layers.push(L, L, L, L);
+      pos.push(x0 + "px " + y0 + "px", x0 + "px " + (y1 - 1) + "px",
+               x0 + "px " + y0 + "px", (x1 - 1) + "px " + y0 + "px");
+      size.push(w + "px 1px", w + "px 1px", "1px " + h + "px", "1px " + h + "px");
+    }
+    if (region.fill) {
+      layers.push("linear-gradient(" + region.fill + "," + region.fill + ")");
+      pos.push(x0 + "px " + y0 + "px");
+      size.push(w + "px " + h + "px");
+    }
+    const st = Object.assign({}, cell.styles || {});
+    st["background-image"] = layers.join(", ");
+    st["background-position"] = pos.join(", ");
+    st["background-size"] = size.join(", ");
+    st["background-repeat"] = "no-repeat";
+    if (JSON.stringify(st) !== JSON.stringify(cell.styles || {})) {
+      cell.styles = st;
+    }
+  }
 }
 """
 
@@ -59865,6 +60117,12 @@ def _dash_key_range(lo, hi, inset=_DASH_KEY_AXIS_INSET, log=False):
         lo, hi = hi, lo
     if hi == lo:
         lo, hi = lo - 0.5, hi + 0.5
+    if isinstance(inset, (list, tuple)):
+        # WP-42 CV-15: the top and the bottom share of the frame apart
+        # (clegend()'s bmargin(), subtitle(), note() and caption()).
+        it, ib = float(inset[0]), float(inset[1])
+        span = (hi - lo) / max(1e-9, 1.0 - it - ib)
+        return lo - ib * span, hi + it * span
     pad = (hi - lo) * inset / (1.0 - 2.0 * inset)
     return lo - pad, hi + pad
 
@@ -60049,6 +60307,27 @@ def _dash_key_cell(spec):
         # In the axis's side panel, which does not clip it to the frame.
         cell.add_layout(tlab, side)
     cell._dash_key_title = tlab
+    # clegend()'s subtitle(), note() and caption() (P_sub): Labels in the
+    # axis's panel, placed with the key in _dash_key_wrap.
+    texts = []
+    sizes = {"subtitle": 1.1, "note": 0.8, "caption": 1.0}
+    pt0 = OptionTranslator.css_to_pt(axis.major_label_text_font_size) or 10.0
+    for k in ("subtitle", "note", "caption"):
+        t = (spec.get("texts") or {}).get(k)
+        if not t:
+            continue
+        lab = Label(x=0.0, y=0.0, text=str(t),
+                    text_align="center" if k == "subtitle" else "left",
+                    text_baseline="alphabetic",
+                    text_font_size="%gpt" % round(pt0 * sizes[k], 3),
+                    text_color=axis.major_label_text_color,
+                    name="dash_key_" + k)
+        lab._dash_key_text = k
+        # In the head or the foot panel (the figure's title's and x axis's
+        # room), which do not clip it and leave the key's width alone.
+        cell.add_layout(lab, "below")
+        texts.append(lab)
+    cell._dash_key_texts = texts
     cell._dash_key_axis = axis
     cell._dash_key_band = band
     cell._dash_key_len = spec.get("length_px")
@@ -60067,7 +60346,7 @@ def _dash_key_cell(spec):
                                        "below": "bottom"}[side], far)
     cell._dash_keycell = {"src": src, "ticker": axis.ticker, "axis": axis,
                           "range": zr, "vert": bool(vert), "mid": mid,
-                          "title": tlab,
+                          "title": tlab, "texts": [],
                           "band": float(band), "log": log, "reverse": rev,
                           "inset": float(_DASH_KEY_AXIS_INSET)}
     return cell
@@ -60164,6 +60443,12 @@ def _dash_cvar_keycell_update(kc, lo, hi, centres, colours, ticks, labels,
             rng.start = rlo
         if rng.end != rhi:
             rng.end = rhi
+        # clegend()'s subtitle(), note() and caption() keep their place in
+        # the frame (a share of it from its foot).
+        for lab, frac in kc.get("texts") or []:
+            y = rlo + float(frac) * (rhi - rlo)
+            if lab.y != y:
+                lab.y = y
     except (KeyError, AttributeError, TypeError, ValueError, IndexError):
         return
 
@@ -73149,6 +73434,13 @@ class ServerAppBuilder:
                       "_DASH_KEY_TITLE_INK", "_DASH_KEY_GAP_PLOT",
                       "_DASH_KEY_GAP_TITLE",
                       "_DASH_KEY_GAP_END", "_DASH_KEY_S2_TITLE_GAP_PX",
+                      "_DASH_KEY_ALT_PLOT_AXIS", "_DASH_KEY_ALT_AXIS_TITLE",
+                      "_DASH_KEY_ALT_END", "_DASH_KEY_BOX_INSET",
+                      "_DASH_KEY_BOX_MARGIN_RS", "_DASH_KEY_BM_AXIS",
+                      "_DASH_KEY_BM_BAND", "_DASH_KEY_SUB_TOP",
+                      "_DASH_KEY_SUB_BASE", "_DASH_KEY_NOTE_BOTTOM",
+                      "_DASH_KEY_NOTE_BASE", "_DASH_KEY_NOTE_STEP",
+                      "_DASH_KEY_NOTE_X", "_DASH_KEY_BOX_W",
                       # twoway's weight acceptance per layer, read by
                       # GlyphMapper._layer_weights.
                       "_DASH_WEIGHT_ACCEPTS", "_DASH_WEIGHT_INERT",
@@ -74038,6 +74330,7 @@ class ServerAppBuilder:
                          "_dash_cvar_keycell_levels",
                          "_dash_cvar_keycell_bins", "_dash_key_wrap",
                          "_dash_key_hold_shape", "_dash_key_scale_entries",
+                         "_dash_key_suboptions",
                          "_dash_key_cell_data", "_dash_key_cell_reside",
                          "_dash_clegend_px", "_dash_clegend_size",
                          # a filled layer's vertices under cmissing(n) and

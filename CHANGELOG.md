@@ -1008,6 +1008,7 @@ and now matches Stata.
 ### Fixed in WP-42
 
 - zlabel() and zscale(reverse) are drawn on a discrete colour key (were named) (WP-42, CV-15)
+- zlabel(), zscale() and clegend(altaxis region() bplacement() bmargin() subtitle() note() caption()) are drawn on the colour key (were named) (WP-42, CV-15)
 - clegend(ring(0)) draws twoway's axis-style colour key inside the plot region (was a Legend or colour bar), and the key sits at twoway's gaps under each scheme (WP-42, CV-3)
 - A colour key is drawn as twoway's: highest level at the top, a z axis ticked at its natscale ticks or the cuts, the title up its side, no (missing) entry, no frame (was a Legend of value labels or a colour bar) (WP-42, CV-3)
 - dash scatter mpg weight, colorvar(price) draws twoway's four level colours, keyed 0 5,000 10,000 15,000, on every type twoway colours (was a 256-step gradient) (WP-42, CV-8)
