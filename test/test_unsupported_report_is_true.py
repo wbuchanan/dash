@@ -889,6 +889,13 @@ LIVE_VALUES = {
                ("zlabel", "4000(4000)16000", "#3")),
     "zscale": (dict(_CV), dict(_CV), "scatter", ("zscale", "log", "reverse")),
     "ztitle": (dict(_CV), dict(_CV), "scatter", ("ztitle", "A", "B")),
+    # WP-42 AX-12: the z tick family, drawn on the key cell's axis.
+    "ztick": (dict(_CV), dict(_CV), "scatter",
+              ("ztick", "2500 7500", "12500")),
+    "zmlabel": (dict(_CV), dict(_CV), "scatter",
+                ("zmlabel", "7500", "12500")),
+    "zmtick": (dict(_CV), dict(_CV), "scatter",
+               ("zmtick", "2500(5000)17500", "1000")),
     # WP-31 H2t: dash's own data table, drawn under the figure
     # (test_data_table.py); "" is no table.
     "table": ({}, {}, "scatter", ("table", "rows(5) open", "")),
@@ -955,8 +962,10 @@ class TestEveryDeclaredOptionIsClassified:
         # ymlabel2 xmtick2 ymtick2 declared in both blocks
         # 92 -> 94: H2t table and table2() declared in the graph block (the
         # plot block reads them through _dash_label_split)
-        assert len(_declared_plot()) == 240, len(_declared_plot())
-        assert len(_declared_graph()) == 94, len(_declared_graph())
+        # 240 -> 243 and 94 -> 97: AX-12 ztick zmlabel zmtick declared in
+        # both blocks (the z tick family drawn)
+        assert len(_declared_plot()) == 243, len(_declared_plot())
+        assert len(_declared_graph()) == 97, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):
         """Pending, alias, route, or live -- a declared option with no

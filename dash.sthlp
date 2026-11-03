@@ -6164,9 +6164,13 @@ On a discrete key {cmd:zlabel()}'s ticks pick the levels that are
 labelled and {cmd:zscale(reverse)} puts the lowest level at the top, as in
 {cmd:twoway}.  {cmd:zlabels()}, {cmd:zticks()}, {cmd:zmlabels()} and {cmd:zmticks()}
 are {cmd:twoway}'s spellings of {cmd:zlabel()}, {cmd:ztick()},
-{cmd:zmlabel()} and {cmd:zmtick()} and are taken as them;
-{cmd:ztick()}, {cmd:zmlabel()} and {cmd:zmtick()} are named in the note and
-not drawn.
+{cmd:zmlabel()} and {cmd:zmtick()} and are taken as them.
+{cmd:ztick()} draws more major ticks on the key's axis without labels,
+{cmd:zmtick()} minor ticks, half a major tick's length, and
+{cmd:zmlabel()} minor ticks each with its label, upright and smaller;
+each widens the axis to its values, as in {cmd:twoway}:
+{cmd:zmtick(2500(5000)17500)} on {cmd:colorvar(price)} runs the key to
+17,500.
 {cmd:ztitle()} given only sub-options styles the key's default title, the
 colour variable's label; {cmd:suffix} and {cmd:prefix} add lines to it.
 

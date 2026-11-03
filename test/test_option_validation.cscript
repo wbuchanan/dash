@@ -3256,7 +3256,7 @@ local _u51n 0
 foreach _u51p in "scatter mpg weight, titling|titling)" ///
     "scatter mpg weight, afcolor(red) below|afcolor() below)" ///
     "scatter mpg weight, logging afintensity(50)|logging afintensity())" ///
-    "scatter mpg weight, zmtick(5)|zmtick())" ///
+    "scatter mpg weight, numkeys(2)|numkeys())" ///
     "(scatter mpg weight), titling below|titling below)" ///
     "scatter mpg weight, logging|logging)" ///
     "bar mpg weight, omitallmiss|omitallmiss)" ///
@@ -3280,6 +3280,8 @@ foreach _u51p in "scatter mpg weight, titling|titling)" ///
 // Flipped (WP-35 GW-3): U51-4 was maxaxes(2), which is checked and taken
 // in silence now (Q3506-3); zmtick(), which twoway takes on scatter and
 // dash names, carries the case.
+// Flipped (WP-42 AX-12): zmtick() is drawn on the colour key and taken in
+// silence; numkeys(), which twoway takes and dash names, carries it.
 // Flipped (WP-32): U51-8's bare headlabel on pcspike is taken in silence,
 // as twoway draws nothing of it there (U55-6); a bare nologging carries
 // U51-8.

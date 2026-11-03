@@ -70,10 +70,13 @@ end
 // Flipped (WP-35 GW-3): maxaxes() is checked and a valid one taken in
 // silence now (test_option_validation.cscript Q3506-3), so zmtick(), a
 // graph option twoway takes on scatter and dash names, is the example.
+// Flipped (WP-42 AX-12): zmtick() is drawn on the colour key and taken in
+// silence; titling, a graph option twoway takes and dash names in both
+// modes, is the example.
 sysuse auto, clear
 dash clear
-_dash_note_for `"dash scatter mpg weight, name(c1) zmtick(5)"' "`logfile'"
-cert_file_has "`logfile'", needle("zmtick()")
+_dash_note_for `"dash scatter mpg weight, name(c1) titling"' "`logfile'"
+cert_file_has "`logfile'", needle("titling")
 assert r(found) == 1
 
 display as result "  [1/4] comma mode names it: PASS"
@@ -82,8 +85,8 @@ display as result "  [1/4] comma mode names it: PASS"
 // 2. paren mode names it too
 // ---------------------------------------------------------------
 dash clear
-_dash_note_for `"dash (scatter mpg weight) (lfit mpg weight), name(p1) zmtick(5)"' "`logfile'"
-cert_file_has "`logfile'", needle("zmtick()")
+_dash_note_for `"dash (scatter mpg weight) (lfit mpg weight), name(p1) titling"' "`logfile'"
+cert_file_has "`logfile'", needle("titling")
 assert r(found) == 1
 
 display as result "  [2/4] paren mode names it: PASS"
@@ -113,10 +116,10 @@ display as result "  [3/4] an argument is not reported as options: PASS"
 // ---------------------------------------------------------------
 // Flipped: WP-35 syn:SD-3 -- p1() is drawn now, so a noted option with a several-word value is used.
 dash clear
-_dash_note_for `"dash scatter mpg weight, name(q1) zvarlabel("a (b") zmtick(5)"' "`logfile'"
+_dash_note_for `"dash scatter mpg weight, name(q1) zvarlabel("a (b") titling"' "`logfile'"
 cert_file_has "`logfile'", needle("zvarlabel()")
 assert r(found) == 1
-cert_file_has "`logfile'", needle("zmtick()")
+cert_file_has "`logfile'", needle("titling")
 assert r(found) == 1
 
 display as result "  [4/4] several unsupported options are all named: PASS"

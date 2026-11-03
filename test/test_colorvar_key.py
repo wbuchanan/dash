@@ -441,6 +441,82 @@ def _figs_and_cells(root):
     return figs, _key_cells(root)
 
 
+def _z_build(mode, go):
+    spec = tp._spec([plot_for("scatter", {"colorvar": "price"},
+                              yvar="mpg", xvar="weight")],
+                    {"scheme": "s2color"}, go)
+    if mode == "saved":
+        r, warns = tp._standalone(spec)
+        root = r._last_layout_root
+    else:
+        root, warns = tp._served(spec)
+    (fig,), (cell,) = _figs_and_cells(root)
+    return fig, cell, warns
+
+
+@pytest.mark.usefixtures("_auto")
+@pytest.mark.parametrize("mode", _MODES)
+class TestZTickFamily:
+    """AX-12 (colorvar_key_truth.json Z1..Z3 on colorvar(price)): twoway
+    draws ztick() as major ticks without labels (Z1b: 2500 and 7500; Z1's
+    5000 10000 the same picture as K_cont), zmlabel(7500) as a minor tick, half a major's
+    length, labelled 7,500 upright at 0.6 of the labels' size 82 units
+    from the axis (Z2), and zmtick(2500(5000)17500) as minor ticks, the
+    axis widened to 17,500 and its top level with it (Z3: centred at
+    16,250).  dash named all three in the note and drew none."""
+
+    def test_ztick(self, mode):
+        # Z1b: ztick(2500 7500) draws two more major ticks, unlabelled,
+        # the levels as they were.
+        fig, cell, warns = _z_build(mode, {"ztick": "2500 7500"})
+        _f, base, _w = _z_build(mode, {})
+        assert not [w for w in warns if "ztick" in w], warns
+        kc, k0 = cell._dash_keycell, base._dash_keycell
+        assert set(kc["ticker"].ticks) == set(k0["ticker"].ticks) | {
+            2500.0, 7500.0}
+        ovr = dict(kc["axis"].major_label_overrides)
+        assert ovr[2500.0] == "" and ovr[7500.0] == ""
+        assert {k: v for k, v in ovr.items() if v} == dict(
+            k0["axis"].major_label_overrides)
+        assert dict(kc["src"].data) == dict(k0["src"].data)
+
+    def test_zmlabel(self, mode):
+        fig, cell, warns = _z_build(mode, {"zmlabel": "7500"})
+        assert not [w for w in warns if "zmlabel" in w], warns
+        kc = cell._dash_keycell
+        ax = kc["axis"]
+        assert 7500.0 in set(kc["ticker"].minor_ticks)
+        assert ax.minor_tick_out == round(ax.major_tick_out / 2.0)
+        assert ax.minor_tick_line_color == ax.major_tick_line_color
+        [t] = [r for r in cell.renderers if r.name == "dash_key_zmlabel"]
+        d = t.data_source.data
+        assert d["text"] == ["7,500"] and d["y"] == [7500.0]
+        assert t.level == "overlay"
+        assert t.glyph.angle == pytest.approx(math.pi / 2)
+        lab = dr.OptionTranslator.css_to_pt(ax.major_label_text_font_size)
+        assert dr.OptionTranslator.css_to_pt(t.glyph.text_font_size) == \
+            pytest.approx(0.6 * lab, rel=0.01)
+        # 82 of twoway's 100-unit label from the axis (Z2: 3321.57 against
+        # the axis at 3239.65).
+        rec = _key_truth()["Z2"]
+        (tw,) = [x for x in rec["texts"] if x["text"] == "7,500"]
+        ax_x = rec["key"]["vlines"][0]["x1"]
+        lpx = lab * 4.0 / 3.0
+        assert d["x"][0] - cell._dash_key_band == pytest.approx(
+            (tw["x"] - ax_x) / 99.99 * lpx, abs=0.5)
+
+    def test_zmtick(self, mode):
+        fig, cell, warns = _z_build(mode, {"zmtick": "2500(5000)17500"})
+        assert not [w for w in warns if "zmtick" in w], warns
+        kc = cell._dash_keycell
+        assert sorted(kc["ticker"].minor_ticks) == [2500.0, 7500.0,
+                                                    12500.0, 17500.0]
+        assert kc["axis"].bounds[1] == 17500.0
+        # Z3's top swatch at 16,250: the level 15,000 .. 17,500.
+        ys = sorted(kc["src"].data["y"])
+        assert ys[-1] == pytest.approx(16250.0)
+
+
 @pytest.mark.usefixtures("_auto")
 @pytest.mark.parametrize("mode", _MODES)
 class TestClegendTitle:
@@ -618,8 +694,12 @@ def _cell_record(models):
                 or type(m).__name__ != "Plot":
             continue
         _k, sw, texts, bounds, _t = _cell_state(m)
+        tk = m._dash_keycell["ticker"]
         out.append((texts, [(round(v, 6), str(c)) for v, c in sw],
-                    tuple(round(b, 6) for b in bounds)))
+                    tuple(round(b, 6) for b in bounds),
+                    # WP-42 AX-12: the major and minor ticks.
+                    sorted(round(float(t), 6) for t in tk.ticks or []),
+                    sorted(round(float(t), 6) for t in tk.minor_ticks or [])))
     return sorted(out, key=repr)
 
 
@@ -631,6 +711,16 @@ _EXTRA_MOVES = {
         [plot_for("scatter", {"colorvar": "rep",
                               "colordiscrete": "colordiscrete"})],
         {"zlabel": "1 2 4, valuelabel", "zscale": "reverse"}),
+    # WP-42 AX-12: ztick(), zmtick() and zmlabel() on a stepped key after a
+    # move: the extra ticks kept and the axis still widened to 17,500.
+    "AX-12 stepped price ztick() zmtick() zmlabel(), rep dropdown to 3":
+        tp._move_case(
+            "AX-12 stepped price ztick() zmtick() zmlabel(), rep dropdown "
+            "to 3", ("rep dropdown to 3", "rep, type(dropdown)",
+                     ("Select", "3"), "rep == 3"),
+            [plot_for("scatter", {"colorvar": "price"})],
+            {"ztick": "2500 7500", "zmtick": "2500(5000)17500",
+             "zmlabel": "7500"}),
 }
 
 
@@ -640,8 +730,9 @@ _EXTRA_MOVES = {
     "scatter colorcuts(), rep dropdown to 3",
     "scatter colorvar stepped price, rep dropdown to 3",
     "line colorvar levels (D-15f), rep dropdown to 3",
-    "CV-15 colordiscrete zlabel() zscale(reverse), range"],
-    ids=["levels", "bins", "cuts", "stepmap", "steps", "zlabel"])
+    "CV-15 colordiscrete zlabel() zscale(reverse), range",
+    "AX-12 stepped price ztick() zmtick() zmlabel(), rep dropdown to 3"],
+    ids=["levels", "bins", "cuts", "stepmap", "steps", "zlabel", "ztick"])
 class TestTheKeyAfterAMove:
     """CV-3 (D-42-03.d): after a filter move the key cell's labels and
     swatches equal a fresh build over the kept rows, served (the Python

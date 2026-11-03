@@ -772,7 +772,9 @@ class TestTheParsersFoundSomething:
         # 280 -> 282: WP-37 stat:PT-12 xlog and xtransform() declared
         # (_dash_label_split).
         # 282 -> 281: WP-37 D65 a contour flag leaves _dash_contour_split.
-        assert len(_ado_declarations()) == 281
+        # 281 -> 284: AX-12 the z tick family drawn (ztick, zmlabel, zmtick
+        # declared).
+        assert len(_ado_declarations()) == 284
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph

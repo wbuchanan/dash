@@ -1020,6 +1020,7 @@ program define _dash_parse_graph_opts, sclass
         ytick2(string asis)       xtick2(string asis)       yline2(string asis) ///
         xline2(string asis) ///
         ZLabel(string asis)       ZTitle(string asis)       ZSCale(string asis) ///
+        ZTICk(string asis)        ZMLabel(string asis)      ZMTick(string asis) ///
         TLabel(string asis)       TTICk(string asis)        TMLabel(string asis) ///
         TMTick(string asis)       TSCale(string asis)       TTitle(string asis) ///
         TLIne(string asis) ///
@@ -1199,6 +1200,9 @@ program define _dash_parse_graph_opts, sclass
     sreturn local zlabel       : copy local zlabel
     sreturn local ztitle       : copy local ztitle
     sreturn local zscale       : copy local zscale
+    sreturn local ztick        : copy local ztick
+    sreturn local zmlabel      : copy local zmlabel
+    sreturn local zmtick       : copy local zmtick
     sreturn local nodraw       : copy local nodraw
     sreturn local play         : copy local play
     sreturn local replace      : copy local replace
@@ -1369,6 +1373,7 @@ program define _dash_parse_plot_opts, sclass
         ytick2(string asis)       xtick2(string asis)       yline2(string asis) ///
         xline2(string asis) ///
         ZLabel(string asis)       ZTitle(string asis)       ZSCale(string asis) ///
+        ZTICk(string asis)        ZMLabel(string asis)      ZMTick(string asis) ///
         TLabel(string asis)       TTICk(string asis)        TMLabel(string asis) ///
         TMTick(string asis)       TSCale(string asis)       TTitle(string asis) ///
         TLIne(string asis) ///
@@ -1857,6 +1862,9 @@ program define _dash_parse_plot_opts, sclass
     sreturn local g_zlabel       : copy local zlabel
     sreturn local g_ztitle       : copy local ztitle
     sreturn local g_zscale       : copy local zscale
+    sreturn local g_ztick        : copy local ztick
+    sreturn local g_zmlabel      : copy local zmlabel
+    sreturn local g_zmtick       : copy local zmtick
     sreturn local g_nodraw       : copy local nodraw
     sreturn local g_play         : copy local play
     sreturn local g_replace      : copy local replace
@@ -7661,7 +7669,7 @@ program define _dash_process_segment, rclass
             xsize ysize fxsize fysize ///
             scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
             t2title b1title b2title l1title l2title r1title r2title ///
-            zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
+            zlabel ztitle zscale ztick zmlabel zmtick aspectplacement xoverhangs yoverhangs nodraw play replace table {
         mata: st_local("gval", st_global("s(g_" + st_local("gkey") + ")"))
         if `: length local gval' {
             c_local _sg_`gkey' : copy local gval
@@ -9722,7 +9730,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
           scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title ///
-          zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
+          zlabel ztitle zscale ztick zmlabel zmtick aspectplacement xoverhangs yoverhangs nodraw play replace table {
         local g_`gk' ""
     }
 
@@ -9769,7 +9777,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title ///
-              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
+              zlabel ztitle zscale ztick zmlabel zmtick aspectplacement xoverhangs yoverhangs nodraw play replace table {
             mata: st_local("_gv", st_global("s(" + st_local("gk") + ")"))
             if `: length local _gv' {
                 // Kept apart and merged in after the segment loop: an option
@@ -9886,7 +9894,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title ///
-              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
+              zlabel ztitle zscale ztick zmlabel zmtick aspectplacement xoverhangs yoverhangs nodraw play replace table {
             local _sg_`gk' ""
         }
         mata: st_strscalar(st_local("_ft_sc"), "")
@@ -10022,7 +10030,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title ///
-              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
+              zlabel ztitle zscale ztick zmlabel zmtick aspectplacement xoverhangs yoverhangs nodraw play replace table {
             if !`: length local _sg_`gk'' continue
             if `: list gk in _g_unique' {
                 if `_gseen_`gk'' _dash_pend _dash_refuse_gunique `gk'
@@ -10068,7 +10076,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title ///
-              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
+              zlabel ztitle zscale ztick zmlabel zmtick aspectplacement xoverhangs yoverhangs nodraw play replace table {
         if `: length local _gafter_`gk'' {
             mata: _dash_rep_merge_locals(st_local("gk"), "g_`gk'", "_gafter_`gk'", "g_`gk'")
         }
@@ -10689,9 +10697,9 @@ program define _dash_plot
         legend clegend plegend by ytitle2 xtitle2 ylabel2 xlabel2 xmlabel2 ///
         ymlabel2 xmlabel ymlabel tlabel tmlabel ttitle tlabel2 ttitle2 ///
         t1title t2title b1title b2title l1title l2title r1title r2title ///
-        zlabel ztitle
+        zlabel ztitle zmlabel
     local _gt_labelkeys xlabel ylabel xmlabel ymlabel tlabel tmlabel xlabel2 ///
-        ylabel2 xmlabel2 ymlabel2 tlabel2 zlabel
+        ylabel2 xmlabel2 ymlabel2 tlabel2 zlabel zmlabel
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
           ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
@@ -10699,7 +10707,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
           scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title ///
-          zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace table {
+          zlabel ztitle zscale ztick zmlabel zmtick aspectplacement xoverhangs yoverhangs nodraw play replace table {
         // text() and ttext() are written as added_text records below
         // (WP-30 P1.10), never as their raw values.
         if inlist("`gk'", "text", "ttext") continue

@@ -447,11 +447,13 @@ def test_declared_minimums_cover_stata_minimums(truth, plot_decls):
             continue
         results["min:" + name] = ("%s(): dash needs %r, declaration only "
                                   "allows %r" % (name, want, got))
-    # dash declares all 180 of the fixture's options, so all are compared.
+    # dash declares 183 of the fixture's options, so those are compared.
     # The skip above passed a reader that found no declaration, or fixture
     # keys that no longer match one, with nothing compared at all.
     # old -> new: 93 -> 180: syn:SD-20 regenerated fixture
-    assert checked == 180, (
+    # old -> new: 180 -> 183: AX-12 the z tick family drawn (ztick, zmlabel,
+    # zmtick measured and declared)
+    assert checked == 183, (
         "%d of the fixture's %d options were compared with a declaration"
         % (checked, len(truth["options"])))
     assert known_problems(_only(results, "min:"), _only(ABBREV_KNOWN, "min:"),

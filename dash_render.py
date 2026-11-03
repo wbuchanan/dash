@@ -17135,8 +17135,13 @@ class GlyphMapper:
                     _khi = max(hi, _zr[1]) if _zr[1] is not None else hi
                     _kc = self._colorvar_key_cell(
                         fig, renderer, _cbar, _side, _klo, _khi,
-                        _dash_key_bin_centres(_klo, _khi, _cuts, _kp,
-                                              log=_log),
+                        _dash_key_bin_centres(
+                            _klo, _khi, _cuts, list(_kp) + _dash_key_zx_ends(
+                                _dash_key_zextras(
+                                    self.z_options,
+                                    _dash_key_format(self.z_options)[0],
+                                    getattr(self, "dp", "period"))),
+                            log=_log),
                         list(_cols), _kp, _ko, log=_log)
                     if _kc is not None:
                         # The plans tick the cell's axis, the bar not
@@ -17270,6 +17275,10 @@ class GlyphMapper:
                 "texts": {k: _parse_textbox_opt(str(cleg.get(k)))[0]
                           for k in ("title", "subtitle", "note", "caption")
                           if cleg.get(k)},
+                # ztick(), zmtick() and zmlabel() (WP-42 AX-12).
+                "zx": _dash_key_zextras(
+                    self.z_options, _dash_key_format(self.z_options)[0],
+                    getattr(self, "dp", "period")),
                 "title_box": bool(cleg.get("title")) and "box" in
                 _parse_textbox_opt(str(cleg.get("title")))[1],
                 "box_fill": str(self.scheme._props.get(
@@ -46488,7 +46497,21 @@ function dash_cvar_keycell_update(kc, lo, hi, centres, colours, ticks, labels, b
       tk = Array.from(ticks || []).map(Number).filter((t) => !log || t > 0)
         .sort((a, b) => a - b);
     }
-    const e = dash_key_ends(lo, hi, tk);
+    // ztick()'s unlabelled ticks and every z tick option's reach (WP-42
+    // AX-12) stay through a move.
+    const zx = dash_key_get(kc, "zx") || {};
+    const zt = Array.from(zx.zt || []).map(Number).filter((v) => !log || v > 0);
+    if (zt.length) {
+      if (!Object.keys(lab).length) {
+        for (const t of tk) lab[String(t)] = dash_fmt_text(t, "%8.0gc", null, "period", null);
+      }
+      for (const v of zt) {
+        if (!(String(v) in lab)) lab[String(v)] = "";
+      }
+      tk = Object.keys(lab).map(Number).sort((a, b) => a - b);
+    }
+    const zends = Array.from(zx.ends || []).map(Number).filter((v) => !log || v > 0);
+    const e = dash_key_ends(lo, hi, tk.concat(zends));
     const vert = !!dash_key_get(kc, "vert");
     const src = dash_key_get(kc, "src"), axis = dash_key_get(kc, "axis");
     const rng = dash_key_get(kc, "range"), tkr = dash_key_get(kc, "ticker");
@@ -46529,7 +46552,8 @@ function dash_cvar_keycell_steps(pl, lo, hi, cuts, colours) {
   const zr = pl.zrange || [null, null];
   if (zr[0] !== null && zr[0] !== undefined) lo = Math.min(lo, Number(zr[0]));
   if (zr[1] !== null && zr[1] !== undefined) hi = Math.max(hi, Number(zr[1]));
-  dash_cvar_keycell_update(kc, lo, hi, dash_key_bin_centres(lo, hi, cuts, pos, log),
+  const zends = Array.from((dash_key_get(kc, "zx") || {}).ends || []).map(Number);
+  dash_cvar_keycell_update(kc, lo, hi, dash_key_bin_centres(lo, hi, cuts, pos.concat(zends), log),
                            colours, pos, o);
 }
 function dash_key_levels_layout(kept, posOf, numeric, fmt, dp, zl) {
@@ -56120,6 +56144,47 @@ def _dash_key_zlabel(zopts, vlabels=None):
             "vlabels": {str(k): str(v) for k, v in (vlabels or {}).items()},
             "reverse": bool(re.search(r"\brev(e(r(s(e)?)?)?)?\b", sc))}
 
+def _dash_key_zextras(zopts, fmt="%8.0gc", dp="period"):
+    """ztick(), zmtick() and zmlabel() as the colour key cell draws them
+    (WP-42 AX-12, colorvar_key_truth.json Z1b, Z2, Z3): ``{"zt": major
+    ticks without labels, "zmt": minor ticks, "zml": {position: text}}``,
+    each a numlist (``_dash_parse_axis_spec``), zmlabel()'s texts its own
+    labels else the values in the key's format *fmt*; every value widens
+    the axis (``_dash_key_ends``)."""
+    zo = zopts or {}
+
+    def _vals(k):
+        raw = str(zo.get(k, "") or "").strip()
+        if not raw:
+            return [], {}
+        sp = _dash_parse_axis_spec(raw, minor=True)
+        out = []
+        for v in sp.get("ticks") or []:
+            try:
+                f = float(v)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(f):
+                out.append(f)
+        return out, dict(sp.get("labels") or {})
+
+    zt, _l = _vals("ztick")
+    zmt, _l = _vals("zmtick")
+    zv, zl = _vals("zmlabel")
+    zml = {}
+    if zv:
+        _p, ovr = _dash_key_ticks(zv, "", fmt or "%8.0gc", labels=zl, dp=dp)
+        zml = {float(k): str(v) for k, v in ovr.items()}
+    return {"zt": sorted(set(zt)), "zmt": sorted(set(zmt)), "zml": zml}
+
+
+def _dash_key_zx_ends(zx):
+    """Every value of *zx* (``_dash_key_zextras``), which the axis reaches."""
+    zx = zx or {}
+    return [float(v) for v in list(zx.get("zt") or [])
+            + list(zx.get("zmt") or []) + list((zx.get("zml") or {}).keys())]
+
+
 def _dash_key_bins_layout(dom, eff, discrete, fmt, dp="period"):
     """A binned key (WP-42 CV-3): ``(lo, hi, centres, positions,
     labels)`` over the domain *dom* (Stata units) cut at *eff*: the axis
@@ -60156,6 +60221,10 @@ _DASH_KEY_BOX_W = (3859.2 - 3180.37) / 2880
 #: 110.01, taken at 0.6 of its size) and is outlined
 #: _DASH_KEY_TITLE_LINE thick (the outline 2.88 inside the fill).
 _DASH_KEY_TITLE_TOP = (472.86 - 236.12) / 2880
+#: WP-42 AX-12 (Z2): zmlabel()'s text is 0.6 of the labels' size (60.02 of
+#: 99.99) and stands 81.92 of a 99.99 label out from the axis.
+_DASH_KEY_ZML_SIZE = 60.02 / 99.99
+_DASH_KEY_ZML_OUT = (3321.57 - 3239.65) / 99.99
 _DASH_KEY_TITLE_BASE = (472.86 - 376.43) / 2880
 _DASH_KEY_TITLE_PAD = (197.13 - 0.6 * 110.01) / 2.0 / 2880
 _DASH_KEY_TITLE_LINE = 5.76 / 2880
@@ -60486,7 +60555,22 @@ def _dash_key_cell(spec):
     if log:
         ticks = [t for t in ticks if t > 0]
         labels = {k: v for k, v in labels.items() if k > 0}
-    lo, hi = _dash_key_ends(spec.get("lo"), spec.get("hi"), ticks)
+    # ztick(), zmtick(), zmlabel() (WP-42 AX-12): more major ticks without
+    # labels, minor ticks, minor labels; the axis reaches every one.
+    zx = spec.get("zx") or {}
+    zends = [v for v in _dash_key_zx_ends(zx) if not log or v > 0]
+    zt = [float(v) for v in zx.get("zt") or [] if not log or float(v) > 0]
+    zminor = sorted(set(
+        [float(v) for v in zx.get("zmt") or []]
+        + [float(v) for v in (zx.get("zml") or {})]))
+    zminor = [v for v in zminor if not log or v > 0]
+    lo, hi = _dash_key_ends(spec.get("lo"), spec.get("hi"), ticks + zends)
+    if zt:
+        base = sorted(labels) or ticks
+        labels = dict(labels) if labels else {t: _dash_fmt_text(t, "%8.0gc")
+                                              for t in base}
+        for v in zt:
+            labels.setdefault(v, "")
     rlo, rhi = _dash_key_range(lo, hi, log=log)
     # zscale(reverse): the lowest level at the top, its colour with it
     # (C26: 1 at the top in #0000ff).
@@ -60552,13 +60636,21 @@ def _dash_key_cell(spec):
     ax_kw["axis_line_width"] = chrome.get("major_tick_line_width") or 1
     title = str(spec.get("title") or "")
     axis = (LogAxis if log else LinearAxis)(
-                      ticker=FixedTicker(ticks=sorted(labels) or ticks),
+                      ticker=FixedTicker(ticks=sorted(labels) or ticks,
+                                         minor_ticks=zminor),
                       major_label_overrides=labels, axis_label=None,
                       minor_tick_line_color=None,
                       bounds=(lo, hi) if lo is not None else (0.0, 1.0),
                       tags=["dash_key_axis"], **ax_kw)
     if side == "right":
         axis.axis_label_orientation = _DASH_KEY_TITLE_UP
+    if zminor:
+        # Half a major tick's length, in its colour and width (Z2, Z3: 20
+        # of twoway's 40 units).
+        axis.minor_tick_line_color = axis.major_tick_line_color
+        axis.minor_tick_line_width = axis.major_tick_line_width
+        axis.minor_tick_in = 0
+        axis.minor_tick_out = int(round((axis.major_tick_out or 0) / 2.0))
     cell.add_layout(axis, side)
     # The title, up the axis's side and centred on its length as twoway
     # draws it: a Label in the axis's panel at the z range's middle
@@ -60601,6 +60693,25 @@ def _dash_key_cell(spec):
             level="overlay", name="dash_key_" + k)
         lab._dash_key_text = k
         texts.append(lab)
+    # zmlabel() (WP-42 AX-12, Z2): each minor label upright at 0.6 of the
+    # labels' size, 0.82 of a label's size out from the axis (twoway's
+    # 81.9 of its 99.99), over the frame.
+    zml_r = []
+    zml = {float(k): str(v) for k, v in (zx.get("zml") or {}).items()
+           if not log or float(k) > 0}
+    if zml:
+        lpx = pt0 * 4.0 / 3.0
+        off = _DASH_KEY_ZML_OUT * lpx
+        zx_x = float(band) + off if side == "right" else -off
+        ks = sorted(zml)
+        zml_r.append(cell.add_glyph(
+            ColumnDataSource({"x": [zx_x] * len(ks), "y": ks,
+                              "text": [zml[k] for k in ks]}),
+            Text(x="x", y="y", text="text", angle=_DASH_KEY_TITLE_UP,
+                 text_align="center", text_baseline="alphabetic",
+                 text_font_size="%gpt" % round(pt0 * _DASH_KEY_ZML_SIZE, 3),
+                 text_color=axis.major_label_text_color),
+            level="overlay", name="dash_key_zmlabel"))
     tbox = None
     if spec.get("title_box") and (spec.get("texts") or {}).get("title"):
         # clegend(title(, box)) (LT-12, P_tbx): the title's band filled in
@@ -60626,7 +60737,7 @@ def _dash_key_cell(spec):
     # a cell is built again after the graph text pass (_dash_key_cell_
     # reside), and the pass walks no cell (WP-42 CV-3).
     _dash_finish_graph_text({str(spec.get("graph") or ""): cell})
-    for lab in texts:
+    for lab in texts + zml_r:
         _d = dict(lab.data_source.data)
         _d["text"] = [_dash_graph_text(str(t))[0] for t in _d["text"]]
         lab.data_source.data = _d
@@ -60645,7 +60756,8 @@ def _dash_key_cell(spec):
                           "range": zr, "vert": bool(vert), "mid": mid,
                           "title": tlab, "texts": [],
                           "band": float(band), "log": log, "reverse": rev,
-                          "inset": float(_DASH_KEY_AXIS_INSET)}
+                          "inset": float(_DASH_KEY_AXIS_INSET),
+                          "zx": {"zt": zt, "ends": zends}}
     return cell
 
 
@@ -60719,7 +60831,18 @@ def _dash_cvar_keycell_update(kc, lo, hi, centres, colours, ticks, labels,
                if not log or float(k) > 0}
         tk = sorted(lab) if lab else sorted(
             float(t) for t in ticks or [] if not log or float(t) > 0)
-        zlo, zhi = _dash_key_ends(lo, hi, tk)
+        # ztick()'s unlabelled ticks and every z tick option's reach
+        # (WP-42 AX-12) stay through a move.
+        zx = kc.get("zx") or {}
+        zt = [float(v) for v in zx.get("zt") or [] if not log or v > 0]
+        if zt:
+            if not lab:
+                lab = {t: _dash_fmt_text(t, "%8.0gc") for t in tk}
+            for v in zt:
+                lab.setdefault(v, "")
+            tk = sorted(lab)
+        zlo, zhi = _dash_key_ends(lo, hi, tk + [
+            float(v) for v in zx.get("ends") or [] if not log or v > 0])
         src, axis, rng = kc["src"], kc["axis"], kc["range"]
         new = _dash_key_cell_data(centres, colours, bool(kc.get("vert")),
                                   float(kc.get("mid", 12.0)), bands,
@@ -60811,8 +60934,12 @@ def _dash_cvar_keycell_steps(plan, lo, hi, cuts, colours):
     if zr[1] is not None:
         hi = max(hi, float(zr[1]))
     _dash_cvar_keycell_update(kc, lo, hi,
-                              _dash_key_bin_centres(lo, hi, cuts, pos,
-                                                    log=kc.get("log")),
+                              _dash_key_bin_centres(
+                                  lo, hi, cuts, pos + [
+                                      float(v) for v in
+                                      (kc.get("zx") or {}).get("ends")
+                                      or []],
+                                  log=kc.get("log")),
                               colours, pos, ovr)
 
 
@@ -69896,7 +70023,8 @@ class DashRenderer:
         # key (self.mapper is shared across every figure of a render).
         self.mapper.z_options = {k: graph_opts.get(k, "")
                                  for k in ("zlabel", "ztitle", "zscale",
-                                           "clegend", "plegend")}
+                                           "clegend", "plegend", "ztick",
+                                           "zmlabel", "zmtick")}
         self.mapper.z_context = (_seen, _gkey)
         self.mapper._set_graph_n_obs(graph_spec)
         x_label, y_label = _dash_axis_labels(plots, graph_opts,
@@ -73762,7 +73890,8 @@ class ServerAppBuilder:
                       "_DASH_KEY_NOTE_X", "_DASH_KEY_BOX_W",
                       "_DASH_KEY_TITLE_TOP", "_DASH_KEY_TITLE_BASE",
                       "_DASH_KEY_TITLE_PAD", "_DASH_KEY_TITLE_LINE",
-                      "_DASH_KEY_TITLE_BOX_MAX",
+                      "_DASH_KEY_TITLE_BOX_MAX", "_DASH_KEY_ZML_SIZE",
+                      "_DASH_KEY_ZML_OUT",
                       # twoway's weight acceptance per layer, read by
                       # GlyphMapper._layer_weights.
                       "_DASH_WEIGHT_ACCEPTS", "_DASH_WEIGHT_INERT",
@@ -74648,7 +74777,8 @@ class ServerAppBuilder:
                          "_dash_cvar_keycell_update",
                          "_dash_key_bin_centres", "_dash_cvar_keycell_steps",
                          "_dash_key_levels_layout", "_dash_key_bins_layout",
-                         "_dash_key_zlabel",
+                         "_dash_key_zlabel", "_dash_key_zextras",
+                         "_dash_key_zx_ends",
                          "_dash_cvar_keycell_levels",
                          "_dash_cvar_keycell_bins", "_dash_key_wrap",
                          "_dash_key_hold_shape", "_dash_key_scale_entries",
@@ -77179,7 +77309,8 @@ class ServerAppBuilder:
             "        # colour key; reset after the layer loop below.",
             "        _dash_cur_mapper().z_options = {k: go.get(k, '')",
             "                                  for k in ('zlabel', 'ztitle', 'zscale',",
-            "                                            'clegend', 'plegend')}",
+            "                                            'clegend', 'plegend', 'ztick',",
+            "                                            'zmlabel', 'zmtick')}",
             "        _dash_cur_mapper().z_context = (_reported_subopts, gname)",
             "        _dash_cur_mapper()._set_graph_n_obs(g)",
             "        _src_list = graph_sources.get(gname)",

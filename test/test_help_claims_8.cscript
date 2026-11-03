@@ -497,7 +497,7 @@ foreach nm of local p_honoured {
 }
 _hc_expect "HC8-02" "(`nnamed' == 0)" "`nnamed' honoured plot-level option(s) named"
 // Graph level, after the paren-mode comma: the 22 of _dash_parse_graph_opts.
-local g_opts `"b1title(b) b2title(b) fxsize(50) fysize(50) l1title(l) l2title(l) zmtick(5) r1title(r) r2title(r) scale(1.5) t1title(t) t2title(t) text(20 3000 "hi") xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
+local g_opts `"b1title(b) b2title(b) fxsize(50) fysize(50) l1title(l) l2title(l) titling ztick(5) zmlabel(5) zmtick(5) r1title(r) r2title(r) scale(1.5) t1title(t) t2title(t) text(20 3000 "hi") xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
 // Flipped (WP-31 D1): the four minor options are drawn, given and not
 // named (see the plot level).
 // Flipped (WP-31 D2): the eight edge titles are drawn, given and not
@@ -506,7 +506,9 @@ local g_opts `"b1title(b) b2title(b) fxsize(50) fysize(50) l1title(l) l2title(l)
 // comma and dash names; play() is refused (U54).
 // Flipped (WP-35 GW-3): maxaxes() -> zmtick(); a valid maxaxes() is
 // checked and taken in silence (test_option_validation.cscript Q3506-3).
-local g_names "zmtick"
+// Flipped (WP-42 AX-12): zmtick() -> titling; zmtick() is drawn on the
+// colour key and taken in silence (test_colorvar_key.py TestZTickFamily).
+local g_names "titling"
 _hc_run "" `"dash (scatter mpg weight), `g_opts' name(hc02g, replace)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
@@ -518,7 +520,7 @@ local note `"`r(line)'"'
 mata: st_local("note", substr(st_local("note"), 1, 8) == "(note:  " ? substr(st_local("note"), 1, strlen(st_local("note")) - 1) : st_local("note"))
 local nmiss 0
 foreach nm of local g_names {
-    if !strpos(`" `macval(note)' "', " `nm'() ") {
+    if !strpos(`" `macval(note)' "', " `nm'() ") & !strpos(`" `macval(note)' "', " `nm' ") {
         display as error "HC8-02: graph-level `nm'() is not in the note"
         local nmiss = `nmiss' + 1
     }
@@ -526,7 +528,7 @@ foreach nm of local g_names {
 _hc_expect "HC8-02" "(`nmiss' == 0)" "`nmiss' graph-level option(s) not named"
 mata: st_local("gtext", strofreal(strpos(" " + st_local("note") + " ", " text() ") > 0))
 _hc_expect "HC8-02" "(`gtext' == 0)" "graph-level text() is drawn and named in the note"
-foreach nm in xmlabel xmtick ymlabel ymtick b1title b2title l1title l2title r1title r2title t1title t2title fxsize fysize scale xoverhangs yoverhangs {
+foreach nm in ztick zmlabel zmtick xmlabel xmtick ymlabel ymtick b1title b2title l1title l2title r1title r2title t1title t2title fxsize fysize scale xoverhangs yoverhangs {
     mata: st_local("gmin", strofreal(strpos(" " + st_local("note") + " ", " `nm'() ") > 0))
     _hc_expect "HC8-02" "(`gmin' == 0)" "graph-level `nm'() is drawn and named in the note"
 }

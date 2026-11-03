@@ -660,7 +660,11 @@ _SAVED_DIGEST = (
     # reaches left out and colorkeysreverse's colours in the relevel JS
     # (code only: the base's relevel, span and filter JS give the old
     # digest on the new tree); the same under both Pythons.
-    "24ba49fd9e8f7647a0a5e7b1c412a602cf8dd547985f8d2b5565bdb22de84c0e")
+    # 24ba49fd... -> 003c769d...: WP-42 AX-12, ztick()'s ticks and the z
+    # tick family's reach kept by the relevel JS (code only: the base's
+    # relevel, span and filter JS give the old digest on the new tree);
+    # the same under both Pythons.
+    "003c769d4a8f129bb4fd9978e9aab96fb0db6d1ae07fbad053a890cd3aaecf4e")
 
 
 # ===========================================================================

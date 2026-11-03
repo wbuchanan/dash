@@ -856,7 +856,7 @@ def _q4203_cells(sp, dp, app):
     import dash_render as dr
     a, b = _q4203_models(sp, dp, app)
     for models, sfx in ((a, "s"), (b, "v")):
-        texts, other, ztitle, boxes = [], 0, "", 0
+        texts, other, ztitle, boxes, zml, ticks = [], 0, "", 0, [], ""
         for m in models:
             if not isinstance(m, Plot):
                 continue
@@ -870,13 +870,27 @@ def _q4203_cells(sp, dp, app):
                             ztitle = str(lab.text)
                 boxes += sum(1 for r in m.renderers
                              if (r.name or "") == "dash_key_title_box")
+                # The major and minor ticks on the axis (WP-42 AX-12).
+                tk = m._dash_keycell["ticker"]
+                lo_, hi_ = m._dash_keycell["axis"].bounds
+                ticks = "%d %d" % (
+                    sum(1 for t in tk.ticks or [] if lo_ <= t <= hi_),
+                    sum(1 for t in tk.minor_ticks or [] if lo_ <= t <= hi_))
                 ax = (list(m.right) + list(m.left))[0]
                 ovr = dict(ax.major_label_overrides or {})
                 up = m.y_range.start <= m.y_range.end
                 # The axis labels and clegend()'s texts (Text glyphs named
                 # dash_key_*, WP-42 CV-15) at their z, top first.
-                rows = [(float(k), str(v)) for k, v in ovr.items()]
+                # ztick()'s ticks carry no label (WP-42 AX-12).
+                rows = [(float(k), str(v)) for k, v in ovr.items()
+                        if str(v) != ""]
                 for r in m.renderers:
+                    if (r.name or "") == "dash_key_zmlabel":
+                        # zmlabel()'s texts stand upright (WP-42 AX-12).
+                        zml += [str(t) for _y, t in sorted(
+                            zip(r.data_source.data["y"],
+                                r.data_source.data["text"]), reverse=up)]
+                        continue
                     if (r.name or "").startswith("dash_key_") and \
                             "text" in r.data_source.data:
                         d = r.data_source.data
@@ -894,6 +908,8 @@ def _q4203_cells(sp, dp, app):
         Macro.setGlobal("q4203_o" + sfx, str(other))
         Macro.setGlobal("q4203_z" + sfx, ztitle)
         Macro.setGlobal("q4203_b" + sfx, str(boxes))
+        Macro.setGlobal("q4203_m" + sfx, " ".join(zml))
+        Macro.setGlobal("q4203_t" + sfx, ticks)
 
 
 def _q4203_svgk(path):
@@ -912,6 +928,17 @@ def _q4203_svgk(path):
     Macro.setGlobal("q4203_ktz", zt[0] if zt else "")
     Macro.setGlobal("q4203_ktb", str(sum(1 for g in d["regions"]
                                          if g.get("left", 0) > r + 1)))
+    # The key's ticks right of the plot region, major and minor by their
+    # length, and its upright minor labels (WP-42 AX-12).
+    hl = [h for h in d["hlines"] if h["x1"] is not None and h["x1"] > r + 1
+          and h.get("stroke") not in (None, "none")]
+    longest = max((abs(h["x2"] - h["x1"]) for h in hl), default=0)
+    maj = sum(1 for h in hl if abs(h["x2"] - h["x1"]) > 0.75 * longest)
+    Macro.setGlobal("q4203_ktt", "%d %d" % (maj, len(hl) - maj))
+    zm = sorted((t for t in d["texts"] if t["x"] is not None
+                 and t["x"] > r + 1 and t["rotate"] and t["size"] < 80),
+                key=lambda t: t["y"])
+    Macro.setGlobal("q4203_ktm", " ".join(t["text"] for t in zm))
 end
 
 capture program drop _q4203_kreg
@@ -1189,24 +1216,13 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
 
 // S03 AX-12 helper: _q4203_keynums: the colour key's tick texts both
 // modes draw for a registered graph, into q4203_ks and q4203_kv.
+// Flipped (WP-42 AX-12): it read a ColorBar's ticks, which CV-3's key cell
+// replaced, so every key read empty and the plurals compared "" with "";
+// it reads the key cell as S03 CV-3's _q4203_cells does (its ticks, minor
+// labels and the rest too).
 python:
 def _q4203_keynums(sp, dp, app):
-    from sfi import Macro
-    from bokeh.models import Plot
-    a, b = _q4203_models(sp, dp, app)
-    for models, sfx in ((a, "s"), (b, "v")):
-        texts = []
-        for m in models:
-            if not isinstance(m, Plot):
-                continue
-            for side in (m.right, m.left, m.above, m.below, m.center):
-                for k in side:
-                    if type(k).__name__ != "ColorBar":
-                        continue
-                    over = dict(k.major_label_overrides or {})
-                    for t in sorted(getattr(k.ticker, "ticks", []) or []):
-                        texts.append(str(over.get(t, t)))
-        Macro.setGlobal("q4203_k" + sfx, " ".join(texts))
+    _q4203_cells(sp, dp, app)
 end
 
 capture program drop _q4203_kreg
@@ -1253,14 +1269,33 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
         _q4203_kreg "`q03d'" scatter mpg weight, colorvar(price) `w's(`v') name(q03z)
         _w42_expect Q4203-4 "(r(rc) == 0 & `rc1' == 0)" "dash `w's(`v'): rc `=r(rc)', `w'(): rc `rc1'"
         _w42_expect Q4203-4 `"("${q4203_ks}" == "`s1'" & "${q4203_kv}" == "`v1'")"' "`w's(): saved ${q4203_ks} / `s1', served ${q4203_kv} / `v1'"
+        _w42_expect Q4203-4 `"("`s1'" != "" & "`v1'" != "")"' "`w'(): the key's labels read empty, saved `s1', served `v1'"
     }
-    _w42_done Q4203-4 "the z tick family's plurals are their singulars, saved and served"
+    // ztick(), zmlabel() and zmtick() drawn (colorvar_key_truth.json Z1b,
+    // Z2, Z3): the key's major and minor ticks, its labels top first and
+    // its upright minor labels are twoway's, saved and served.
+    local k 0
+    foreach o in "ztick(2500 7500)" "zmlabel(7500)" "zmtick(2500(5000)17500)" {
+        local ++k
+        quietly twoway scatter mpg weight, colorvar(price) `o' name(q03y`k', replace)
+        capture erase "`q03d'/q03y`k'.svg"
+        cert_svg_export, name(q03y`k') file("`q03d'/q03y`k'.svg")
+        python: import __main__ as _q4203_m; _q4203_m._q4203_svgk("`q03d'/q03y`k'.svg")
+        local tw "${q4203_kt}"
+        local twt "${q4203_ktt}"
+        local twm "${q4203_ktm}"
+        _q4203_kreg "`q03d'" scatter mpg weight, colorvar(price) `o' name(q03y`k')
+        _w42_expect Q4203-4 `"("${q4203_ks}" == "`tw'" & "${q4203_kv}" == "`tw'")"' `"`o': labels twoway `tw', saved ${q4203_ks}, served ${q4203_kv}"'
+        _w42_expect Q4203-4 `"("${q4203_ts}" == "`twt'" & "${q4203_tv}" == "`twt'")"' `"`o': ticks twoway `twt', saved ${q4203_ts}, served ${q4203_tv}"'
+        _w42_expect Q4203-4 `"("${q4203_ms}" == "`twm'" & "${q4203_mv}" == "`twm'")"' `"`o': minor labels twoway `twm', saved ${q4203_ms}, served ${q4203_mv}"'
+    }
+    _w42_done Q4203-4 "the z tick family's plurals are their singulars, and ztick(), zmlabel() and zmtick() are drawn, saved and served"
 
-    foreach f in s.json d.json a.py {
+    foreach f in s.json d.json a.py q03y1.svg q03y2.svg q03y3.svg {
         capture erase "`q03d'/`f'"
     }
     capture rmdir "`q03d'"
-    macro drop q4203_ks q4203_kv
+    macro drop q4203_ks q4203_kv q4203_kt q4203_ktt q4203_ktm q4203_ts q4203_tv q4203_ms q4203_mv
     capture graph drop _all
     dash clear
     display as text "S03 end " c(current_date) " " c(current_time)
