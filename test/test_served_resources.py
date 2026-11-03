@@ -640,7 +640,11 @@ _SAVED_DIGEST = (
     # in _DASH_CVAR_RELEVEL_JS and its branch of _DASH_SPAN_JS (code only:
     # the base's _DASH_CVAR_RELEVEL_JS, _DASH_SPAN_JS and _FILTER_JS give
     # the old digest on the new tree); the same under both Pythons.
-    "beb0219e4b01df418acd66806475aa45eba3e3e47a9fe5a55bb01d6234f419df")
+    # beb0219e... -> 35385444...: WP-42 CV-3's follow-up, the key title's
+    # place in the relevel twin and the hole width in _DASH_SPAN_JS (code
+    # only: the base's relevel, span and filter JS give the old digest on
+    # the new tree); the same under both Pythons.
+    "353854447309149fead2e84c05425cf378a214210e82dacf8846f031373d74af")
 
 
 # ===========================================================================

@@ -1701,7 +1701,7 @@ class TestColorUsePlegendUnderBy:
         ovr = cell._dash_key_axis.major_label_overrides
         labels = [ovr[k] for k in sorted(ovr)]
         assert labels == ["1", "2", "3", "4", "5"]
-        assert cell._dash_key_axis.axis_label == "Repair record 1978"
+        assert cell._dash_key_title.text == "Repair record 1978"
         assert _cell(grid, "dash_by_plegend") is None
 
     @pytest.mark.parametrize("mode", _MODES)
@@ -1739,7 +1739,7 @@ class TestColorUsePlegendUnderBy:
         assert list(bar._dash_key_axis.ticker.ticks) == [1.0, 2.0]
         assert bar._dash_key_axis.major_label_overrides == {1.0: "1",
                                                             2.0: "2"}
-        assert bar._dash_key_axis.axis_label == "Repair record"
+        assert bar._dash_key_title.text == "Repair record"
         assert dr._dash_by_colour_bar_cell(None, Legend(items=[])) is None
 
 

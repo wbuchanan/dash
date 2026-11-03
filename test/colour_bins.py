@@ -141,6 +141,12 @@ def axis_key_cells(model):
     return out
 
 
+def key_title(cell):
+    """A key cell's title text (its title Label), "" for none."""
+    tl = getattr(cell, "_dash_key_title", None)
+    return tl.text if tl is not None else ""
+
+
 def axis_key_texts(cell):
     """A key cell's label texts, top to bottom (WP-42 CV-3)."""
     ovr = dict(cell._dash_key_axis.major_label_overrides or {})
@@ -227,7 +233,9 @@ class KeyView:
     def __init__(self, cell):
         self.cell = cell
         ax = cell._dash_key_axis
-        self.title = ax.axis_label or ""
+        tl = getattr(cell, "_dash_key_title", None)
+        self.title = tl.text if tl is not None else ""
+        self.title_model = tl
         self.ticker = ax.ticker
         self.major_label_overrides = dict(ax.major_label_overrides or {})
         self.side = cell._dash_key_side

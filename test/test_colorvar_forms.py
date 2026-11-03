@@ -104,7 +104,8 @@ def _colorbar(fig_or_doc):
     out.ticker = ax.ticker
     out.major_label_overrides = dict(ax.major_label_overrides or {})
     out.color_mapper = _Range(*ax.bounds)
-    out.title = ax.axis_label or ""
+    out.title = cb.key_title(cell)
+    out.label = cell._dash_key_title
     out.axis = ax
     return out
 
@@ -118,7 +119,8 @@ def _colorvar_legend(fig_or_doc):
         return None
     ax = cells[0]._dash_key_axis
     out = type("_KeyLegend", (), {})()
-    out.title = ax.axis_label or ""
+    out.title = cb.key_title(cells[0])
+    out.label = cells[0]._dash_key_title
     out.axis = ax
     out.items = [_Item(t) for t in cb.axis_key_texts(cells[0])]
     return out
@@ -406,7 +408,7 @@ class TestZOptions:
         for bar in (_colorbar(list(r.figures.values())[0]), _colorbar(doc)):
             assert bar.title == "price"
             # Flipped (WP-42 CV-3): the key cell's z title.
-            assert bar.axis.axis_label_text_font_size == large
+            assert bar.label.text_font_size == large
         disc = [tp.plot_for("scatter", {"colorvar": "rep",
                                         "colordiscrete": "colordiscrete"})]
         r, doc, _sw, _rw = _both(go={"ztitle": ", color(red)"}, plots=disc)
@@ -414,7 +416,7 @@ class TestZOptions:
                     _colorvar_legend(doc)):
             assert leg is not None and leg.title == "rep"
             # Flipped (WP-42 CV-3): the key cell's z title's colour.
-            assert leg.axis.axis_label_text_color == "#ff0000"
+            assert leg.label.text_color == "#ff0000"
         for raw, want in ((",", "price"), ('"extra", suffix', "price\nextra"),
                           ('""', "")):
             r, doc, _sw, _rw = _both(go={"ztitle": raw}, plots=bar_plots)

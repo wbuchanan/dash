@@ -17193,10 +17193,13 @@ class GlyphMapper:
             chrome = {}
         # ztitle()/zlabel() styled the key's texts (_dash_apply_z_options):
         # the cell's axis takes them.
+        # Only what was set on the key: a Legend's own defaults (an
+        # italic grey title) are not twoway's.
+        _set = key.properties_with_values(include_defaults=False)
         for _a in ("title_text_font_size", "title_text_color",
                    "title_text_font_style", "major_label_text_font_size",
                    "major_label_text_color"):
-            _v = getattr(key, _a, None) if _a in key.properties() else None
+            _v = _set.get(_a)
             if isinstance(_v, str) and _v:
                 chrome[_a] = _v
         # Upright wherever it sits: twoway keeps the key upright below the
@@ -17210,7 +17213,13 @@ class GlyphMapper:
         if not isinstance(band, int) or isinstance(band, bool):
             band = _dash_clegend_px(getattr(self.scheme, "clegend_width_rs",
                                             6.9444))
+        # The key's marker is the layer's own (twoway keys a level in the
+        # plot's marker: K1's key circles are its markers' size).
+        _ms = getattr(getattr(renderer, "glyph", None), "size", None)
+        _ms = _ms.get("value") if isinstance(_ms, dict) else _ms
         spec = {"kind": kind, "side": side, "lo": lo, "hi": hi,
+                "msize": float(_ms) if isinstance(_ms, (int, float))
+                and not isinstance(_ms, bool) and _ms > 0 else None,
                 "log": bool(log), "bands": list(bands or []),
                 "centres": list(centres), "colours": list(colours),
                 "ticks": list(ticks), "labels": dict(labels),
@@ -40854,12 +40863,17 @@ for (const it of items) {
         if (Math.abs(yr.start - s0) > 1e-9 * sp) { yr.start = s0; }
         if (Math.abs(yr.end - s1) > 1e-9 * sp) { yr.end = s1; }
       }
-      let aw = 0;
+      // The axis's labels and the title beside them (a Label in its
+      // panel).
+      let aw = 0, lw = 0;
       for (const [am, av] of (v.renderer_views || [])) {
         if (String(am.type || "").endsWith("Axis") && av.bbox != null) {
           aw = av.bbox.width;
+        } else if (am.type === "Label" && av.bbox != null) {
+          lw = av.bbox.width;
         }
       }
+      aw += lw;
       const band = (m.x_range != null && +m.x_range.end > 0) ? +m.x_range.end
         : 24;
       if (mode === "hole" && aw > 0) {
@@ -46391,6 +46405,11 @@ function dash_cvar_keycell_update(kc, lo, hi, centres, colours, ticks, labels, b
     if (JSON.stringify(Array.from(tkr.ticks || [])) !== JSON.stringify(tk)) tkr.ticks = tk;
     axis.major_label_overrides = lab;
     axis.bounds = e[0] === null ? [0, 1] : [e[0], e[1]];
+    const tl = dash_key_get(kc, "title");
+    if (tl) {
+      const b0 = axis.bounds[0], b1 = axis.bounds[1];
+      tl.y = (log && b0 > 0 && b1 > 0) ? Math.sqrt(b0 * b1) : (b0 + b1) / 2;
+    }
     const r = dash_key_range(e[0], e[1], dash_key_get(kc, "inset"), log);
     if (rng.start !== r[0]) rng.start = r[0];
     if (rng.end !== r[1]) rng.end = r[1];
@@ -54618,9 +54637,17 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
             _wcb = _dash_width_scale(_f, _wmodels, _nw,
                                      OptionTranslator.size_ref_of(_f))
             if _wcb is not None and len(_wmodels) > 1:
-                # The cell's thickness scales with its text (D66).
+                # The cell's thickness scales with its text (D66), and so
+                # does the figure's border on its side (the plot region to
+                # the key).
+                _fb = []
+                _bs = getattr(_f, "_dash_key_border", None)
+                if _bs:
+                    _p = "min_border_" + _bs
+                    _fb = [[_f, _p, float(getattr(_f, _p) or 0), "int"]]
                 _wcb.args = dict(_wcb.args, entries=list(
-                    _wcb.args["entries"]) + _dash_key_scale_entries(_kcell))
+                    _wcb.args["entries"]) + _dash_key_scale_entries(_kcell)
+                    + _fb)
         elif _nom:
             # A box at 96 px an inch: twoway's unit only.
             _dash_width_scale(figures[name], [figures[name]],
@@ -54666,8 +54693,43 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
         or getattr(cell, "_dash_key_side", "right")
     vert = side in ("right", "left")
     _dash_apply_scale(cell, getattr(fig, "_dash_scale", None))
+    nom = getattr(fig, "_dash_nominal_px", None)
+    if nom and vert:
+        # twoway's key geometry (colorvar_key_truth.json K1, of the
+        # graph's smaller side): the plot region's edge to the swatches'
+        # centre _DASH_KEY_GAP_PLOT, the axis to the title's centre
+        # _DASH_KEY_GAP_TITLE; the swatches sit in the middle of the band
+        # (its half the swatch-to-axis gap, 85.5 of 2880 at huge).
+        unit = OptionTranslator.size_ref_of(fig) / 4.0 or 1.0
+        mpx = min(float(nom[0]), float(nom[1])) / unit
+        band = float(cell._dash_key_band)
+        setattr(fig, "min_border_" + side, max(0, int(round(
+            _DASH_KEY_GAP_PLOT * mpx - band / 2.0))))
+        ax = cell._dash_key_axis
+        lpx = (OptionTranslator.css_to_pt(ax.major_label_text_font_size)
+               or 9.0) * 4.0 / 3.0
+        _tl0 = getattr(cell, "_dash_key_title", None)
+        tpx = (OptionTranslator.css_to_pt(
+            _tl0.text_font_size if _tl0 is not None
+            else ax.axis_label_text_font_size) or 10.0) * 4.0 / 3.0
+        n = max((len(str(t)) for t in dict(ax.major_label_overrides
+                                            or {}).values()), default=0)
+        tl = getattr(cell, "_dash_key_title", None)
+        gap = _DASH_KEY_GAP_TITLE * mpx
+        if tl is not None:
+            # In the band's px (its x range is its width): the axis to the
+            # title's centre, K1's.
+            tl.x = band + gap if cell._dash_key_side == "right" else -gap
+            # The border holds the title and the key's own margin after
+            # it (K1's, the graph margin apart, which the region box
+            # draws in the scheme's size): the cell's frame stays the band.
+            cell._dash_key_far = int(math.ceil(gap + max(
+                tpx / 2.0 + 2, _DASH_KEY_GAP_END * mpx)))
+        fig._dash_key_border = side
     ext = _dash_key_cell_extent(cell, cell._dash_key_band)
-    far = max(0, ext - int(cell._dash_key_band))
+    far = max(0, ext - int(cell._dash_key_band),
+              int(getattr(cell, "_dash_key_far", 0) or 0))
+    ext = int(cell._dash_key_band) + far
     # The cell is upright wherever it sits (G01): its thickness is its
     # width, its axis in the border on its axis side.
     cell.width = ext
@@ -59545,6 +59607,17 @@ _DASH_KEY_SWATCH_KIND = {
 #: from 236.12 to 2353.80 of a plot region from 100.86 to 2489.19).
 _DASH_KEY_AXIS_INSET = 135.3 / 2388.33
 
+#: WP-42 CV-3: the key's place beside the plot, of the graph's smaller side
+#: (colorvar_key_truth.json K1, a 2880-unit side): the plot region's right
+#: edge to the swatches' centre (3401.27 - 3180.37) and the z axis to the
+#: title's centre (3713.87 - 3486.78).
+_DASH_KEY_GAP_PLOT = (3401.27 - 3180.37) / 2880.0
+_DASH_KEY_GAP_TITLE = (3713.87 - 3486.78) / 2880.0
+#: ... and the title's centre to the key's edge: to the graph's right edge
+#: (3960 - 3713.87) less s2color's graph margin there (2.5454% of the
+#: 3960-unit width, the margin dash's region box draws for s2color).
+_DASH_KEY_GAP_END = (3960.0 - 3713.87 - 0.025454545 * 3960.0) / 2880.0
+
 #: WP-42 CV-3: an upright key below or above the plot runs its axis line
 #: this share of the graph's height (colorvar_options_truth.json G01,
 #: ``clegend(position(6))``: levels 1 to 5 from 2573.47 to 2151.84 of a
@@ -59658,10 +59731,10 @@ def _dash_key_cell_extent(cell, band_px):
         lab = math.ceil(px) if texts else 0
     out = float(ax.major_tick_out or 0) + float(ax.major_label_standoff or 0) \
         + lab
-    if str(ax.axis_label or "").strip():
-        tpt = OptionTranslator.css_to_pt(ax.axis_label_text_font_size) or 10.0
-        out += math.ceil(tpt * 4.0 / 3.0) + 10 \
-            + float(ax.axis_label_standoff or 0)
+    tl = getattr(cell, "_dash_key_title", None)
+    if tl is not None and str(tl.text or "").strip():
+        tpt = OptionTranslator.css_to_pt(tl.text_font_size) or 10.0
+        out += math.ceil(tpt * 4.0 / 3.0) + 10
     out += math.ceil(float(ax.axis_line_width or 1))
     return int(math.ceil(band + out))
 
@@ -59721,7 +59794,13 @@ def _dash_key_cell(spec):
                 min_border_left=0, min_border_right=0, min_border_top=0,
                 min_border_bottom=0, sizing_mode="fixed",
                 name="dash_key_cell", tags=["dash_key_cell"])
-    sw = _DASH_KEY_SWATCH_PX
+    sw = dict(_DASH_KEY_SWATCH_PX)
+    ms = spec.get("msize")
+    if isinstance(ms, (int, float)) and ms > 0:
+        # The layer's marker size; a square and a line in K1/T1/T_line's
+        # proportions to it (47.09 and 153.82 to a circle's 52.7).
+        sw.update(marker=float(ms), rect=float(ms) * 47.09 / 52.7,
+                  line=float(ms) * 153.82 / 52.7)
     marks = []
     if kind in ("line", "marker+line"):
         marks.append(Scatter(x="x", y="y", marker="dash",
@@ -59762,13 +59841,32 @@ def _dash_key_cell(spec):
     title = str(spec.get("title") or "")
     axis = (LogAxis if log else LinearAxis)(
                       ticker=FixedTicker(ticks=sorted(labels) or ticks),
-                      major_label_overrides=labels, axis_label=title or None,
+                      major_label_overrides=labels, axis_label=None,
                       minor_tick_line_color=None,
                       bounds=(lo, hi) if lo is not None else (0.0, 1.0),
                       tags=["dash_key_axis"], **ax_kw)
     if side == "right":
         axis.axis_label_orientation = _DASH_KEY_TITLE_UP
     cell.add_layout(axis, side)
+    # The title, up the axis's side and centred on its length as twoway
+    # draws it: a Label in the axis's panel at the z range's middle
+    # (BokehJS anchors a turned axis label at one end).
+    from bokeh.models import Label
+    tlab = None
+    if title:
+        tlab = Label(x=float(band) + 30.0 if side == "right" else -30.0,
+                     y=((lo + hi) / 2.0) if lo is not None else 0.5,
+                     text=title, angle=_DASH_KEY_TITLE_UP,
+                     text_align="center", text_baseline="middle",
+                     text_font_size=axis.axis_label_text_font_size,
+                     text_color=axis.axis_label_text_color,
+                     text_font_style=axis.axis_label_text_font_style,
+                     name="dash_key_title")
+        if log and lo is not None and lo > 0 and hi > 0:
+            tlab.y = math.sqrt(lo * hi)
+        # In the axis's side panel, which does not clip it to the frame.
+        cell.add_layout(tlab, side)
+    cell._dash_key_title = tlab
     cell._dash_key_axis = axis
     cell._dash_key_band = band
     cell._dash_key_len = spec.get("length_px")
@@ -59787,6 +59885,7 @@ def _dash_key_cell(spec):
                                        "below": "bottom"}[side], far)
     cell._dash_keycell = {"src": src, "ticker": axis.ticker, "axis": axis,
                           "range": zr, "vert": bool(vert), "mid": mid,
+                          "title": tlab,
                           "band": float(band), "log": log,
                           "inset": float(_DASH_KEY_AXIS_INSET)}
     return cell
@@ -59868,6 +59967,12 @@ def _dash_cvar_keycell_update(kc, lo, hi, centres, colours, ticks, labels,
         b = (zlo, zhi) if zlo is not None else (0.0, 1.0)
         if axis.bounds != b:
             axis.bounds = b
+        tl = kc.get("title")
+        if tl is not None:
+            ty = (math.sqrt(b[0] * b[1]) if log and b[0] > 0 and b[1] > 0
+                  else (b[0] + b[1]) / 2.0)
+            if tl.y != ty:
+                tl.y = ty
         rlo, rhi = _dash_key_range(zlo, zhi, kc.get("inset",
                                                     _DASH_KEY_AXIS_INSET),
                                    log=log)
@@ -72844,6 +72949,8 @@ class ServerAppBuilder:
                       "_DASH_KEY_SWATCH_KIND", "_DASH_KEY_AXIS_INSET",
                       "_DASH_KEY_TITLE_UP", "_DASH_KEY_SWATCH_PX",
                       "_DASH_KEY_CELL_JS", "_DASH_KEY_BELOW_SHARE",
+                      "_DASH_KEY_GAP_PLOT", "_DASH_KEY_GAP_TITLE",
+                      "_DASH_KEY_GAP_END",
                       # twoway's weight acceptance per layer, read by
                       # GlyphMapper._layer_weights.
                       "_DASH_WEIGHT_ACCEPTS", "_DASH_WEIGHT_INERT",

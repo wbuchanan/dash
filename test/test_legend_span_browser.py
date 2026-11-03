@@ -281,14 +281,16 @@ function state() {
     if (v.frame && v.model && (v.model.tags || []).includes('dash_key_cell')) {
       const cr = v.canvas_view.el.getBoundingClientRect();
       const f = v.frame.bbox, yr = v.model.y_range;
-      let am = null, ab = null;
+      let am = null, ab = null, lx = null;
       for (const [m, rv] of v.renderer_views) {
         if ((m.type || '').endsWith('Axis')) { am = m; ab = rv.bbox; }
+        if (m.type === 'Label' && rv.bbox) lx = rv.bbox.x1;
       }
       if (am && ab && yr && yr.end !== yr.start) {
         const yy = (z) => cr.top + f.y0 + (yr.end - z) / (yr.end - yr.start) * f.height;
         const y0 = yy(am.bounds[1]), y1 = yy(am.bounds[0]);
-        const x0 = cr.left + f.x0, x1 = cr.left + ab.x1;
+        const x0 = cr.left + f.x0,
+          x1 = cr.left + Math.max(ab.x1, lx === null ? ab.x1 : lx);
         boxes.push({type: 'ColorBar', cell: v.model.name || '', text: '',
                     box: [x0, y0, x1, y1],
                     canvas: [cr.left, cr.top, cr.left + v.bbox.width,

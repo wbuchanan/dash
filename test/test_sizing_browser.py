@@ -462,10 +462,10 @@ class TestEveryLabelInsideInChrome:
         if plots == "colour":
             # Flipped (WP-42 CV-3): dash's colour key was a ColorBar;
             # twoway draws swatches beside a z axis (CV-3): a key cell of
-            # its own, its z axis titled with the colour variable's label.
+            # its own with its z axis (its title a Label beside it).
             assert len(rec["plots"]) == 2, rec
             assert [q for q in rec["plots"][1]["parts"]
-                    if q[0] == "LinearAxis" and q[1]], rec
+                    if q[0] == "LinearAxis"], rec
         titles = {q[1] for q in parts if q[0] == "LinearAxis"}
         if not go:
             # The axis titles are the figure's own (by() draws them in

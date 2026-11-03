@@ -85,7 +85,7 @@ class TestTheByContourKey:
         # twoway draws swatches beside a z axis (CV-3): panel 1's key
         # cell, titled with z's label.
         assert "dash_key_cell" in (cell[0].tags or [])
-        assert cell[0]._dash_key_axis.axis_label == "Temperature"
+        assert cell[0]._dash_key_title.text == "Temperature"
 
     def test_one_key_below_under_pos6(self, mode):
         """by(date, clegend(on pos(6))): the one key below the panels."""
@@ -307,7 +307,8 @@ def _cell_state(cell):
     sw = sorted(zip(d["y"], d["c"]), key=lambda t: -t[0])
     ovr = dict(ax.major_label_overrides or {})
     texts = [ovr[k] for k in sorted(ovr, key=float, reverse=True)]
-    return kinds, sw, texts, tuple(ax.bounds), ax.axis_label
+    tl = getattr(cell, "_dash_key_title", None)
+    return kinds, sw, texts, tuple(ax.bounds), (tl.text if tl else None)
 
 
 def _hex(c):
@@ -360,8 +361,7 @@ class TestTheAxisKey:
             assert abs(v - tv) <= 0.01 * (hi - lo), (pid, sw, want)
             assert max(abs(a - b) for a, b in zip(_hex(col), _hex(fill))) \
                 <= 2, (pid, col, fill)
-        assert cell._dash_key_axis.axis_label_orientation == \
-            pytest.approx(math.pi / 2)
+        assert cell._dash_key_title.angle == pytest.approx(math.pi / 2)
         assert title
         assert cell._dash_key_axis.axis_line_color is not None
         assert cell.outline_line_color is None
@@ -699,8 +699,7 @@ class TestTheKeyCellHelpers:
         c = self._cell()
         assert "dash_key_cell" in c.tags and c.toolbar_location is None
         assert c._dash_key_axis.bounds == (1.0, 5.0)
-        assert c._dash_key_axis.axis_label_orientation == pytest.approx(
-            math.pi / 2)
+        assert c._dash_key_title.angle == pytest.approx(math.pi / 2)
         d = dr._dash_key_cell_data([1.0, 2.0], ["a", "b"], True, 12.0,
                                    [(0, 1), (1, 2)], 24)
         assert d["x"] == [12.0, 12.0] and d["b"] == [0.0, 1.0]
@@ -843,3 +842,67 @@ def test_save_as_svg_exports_the_key_with_its_figure(mode):
     grids = [a.callback.args.get("grid") for a in acts]
     assert any(g is rows[0] or (g is not None and rows[0] in [
         x for x in g.references()]) for g in grids), grids
+
+
+@pytest.mark.usefixtures("_auto")
+@pytest.mark.parametrize("mode", _MODES)
+class TestTheKeyAsTwowayDrawsIt:
+    """The whole-image pair (scatter mpg weight, colorvar(rep78)
+    colordiscrete at 1100 px against twoway's export): the key's title,
+    its swatches and its place, from colorvar_key_truth.json K1."""
+
+    def _parts(self, mode):
+        root = _layout_of(mode, [plot_for(
+            "scatter", _KEY_OPTS["K1"], yvar="mpg", xvar="weight")])
+        (fig,), (cell,) = _figs_and_cells(root)
+        return fig, cell
+
+    def test_the_title_is_upright_black_and_centred(self, mode):
+        """twoway: upright (the axis title's style), black, centred on the
+        axis's length."""
+        fig, cell = self._parts(mode)
+        tl = cell._dash_key_title
+        assert tl.text and tl.angle == pytest.approx(math.pi / 2)
+        assert tl.text_font_style == "normal"
+        assert tl.text_align == "center" and tl.text_baseline == "middle"
+        assert tl.text_color == fig.yaxis[0].axis_label_text_color
+        assert tl.text_font_size == fig.yaxis[0].axis_label_text_font_size
+        lo, hi = cell._dash_key_axis.bounds
+        assert tl.y == pytest.approx((lo + hi) / 2.0)
+
+    def test_the_swatch_is_the_layers_marker(self, mode):
+        """twoway keys a level in the plot's marker (K1: the key's circles
+        are its markers' size)."""
+        fig, cell = self._parts(mode)
+        sizes = {r.glyph.size for r in fig.renderers
+                 if type(r.glyph).__name__ == "Scatter"
+                 and isinstance(r.glyph.size, (int, float))
+                 and r.glyph.size > 0}
+        (sw,) = [r for r in cell.renderers if r.name == "dash_key_swatch"]
+        assert sw.glyph.size in sizes
+
+    def test_the_key_sits_at_twoways_place(self, mode):
+        """K1 (of the graph's 2880-unit smaller side): plot region to the
+        swatches 220.9, the axis to the title 227.09, the title to the
+        key's edge 145.33 (the graph margin apart)."""
+        t = _key_truth()["K1"]
+        k = t["key"]
+        side = min(t["canvas"]["w"], t["canvas"]["h"])
+        sw = [c["cx"] for c in k["circles"]][0]
+        ax = k["vlines"][0]["x1"]
+        (title,) = [x for x in t["texts"] if x["rotate"]
+                    and x["x"] > t["plot"]["right"]]
+        assert dr._DASH_KEY_GAP_PLOT == pytest.approx(
+            (sw - t["plot"]["right"]) / side)
+        assert dr._DASH_KEY_GAP_TITLE == pytest.approx(
+            (title["x"] - ax) / side)
+        fig, cell = self._parts(mode)
+        nom = fig._dash_nominal_px
+        mpx = min(nom) / (dr.OptionTranslator.size_ref_of(fig) / 4.0)
+        band = cell._dash_key_band
+        assert fig.min_border_right == round(
+            dr._DASH_KEY_GAP_PLOT * mpx - band / 2.0)
+        assert cell._dash_key_title.x == pytest.approx(
+            band + dr._DASH_KEY_GAP_TITLE * mpx)
+        assert cell.width >= band + math.ceil(
+            (dr._DASH_KEY_GAP_TITLE + dr._DASH_KEY_GAP_END) * mpx)
