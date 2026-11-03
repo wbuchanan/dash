@@ -349,6 +349,15 @@ class TestAfterAFilterMove:
         lvl = "r.glyph.line_color = colour;"
         assert relevel.count(lvl) == len(list(pat.finditer(relevel)))
         texts = [t.replace(lvl, "") for t in texts]
+        # WP-42 LT-22 (the same ruling): contourline's level legend keys
+        # the kept rows' cuts after a move, each key its level's line
+        # colour and width (dash_contourline_legend) -- a level, not a
+        # named style.
+        lt22 = ("if (g.line_color !== c) g.line_color = c;",
+                "if (g.line_width !== w) g.line_width = w;")
+        assert all(dr._FILTER_JS.count(w) == 1 for w in lt22)
+        for w in lt22:
+            texts = [t.replace(w, "") for t in texts]
         assert texts and not [t for t in texts if pat.search(t)]
 
 

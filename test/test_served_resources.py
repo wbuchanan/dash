@@ -664,7 +664,11 @@ _SAVED_DIGEST = (
     # tick family's reach kept by the relevel JS (code only: the base's
     # relevel, span and filter JS give the old digest on the new tree);
     # the same under both Pythons.
-    "003c769d4a8f129bb4fd9978e9aab96fb0db6d1ae07fbad053a890cd3aaecf4e")
+    # 003c769d... -> 814421b9...: WP-42 LT-22, contourline's level legend
+    # and the contour's extent scatter moved by the filter JS's refit (code
+    # only: the base's relevel, span and filter JS give the old digest on
+    # the new tree); the same under both Pythons.
+    "814421b96e619cd2b0f46474a804696b2dfa510780d10d7db6d805fc3b54f36b")
 
 
 # ===========================================================================

@@ -526,6 +526,13 @@ class TestAfterAFilterMove:
         assert key_write in relevel
         codes = [c.replace(key_write, "") for c in codes]
         module_js = [c.replace(key_write, "") for c in module_js]
+        # WP-42 LT-22 (the same ruling): contourline's level legend keys
+        # the kept rows' cuts after a move, its one label write a key's
+        # level text (dash_contourline_legend).
+        lt22 = "if (cur !== text) it.label = {value: text};"
+        assert dr._FILTER_JS.count(lt22) == 1
+        codes = [c.replace(lt22, "") for c in codes]
+        module_js = [c.replace(lt22, "") for c in module_js]
         for code in codes + module_js:
             if code.strip() == dr._DASH_BY_STACK_JS.strip():
                 assert [m.group(0) for m in _JS_TITLE_WRITE.finditer(code)] \

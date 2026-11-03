@@ -856,7 +856,7 @@ def _q4203_cells(sp, dp, app):
     import dash_render as dr
     a, b = _q4203_models(sp, dp, app)
     for models, sfx in ((a, "s"), (b, "v")):
-        texts, other, ztitle, boxes, zml, ticks = [], 0, "", 0, [], ""
+        texts, other, ztitle, boxes, zml, ticks, axl = [], 0, "", 0, [], "", ""
         for m in models:
             if not isinstance(m, Plot):
                 continue
@@ -870,6 +870,11 @@ def _q4203_cells(sp, dp, app):
                             ztitle = str(lab.text)
                 boxes += sum(1 for r in m.renderers
                              if (r.name or "") == "dash_key_title_box")
+                # The axis line drawn (WP-42 LT-22: C_plain's vline).
+                _ax = m._dash_keycell["axis"]
+                axl = "1" if (_ax.axis_line_color is not None
+                              and (_ax.axis_line_alpha or 0) > 0
+                              and _ax.visible) else "0"
                 # The major and minor ticks on the axis (WP-42 AX-12).
                 tk = m._dash_keycell["ticker"]
                 lo_, hi_ = m._dash_keycell["axis"].bounds
@@ -910,6 +915,7 @@ def _q4203_cells(sp, dp, app):
         Macro.setGlobal("q4203_b" + sfx, str(boxes))
         Macro.setGlobal("q4203_m" + sfx, " ".join(zml))
         Macro.setGlobal("q4203_t" + sfx, ticks)
+        Macro.setGlobal("q4203_a" + sfx, axl)
 
 
 def _q4203_svgk(path):
@@ -939,6 +945,9 @@ def _q4203_svgk(path):
                  and t["x"] > r + 1 and t["rotate"] and t["size"] < 80),
                 key=lambda t: t["y"])
     Macro.setGlobal("q4203_ktm", " ".join(t["text"] for t in zm))
+    # An axis line right of the plot region (WP-42 LT-22).
+    vl = [v for v in d["vlines"] if v["x1"] is not None and v["x1"] > r + 1]
+    Macro.setGlobal("q4203_kta", "1" if vl else "0")
 end
 
 capture program drop _q4203_kreg
@@ -1201,9 +1210,24 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
     _q4201_try "`q03d'/try.log" dash contourline depth northing easting, name(q03l)
     cert_log_has "`q03d'/try.log", needle("contourline:")
     _w42_expect Q4203-5 "(r(found) == 0)" "plain contourline printed a note"
-    _w42_done Q4203-5 "contourline keys its levels as twoway does, saved and served"
+    // The contour key (colorvar_key_truth.json C_plain): its labels top
+    // first, its title up its side and its axis line are twoway's, saved
+    // and served.
+    quietly twoway contour depth northing easting, name(q03c, replace)
+    capture erase "`q03d'/q03c.svg"
+    cert_svg_export, name(q03c) file("`q03d'/q03c.svg")
+    python: import __main__ as _q4203_m; _q4203_m._q4203_svgk("`q03d'/q03c.svg")
+    local tw "${q4203_kt}"
+    local twz "${q4203_ktz}"
+    local twa "${q4203_kta}"
+    _q4203_kreg "`q03d'" contour depth northing easting, name(q03c)
+    _w42_expect Q4203-5 `"("`tw'" != "" & "`twz'" != "")"' "twoway's contour key labels `tw', title `twz'"
+    _w42_expect Q4203-5 `"("${q4203_ks}" == "`tw'" & "${q4203_kv}" == "`tw'")"' "contour key labels: twoway `tw', saved ${q4203_ks}, served ${q4203_kv}"
+    _w42_expect Q4203-5 `"("${q4203_zs}" == "`twz'" & "${q4203_zv}" == "`twz'")"' "contour key title: twoway `twz', saved ${q4203_zs}, served ${q4203_zv}"
+    _w42_expect Q4203-5 `"("`twa'" == "1" & "${q4203_as}" == "1" & "${q4203_av}" == "1")"' "contour key axis line: twoway `twa', saved ${q4203_as}, served ${q4203_av}"
+    _w42_done Q4203-5 "contourline keys its levels and the contour key is twoway's axis key, saved and served"
 
-    foreach f in q03l.svg s.json d.json a.py try.log {
+    foreach f in q03l.svg q03c.svg s.json d.json a.py try.log {
         capture erase "`q03d'/`f'"
     }
     capture rmdir "`q03d'"

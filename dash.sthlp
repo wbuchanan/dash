@@ -662,8 +662,10 @@ lines in the plot legend, one key a level, highest first, labelled by
 {opt clabels()} (lowest level first) else the cut in {opt format()}
 ({cmd:%9.0g} by default) and placed by {opt plegend()}, at the right by
 default; its black lines draw no legend, as {cmd:twoway} draws none.
-{it:Difference from twoway:} after a filter move the legend keeps the
-levels it was built with.  {opt lev()} through
+After a filter move the legend keys the levels drawn over the kept rows,
+as {cmd:twoway} keys the levels it draws.  The contour key is the
+axis-style key: its title up its side beside the axis line.
+{opt lev()} through
 {opt level()} are {opt levels()} here, as {cmd:twoway} reads them, and
 {opt le()} is refused, as {cmd:twoway} refuses it; {opt levels()} above
 500, and more than 499 values in {opt ccuts()}, are refused, as

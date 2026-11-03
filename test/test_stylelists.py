@@ -401,7 +401,11 @@ class TestAfterAFilterMove:
         lvl = "r.glyph.line_color = colour;"
         import dash_render as dr
         assert lvl in dr._DASH_CVAR_RELEVEL_JS
-        for code in (c.replace(lvl, "") for c in codes):
+        # WP-42 LT-22 (the same ruling): contourline's level legend keys
+        # the kept rows' cuts, each key its level's line colour.
+        lt22 = "if (g.line_color !== c) g.line_color = c;"
+        assert dr._FILTER_JS.count(lt22) == 1
+        for code in (c.replace(lvl, "").replace(lt22, "") for c in codes):
             for needle in (".fill_color =", ".line_color =", ".marker =",
                            ".line_dash ="):
                 assert needle not in code

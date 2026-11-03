@@ -1022,6 +1022,7 @@ and now matches Stata.
 - colorvar(z) colordiscrete colorlevels(4) cuts at 20 40 60 80 over 0-100 (was 25 50 75) (WP-42, CV-2)
 - A by() contour draws no colour key on its panels and, under by(, clegend(on)), one key beside them (was a key on every panel) (WP-42, CV-8a)
 - contourline, colorlines (or ccolors()) keys its levels in the plot legend; plain contourline prints no note (WP-42, LT-22)
+- contourline, colorlines keys its levels; the contour key has twoway's side title and axis line; the level legend follows a filter move (WP-42, LT-22)
 
 ### Fixed in WP-41
 

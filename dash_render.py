@@ -25179,7 +25179,8 @@ class GlyphMapper:
                     levels=[float(c) for c in cuts])))
             # WP-42 LT-22: twoway keys coloured lines in its plot
             # legend, one key a level (colorvar_key_truth.json CL_cl).
-            self._contourline_key(fig, cuts, lcol, lwid, options)
+            cr._dash_clevels = self._contourline_key(fig, cuts, lcol, lwid,
+                                                     options)
             lo = hi = None
         else:
             lv = [0.0, 1.0] if _no_rows else \
@@ -25272,6 +25273,9 @@ class GlyphMapper:
         ey = [float(np.min(y)), float(np.max(y))] if y.size else [np.nan] * 2
         hull = fig.scatter(x=ex, y=ey, size=0, fill_alpha=0, line_alpha=0,
                            tags=["dash_contour_extent"])
+        # The saved page's refit moves it to the kept rows' corners, as the
+        # served redraw does (WP-42 LT-22; contour_hulls).
+        cr._dash_hull = hull
         # The key whenever z has values (WP-37 DG-8): twoway keys a contour
         # whose points make no surface -- two observations, points on one
         # line -- from the levels it would cut at (contour price mpg
@@ -25524,37 +25528,56 @@ class GlyphMapper:
         8000 7900 7800 7700 on sandstone, 8000.00 .. under format(%9.2f),
         the legend kept under legend(off)).  Black lines (neither option)
         draw no legend (CL_ctl).  The keys are a legend's invisible
-        swatches, named under ``_DASH_SWATCH_PREFIX``."""
+        swatches, named under ``_DASH_SWATCH_PREFIX``: a pool of as many as
+        the most cuts a filter move can give (``_contour_refit_rule``),
+        the build's drawn, so a move relabels and recolours them for the
+        kept rows' cuts (``_dash_contourline_legend_follow`` and the page's
+        ``dash_contourline_legend``).  Returns the legend's record, or
+        None when no legend is drawn."""
         from bokeh.models import Legend, LegendItem
         opts = options or {}
         if not (str(opts.get("colorlines", "") or "").strip()
                 or str(opts.get("ccolors", "") or "").strip()):
-            return
+            return None
         fin = [float(c) for c in cuts if math.isfinite(float(c))]
         if not fin:
-            return
+            return None
         fmt = str(opts.get("format", "") or "").strip() or "%9.0g"
+        dp = getattr(self, "dp", "period")
         labs = [_dash_unquoted(t) for t in _dash_by_tokens(
             str(opts.get("clabels", "") or "").strip())]
-        items = []
-        for i in reversed(range(len(fin))):
-            text = labs[i] if i < len(labs) else _dash_fmt_text(
-                fin[i], fmt, dp=getattr(self, "dp", "period"))
+        try:
+            most = max(int(k) for k in self._contour_refit_rule(
+                opts, True, len(fin))["styles"])
+        except (KeyError, TypeError, ValueError):
+            most = len(fin)
+        pool = []
+        for i in range(max(most, len(fin))):
+            j = min(i, len(fin) - 1)
             sw = fig.line(
                 x=[float("nan")], y=[float("nan")],
-                line_color=colours[min(i, len(colours) - 1)],
+                line_color=colours[min(j, len(colours) - 1)],
                 line_width=OptionTranslator.translate_lwidth(
-                    widths[min(i, len(widths) - 1)]),
+                    widths[min(j, len(widths) - 1)]),
                 visible=False, name=f"{_DASH_SWATCH_PREFIX}contourline_{i}")
-            items.append(LegendItem(label=text, renderers=[sw]))
+            pool.append(LegendItem(label="", renderers=[sw]))
         # Centred on its side, as twoway draws it (CL_cl: the legend's box
         # 1031.86 to 1558.19 about the plot region's centre, 1295.0).
-        lg = Legend(items=items, name=_COLORVAR_LEGEND_NAME,
-                    location="center")
+        lg = Legend(items=[], name=_COLORVAR_LEGEND_NAME, location="center")
         lg._dash_useplegend = True
+        rec = {"legend": lg, "pool": pool, "fmt": fmt, "labs": labs,
+               "dp": dp}
+        state = (fin, [colours[min(i, len(colours) - 1)]
+                       for i in range(len(fin))],
+                 [float(OptionTranslator.translate_lwidth(
+                     widths[min(i, len(widths) - 1)]))
+                  for i in range(len(fin))])
+        _dash_contourline_legend_follow(rec, *state)
+        rec["state"] = state
         pleg = str((self.z_options or {}).get("plegend", "") or "").strip()
         self._colorvar_key_place(fig, lg, _dash_clegend_opts(pleg),
                                  "plegend")
+        return rec
 
     def _contour_key_empty(self, fig, cr, zvar) -> None:
         """contour's key over no observations (WP-37 DG-1): twoway draws
@@ -30790,6 +30813,46 @@ def _dash_contour_key_state(kb):
             dict(getattr(ax, "major_label_overrides", None) or {}))
 
 
+def _dash_contourline_legend_follow(rec, cuts, colours, widths):
+    """contourline's level legend (its record *rec*, made by
+    ``GlyphMapper._contourline_key``) keyed for *cuts* (lowest first) in
+    the lines' *colours* and *widths* (px): one key a cut, highest first,
+    labelled by clabels() else the cut in the record's format, from the
+    record's pool (WP-42 LT-22: after a filter move twoway keys the levels
+    it draws over the kept rows).  The page's twin is
+    ``dash_contourline_legend``.  Never raises; a model is written only
+    when its value changes."""
+    try:
+        pool = list(rec["pool"])
+        k = min(len(cuts), len(pool))
+        labs = list(rec.get("labs") or [])
+        for i in range(k):
+            text = labs[i] if i < len(labs) else _dash_fmt_text(
+                float(cuts[i]), rec.get("fmt") or "%9.0g",
+                dp=rec.get("dp") or "period")
+            it = pool[i]
+            cur = it.label
+            cur = getattr(cur, "value", cur if not isinstance(cur, dict)
+                          else cur.get("value"))
+            if cur != text:
+                it.label = text
+            g = it.renderers[0].glyph
+            if colours:
+                c = colours[min(i, len(colours) - 1)]
+                if g.line_color != c:
+                    g.line_color = c
+            if widths:
+                w = float(widths[min(i, len(widths) - 1)])
+                if g.line_width != w:
+                    g.line_width = w
+        items = list(reversed(pool[:k]))
+        lg = rec["legend"]
+        if list(lg.items) != items:
+            lg.items = items
+    except (KeyError, AttributeError, TypeError, ValueError, IndexError):
+        return
+
+
 def _dash_contour_bar_follow(bar, levels, ticks, overrides, colours=None):
     """Give a drawn contour colour bar the cuts and ticks a filter move's
     redraw computed (WP-31 B4d): *levels* the redrawn renderer's
@@ -35908,6 +35971,32 @@ function dash_contour_bands(S, levels) {
 // twoway's cuts over the kept rows' z range (WP-31 B4d): the twin of
 // _dash_contour_cuts on the rule _dash_contour_cut_rule reads from the
 // options -- {cuts, ticks}.  dash_natscale is the axis finish's.
+function dash_contourline_legend(rec, cuts, cols, wids) {
+  // _dash_contourline_legend_follow (WP-42 LT-22): contourline's level
+  // legend keyed for the kept rows' cuts, highest first, from its pool.
+  if (!rec || !rec.legend || !rec.pool) return;
+  const pool = Array.from(rec.pool);
+  const k = Math.min(cuts.length, pool.length);
+  const labs = Array.from(rec.labs || []);
+  for (let i = 0; i < k; i++) {
+    const it = pool[i];
+    const text = i < labs.length ? String(labs[i])
+      : dash_fmt_text(Number(cuts[i]), rec.fmt || "%9.0g", null, rec.dp || "period", null);
+    const lv = it.label;
+    const cur = (lv && lv.value !== undefined) ? lv.value : lv;
+    if (cur !== text) it.label = {value: text};
+    const g = it.renderers[0].glyph;
+    if (cols && cols.length) {
+      const c = cols[Math.min(i, cols.length - 1)];
+      if (g.line_color !== c) g.line_color = c;
+    }
+    if (wids && wids.length) {
+      const w = Number(wids[Math.min(i, wids.length - 1)]);
+      if (g.line_width !== w) g.line_width = w;
+    }
+  }
+  rec.legend.items = pool.slice(0, k).reverse();
+}
 function dash_contour_cuts(rule, zmin, zmax) {
     if (rule.kind === "cuts") return {cuts: rule.cuts.slice(), ticks: rule.cuts.slice()};
     if (rule.kind === "levels" && Number.isFinite(zmin) && Number.isFinite(zmax)) {
@@ -36720,6 +36809,24 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             for (let iy = 0; iy < S.ny; iy++) for (let ix = 0; ix < S.nx; ix++) tz[ix * S.ny + iy] = S.gz[iy * S.nx + ix];
             S = {gx: S.gy, gy: S.gx, gz: tz, nx: S.ny, ny: S.nx, n: S.n, note: S.note};
         }
+        // WP-42 LT-22: the layer's extent scatter at the kept rows'
+        // corners, as the served redraw draws it (map_contour's hull).
+        const _hl = (typeof contour_hulls !== "undefined" && contour_hulls && ac.hkey !== undefined)
+            ? contour_hulls[ac.hkey] : null;
+        if (_hl) {
+            let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+            for (let i = 0; i < _zu.length; i++) {
+                const a = _cx[i], b = _cy[i];
+                if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(_zu[i])) continue;
+                if (a < x0) x0 = a; if (a > x1) x1 = a;
+                if (b < y0) y0 = b; if (b > y1) y1 = b;
+            }
+            if (x0 <= x1) {
+                const hx = ac.horizontal ? [y0, y1] : [x0, x1];
+                const hy = ac.horizontal ? [x0, x1] : [y0, y1];
+                _hl.data = Object.assign({}, _hl.data, {x: hx, y: hy});
+            }
+        }
         // The kept rows' z range, over the rows with x, y and z.
         let _zmin = Infinity, _zmax = -Infinity;
         for (let i = 0; i < _zu.length; i++) {
@@ -36745,6 +36852,10 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         if (ac.part === 'line') {
             const L = dash_contour_lines(S, _cuts);
             _cd.xs = L.xs; _cd.ys = L.ys; _cd.levels = L.levels;
+            // WP-42 LT-22: the level legend keyed for the new cuts.
+            const _lg = (typeof contour_legends !== "undefined" && contour_legends && ac.lkey !== undefined)
+                ? contour_legends[ac.lkey] : null;
+            if (_lg) dash_contourline_legend(_lg, _cuts, _cd.line_color, _cd.line_width);
         } else {
             // The outer bands hold every node: their levels reach past
             // the surface's least and greatest node (map_contour's rule).
@@ -72485,6 +72596,11 @@ class DashRenderer:
         # naming its own by position (``key``).
         _contour_keys_all: list = []
         _bars = getattr(self, "_contour_bars", {})
+        # WP-42 LT-22: contourline's level legends, by position (``lkey``).
+        _contour_legs_all: list = []
+        _legs = getattr(self, "_contour_legends", {})
+        _contour_hulls_all: list = []
+        _hulls = getattr(self, "_contour_hulls", {})
         # WP-31 H6: the CI outlines the refit redraws, each config naming
         # its own by position (``outline``).
         _outlines_all: list = []
@@ -72505,6 +72621,12 @@ class DashRenderer:
                 if id(_agg_cds) in _bars:
                     _agg_cfgs_all[-1]["key"] = len(_contour_keys_all)
                     _contour_keys_all.append(_bars[id(_agg_cds)])
+                if id(_agg_cds) in _legs:
+                    _agg_cfgs_all[-1]["lkey"] = len(_contour_legs_all)
+                    _contour_legs_all.append(_legs[id(_agg_cds)])
+                if id(_agg_cds) in _hulls:
+                    _agg_cfgs_all[-1]["hkey"] = len(_contour_hulls_all)
+                    _contour_hulls_all.append(_hulls[id(_agg_cds)])
                 if id(_agg_cds) in _outl:
                     _agg_cfgs_all[-1]["outline"] = len(_outlines_all)
                     _outlines_all.append(_outl[id(_agg_cds)])
@@ -72617,6 +72739,10 @@ class DashRenderer:
             _cb.args["agg_configs_json"]  = json.dumps(_agg_cfgs_all)
             if _contour_keys_all:
                 _cb.args["contour_keys"] = _contour_keys_all
+            if _contour_legs_all:
+                _cb.args["contour_legends"] = _contour_legs_all
+            if _contour_hulls_all:
+                _cb.args["contour_hulls"] = _contour_hulls_all
             if _outlines_all:
                 _cb.args["ci_outlines"] = _outlines_all
             if _fext_all:
@@ -73120,6 +73246,10 @@ class DashRenderer:
         # recount keeps to them; one drawn from every row carries nothing.
         _n_rows = int(self._embed["rows"].sum())
         self._contour_bars = {}
+        # WP-42 LT-22: contourline's level legends, by agg source.
+        self._contour_legends = {}
+        # WP-42 LT-22: each contour layer's extent scatter, by agg source.
+        self._contour_hulls = {}
         self._ci_outlines = {}
         self._fit_extents = {}
         for _gname, _fig in self.figures.items():
@@ -73165,6 +73295,16 @@ class DashRenderer:
                 _bar = getattr(_r, "_dash_contour_bar", None)
                 if _bar is not None:
                     self._contour_bars[id(_r._dash_agg_source)] = _bar
+                # WP-42 LT-22: contourline's level legend, rekeyed by the
+                # refit (dash_contourline_legend).
+                _clv = getattr(_r, "_dash_clevels", None)
+                if _clv:
+                    self._contour_legends[id(_r._dash_agg_source)] = {
+                        k: v for k, v in _clv.items() if k != "state"}
+                _hl = getattr(_r, "_dash_hull", None)
+                if _hl is not None:
+                    self._contour_hulls[id(_r._dash_agg_source)] = \
+                        _hl.data_source
             if _agg_list:
                 self.agg_source_registry[_gname] = _agg_list
 
@@ -75136,6 +75276,7 @@ class ServerAppBuilder:
                     # map_contour draws with, in both renderers.
                     _dash_contour_zticks, _dash_contour_cuts,
                     _dash_contour_cut_rule, _dash_contour_bar_follow,
+                    _dash_contourline_legend_follow,
                     _dash_contour_band_colours, _dash_contour_key_state,
                     # WP-32: the stale cue of a fit drawn from Stata's
                     # points, built and followed on the served page.
@@ -77281,6 +77422,9 @@ class ServerAppBuilder:
             "            for _rr in _tfig.renderers:",
             "                if _out and hasattr(_rr, '_dash_contour_sources'):",
             "                    _kb = getattr(_rr, '_dash_contour_bar', None)",
+            "                    _clv = getattr(_rr, '_dash_clevels', None)",
+            "                    if _clv:",
+            "                        _out[0]._dash_clevels_state = _clv.get('state')",
             "                    _out[0]._dash_ckey = (",
             "                        (list(_rr.levels),)",
             "                        + tuple(_dash_contour_key_state(_kb))",
@@ -77624,6 +77768,9 @@ class ServerAppBuilder:
             "                # WP-31 B4d: the contour's colour key, moved with it",
             "                # (WP-42 CV-3: its key cell's record).",
             "                for _rr in fig.renderers[_r_before:]:",
+            "                    # WP-42 LT-22: contourline's level legend.",
+            "                    if getattr(_rr, '_dash_clevels', None):",
+            "                        agg_sources[(gname, pi)]['clevels'] = _rr._dash_clevels",
             "                    _kr = getattr(_rr, '_dash_contour_bar', None)",
             "                    if isinstance(_kr, dict):",
             "                        agg_sources[(gname, pi)]['ckey'] = _kr",
@@ -78505,6 +78652,9 @@ class ServerAppBuilder:
             "                _ck = getattr(_fresh[0], '_dash_ckey', None) if _fresh else None",
             "                if _ck is not None and agg.get('ckey') is not None:",
             "                    _dash_contour_bar_follow(agg['ckey'], *_ck)",
+            "                _cls = getattr(_fresh[0], '_dash_clevels_state', None) if _fresh else None",
+            "                if _cls is not None and agg.get('clevels') is not None:",
+            "                    _dash_contourline_legend_follow(agg['clevels'], *_cls)",
             "                if agg.get('evalext') is not None:",
             "                    agg['evalext'].data = {'v': list(getattr(",
             "                        _fresh[0], '_dash_eval_v', []) if _fresh else [])}",

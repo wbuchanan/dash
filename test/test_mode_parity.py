@@ -1633,6 +1633,10 @@ CORPUS = [
     _case("contourline colorlines",
           [plot_for("contourline", {"colorlines": "colorlines",
                                     "clwidths": "thin thick"})]),
+    # WP-42 LT-22: contourline's level legend (colorvar_key_truth.json
+    # CL_cl), one key a cut, highest first.
+    _case("LT-22 CL_cl: contourline colorlines level legend",
+          [plot_for("contourline", {"colorlines": "colorlines"})]),
     # WP-41 BY-28: every by() panel, Total too, cut at the first panel's
     # cuts (rep is _DF's repair record).
     _case("contour by() shared cuts", [plot_for("contour", {})],
@@ -4374,6 +4378,11 @@ _CVAR_MOVES = [
     _move_case("scatter colorvar stepped price, rep dropdown to 3",
                ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
                 "rep == 3"), [plot_for("scatter", {"colorvar": "price"})]),
+    # WP-42 LT-22: contourline's level legend keyed for the kept rows.
+    _move_case("LT-22 contourline colorlines, rep dropdown to 3",
+               ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
+                "rep == 3"),
+               [plot_for("contourline", {"colorlines": "colorlines"})]),
     _move_case("scatter colorvar date, rep dropdown to 3",
                ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
                 "rep == 3"), [plot_for("scatter", {"colorvar": "when"})],

@@ -188,3 +188,53 @@ class TestSaved:
         assert list(a["levels"]) == pytest.approx(list(k["levels"]))
         assert list(a["line_color"]) == list(k["line_color"])
         assert list(a["line_width"]) == list(k["line_width"])
+
+
+def _level_legend(figs):
+    """contourline's level legend (WP-42 LT-22): each drawn item's (label,
+    line colour, line width), highest level first."""
+    from bokeh.models import Legend
+    out = []
+    for f in figs:
+        for lg in f.select({"type": Legend}):
+            if lg.name != dr._COLORVAR_LEGEND_NAME:
+                continue
+            for it in lg.items:
+                lab = it.label
+                v = getattr(lab, "value", None)
+                if v is None and isinstance(lab, dict):
+                    v = lab.get("value")
+                g = it.renderers[0].glyph
+                out.append((str(lab if v is None else v), str(g.line_color),
+                            round(float(g.line_width), 6)))
+    return out
+
+
+class TestTheLevelLegendFollows:
+    """LT-22: after a filter move twoway keys contourline's levels for the
+    lines it draws over the kept rows (colorlines: one key a cut, highest
+    first, in its line's colour and width); dash's legend kept the build's
+    levels in both modes."""
+
+    def _case(self):
+        _l, filt, action, oracle = sf._MOVES[0]
+        df = cj._page_df()
+        spec = _spec("contourline", {"colorlines": "colorlines"}, None, filt)
+        return spec, action, oracle, df
+
+    def test_served(self):
+        spec, action, oracle, df = self._case()
+        _doc, after = hm._served_moved(spec, action, df)
+        kept = hm._kept(spec, oracle, "served", df=df)
+        want = _level_legend(kept)
+        assert want
+        assert _level_legend(after) == want
+
+    @requires_node
+    def test_saved(self):
+        spec, action, oracle, df = self._case()
+        _r, after = hm._saved_moved(spec, action, df)
+        kept = hm._kept(spec, oracle, "saved", df=df)
+        want = _level_legend(kept)
+        assert want
+        assert _level_legend(after) == want
