@@ -77,7 +77,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr
 from serve_token_probe import TEST_TOKEN, token_args  # noqa: E402
-from conftest import make_data_json, make_spec, exec_app
+from conftest import make_data_json, make_spec, exec_app, figure_in
 
 
 # ===========================================================================
@@ -1779,7 +1779,10 @@ def _grid_cells(doc):
     sorted: where each figure sits, known by the variable it draws."""
     grids = list(doc.select({"type": GridPlot}))
     assert len(grids) == 1, f"{len(grids)} grids, not 1"
-    return sorted((r, c, str(m.yaxis[0].axis_label))
+    # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x
+    # title and colour key labels"): a cell is the figure's graph region
+    # box, which holds the figure.
+    return sorted((r, c, str(figure_in(m).yaxis[0].axis_label))
                   for m, r, c in grids[0].children)
 
 
@@ -2115,7 +2118,11 @@ class TestARepeatedLayoutNameIsPlacedOnce:
             "g1 is placed more than once; its first place is kept."), said
         divs = re.findall(r'<div id="([^"]+)" data-root-id="([^"]+)"', page)
         doc = _page_document(page)
-        roots = {r.id: str(r.yaxis[0].axis_label) for r in doc.roots}
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis,
+        # x title and colour key labels"): each root is the figure's graph
+        # region box, which holds the figure.
+        roots = {r.id: str(figure_in(r).yaxis[0].axis_label)
+                 for r in doc.roots}
         assert [roots.get(rid) for _eid, rid in divs] == ["mpg", "price"]
         assert len({eid for eid, _rid in divs}) == 2
         once_dir = tmp_path / "once"

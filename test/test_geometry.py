@@ -104,8 +104,17 @@ def _render(gopts=None, build=None, plots=None, n_graphs=1):
 
 
 def _ratio(fig):
-    """The figure's width/height ratio, however it is expressed."""
+    """The graph's width/height ratio, however it is expressed."""
     if fig.aspect_ratio:
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x
+        # title and colour key labels"): a figure in its graph region box
+        # keeps what the graph margin leaves (``_dash_inner_ratio``); the
+        # graph's ratio is the box's, the figure's with the margin added.
+        gm = getattr(fig, "_dash_gmargin", None)
+        if gm and getattr(fig, "_dash_region_cell", None) is not None:
+            w = 1.0 - (gm[0] + gm[1]) / 100.0
+            return 1.0 / (w / float(fig.aspect_ratio)
+                          + (gm[2] + gm[3]) / 100.0)
         return float(fig.aspect_ratio)
     if fig.width and fig.height:
         return float(fig.width) / float(fig.height)

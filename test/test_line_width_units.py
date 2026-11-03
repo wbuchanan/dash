@@ -410,8 +410,17 @@ class TestAfterAFilterMove:
         codes = [m.code for m in r._last_layout_root.references()
                  if type(m).__name__ == "CustomJS"]
         assert codes
-        assert all("line_width" not in c for c in codes)
-        assert "line_width" not in dr._FILTER_JS
+        # Flipped (WP-42 LT-22): contourline's level legend
+        # (dash_contourline_legend) copies the drawn lines' own widths
+        # (px, the build's per-level styles) onto its keys after a move;
+        # no width is computed from Stata units there.  Every other script
+        # still writes none.
+        lt22 = re.compile(r"function dash_contourline_legend\(.*?\n\}\n"
+                          r"|dash_contourline_legend\(_lg, _cuts, "
+                          r"_cd\.line_color, _cd\.line_width\)", re.S)
+        assert all(len(lt22.findall(c)) <= 2 for c in codes)
+        assert all("line_width" not in lt22.sub("", c) for c in codes)
+        assert "line_width" not in lt22.sub("", dr._FILTER_JS)
 
 
 class TestHostileWidths:

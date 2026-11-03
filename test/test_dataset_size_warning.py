@@ -42,9 +42,12 @@ def _render(tmp_path, n_rows, n_cols, tag):
     # this fixture keeps every one of its n_cols columns embedded, as a
     # real dashboard's exported columns always are (dash.ado never
     # exports a variable nothing references).
+    # Flipped (WP-29 P0.11, WP-31 H2l): a card that follows no filter and
+    # no brush is computed at build and embeds no column, so these cards
+    # follow the brush, whose rows the page must hold.
     kpis = [{"name": f"k{i}", "stat": "mean", "var": f"v{i}", "fmt": "",
              "title": f"k{i}", "subtitle": "", "color": "", "bgcolor": "",
-             "update": "filter", "if_expr": "", "in_expr": "",
+             "update": "brush", "if_expr": "", "in_expr": "",
              "qual_col": ""}
             for i in range(2, n_cols)]
     spec = {"graphs": [{"name": "g1", "graph_options": {"name": "g1"},

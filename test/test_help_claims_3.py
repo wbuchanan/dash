@@ -51,7 +51,7 @@ _HELP = os.path.join(_HERE, "..", "dash.sthlp")
 _FIGURE = tfe._FIGURE
 
 
-from conftest import render_models  # noqa: E402
+from conftest import figure_in, render_models  # noqa: E402
 
 
 def _graphs(n, **go):
@@ -548,7 +548,10 @@ class TestItemsFillTheGridInRegistryOrder:
         for root in (r._last_layout_root, doc.roots[0]):
             [grid] = list(root.select({"type": GridPlot}))
             order = sorted(grid.children, key=lambda t: (t[1], t[2]))
-            kinds = ["kpi" if isinstance(m, Div) else m.title.text
+            # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x
+            # title and colour key labels"): a cell is the figure's graph
+            # region box, which holds the figure.
+            kinds = ["kpi" if isinstance(m, Div) else figure_in(m).title.text
                      for m, _r, _c in order]
             assert kinds == ["g1", "kpi", "g2"]
 
@@ -600,7 +603,11 @@ class TestAnItemThePlacementDoesNotNameTakesAFreeCell:
         doc, _ = tp._served(spec)
         for root in (r._last_layout_root, doc.roots[0]):
             [grid] = list(root.select({"type": GridPlot}))
-            where = {m.title.text: (rr, cc) for m, rr, cc in grid.children}
+            # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x
+            # title and colour key labels"): a cell is the figure's graph
+            # region box, which holds the figure.
+            where = {figure_in(m).title.text: (rr, cc)
+                     for m, rr, cc in grid.children}
             assert where == {"g2": (0, 1), "g1": (0, 0), "g3": (1, 0)}
 
 
@@ -767,7 +774,10 @@ class TestOneToolbarPerGrid:
         for root in self._roots():
             [grid] = list(root.select({"type": GridPlot}))
             assert grid.toolbar_location == "above"
-            assert all(m.toolbar_location is None
+            # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x
+            # title and colour key labels"): a cell is the figure's graph
+            # region box, which holds the figure.
+            assert all(figure_in(m).toolbar_location is None
                        for m, _r, _c in grid.children)
 
     def test_each_tool_is_every_figure_s(self):

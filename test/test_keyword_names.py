@@ -48,6 +48,7 @@ sys.path.insert(0, _HERE)
 import dash_render as dr
 from dash_render import DashRenderer
 from test_adversarial_matrix import _SCATTER, _load_app, _write_inputs
+from conftest import figure_in  # noqa: E402
 
 _SEQ = itertools.count()
 _FIGURE = type(figure())
@@ -249,17 +250,23 @@ def _saved_cells(r):
     root = r._last_layout_root
     if root is None:
         return None
-    return sorted((c[0].title.text, c[1], c[2])
+    # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x
+    # title and colour key labels"): a cell is the figure's graph region
+    # box, which holds the figure.
+    return sorted((figure_in(c[0]).title.text, c[1], c[2])
                   for g in root.select({"type": GridPlot})
-                  for c in g.children if isinstance(c[0], _FIGURE))
+                  for c in g.children if isinstance(figure_in(c[0]), _FIGURE))
 
 
 def _served_cells(doc):
     if list(doc.select({"type": GridBox})):
         return None
-    return sorted((c[0].title.text, c[1], c[2])
+    # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x
+    # title and colour key labels"): a cell is the figure's graph region
+    # box, which holds the figure.
+    return sorted((figure_in(c[0]).title.text, c[1], c[2])
                   for g in doc.select({"type": GridPlot})
-                  for c in g.children if isinstance(c[0], _FIGURE))
+                  for c in g.children if isinstance(figure_in(c[0]), _FIGURE))
 
 
 class TestAPlacementNamingABsGraph:

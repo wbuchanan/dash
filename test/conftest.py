@@ -689,6 +689,18 @@ def _no_page(*_a, **_k):
     return "<!DOCTYPE html>\n<html><head></head><body></body></html>"
 
 
+def figure_in(model):
+    """The figure *model* holds when it is a graph region box, else *model*.
+
+    Since d088459 a padded figure sits in its graph region box (a Column
+    tagged ``dash_graph_region``; BUGS.md "A graph's canvas ended before its
+    own x axis, x title and colour key labels"), so a grid cell or document
+    root is that box, not the figure."""
+    if "dash_graph_region" in (getattr(model, "tags", None) or []):
+        return model.children[0]
+    return model
+
+
 def render_models(renderer):
     """``renderer.render()`` for its models alone: every model is built and
     finished as for the page, but Bokeh's serialisation of the page

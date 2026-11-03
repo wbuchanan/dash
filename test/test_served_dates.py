@@ -61,8 +61,11 @@ _JAN4_2001 = 978566400000.0
 def _figs(doc):
     # Flipped (WP-30 P1.15a): a by() grid's chrome cells (bare Plots that
     # hold its overall text, twoway's "Graphs by" note) are not figures.
+    # Flipped (WP-42 CV-3): a colour key cell (a bare Plot holding the
+    # key's z axis, beside the figure) is not a figure.
     from by_panel_probe import is_chrome
-    return [p for p in doc.select({"type": Plot}) if not is_chrome(p)]
+    return [p for p in doc.select({"type": Plot}) if not is_chrome(p)
+            and "dash_key_cell" not in (p.tags or [])]
 
 
 def _served_fig(doc):

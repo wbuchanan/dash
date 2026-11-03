@@ -58,7 +58,7 @@ _SEQ = itertools.count()
 # Specs, the saved page and the served session
 # ---------------------------------------------------------------------------
 
-from conftest import render_models  # noqa: E402
+from conftest import figure_in, render_models  # noqa: E402
 
 
 def _graph(name, **go):
@@ -249,6 +249,11 @@ class TestAKpiNamedLikeAGraphsPanel:
     def test_the_saved_page(self, tmp_path):
         r, page, msgs = _saved(tmp_path, self._spec())
         ids = {f.id: k for k, f in r.figures.items()}
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x
+        # title and colour key labels"): an embedded root is the figure's graph region
+        # box, which holds the figure.
+        ids.update({f._dash_region_cell.id: k for k, f in r.figures.items()
+                    if getattr(f, "_dash_region_cell", None) is not None})
         body = page[page.index('<div class="db-container">'):]
         cells = [(ids.get(root, "?"), int(span)) for span, root in
                  re.findall(r'db-col-lg-(\d+)[^"]*"><div id="[^"]*" '
@@ -260,7 +265,11 @@ class TestAKpiNamedLikeAGraphsPanel:
     def test_the_served_app(self, tmp_path):
         doc, built, _ = _served(tmp_path, self._spec())
         [box] = list(doc.select({"type": GridBox}))
-        cells = [(getattr(getattr(m, "title", None), "text", "card"),
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x
+        # title and colour key labels"): a cell is the figure's graph region
+        # box, which holds the figure.
+        cells = [(getattr(getattr(figure_in(m), "title", None), "text",
+                          "card"),
                   r, c, cs) for m, r, c, _rs, cs in box.children]
         assert cells == [("g1", 0, 0, 6), ("g2", 0, 6, 6)]
         _one_refusal(built, "KPI", "g2__by__0")
@@ -275,6 +284,12 @@ class TestTheBootstrapPagesOwnKeys:
     def _roots(r, page):
         """What the page embeds, in page order."""
         ids = {f.id: "figure:" + k for k, f in r.figures.items()}
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x
+        # title and colour key labels"): an embedded root is the figure's graph region
+        # box, which holds the figure.
+        ids.update({f._dash_region_cell.id: "figure:" + k
+                    for k, f in r.figures.items()
+                    if getattr(f, "_dash_region_cell", None) is not None})
         ids.update({w.id: "filter" for w in r.filter_widgets})
         body = page[page.index('<div class="db-container">'):]
         return [ids.get(x, "other") for x in

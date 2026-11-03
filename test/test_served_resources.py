@@ -678,7 +678,10 @@ _SAVED_DIGEST = (
     # dec1cbf7... -> aa5fd76a...: WP-42 CV-11, the relevel's one-value
     # levels rule and zero-width levels drawing no swatch (code only: the
     # base's relevel JS gives the old digest on the new tree).
-    "aa5fd76abaa71731d8b46e430effbff48d12ada40560583dc0e1b5df602c3929")
+    # aa5fd76a... -> ef273b93...: the key cell's ztick() labels after a
+    # move take the page's set dp (code only: the base's key cell update
+    # JS gives the old digest on the new tree).
+    "ef273b936a0e7a8b84362938f21e58ce9c59b83fe35ecbd199044f6ba62d069d")
 
 
 # ===========================================================================

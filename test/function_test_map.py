@@ -157,6 +157,7 @@ FUNCTIONS = {
  'GlyphMapper._agg_member_ids': 'test/test_help_claims_4.py::TestTheSavedPageRecountsALayersOwnRows::test_after_a_filter_move',
  'GlyphMapper._apply_colorvar': 'test/test_glyphs.py::TestApplyColorvarOptions::test_colormissing_sets_nan_color_for_continuous',
  'GlyphMapper._apply_colorvar.<locals>._cv_rows': 'test/test_colorvar_forms.py::TestTheKeptColourRows::test_a_plan_carries_its_colour_rows',
+ 'GlyphMapper._apply_colorvar.<locals>._ptext': 'test/test_colorvar_plegend.py::TestThePlegendKey::test_probe',
  'GlyphMapper._apply_colorvar.<locals>._strs': 'test/test_help_claims_7.py::TestAStringColorvar::test_a_repeated_value_is_one_level',
  'GlyphMapper._apply_colorvar.<locals>._vlookup': 'test/test_glyphs.py::TestApplyColorvarOptions::test_colordiscrete_default_renders_legend_not_colorbar',
  'GlyphMapper._colorvar_paint': 'test/test_colorvar_coverage.py::TestTheHelpers::test_paint_sets_what_the_glyph_has',

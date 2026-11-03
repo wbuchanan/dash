@@ -17342,6 +17342,7 @@ class GlyphMapper:
                     self.z_options, _dash_key_format(self.z_options)[0],
                     getattr(self, "dp", "period"),
                     getattr(self, "_colorvar_key_kind", "") or ""),
+                "dp": getattr(self, "dp", "period"),
                 "title_box": bool(cleg.get("title")) and "box" in
                 _parse_textbox_opt(str(cleg.get("title")))[1],
                 "box_fill": str(self.scheme._props.get(
@@ -17545,7 +17546,7 @@ class GlyphMapper:
         view = CDSView(filter=flt) if flt is not None else CDSView()
         proxy = GlyphRenderer(
             data_source=renderer.data_source, glyph=glyph, view=view,
-            name="__dash_keyproxy",
+            name=_DASH_RP + "_keyproxy",
             x_range_name=renderer.x_range_name,
             y_range_name=renderer.y_range_name,
             tags=["dash_key_proxy", str(renderer.name or "")])
@@ -46652,7 +46653,10 @@ function dash_cvar_keycell_update(kc, lo, hi, centres, colours, ticks, labels, b
     const zt = Array.from(zx.zt || []).map(Number).filter((v) => !log || v > 0);
     if (zt.length) {
       if (!Object.keys(lab).length) {
-        for (const t of tk) lab[String(t)] = dash_fmt_text(t, "%8.0gc", null, "period", null);
+        for (const t of tk) {
+          lab[String(t)] = dash_fmt_text(t, "%8.0gc", null,
+                                         dash_key_get(kc, "dp") || "period", null);
+        }
       }
       for (const v of zt) {
         if (!(String(v) in lab)) lab[String(v)] = "";
@@ -60762,8 +60766,9 @@ def _dash_key_cell(spec):
     lo, hi = _dash_key_ends(spec.get("lo"), spec.get("hi"), ticks + zends)
     if zt:
         base = sorted(labels) or ticks
-        labels = dict(labels) if labels else {t: _dash_fmt_text(t, "%8.0gc")
-                                              for t in base}
+        labels = dict(labels) if labels else {
+            t: _dash_fmt_text(t, "%8.0gc", dp=spec.get("dp") or "period")
+            for t in base}
         for v in zt:
             labels.setdefault(v, "")
     rlo, rhi = _dash_key_range(lo, hi, log=log)
@@ -60952,6 +60957,7 @@ def _dash_key_cell(spec):
                           "title": tlab, "texts": [],
                           "band": float(band), "log": log, "reverse": rev,
                           "inset": float(_DASH_KEY_AXIS_INSET),
+                          "dp": spec.get("dp") or "period",
                           "zx": {"zt": zt, "ends": zends}}
     return cell
 
@@ -61032,7 +61038,9 @@ def _dash_cvar_keycell_update(kc, lo, hi, centres, colours, ticks, labels,
         zt = [float(v) for v in zx.get("zt") or [] if not log or v > 0]
         if zt:
             if not lab:
-                lab = {t: _dash_fmt_text(t, "%8.0gc") for t in tk}
+                lab = {t: _dash_fmt_text(t, "%8.0gc",
+                                         dp=kc.get("dp") or "period")
+                       for t in tk}
             for v in zt:
                 lab.setdefault(v, "")
             tk = sorted(lab)
