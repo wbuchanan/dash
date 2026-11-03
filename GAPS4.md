@@ -443,7 +443,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **CV-8 Tracked:** Closed in WP-42, BUGS.md "An unbinned numeric colorvar() on 17 non-line types is a 256-step gradient with a ColorBar; twoway bins at the z ticks with a stepped key (mono schemes start near white)", commit 140c7e7.
 - **CV-8a Tracked:** Closed in WP-42, BUGS.md "Under by(), every panel draws its own contour colour key; twoway draws none under by(), and one key beside the panels under by(, clegend(on))", commit 65251df.
 - **CV-1 Tracked:** Closed in WP-42, BUGS.md "colorfillonly strips the level colour from every line part (line, connected, spike, dropline, rcapsym, pc shafts and heads)", commit 8a14a8d.
-- **CV-3 Tracked:** Closed in WP-42, BUGS.md "The discrete/binned clegend differs: ascending top to bottom, value labels and interval texts instead of a z axis, an extra '(missing)'/otherlabel entry, circles for every type, a frame", commit pending.
+- **CV-3 Tracked:** Closed in WP-42, BUGS.md "The discrete/binned clegend differs: ascending top to bottom, value labels and interval texts instead of a z axis, an extra '(missing)'/otherlabel entry, circles for every type, a frame", commit 729f762.
 - **CV-4 Tracked:** Open (WP-42 section 42-04).
 - **CV-2 Tracked:** Closed in WP-42, BUGS.md "colordiscrete with colorlevels(k) makes k-1 cuts at range/k; twoway makes k cuts at range/(k+1)", commit 8a5c8b3.
 - **CV-5 Tracked:** Open (WP-42 section 42-04).
