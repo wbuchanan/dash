@@ -55210,9 +55210,12 @@ def _dash_key_suboptions(fig, cell, mpx, band, gap, tpx, ring0=None):
                 (tl,) = [t for t in texts if t._dash_key_text == "title"]
                 tpt = OptionTranslator.css_to_pt(tl.glyph.text_font_size) \
                     or 11.0
-                w = 0.6 * tpt * 4.0 / 3.0 * len(
-                    str(tl.data_source.data["text"][0])) \
-                    + 2.0 * _DASH_KEY_TITLE_PAD * mpx
+                # The first paint's estimate (0.6 of the size a character);
+                # _DASH_KEY_CELL_JS measures the drawn text.
+                pad = _DASH_KEY_TITLE_PAD * mpx
+                wmax = _DASH_KEY_TITLE_BOX_MAX * mpx
+                w = min(wmax, 0.6 * tpt * 4.0 / 3.0 * len(
+                    str(tl.data_source.data["text"][0])) + 2.0 * pad)
                 cx = tl.data_source.data["x"][0]
                 ft, fb = 1.0 - it + tt / fh, 1.0 - it
                 tb.data_source.data = {
@@ -55220,7 +55223,7 @@ def _dash_key_suboptions(fig, cell, mpx, band, gap, tpx, ring0=None):
                     "top": [rlo + ft * (rhi - rlo)],
                     "bottom": [rlo + fb * (rhi - rlo)]}
                 tb.glyph.line_width = round(_DASH_KEY_TITLE_LINE * mpx, 3)
-                box = [tb.data_source, tt]
+                box = [tb.data_source, tt, tl, pad, wmax, tpt]
             # The same in px of the drawn frame, which _DASH_KEY_CELL_JS
             # reads (this frame's height is _dash_frame_borders's estimate).
             cell._dash_key_px = {"top": top, "bot": bot,
@@ -60155,7 +60158,10 @@ _DASH_KEY_BOX_W = (3859.2 - 3180.37) / 2880
 _DASH_KEY_TITLE_TOP = (472.86 - 236.12) / 2880
 _DASH_KEY_TITLE_BASE = (472.86 - 376.43) / 2880
 _DASH_KEY_TITLE_PAD = (197.13 - 0.6 * 110.01) / 2.0 / 2880
-_DASH_KEY_TITLE_LINE = 5.76 / 2880.0
+_DASH_KEY_TITLE_LINE = 5.76 / 2880
+#: The box's widest (P_tbx2 "Price in dollars", P_tbx3 "WWW": 408 alike;
+#: P_tbx4 "iii" 206.42, the text's width and the pads).
+_DASH_KEY_TITLE_BOX_MAX = 408.0 / 2880.0
 
 #: WP-42 CV-3: an upright key below or above the plot runs its axis line
 #: this share of the graph's height (colorvar_options_truth.json G01,
@@ -60292,8 +60298,36 @@ if (vert) {
           return kpx.log ? Math.pow(10, v) : v;
         };
         const t = at(it * FH - tt), b = at(it * FH);
-        if (bs.data.top[0] !== t || bs.data.bottom[0] !== b) {
-          bs.data = Object.assign({}, bs.data, {top: [t], bottom: [b]});
+        const nd = {top: [t], bottom: [b]};
+        // Its width: the drawn title's, measured, and its pads, at most
+        // twoway's widest; in the cell's x units (px at the model's size).
+        const tr = kpx.box[2];
+        if (tr && tr.glyph && tr.data_source) {
+          try {
+            const fs = tr.glyph.text_font_size;
+            const raw = String(fs && fs.value !== undefined ? fs.value : fs);
+            const n = parseFloat(raw);
+            const fpx = /pt$/.test(raw) ? n * 4 / 3 : n;
+            const f = tr.glyph.text_font;
+            const fam = String(f && f.value !== undefined ? f.value : (f || "helvetica"));
+            const c = document.createElement("canvas").getContext("2d");
+            c.font = fpx + "px " + fam;
+            const tw = c.measureText(String(tr.data_source.data.text[0])).width;
+            // The graph's scale exactly: the title's drawn size over its
+            // build size (the cell's width also grows with its text).
+            const kt = (/pt$/.test(raw) && Number(kpx.box[5]) > 0)
+              ? n / Number(kpx.box[5]) : kk;
+            const w = Math.min(Number(kpx.box[4]) * kt / kk,
+                               (tw + 2 * Number(kpx.box[3]) * kt) / kk);
+            const cx = Number(tr.data_source.data.x[0]);
+            nd.left = [cx - w / 2];
+            nd.right = [cx + w / 2];
+          } catch (e) { /* the build's estimate stays */ }
+        }
+        const od = bs.data;
+        if (od.top[0] !== t || od.bottom[0] !== b
+            || (nd.left && (od.left[0] !== nd.left[0] || od.right[0] !== nd.right[0]))) {
+          bs.data = Object.assign({}, od, nd);
         }
       }
     }
@@ -73728,6 +73762,7 @@ class ServerAppBuilder:
                       "_DASH_KEY_NOTE_X", "_DASH_KEY_BOX_W",
                       "_DASH_KEY_TITLE_TOP", "_DASH_KEY_TITLE_BASE",
                       "_DASH_KEY_TITLE_PAD", "_DASH_KEY_TITLE_LINE",
+                      "_DASH_KEY_TITLE_BOX_MAX",
                       # twoway's weight acceptance per layer, read by
                       # GlyphMapper._layer_weights.
                       "_DASH_WEIGHT_ACCEPTS", "_DASH_WEIGHT_INERT",

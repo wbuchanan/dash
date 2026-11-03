@@ -504,6 +504,22 @@ class TestClegendTitle:
             d["bottom"][0] > hi
         assert d["top"][0] > d["bottom"][0]
 
+    @pytest.mark.parametrize("pid", ("P_tbx2",))
+    def test_a_wide_title_s_box_is_capped(self, mode, pid):
+        # twoway's box is 408 wide for "Price in dollars" and "WWW" alike
+        # (measured 03nov2026): its widest, centred on the key's box.  The
+        # build estimates the width (Chrome measures it, the browser test
+        # pins "WWW" and "iii").
+        rec = _key_truth()[pid]
+        fig, cell, mpx, warns = _p_build(mode, pid)
+        [box] = [r for r in cell.renderers if r.name == "dash_key_title_box"]
+        fill = [r for r in rec["key"]["rects"] if r["fill"] == "#d9e6eb"][0]
+        d = box.data_source.data
+        assert d["right"][0] - d["left"][0] == pytest.approx(
+            fill["w"] * mpx / 2880.0, abs=1.0)
+        assert cell._dash_key_px["box"][4] == pytest.approx(
+            fill["w"] * mpx / 2880.0, abs=1.0)
+
     def test_no_box_without_box(self, mode):
         fig, cell, mpx, warns = _p_build(mode, "P_ti")
         assert not [r for r in cell.renderers
@@ -1287,6 +1303,9 @@ _P_OPTS = {
     "K1": "",
     "P_ti": 'title("Z")',
     "P_tbx": 'title("Z", box)',
+    "P_tbx2": 'title("Price in dollars", box)',
+    "P_tbx3": 'title("WWW", box)',
+    "P_tbx4": 'title("iii", box)',
 }
 
 

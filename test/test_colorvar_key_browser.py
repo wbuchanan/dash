@@ -273,11 +273,14 @@ class TestTheKeysRingBesideTheLegend:
 
 @pytest.mark.usefixtures("_auto")
 @pytest.mark.parametrize("mode", ("saved", "served"))
-def test_the_title_box(mode):
-    """LT-12 (P_tbx): title(, box)'s fill is the band from the line's
-    ordinary top to its new one, twoway's width, centred on Z."""
-    rec = tck._key_truth()["P_tbx"]
-    fig, cell, s = _drawn(mode, "P_tbx")
+@pytest.mark.parametrize("pid", ("P_tbx", "P_tbx2", "P_tbx3", "P_tbx4"))
+def test_the_title_box(mode, pid):
+    """LT-12 (P_tbx .. P_tbx4: Z, "Price in dollars", "WWW", "iii"):
+    title(, box)'s fill is the band from the line's ordinary top to its new
+    one, twoway's width -- the drawn text's with its margins, at most 408
+    -- centred on the title."""
+    rec = tck._key_truth()[pid]
+    fig, cell, s = _drawn(mode, pid)
     fill = [r for r in rec["key"]["rects"] if r["fill"] == "#d9e6eb"][0]
     f = cell["frame"]
     x0, y0, x1, y1 = cell["box"]
@@ -285,4 +288,5 @@ def test_the_title_box(mode):
     assert y0 - f[1] == pytest.approx(_down(rec, fill["y"], f), abs=2.0)
     assert y1 - f[1] == pytest.approx(
         _down(rec, fill["y"] + fill["h"], f), abs=2.0)
-    assert (x0 + x1) / 2.0 == pytest.approx(cell["texts"]["Z"][0], abs=1.0)
+    (t,) = [v for k, v in cell["texts"].items()]
+    assert (x0 + x1) / 2.0 == pytest.approx(t[0], abs=1.0)

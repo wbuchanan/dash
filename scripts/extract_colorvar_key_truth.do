@@ -147,6 +147,9 @@ _zk_probe P_sub `sc' colorvar(rep78) colordiscrete clegend(subtitle("S") note("N
 // scatter key).
 _zk_probe P_ti `sc' colorvar(rep78) colordiscrete clegend(title("Z"))
 _zk_probe P_tbx `sc' colorvar(rep78) colordiscrete clegend(title("Z", box))
+_zk_probe P_tbx2 `sc' colorvar(rep78) colordiscrete clegend(title("Price in dollars", box))
+_zk_probe P_tbx3 `sc' colorvar(rep78) colordiscrete clegend(title("WWW", box))
+_zk_probe P_tbx4 `sc' colorvar(rep78) colordiscrete clegend(title("iii", box))
 _zk_probe P_w `sc' colorvar(rep78) colordiscrete clegend(width(5) height(40))
 _zk_probe Z1 `sc' colorvar(price) ztick(5000 10000)
 _zk_probe Z1p `sc' colorvar(price) zticks(5000 10000)
