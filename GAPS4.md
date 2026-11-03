@@ -444,12 +444,12 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **CV-8a Tracked:** Closed in WP-42, BUGS.md "Under by(), every panel draws its own contour colour key; twoway draws none under by(), and one key beside the panels under by(, clegend(on))", commit 65251df.
 - **CV-1 Tracked:** Closed in WP-42, BUGS.md "colorfillonly strips the level colour from every line part (line, connected, spike, dropline, rcapsym, pc shafts and heads)", commit 8a14a8d.
 - **CV-3 Tracked:** Closed in WP-42, BUGS.md "The discrete/binned clegend differs: ascending top to bottom, value labels and interval texts instead of a z axis, an extra '(missing)'/otherlabel entry, circles for every type, a frame", commit 729f762.
-- **CV-4 Tracked:** Closed in WP-42, BUGS.md "The coloruseplegend key: ascending order, '(missing)' for 'Other', an extra title, value labels; legend() sub-options and colorkeysrange applied", commit pending.
+- **CV-4 Tracked:** Closed in WP-42, BUGS.md "The coloruseplegend key: ascending order, '(missing)' for 'Other', an extra title, value labels; legend() sub-options and colorkeysrange applied", commit 1dbc2e9.
 - **CV-2 Tracked:** Closed in WP-42, BUGS.md "colordiscrete with colorlevels(k) makes k-1 cuts at range/k; twoway makes k cuts at range/(k+1)", commit 8a5c8b3.
-- **CV-5 Tracked:** Closed in WP-42, BUGS.md "legend(size()) and legend(rows()/cols()) restyle the colour key; twoway's key ignores them", commit pending.
+- **CV-5 Tracked:** Closed in WP-42, BUGS.md "legend(size()) and legend(rows()/cols()) restyle the colour key; twoway's key ignores them", commit 8f1f80c.
 - **CV-6 Tracked:** Closed in WP-42, BUGS.md "Two colorvar layers: dash draws a key per layer and no plot legend; twoway draws the last layer's key plus a plot legend", commit c541e9e.
 - **CV-7 Tracked:** Closed in WP-42, BUGS.md "A colorvar layer's plot-legend swatch takes row 0's level colour, not its pstyle colour", commit b554984.
-- **CV-11 Tracked:** Closed in WP-42, BUGS.md "colorkeysreverse reverses entries and labels (twoway reverses colours only); colorlevels() over one value prints nonsense intervals", commit pending.
+- **CV-11 Tracked:** Closed in WP-42, BUGS.md "colorkeysreverse reverses entries and labels (twoway reverses colours only); colorlevels() over one value prints nonsense intervals", commit b0c2a28.
 - **CV-9 Tracked:** Closed in WP-42, BUGS.md "colorvar refusals differ in rc or words: colorcuts(abc) r(198) vs r(121); colorvar(a b) r(198) vs r(101); colorvar(pri*) accepted vs r(198); colorlevels(abc) and nosuch in dash's words", commit a753ede.
 - **CV-10 Tracked:** Closed in WP-42, BUGS.md "Malformed clegend(bogus), plegend(bogus), zlabel(bogus) and zscale(bogus) are drawn with a note (garbled 'using not drawn') where twoway refuses r(198)", commit 50c4922.
 - **CV-14 Tracked:** Closed in WP-42, BUGS.md "Documented acceptances: string colorvar, colpalette()/colornlevels()/colormissing(), cv()/colv(), an empty layer drawing no key, '(missing)' for all-missing", commit 6ed9266.
