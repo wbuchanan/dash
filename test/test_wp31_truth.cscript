@@ -2962,6 +2962,12 @@ def _u15_draw(sp, dp, app):
     for figs, sfx in ((a, "s"), (b, "v")):
         fld, keys, mv, seg = [], 0, 1, 1
         for f in figs:
+            # Flipped (WP-42 CV-3): only a ColorBar or a Legend named
+            # _dash_clegend counted; a colour key is now the figure's key
+            # cell (fig._dash_key_cell), which counts too.
+            cell = getattr(f, "_dash_key_cell", None)
+            if cell is not None and cell.visible:
+                keys += 1
             for side in (f.right, f.left, f.above, f.below, f.center):
                 for m in side:
                     t = type(m).__name__
@@ -3316,6 +3322,12 @@ def _u17_draw(sp, dp, app, probe):
     for figs, sfx in ((a, "s"), (b, "v")):
         pal, cols, keys = None, [], 0
         for f in figs:
+            # Flipped (WP-42 CV-3): only a ColorBar or a Legend named
+            # _dash_clegend counted; a colour key is now the figure's key
+            # cell (fig._dash_key_cell), which counts too.
+            cell = getattr(f, "_dash_key_cell", None)
+            if cell is not None and cell.visible:
+                keys += 1
             for side in (f.right, f.left, f.above, f.below, f.center):
                 for m in side:
                     t = type(m).__name__
@@ -5623,12 +5635,17 @@ def _u26_draw(sp, dp, app):
         Macro.setGlobal("u26_kind" + sfx, str((tag or {}).get("kind", "")))
         Macro.setGlobal("u26_cap" + sfx,
                         str(int(bool(getattr(cr, "_dash_contour_capped", 0)))))
-        for side in ("right", "left", "above", "below"):
-            for m in getattr(f, side):
-                if type(m).__name__ == "ContourColorBar":
-                    Macro.setGlobal("u26_side" + sfx, side)
-                    Macro.setGlobal("u26_tick" + sfx, " ".join(
-                        format(float(t), ".10g") for t in m.ticker.ticks))
+        # Flipped (WP-42 CV-3): the key was a ContourColorBar on one of
+        # the figure's sides, its ticks its ticker's; it is the figure's
+        # key cell (fig._dash_key_cell), on its side (_dash_key_side),
+        # ticked on its z axis.
+        cell = getattr(f, "_dash_key_cell", None)
+        if cell is not None and cell.visible:
+            Macro.setGlobal("u26_side" + sfx,
+                            str(getattr(cell, "_dash_key_side", "")))
+            Macro.setGlobal("u26_tick" + sfx, " ".join(
+                format(float(t), ".10g")
+                for t in cell._dash_key_axis.ticker.ticks))
 
 
 def _u26_raster(case, interp):
@@ -5927,6 +5944,20 @@ def _u26_bar(sp, dp, app, sfx):
         bars = [k for side in (f.right, f.left, f.above, f.below)
                 for k in side if isinstance(k, ColorBar)]
         view = ""
+        # Flipped (WP-42 CV-3): the key was a ColorBar (its mapper's
+        # palette ends, low and high, its ticker's ticks); it is the
+        # figure's key cell: its swatches' first and last colours, its z
+        # axis line's ends (bounds) and its z axis's ticks.
+        cell = getattr(f, "_dash_key_cell", None)
+        if not bars and cell is not None and cell.visible:
+            ax = cell._dash_key_axis
+            cs = [str(c) for c in cell._dash_keycell["src"].data.get("c") or []]
+            if cs:
+                view = "%s %s %s %s %s" % (cs[0], cs[-1],
+                                           format(float(ax.bounds[0]), ".10g"),
+                                           format(float(ax.bounds[1]), ".10g"),
+                                           " ".join(format(float(t), ".10g")
+                                                    for t in ax.ticker.ticks))
         if len(bars) == 1:
             cm = bars[0].color_mapper
             view = "%s %s %s %s %s" % (cm.palette[0], cm.palette[-1],
@@ -6572,15 +6603,20 @@ def _u29_key(sp, dp, kind, value):
     cb = r.filter_callbacks[r.filter_widgets.index(w)]
     js_runner.JsSession(r.filter_callbacks).run(cb)
     f = list(r.figures.values())[0]
-    [bar] = [m for side in ("right", "left", "above", "below", "center")
-             for m in getattr(f, side) if type(m).__name__ == "ContourColorBar"]
+    # Flipped (WP-42 CV-3): the key was a ContourColorBar (its levels, its
+    # ticker's ticks and its fill renderer's bands); it is the figure's key
+    # cell, updated in place by the move: its levels are its swatches'
+    # band edges along the z axis, its ticks its z axis's, its bands its
+    # swatches (colour_bins.KeyView).
+    import colour_bins
+    cell = f._dash_key_cell
+    kv = colour_bins.KeyView(cell)
     Macro.setGlobal("u29_kcut", " ".join(format(float(v), ".10g")
-                                         for v in bar.levels[1:-1]))
-    Macro.setGlobal("u29_ktick", " ".join(format(float(v), ".10g")
-                                          for v in bar.ticker.ticks))
-    Macro.setGlobal("u29_kn", str(len(bar.levels)))
-    Macro.setGlobal("u29_kband",
-                    str(len(bar.fill_renderer.data_source.data["xs"])))
+                                         for v in kv.levels[1:-1]))
+    Macro.setGlobal("u29_ktick", " ".join(
+        format(float(v), ".10g") for v in cell._dash_key_axis.ticker.ticks))
+    Macro.setGlobal("u29_kn", str(len(kv.levels)))
+    Macro.setGlobal("u29_kband", str(len(kv.colours)))
 end
 
 * ==== S29 B4d: the contour's cuts and colour key after a filter move ====
@@ -7400,7 +7436,24 @@ def _u32_check(dr_dir, k, case):
                   f.js_property_callbacks.get("change:outer_width", [])
                   if c.code == dr._DASH_GRAPH_MARGIN_JS]
             sl = sl[0] if sl and sl[0] else {}
-            v = "%.4f %s %s %s" % (float(f.aspect_ratio), f.frame_width,
+            # Flipped (BUGS.md "A graph's canvas ended before its own x
+            # axis, x title and colour key labels"): the figure's
+            # aspect_ratio was the graph's; the figure now keeps what its
+            # graph region box's padding (the scheme's graph margin, % of
+            # the width, CSS t r b l) leaves, so the graph's ratio is the
+            # figure's with that margin added back.
+            ar = float(f.aspect_ratio)
+            bx = getattr(f, "_dash_region_cell", None)
+            if bx is None and f.document is not None:
+                bx = next((c for c in f.document.models
+                           if "dash_graph_region" in (getattr(c, "tags", None) or [])
+                           and f in (getattr(c, "children", None) or [])), None)
+            if bx is not None:
+                import re
+                pd = [float(x) for x in re.findall(r"-?[0-9.]+(?=%)", str((bx.styles or {}).get("padding", "")))]
+                if len(pd) == 4 and ar > 0:
+                    ar = 1.0 / ((1.0 - (pd[1] + pd[3]) / 100.0) / ar + (pd[0] + pd[2]) / 100.0)
+            v = "%.4f %s %s %s" % (ar, f.frame_width,
                                    f.frame_height, sl.get("ar"))
         elif case == "place":
             v = "%s %s %s %s" % (f.frame_width, f.frame_height,
@@ -9807,7 +9860,14 @@ def _u39_tabs(sp, dp, app):
                     gs = list(p.child.select({"type": GridPlot}))
                     got = []
                     for ch in (gs[0].children if gs else []):
-                        tt = getattr(getattr(ch[0], "title", None), "text", "")
+                        # Flipped (BUGS.md "A graph's canvas ended before
+                        # its own x axis, x title and colour key labels"):
+                        # a grid cell was the figure; it is the figure's
+                        # graph region box, which holds the figure.
+                        fg = ch[0]
+                        if "dash_graph_region" in (getattr(fg, "tags", None) or []):
+                            fg = fg.children[0]
+                        tt = getattr(getattr(fg, "title", None), "text", "")
                         got.append("%s@%d,%d" % (tt, ch[1], ch[2]))
                     out.append(p.title + ":" + " ".join(sorted(got)))
         return "|".join(out)

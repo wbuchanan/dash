@@ -770,6 +770,13 @@ def _s07_val(v):
 
 def _s07_saved_first(objs):
     def first(kinds, attr):
+        if attr == "_region_padding":
+            for o in objs:
+                a = o.get("attributes", {}) or {}
+                tg = a.get("tags") or []
+                if isinstance(tg, list) and "dash_graph_region" in tg:
+                    return _s07_padding(a.get("styles"))
+            return None
         for o in objs:
             if o.get("name") not in kinds:
                 continue
@@ -797,11 +804,29 @@ def _s07_served_first(doc):
     from bokeh.model import Model
     models = list(doc.select(dict(type=Model)))
     def first(kinds, attr):
+        if attr == "_region_padding":
+            for m in models:
+                if "dash_graph_region" in (getattr(m, "tags", None) or []):
+                    return _s07_padding(getattr(m, "styles", None))
+            return None
         for m in models:
             if type(m).__name__ in kinds:
                 return _s07_val(getattr(m, attr, None))
         return None
     return first
+
+
+def _s07_padding(styles):
+    """A graph region box's CSS padding, [t, r, b, l] in % of the width,
+    from its styles (a dict, or a saved page's map), else None."""
+    if styles is None:
+        return None
+    txt = _s07_json.dumps(styles, default=str)
+    m = _s07_re.search(r'"padding"\s*[,:]\s*"([^"]*)"', txt)
+    if not m:
+        return None
+    pd = [float(v) for v in _s07_re.findall(r"-?[0-9.]+(?=%)", m.group(1))]
+    return pd if len(pd) == 4 else None
 
 
 def _s07_fmt(first):
@@ -813,6 +838,14 @@ def _s07_fmt(first):
     elif isinstance(dash, (list, tuple)):
         dash = " ".join(str(int(x)) for x in dash)
     asp = first(_S07_PLOTS, "aspect_ratio")
+    # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x
+    # title and colour key labels"): the figure's aspect_ratio was the
+    # graph's; the figure now keeps what its graph region box's padding
+    # (the scheme's graph margin, % of the width, CSS t r b l) leaves, so
+    # the graph's ratio is the figure's with that margin added back.
+    pd = first(_S07_PLOTS, "_region_padding")
+    if asp is not None and pd is not None and float(asp) > 0:
+        asp = 1.0 / ((1.0 - (pd[1] + pd[3]) / 100.0) / float(asp) + (pd[0] + pd[2]) / 100.0)
     asp = "%.4f" % float(asp) if asp is not None else "none"
     return ";".join([
         col(first(_S07_PLOTS, "border_fill_color")),
@@ -1317,8 +1350,8 @@ if inlist("`only'", "", "S07") & `: list posof "S07" in w30_run' {
 //   _s08_page()  S08_MSZ (the first Scatter's size), S08_TTL (the title's
 //                font size), S08_LBL (the first LabelSet's
 //                x_offset|y_offset|text_font_size), S08_LEG (each legend's
-//                label font size) and S08_CBL (the ColorBar's label font
-//                size) of the saved page S08_PAGE
+//                label font size) and S08_CBL (the colour key cell's z
+//                axis label font size) of the saved page S08_PAGE
 //   _s08_app()   the same, prefixed S08_S, of the served app S08_APP; then
 //                a RangeSlider move on weight sets S08_SAME_AFTER
 //   _s08_tw()    S08_TWSIZE: the size of the last <text> equal to S08_TXT in
@@ -1334,6 +1367,10 @@ from sfi import Macro as _s08_M
 def _s08_val(v):
     if isinstance(v, dict):
         return v.get("value")
+    # Flipped (WP-42 CV-7): a served glyph's constant (a Scatter's size)
+    # may now be a bokeh Value, where it was the bare number; its .value.
+    if type(v).__name__ == "Value":
+        return v.value
     return v
 
 
@@ -1385,7 +1422,10 @@ def _s08_summary(models):
                                          get("text_font_size")))
         elif kind == "Legend":
             leg.append(str(get("label_text_font_size")))
-        elif kind == "ColorBar":
+        elif kind == "KeyAxis":
+            # Flipped (WP-42 CV-3): the colour key's labels were a
+            # ColorBar's; they are the key cell's z axis's (tagged
+            # dash_key_axis).
             cbl.append(str(get("major_label_text_font_size")))
     return dict(MSZ=(msz[0] if msz else ""), TTL="|".join(sorted(ttl)),
                 LBL=(sorted(lbl)[0] if lbl else ""), LEG="|".join(sorted(leg)),
@@ -1398,7 +1438,8 @@ def _s08_set(prefix, summ):
 
 
 def _s08_page():
-    models = [(k, (lambda a, k=k: (lambda attr: _s08_get(k, a, attr)))(a))
+    models = [(("KeyAxis" if "dash_key_axis" in (a.get("tags") or []) else k),
+               (lambda a, k=k: (lambda attr: _s08_get(k, a, attr)))(a))
               for k, a in _s08_saved_models(_s08_M.getGlobal("S08_PAGE"))]
     _s08_set("S08_", _s08_summary(models))
 
@@ -1408,7 +1449,8 @@ def _s08_doc_summary(doc):
     for root in doc.roots:
         for m in root.references():
             seen[m.id] = m
-    models = [(type(m).__name__, (lambda m=m: (lambda attr: _s08_val(getattr(m, attr, None))))())
+    models = [(("KeyAxis" if "dash_key_axis" in (getattr(m, "tags", None) or []) else type(m).__name__),
+               (lambda m=m: (lambda attr: _s08_val(getattr(m, attr, None))))())
               for m in seen.values()]
     return _s08_summary(models)
 
@@ -3966,7 +4008,8 @@ if inlist("`only'", "", "S16") & `: list posof "S16" in w30_run' {
 //   _s17_svg()   S17_SVG -> S17_TW, twoway's key texts joined by "|"
 //                (the texts right of the plot region less the last, the
 //                key's title), and S17_YT, a histogram's y title word
-//   _s17_page()  S17_PAGE, a saved page -> S17_D, the ColorBar's
+//   _s17_page()  S17_PAGE, a saved page -> S17_D, the colour key cell
+//                z axis's (WP-42 CV-3; was the ColorBar's)
 //                override texts in tick order, else the colorvar
 //                Legend's inner bounds, else a discrete key's labels;
 //                S17_H, the HoverTool's second row label; S17_HF, its
@@ -4104,6 +4147,17 @@ def _s17_page():
             ov = _s17_dec(a.get("major_label_overrides", {})) or {}
             ov = {float(k): x for k, x in ov.items()}
             bars.append((ticks, ov))
+        elif o["name"].endswith("Axis") and "dash_key_axis" in (a.get("tags") or []):
+            # Flipped (WP-42 CV-3): the colour key was a ColorBar (or a
+            # colorvar Legend); it is a key cell, whose z axis (tagged
+            # dash_key_axis) holds the ticks and their override texts.
+            t = ref(a.get("ticker"))
+            ticks = None
+            if isinstance(t, dict) and t.get("name") == "FixedTicker":
+                ticks = _s17_dec(att(t).get("ticks", []))
+            ov = _s17_dec(a.get("major_label_overrides", {})) or {}
+            ov = {float(k): x for k, x in ov.items()}
+            bars.append((ticks, ov))
         elif o["name"] == "Legend" and a.get("name") == "_dash_clegend":
             labs = []
             for it in a.get("items", []):
@@ -4139,6 +4193,15 @@ def _s17_doc_summary(doc):
              else None, {float(k): v for k, v in
                          dict(c.major_label_overrides).items()})
             for c in doc.select(dict(type=ColorBar))]
+    # Flipped (WP-42 CV-3): the colour key was a ColorBar (or a colorvar
+    # Legend); it is a key cell, whose z axis (tagged dash_key_axis) holds
+    # the ticks and their override texts.
+    from bokeh.models import Axis
+    bars += [(list(c.ticker.ticks) if isinstance(c.ticker, FixedTicker)
+              else None, {float(k): v for k, v in
+                          dict(c.major_label_overrides or {}).items()})
+             for c in doc.select(dict(type=Axis))
+             if "dash_key_axis" in (c.tags or [])]
     legends = []
     for lg in doc.select(dict(type=Legend)):
         if str(lg.name or "") == _dr._COLORVAR_LEGEND_NAME:
@@ -4169,7 +4232,11 @@ def _s17_app():
         doc = Document()
         ns["make_document"](doc)
     import bokeh.models as _bm
-    figs = list(doc.select(dict(type=_bm.Plot)))
+    # Flipped (WP-42 CV-3): a figure's colour key is its key cell, a Plot
+    # of its own beside it (fig._dash_key_cell), read with the figure, not
+    # as a figure.
+    figs = [f for f in doc.select(dict(type=_bm.Plot))
+            if "dash_key_cell" not in (f.tags or [])]
     before = sorted(_s17_fig_summary(fig) for fig in figs)
     _s17_set("S17_S", ";".join(b[0] for b in before))
     _s17_set("S17_SH", ";".join(b[1] for b in before))
@@ -4198,7 +4265,8 @@ def _s17_fig_summary(fig):
             self.f = f
 
         def select(self, sel):
-            return list(self.f.select(sel))
+            cell = getattr(self.f, "_dash_key_cell", None)
+            return list(self.f.select(sel)) + (list(cell.select(sel)) if cell is not None else [])
     return _s17_doc_summary(_One(fig))
 
 
@@ -7884,8 +7952,8 @@ if inlist("`only'", "", "S32") & `: list posof "S32" in w30_run' {
 // smaller side); or, for a colour key, the first upright text right of the
 // plot region (a tick label) and the turned one (the title).  _s33_both
 // reads dash's saved page and served app the same way (LabelSet text
-// colour, css_to_pt(size) / 2.88 and text alpha; ColorBar label and title
-// colour and size, tick colour), the app also after a Select move on
+// colour, css_to_pt(size) / 2.88 and text alpha; the key cell's z axis
+// label and title Label colour and size -- WP-42 CV-3, was a ColorBar's), the app also after a Select move on
 // foreign, and sets S33_OK, S33_MSG and S33_SAME_AFTER.  Every argument
 // crosses through sfi.Macro.
 python:
@@ -7942,14 +8010,26 @@ def _s33_read(doc):
         pt = dr.OptionTranslator.css_to_pt(css)
         return -1.0 if pt is None else pt / dr.OptionTranslator.PT_PER_RS
     if _s33_M.getGlobal("S33_KIND") == "key":
-        bars = list(doc.select({"type": ColorBar}))
-        if not bars:
+        # Flipped (WP-42 CV-3): the colour key was a ColorBar (its label
+        # and title text); it is a key cell, a Plot tagged dash_key_cell:
+        # its z axis's (tagged dash_key_axis) labels and its title Label
+        # (named dash_key_title).
+        from bokeh.models import Axis, Label, Plot
+        cells = [c for c in doc.select({"type": Plot})
+                 if "dash_key_cell" in (c.tags or [])]
+        if not cells:
             return ""
-        b = bars[0]
+        axes = [a for a in cells[0].select({"type": Axis})
+                if "dash_key_axis" in (a.tags or [])]
+        tits = [t for t in cells[0].select({"type": Label})
+                if t.name == "dash_key_title"]
+        if not axes or not tits:
+            return ""
+        b, t = axes[0], tits[0]
         return ";".join(["%s:%.3f" % (str(b.major_label_text_color).lower(),
                                       rs(b.major_label_text_font_size)),
-                         "%s:%.3f" % (str(b.title_text_color).lower(),
-                                      rs(b.title_text_font_size))])
+                         "%s:%.3f" % (str(t.text_color).lower(),
+                                      rs(t.text_font_size))])
     out = []
     for ls in doc.select({"type": LabelSet}):
         # A saved page's LabelSet holds value specs.
@@ -11593,7 +11673,8 @@ if inlist("`only'", "", "S52") & `: list posof "S52" in w30_run' {
 // axis-2 title; kind "legend" -- want is twoway's legend side
 // (rightof, below, ...): one dash_by_legend cell on that side of the
 // panels, no panel legend visible; kind "clegend" -- one dash_by_clegend
-// cell holding one ColorBar, no panel colour key; kind "box" -- want is
+// cell that is the one colour key cell (WP-42 CV-3; it held a ColorBar),
+// no other colour key; kind "box" -- want is
 // twoway's SVG, whose rects written just before the "Domestic" label are
 // its box: every panel's dash_by_label_box palette colour and outline
 // equal its fill and stroke, case-insensitive.  Globals S53_OK, S53_MSG.
@@ -11697,8 +11778,19 @@ def _s53_check():
         c = cell("dash_by_clegend")
         bars = [m for s in ("left", "right", "above", "below") for m in getattr(c[0], s)
                 if isinstance(m, ColorBar)] if c else []
+        # Flipped (WP-42 CV-3): the cell held one ColorBar; the colour key
+        # is a key cell (a Plot tagged dash_key_cell, its z axis tagged
+        # dash_key_axis), and the dash_by_clegend cell is that key cell.
+        if c and "dash_key_cell" in (c[0].tags or []) and any(
+                "dash_key_axis" in (a.tags or []) for s in ("left", "right", "above", "below")
+                for a in getattr(c[0], s)):
+            bars.append(c[0])
         if len(bars) != 1:
             bad.append("%d colour keys in the cell" % len(bars))
+        cells = {m.id: m for root in doc.roots for m in root.references()
+                 if "dash_key_cell" in (getattr(m, "tags", None) or [])}
+        if c and len(cells) - (1 if c[0].id in cells else 0) > 0:
+            bad.append("%d colour key cells outside the by() key cell" % (len(cells) - (1 if c[0].id in cells else 0)))
         for lab, (f, _r, _c) in panels.items():
             for s in ("left", "right", "above", "below", "center"):
                 for m in getattr(f, s):

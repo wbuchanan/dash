@@ -800,6 +800,13 @@ def _s03_summary(models, by_id):
         elif m.kind == "ColorBar":
             cbar.append("%s@%s@%s" % (m.get("title"), m.get("title_text_font_size"),
                                       m.get("title_text_color")))
+        # Flipped (WP-42 CV-3): the colour key was a ColorBar (its title,
+        # title_text_font_size, title_text_color); it is a key cell whose
+        # title is a Label named dash_key_title (text, text_font_size,
+        # text_color).
+        elif m.kind == "Label" and m.get("name") == "dash_key_title":
+            cbar.append("%s@%s@%s" % (m.get("text"), m.get("text_font_size"),
+                                      m.get("text_color")))
     return dict(AX="|".join(sorted(ax)), AXS="|".join(sorted(axs)),
                 KEYS=";".join(sorted(keys)), TIPS=";".join(sorted(tips)),
                 W="|".join(sorted(ws)), CBAR="|".join(sorted(cbar)),
@@ -2708,6 +2715,47 @@ def _cqv_key_numbers(path):
             and t["x"] > pr["right"] and _cqv_num(t["text"]) is not None]
 
 
+def _cqv_key_axis(path):
+    """twoway's key axis: (its tick values ascending, [low, high] ends of
+    its axis line in z units, read off the line against the tick marks;
+    None when the key cannot be read)."""
+    d = _cqv_doc(path)
+    pr = d["plotregion"] or {}
+    if not pr:
+        return [], None
+    vals = sorted(_cqv_num(t) for t in _cqv_key_numbers(path))
+    axes = [v for v in d["vlines"] if v["x1"] > pr["right"]]
+    if len(axes) != 1 or len(vals) < 2:
+        return vals, None
+    ax = axes[0]
+    ys = sorted({round(h["y1"], 2) for h in d["hlines"]
+                 if abs(h["x1"] - ax["x1"]) < 0.5 and h["x2"] > h["x1"]},
+                reverse=True)
+    if len(ys) != len(vals):
+        return vals, None
+    per = (vals[-1] - vals[0]) / (ys[0] - ys[-1])
+    return vals, sorted(vals[0] + (ys[0] - y) * per
+                        for y in (ax["y1"], ax["y2"]))
+
+
+def _cqv_axis_want(path, lo, hi):
+    """Flipped (WP-42 CV-3): the colour key was a ColorBar whose mapper
+    ran from the rows' min to max; it is a key cell whose z axis line
+    runs, as twoway's does, from the lowest of the rows' min and the key's
+    ticks to the highest (its bounds, colour_bins.colour_bars).  The
+    wanted [low, high] from summarize's *lo*, *hi* and twoway's key ticks,
+    and whether twoway's own measured axis line has those ends (to 0.5%
+    of its length)."""
+    vals, ends = _cqv_key_axis(path)
+    if not vals:
+        return [lo, hi], False, ends
+    want = [min(lo, vals[0]), max(hi, vals[-1])]
+    tol = 0.005 * (want[1] - want[0])
+    ok = ends is not None and all(abs(a - b) <= tol
+                                  for a, b in zip(ends, want))
+    return want, ok, ends
+
+
 def _cqv_matches(b, key_texts):
     """Does bound *b* round to one of twoway's key texts, at the text's
     own precision?"""
@@ -2782,16 +2830,22 @@ end
     _dash_serve_spec, specpath("${cqv_spec}") datapath("${cqv_data}")
     python:
 t = _cqv_texts(_cqv_g("cqv_svg"))
-want = [float(_cqv_g("cqv_min")), float(_cqv_g("cqv_max"))]
+# Flipped (WP-42 CV-3): the bar's mapper ran from the rows' min to max;
+# the key cell's z axis runs from the lower of the min and the lowest tick
+# to the higher of the max and the highest tick, as twoway's measured axis
+# line does (_cqv_axis_want).
+want, tw_ok, tw_ends = _cqv_axis_want(_cqv_g("cqv_svg"),
+                                      float(_cqv_g("cqv_min")),
+                                      float(_cqv_g("cqv_max")))
 k = _cqv_keys()
 got = {m: k[m][0]["bars"] for m in ("saved", "served")}
-ok = ("4,000" in t and "14,000" in t and "15,000" not in t
+ok = ("4,000" in t and "14,000" in t and "15,000" not in t and tw_ok
       and all(got[m] == [want] for m in got))
-_cqv_put(ok, "twoway key %s; dash bars %s, want %s" % (
-    [x for x in t if _cqv_num(x) is not None], got, want))
+_cqv_put(ok, "twoway key %s, axis %s; dash bars %s, want %s" % (
+    [x for x in t if _cqv_num(x) is not None], tw_ends, got, want))
 end
     _w29_expect CQV-01 "${cqv_ok}" "${cqv_why}"
-    _w29_done CQV-01 "the bar spans summarize price if foreign==1 (${cqv_min} to ${cqv_max}) in both modes; twoway's key is 4,000-14,000"
+    _w29_done CQV-01 "the key axis spans summarize price if foreign==1 (${cqv_min} to ${cqv_max}) and its ticks, as twoway's 4,000-14,000 key does, in both modes"
     capture graph drop cqv1
 
     // ------------------------------------------------------------
@@ -2874,15 +2928,20 @@ end
         link(c4a c4b)
     python:
 t = _cqv_texts(_cqv_g("cqv_svg"))
-want = [float(_cqv_g("cqv_min")), float(_cqv_g("cqv_max"))]
+# Flipped (WP-42 CV-3): the bar's mapper ran from the rows' min to max;
+# the key cell's z axis runs as twoway's measured axis line does
+# (_cqv_axis_want).
+want, tw_ok, tw_ends = _cqv_axis_want(_cqv_g("cqv_svg"),
+                                      float(_cqv_g("cqv_min")),
+                                      float(_cqv_g("cqv_max")))
 k = _cqv_keys()
 got = {m: [b for f in k[m] for b in f["bars"]] for m in ("saved", "served")}
-ok = "14,000" in t and "15,000" not in t and all(
+ok = "14,000" in t and "15,000" not in t and tw_ok and all(
     got[m] == [want] for m in got)
-_cqv_put(ok, "dash bars %s, want %s" % (got, want))
+_cqv_put(ok, "dash bars %s, want %s; twoway axis %s" % (got, want, tw_ends))
 end
     _w29_expect CQV-04 "${cqv_ok}" "${cqv_why}"
-    _w29_done CQV-04 "a linked graph's if: the bar spans ${cqv_min} to ${cqv_max} in both modes"
+    _w29_done CQV-04 "a linked graph's if: the key axis spans ${cqv_min} to ${cqv_max} and its ticks, as twoway's does, in both modes"
     capture graph drop cqv4
 
     // ------------------------------------------------------------
