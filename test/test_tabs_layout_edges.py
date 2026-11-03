@@ -23,7 +23,7 @@ import warnings
 
 import pandas as pd
 import pytest
-from bokeh.models import GridPlot, Tabs
+from bokeh.models import GridPlot, Plot, Tabs
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
@@ -97,7 +97,8 @@ def _grid_cells(grid):
     for child in grid.children:
         title = _title_of(child[0])
         if title is None:
-            for sub in child[0].select({"type": dr.Plot}) if hasattr(
+            # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and colour key labels"): a grid cell is the figure's graph region box, which holds the figure.
+            for sub in child[0].select({"type": Plot}) if hasattr(
                     child[0], "select") else []:
                 title = _title_of(sub)
                 if title:

@@ -334,7 +334,10 @@ class TestAspect:
         # draws its graph's shape at 0.72 pt per inch of its smaller side
         # (VF-4, DECISIONS A-1): the figure keeps the scheme's shape and its plot region is
         # square inside it (kept at every drawn size by the follow).
-        assert f.aspect_ratio == pytest.approx(5.5 / 4.0)
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and colour key labels"): the figure keeps what
+        # the graph margin leaves; its graph region box keeps the graph's.
+        assert f.aspect_ratio == pytest.approx(dr._dash_inner_ratio(
+            5.5 / 4.0, f._dash_gmargin))
         assert f.frame_width is None and f.frame_height is None
         w, h = f._dash_nominal_px
         assert w - f.min_border_left - f.min_border_right == pytest.approx(

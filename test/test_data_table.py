@@ -154,7 +154,10 @@ class TestATableIsDrawn:
     def test_saved_cell_is_a_column_of_figure_toggle_table_note(self):
         r = _saved(_table_spec({"table": "on"}))
         cell, toggle, dt, note = _one(r._last_layout_root)
-        assert cell.children[0] is r.figures["g1"]
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and colour key labels"): the figure sits in its
+        # graph region box.
+        assert cell.children[0] is r.figures["g1"]._dash_region_cell
+        assert cell.children[0].children[0] is r.figures["g1"]
         assert isinstance(note, Div)
         assert toggle.label == "Data table"
         assert r.figures["g1"]._dash_table == (toggle, dt, note)
@@ -162,7 +165,10 @@ class TestATableIsDrawn:
     def test_served_cell_is_the_same(self):
         doc = _served(_table_spec({"table": "on"}))
         cell, toggle, dt, note = _one(doc)
-        assert type(cell.children[0]).__name__ == "figure"
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and colour key labels"): the figure sits in its
+        # graph region box.
+        assert "dash_graph_region" in cell.children[0].tags
+        assert type(cell.children[0].children[0]).__name__ == "figure"
         assert toggle.label == "Data table"
         assert [c.title for c in dt.columns] == [
             c.title for c in _one(_saved(_table_spec(

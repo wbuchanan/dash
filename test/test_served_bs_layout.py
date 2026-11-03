@@ -600,6 +600,10 @@ class TestTheServedDocument:
         # times and asserted nothing (measured 24sep2026: two children).
         assert len(children) == 2, [c[0].title.text for c in children]
         for fig, *_ in children:
+            # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and colour key labels"): a cell is the figure's
+            # graph region box, which holds the figure.
+            fig = fig.children[0] if "dash_graph_region" in (
+                fig.tags or []) else fig
             assert fig.toolbar_location is not None
             assert (fig.toolbar_location
                     == r.figures[fig.title.text].toolbar_location)
@@ -1164,6 +1168,10 @@ class TestTheBsGridStylesheet:
         r, page, _ = _saved(tmp_path, spec)
         doc = _served(tmp_path, spec)
         names = {f.id: k for k, f in r.figures.items()}
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and colour key labels"): the saved cell embeds
+        # the figure's graph region box.
+        names.update({f._dash_region_cell.id: k for k, f in r.figures.items()
+                      if getattr(f, "_dash_region_cell", None) is not None})
         names.update({d.id: k for k, d in r.kpi_divs.items()})
         body = page[page.index('<div class="db-container">'):]
         saved_classes = {}

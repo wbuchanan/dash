@@ -187,6 +187,9 @@ class TestEmptyCells:
         root = getattr(r, "_last_layout_root", None)
         assert root is not None, "the renderer kept no layout root to inspect"
         figs = {id(f) for f in r.figures.values()}
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and colour key labels"): a grid cell is the figure's graph region box, which holds the figure.
+        figs |= {id(f._dash_region_cell) for f in r.figures.values()
+                 if getattr(f, "_dash_region_cell", None) is not None}
         seen, found = set(), 0
 
         def walk(m):
@@ -363,6 +366,10 @@ class TestLayoutOverflow:
         grids = list(renderer._last_layout_root.select({"type": GridPlot}))
         assert len(grids) == 1, grids
         at = {id(f): n for n, f in renderer.figures.items()}
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and colour key labels"): a grid cell is the figure's graph region box, which holds the figure.
+        at.update({id(f._dash_region_cell): n
+                   for n, f in renderer.figures.items()
+                   if getattr(f, "_dash_region_cell", None) is not None})
         cells = sorted((c[1], c[2], at.get(id(c[0]))) for c in
                        grids[0].children)
         assert cells == [(0, 0, "g1"), (0, 1, "g2"), (1, 0, "g3"),

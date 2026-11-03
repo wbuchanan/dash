@@ -179,7 +179,9 @@ class TestFacetedGraphSurvivesEveryLayout:
         by_root = dict((root, cls.split()) for cls, root in re.findall(
             r'class="(db-col-12[^"]*)"><div id="[^"]*" data-root-id="([^"]+)"',
             out))
-        plain = dr.figures["plain"].id
+        # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and colour key labels"): a grid cell is the figure's graph region box, which holds the figure.
+        plain = (getattr(dr.figures["plain"], "_dash_region_cell", None)
+                 or dr.figures["plain"]).id
         assert len(by_root) == 2 and plain in by_root, by_root
         [faceted] = [r for r in by_root if r != plain]
         assert "db-col-lg-6" in by_root[plain], by_root

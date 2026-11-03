@@ -1,8 +1,8 @@
 {
   "_meta": {
     "born_date": "14 Oct 2026",
-    "dash_commit": "67a73bd8c4924cdf02f994df60cb44dde68edd5b",
-    "extracted": " 2 Nov 2026 07:18:35",
+    "dash_commit": "d088459ea1ff4824371013d9c26655a4f1227e7b",
+    "extracted": " 3 Nov 2026 01:37:26",
     "ledger": "test/fixtures/corpus_ledger.json",
     "rules": "test/fixtures/corpus_verdict_rules.json",
     "source": "scripts/extract_corpus_guard_truth.do",
@@ -45,7 +45,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7117,
+      "ssim": 0.7066,
       "summary": "margins, plot region shape",
       "verdict": "Close"
     },
@@ -88,7 +88,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7689,
+      "ssim": 0.7665,
       "summary": "margins, line width",
       "verdict": "Close"
     },
@@ -130,7 +130,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.8108,
+      "ssim": 0.8118,
       "summary": "y-axis ticks, y-axis labels, text size, margins",
       "verdict": "Differs"
     },
@@ -247,7 +247,7 @@
         ]
       },
       "size_matched": true,
-      "ssim": 0.7717,
+      "ssim": 0.7671,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -284,7 +284,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.8413,
+      "ssim": 0.8411,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -321,7 +321,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.794,
+      "ssim": 0.7973,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -403,13 +403,12 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7122,
+      "ssim": 0.7164,
       "summary": "margins",
       "verdict": "Close"
     },
     "help-twoway_area-17337f6e": {
       "checks": [
-        "frame_aspect",
         "line_width",
         "margins"
       ],
@@ -444,8 +443,8 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.5713,
-      "summary": "margins, line width, plot region shape",
+      "ssim": 0.5734,
+      "summary": "margins, line width",
       "verdict": "Close"
     },
     "help-twoway_bar-129aaf18": {
@@ -484,7 +483,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.5887,
+      "ssim": 0.5899,
       "summary": "margins, plot region shape",
       "verdict": "Close"
     },
@@ -525,7 +524,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.3655,
+      "ssim": 0.3794,
       "summary": "number of markers, margins, marker size",
       "verdict": "Differs"
     },
@@ -562,7 +561,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7632,
+      "ssim": 0.766,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -638,7 +637,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.822,
+      "ssim": 0.8188,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -681,7 +680,6 @@
     },
     "help-twoway_lpoly-5dd7635f": {
       "checks": [
-        "frame_aspect",
         "margins"
       ],
       "first_dash": null,
@@ -713,8 +711,8 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.8001,
-      "summary": "margins, plot region shape",
+      "ssim": 0.8054,
+      "summary": "margins",
       "verdict": "Close"
     },
     "help-twoway_rarea-2d21b873": {
@@ -753,7 +751,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7721,
+      "ssim": 0.7685,
       "summary": "margins, line width",
       "verdict": "Close"
     },
@@ -790,7 +788,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7652,
+      "ssim": 0.7687,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -829,7 +827,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.6975,
+      "ssim": 0.6919,
       "summary": "margins",
       "verdict": "Close"
     }

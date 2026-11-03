@@ -238,7 +238,8 @@ def run_stata(run_dir, jobs=3, timeout=1800, only=None):
 # ---- the Chrome half --------------------------------------------------------
 
 #: (W, H) => {lone, tex}: finds the page's lone figure (the one root that is
-#: a Plot, or a column/row/GridBox holding only one), fixes it and every
+#: a Plot, or a column/row/GridBox holding only one, through its graph
+#: region box), fixes it and every
 #: root at W x H (D-33-04.c), and keeps the model to export in
 #: window.__dashCorpusTarget (the first root when there is no lone figure).
 SIZE_JS = r"""(W, H) => {
@@ -246,12 +247,14 @@ SIZE_JS = r"""(W, H) => {
   const roots = doc.roots();
   const isPlot = (m) => !!m && m.x_range !== undefined && m.renderers !== undefined
     && m.toolbar !== undefined;
-  const unwrap = (m) => {
+  // Through one container holding only it, and the graph region box
+  // (GW-6's margin, a column of its own round the figure) inside it.
+  const unwrap = (m, depth = 0) => {
     if (isPlot(m)) return m;
     const kids = m && m.children;
-    if (kids && kids.length === 1) {
+    if (depth < 2 && kids && kids.length === 1) {
       const k = Array.isArray(kids[0]) ? kids[0][0] : kids[0];
-      if (isPlot(k)) return k;
+      return unwrap(k, depth + 1);
     }
     return null;
   };

@@ -65,6 +65,9 @@ def _render(tmp_path, layout, names):
 def _positions(r):
     """{graph name: (row, col)} as the grid actually lays them out."""
     fig_of = {id(f): n for n, f in r.figures.items()}
+    # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and colour key labels"): a grid cell is the figure's graph region box, which holds the figure.
+    fig_of.update({id(f._dash_region_cell): n for n, f in r.figures.items()
+                   if getattr(f, "_dash_region_cell", None) is not None})
     out = {}
     seen = set()
 
