@@ -5984,7 +5984,10 @@ With more than one y variable, {cmd:colorvar()} is refused on
     observations where {it:varname} is missing{p_end}
 {synopt:{cmdab:colorkeysran:ge}}draw each key entry's swatch as a
     bar{p_end}
-{synopt:{cmdab:colorkeysrev:erse}}reverse the order of the key's levels{p_end}
+{synopt:{cmdab:colorkeysrev:erse}}reverse the colours of a
+    {cmd:colordiscrete} key against its levels, as {cmd:twoway} draws it;
+    the plotted colours and the plot legend under {cmd:coloruseplegend}
+    are unchanged{p_end}
 {synopt:{cmd:colorallowmultiple}}allow this {cmd:colorvar()} layer beside an
     earlier one; without it the second is refused, as {cmd:twoway} refuses
     it; the graph draws the last layer's key and a plot legend of its
@@ -6046,7 +6049,10 @@ other value is drawn in {cmd:colorformissing()}'s colour with the missing
 values, and {cmd:colorlevels(}{it:#}{cmd:)} makes {it:#} cuts at the range
 over {it:#} + 1, each cut a level, as {cmd:twoway} draws them
 ({cmd:colorlevels(4)} over 0 to 100 cuts at 20 40 60 80; without
-{cmd:colordiscrete}, {it:#} - 1 cuts at the range over {it:#}); a cut below the minimum is ignored, and the minimum is used if all
+{cmd:colordiscrete}, {it:#} - 1 cuts at the range over {it:#}; over a
+{it:varname} of one value every cut is that value, as {cmd:twoway} cuts
+it: {cmd:colorlevels(3)} over 3 keys 3 3, written once, with no swatch,
+every marker in the first colour); a cut below the minimum is ignored, and the minimum is used if all
 are; {cmd:colorcuts()} and {cmd:colorlevels()} may not be combined.
 Every other
 {cmd:colorvar} option {cmd:twoway} takes is drawn, in {cmd:twoway}'s

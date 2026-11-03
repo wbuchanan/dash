@@ -14360,6 +14360,9 @@ def _dash_colorvar_cuts(col_vals, cuts, levels, minmax, discrete=False):
     ``colorvarminmax`` (*minmax*, :137-140) "specifies that the minimum
     and maximum of colorvar be included in the list of cuts."
 
+    Over one value, colorlevels() cuts at that value with its repeats
+    (WP-42 CV-12), the only list here that is not de-duplicated.
+
     Returns ``[]`` when *col_vals* has no finite values.
     """
     vals = col_vals if isinstance(col_vals, np.ndarray) \
@@ -14371,9 +14374,16 @@ def _dash_colorvar_cuts(col_vals, cuts, levels, minmax, discrete=False):
     hi_v = float(np.max(finite))
 
     if levels is not None:
-        edge_hi = hi_v if hi_v != lo_v else lo_v + 1.0
         cnt = int(levels) + (1 if discrete else 0)
-        edges = np.linspace(lo_v, edge_hi, cnt + 1)
+        if hi_v == lo_v:
+            # WP-42 CV-12: over one value twoway's cuts are all that value,
+            # at zero width (forvalues over a step of 0; measured,
+            # colorvar_plegend_truth.json I5: colorlevels(3) keys 3 3, every
+            # marker the first colour; I5m adds the minimum and maximum, 3
+            # 3 3 3), kept with their repeats.
+            eff = [lo_v] * (cnt - 1)
+            return eff + [lo_v, hi_v] if minmax else eff
+        edges = np.linspace(lo_v, hi_v, cnt + 1)
         eff = [float(x) for x in edges[1:-1]]
     elif cuts is not None:
         kept = sorted({float(c) for c in cuts if float(c) >= lo_v})
@@ -46573,7 +46583,9 @@ function dash_key_bin_centres(lo, hi, cuts, ticks, log) {
   const last = edges.length - 2;
   for (let i = 0; i + 1 < edges.length; i++) {
     // A level the values lo .. hi do not reach draws no swatch.
-    out.push((i > 0 && edges[i] >= Number(hi)) || (i < last && edges[i + 1] < Number(lo)) ? NaN
+    // Over one value a level of zero width draws none (WP-42 CV-12).
+    out.push((i > 0 && edges[i] >= Number(hi)) || (i < last && edges[i + 1] < Number(lo))
+      || (Number(hi) === Number(lo) && edges[i] === edges[i + 1]) ? NaN
       : geo ? Math.sqrt(edges[i] * edges[i + 1])
       : (edges[i] + edges[i + 1]) / 2);
   }
@@ -47089,19 +47101,25 @@ function dash_cvar_relevel_bins(pl, kv) {
   let eff = [];
   if (fin.length) {
     const lo = Math.min(...fin), hi = Math.max(...fin);
-    if (pl.nlevels !== null && pl.nlevels !== undefined) {
-      const top = hi !== lo ? hi : lo + 1;
-      // Under colordiscrete one more step (WP-42 CV-2, yxview.class's
-      // set_colorcuts_from_levels): # cuts at the range over # + 1.
-      const cnt = pl.nlevels + (pl.discrete ? 1 : 0);
-      const step = (top - lo) / cnt;
-      for (let i = 1; i < cnt; i++) eff.push(i * step + lo);
-    } else if (pl.cuts) {
-      eff = Array.from(new Set(pl.cuts.filter((c) => c >= lo)));
-      if (!eff.length) eff = [lo];
+    // Under colordiscrete one more step (WP-42 CV-2, yxview.class's
+    // set_colorcuts_from_levels): # cuts at the range over # + 1.
+    const cnt = (pl.nlevels !== null && pl.nlevels !== undefined)
+      ? pl.nlevels + (pl.discrete ? 1 : 0) : 0;
+    if (cnt && hi === lo) {
+      // WP-42 CV-12: over one value every cut is that value, repeats kept.
+      for (let i = 1; i < cnt; i++) eff.push(lo);
+      if (pl.minmax) eff = eff.concat([lo, hi]);
+    } else {
+      if (cnt) {
+        const step = (hi - lo) / cnt;
+        for (let i = 1; i < cnt; i++) eff.push(i * step + lo);
+      } else if (pl.cuts) {
+        eff = Array.from(new Set(pl.cuts.filter((c) => c >= lo)));
+        if (!eff.length) eff = [lo];
+      }
+      if (pl.minmax) eff = eff.concat([lo, hi]);
+      eff = Array.from(new Set(eff)).sort((a, b) => a - b);
     }
-    if (pl.minmax) eff = eff.concat([lo, hi]);
-    eff = Array.from(new Set(eff)).sort((a, b) => a - b);
   }
   const fmtv = (v) => dash_fmt_text(v, pl.fmt || "%8.0gc", null,
                                     pl.dp || "period", null);
@@ -61077,8 +61095,12 @@ def _dash_key_bin_centres(lo, hi, cuts, ticks=(), log=False):
     geo = log and all(e > 0 for e in edges)
     last = len(edges) - 2
     out = []
+    one = float(hi) == float(lo)
     for i, (a, b) in enumerate(zip(edges[:-1], edges[1:])):
-        if (i > 0 and a >= float(hi)) or (i < last and b < float(lo)):
+        if (i > 0 and a >= float(hi)) or (i < last and b < float(lo)) \
+                or (one and a == b):
+            # WP-42 CV-12: over one value a level of zero width draws no
+            # swatch either (I5: colorlevels(3) of rep78 == 3, none).
             out.append(float("nan"))
         elif geo:
             # On a log axis a level's middle is its ends' geometric mean.

@@ -1879,6 +1879,10 @@ CORPUS = [
     _case("colorvar coloruseplegend",
           [_sc(colorvar="rep", colordiscrete="colordiscrete",
                coloruseplegend="coloruseplegend")]),
+    # WP-42 CV-11: colorkeysreverse reverses the key's colours only.
+    _case("colorvar colorkeysreverse",
+          [_sc(colorvar="rep", colordiscrete="colordiscrete",
+               colorkeysreverse="colorkeysreverse")]),
     # WP-42 CV-6: two colorvar layers draw one key and a plot legend.
     _case("two colorvar layers",
           [_sc(colorvar="rep"),

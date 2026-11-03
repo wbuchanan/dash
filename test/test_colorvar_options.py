@@ -364,13 +364,16 @@ class TestKeys:
     def test_reverse(self, tmp, mode):
         # Flipped (WP-42 CV-3): dash's colour key was a Legend whose items
         # colorkeysreverse reversed; twoway draws swatches beside a z axis
-        # (CV-3), the levels' order the axis's.  twoway's reversed colours
-        # on that key (D12) are 42-04's (colorkeysreverse on the new key):
-        # dash draws the same key with it as without it until then.
+        # (CV-3), the levels' order the axis's.
+        # Flipped (WP-42 CV-11): dash reversed the entries and their
+        # labels; twoway reverses the key's colours only (CV-11, D12): the
+        # labels and levels where they are, the colours against them.
         plain = _kv(_fig(tmp, mode, _CV))
         rev = _kv(_fig(tmp, mode, dict(
             _CV, colorkeysreverse="colorkeysreverse")))
         assert rev.major_label_overrides == plain.major_label_overrides
+        assert rev.levels == plain.levels
+        assert rev.colours == list(reversed(plain.colours))
         assert _ascending("D12") == list(reversed(_ascending("D01")))
 
     def test_reverse_on_colorbar_named(self, tmp):

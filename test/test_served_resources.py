@@ -675,7 +675,10 @@ _SAVED_DIGEST = (
     # 62d2de2a... -> dec1cbf7...: WP-42 CV-4, the relevel's coloruseplegend
     # order (desc) and level texts (ptext) (code only: the base's relevel
     # JS gives the old digest on the new tree).
-    "dec1cbf7ab6e0cd682d45c169daf6474feb45ef49a6e4042f03dc28f3924b8f1")
+    # dec1cbf7... -> aa5fd76a...: WP-42 CV-11, the relevel's one-value
+    # levels rule and zero-width levels drawing no swatch (code only: the
+    # base's relevel JS gives the old digest on the new tree).
+    "aa5fd76abaa71731d8b46e430effbff48d12ada40560583dc0e1b5df602c3929")
 
 
 # ===========================================================================

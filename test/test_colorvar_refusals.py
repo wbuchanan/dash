@@ -157,23 +157,29 @@ class TestTheRelevelTwins:
         js = dr._DASH_CVAR_RELEVEL_JS
         m = re.search(r"function dash_cvar_relevel_bins\(pl, kv\) \{", js)
         assert m, "dash_cvar_relevel_bins is not in _DASH_CVAR_RELEVEL_JS"
-        # The levels rule the JS twin runs, lifted whole from its body.
+        # The levels rule the JS twin runs, lifted whole from its body
+        # (WP-42 CV-12: the one-value branch beside it).
         body = js[m.start():]
-        rule = re.search(r"if \(pl\.nlevels !== null && pl\.nlevels !== "
-                         r"undefined\) \{(.*?)\n    \} else if \(pl\.cuts\)",
-                         body, re.S)
+        rule = re.search(r"\n(    // Under colordiscrete one more step.*?"
+                         r"\n    \}\n)", body, re.S)
         assert rule, "the JS levels rule moved"
-        script = ("const out = [];\nfor (const disc of [true, false]) {\n"
-                  "  const pl = {nlevels: 4, discrete: disc};\n"
-                  "  const lo = 0, hi = 100; let eff = [];\n"
+        cases = [(True, 0.0, 100.0, 4, False), (False, 0.0, 100.0, 4, False),
+                 (False, 3.0, 3.0, 3, False), (False, 3.0, 3.0, 3, True),
+                 (True, 3.0, 3.0, 2, False)]
+        script = ("const out = [];\n"
+                  "for (const [disc, lo, hi, n, mm] of %s) {\n"
+                  "  const pl = {nlevels: n, discrete: disc, minmax: mm,"
+                  " cuts: null}; let eff = [];\n" % json.dumps(cases)
                   + rule.group(1) + "\n  out.push(eff);\n}\n"
                   "console.log(JSON.stringify(out));\n")
         js_out = run_js(script)
         z = np.arange(0.0, 101.0, 10.0)
-        py = [dr._dash_colorvar_cuts(z, None, 4, False, discrete=d)
-              for d in (True, False)]
+        py = [dr._dash_colorvar_cuts(z if lo != hi else [lo], None, n, mm,
+                                     discrete=d)
+              for d, lo, hi, n, mm in cases]
         assert [[round(v, 9) for v in e] for e in js_out] == \
             [[round(v, 9) for v in e] for e in py]
+        assert py[2:] == [[3.0, 3.0], [3.0, 3.0, 3.0, 3.0], [3.0, 3.0]]
         assert py[0] == [20.0, 40.0, 60.0, 80.0]
 
     def test_the_served_twin_passes_the_flag(self):

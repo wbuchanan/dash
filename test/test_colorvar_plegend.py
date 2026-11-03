@@ -363,3 +363,178 @@ class TestLegendLeavesTheKey:
             [f] = _build(tmp, mode, cl, go)
             [lg] = _cv_legends(f)
             assert _legend_style(lg) == _legend_style(lg0), go
+
+
+# ---------------------------------------------------------------------------
+# CV-11 (CV-12): colorkeysreverse reverses a key's colours only; a
+# one-value colorvar cut at zero width
+# ---------------------------------------------------------------------------
+
+def _top_down(kv):
+    """A key cell's (label, swatch colour) top to bottom: its swatches by
+    their place on the axis, highest first."""
+    return [c for _y, c in sorted(zip(kv.levels, kv.colours),
+                                  key=lambda t: -t[0])]
+
+
+def _marker_colours(fig):
+    """{colour: rows} the layer's markers are drawn in."""
+    import colour_bins as cb
+    out = {}
+    for r in cb.colour_renderers(fig):
+        m = cb.colour_mapper(r)
+        pal = [_hex(c) for c in m.palette]
+        fac = list(m.factors)
+        for v in cb.drawn_colour_values(r):
+            c = pal[fac.index(v)] if v in fac and fac.index(v) < len(pal) \
+                else _hex(m.nan_color)
+            out[c] = out.get(c, 0) + 1
+    return out
+
+
+class TestReverse:
+    """colorkeysreverse: twoway reverses a discrete key's colours against
+    its levels, labels and markers where they are (R1 against K1), and
+    leaves the coloruseplegend key as it is (D13r against K5)."""
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_probe(self, tmp, mode):
+        r1, k1 = PROBES["R1"], PROBES["K1"]
+        want = [c for c in r1["key"]["fills"] if c != "none"]
+        assert r1["key"]["texts"] == k1["key"]["texts"]
+        assert want == list(reversed([c for c in k1["key"]["fills"]
+                                      if c != "none"]))
+        assert r1["marker_fills"] == k1["marker_fills"]
+        cv = dict(colorvar="rep78", colordiscrete="colordiscrete")
+        [f] = _build(tmp, mode, [_sc(**cv, colorkeysreverse="colorkeysreverse")])
+        [f0] = _build(tmp, mode, [_sc(**cv)])
+        kv, kv0 = _kv(f), _kv(f0)
+        assert kv.major_label_overrides == kv0.major_label_overrides
+        assert kv.levels == kv0.levels
+        got = _top_down(kv)
+        assert len(got) == len(want) and all(
+            _near(g, w) for g, w in zip(got, want)), (got, want)
+        assert _marker_colours(f) == _marker_colours(f0)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_plegend_unchanged(self, tmp, mode):
+        d, k = PROBES["D13r"]["key"], PROBES["K5"]["key"]
+        assert d["texts"] == k["texts"] and d["fills"] == k["fills"]
+        [f] = _build(tmp, mode, [_sc(**_K5,
+                                     colorkeysreverse="colorkeysreverse")])
+        [f0] = _build(tmp, mode, [_sc(**_K5)])
+        [lg], [lg0] = _cv_legends(f), _cv_legends(f0)
+        assert [(_label(i), _hex(_swatch_colour(i.renderers[0])))
+                for i in lg.items] == \
+            [(_label(i), _hex(_swatch_colour(i.renderers[0])))
+             for i in lg0.items]
+
+
+_ONE = AUTO[AUTO["rep78"] == 3].reset_index(drop=True)
+_ONE_PROBES = {
+    "I5": dict(colorvar="rep78", colorlevels="3"),
+    "I5m": dict(colorvar="rep78", colorlevels="3",
+                colorvarminmax="colorvarminmax"),
+}
+
+
+class TestOneValue:
+    """colorlevels() over a colour variable of one value: twoway cuts at
+    zero width, every cut the value (I5: 3 3; I5m: 3 3 3 3, written at one
+    place), draws no swatch and every marker in the first colour."""
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("probe", sorted(_ONE_PROBES))
+    def test_probe(self, tmp, probe, mode):
+        tw = PROBES[probe]
+        assert set(tw["key"]["texts"]) == {"3"} and not tw["key"]["fills"]
+        assert len({tuple(p) for p in tw["key"]["text_pos"]}) == 1
+        [f] = _build(tmp, mode, [_sc(**_ONE_PROBES[probe])], df=_ONE)
+        kv = _kv(f)
+        labels = {str(v) for v in kv.major_label_overrides.values()
+                  if str(v) != ""}
+        assert labels == {"3"}, kv.major_label_overrides
+        assert not kv.colours, kv.colours
+        assert {k: v for k, v in _marker_colours(f).items()} == \
+            tw["marker_fills"]
+
+    def test_cut_helper(self):
+        assert dr._dash_colorvar_cuts([3.0, 3.0], None, 3, False) == \
+            [3.0, 3.0]
+        assert dr._dash_colorvar_cuts([3.0, 3.0], None, 3, True) == \
+            [3.0, 3.0, 3.0, 3.0]
+        assert dr._dash_colorvar_cuts([3.0], None, 2, False,
+                                      discrete=True) == [3.0, 3.0]
+        # A domain of more than one value is cut as before.
+        assert dr._dash_colorvar_cuts([1.0, 5.0], None, 4, True) == \
+            [1.0, 2.0, 3.0, 4.0, 5.0]
+
+
+def _cell_record(models):
+    """Every key cell's labels by place and swatch colours top to
+    bottom, among *models*."""
+    import colour_bins
+    out = []
+    for m in models:
+        if "dash_key_cell" not in (getattr(m, "tags", None) or []) \
+                or type(m).__name__ != "Plot":
+            continue
+        kv = colour_bins.KeyView(m)
+        out.append((sorted((round(float(k), 6), str(v)) for k, v in
+                           kv.major_label_overrides.items()),
+                    [_hex(c) for c in _top_down(kv)]))
+    return sorted(out)
+
+
+_REP3 = ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
+         "rep == 3")
+_CELL_MOVES = {
+    # colorkeysreverse: the kept levels 4 and 5 keyed in reversed colours.
+    "reverse": tp._move_case(
+        "reverse", tp._MOVES[1],
+        [plot_for("scatter", {"colorvar": "rep",
+                              "colordiscrete": "colordiscrete",
+                              "colorkeysreverse": "colorkeysreverse"})]),
+    # colorlevels(3) over the one value 3 a move keeps: cut at 3 3.
+    "one value": tp._move_case(
+        "one value", _REP3,
+        [plot_for("scatter", {"colorvar": "rep", "colorlevels": "3"})]),
+}
+
+
+@pytest.mark.parametrize("name", sorted(_CELL_MOVES))
+class TestTheKeyCellAfterAMove:
+    """After a filter move a reversed key keeps its colours reversed and a
+    move to one value cuts it at zero width, served (the Python twin) and
+    saved (the page's script under node), equal to a fresh build over the
+    kept rows."""
+
+    def test_twins_agree(self, name):
+        import js_runner
+        _name, spec, action, oracle = _CELL_MOVES[name].values
+        q = json.loads(json.dumps(spec))
+        q["build_options"]["filter"] = ""
+        for g in q["graphs"]:
+            g["if_expr"] = oracle
+        r0, _ = tp._standalone(q)
+        want = _cell_record(r0._last_layout_root.references())
+        if name == "one value":
+            # twoway's I5: the value written once, no swatch.
+            assert want == [([(3.0, "3")], [])], want
+        before, _ = tp._standalone(spec)
+        assert want and want != _cell_record(
+            before._last_layout_root.references())
+        doc, _ = tp._served(spec)
+        kind, label = action
+        w = [x for x in tp._widgets_of(doc) if type(x).__name__ == kind][0]
+        tp._fire(w, tp._move_widget_value(w, kind, label))
+        assert _cell_record([m for root in doc.roots
+                             for m in root.references()]) == want
+        r, _ = tp._standalone(spec)
+        w, cb = [(w, cb) for w, cb in zip(r.filter_widgets,
+                                          r.filter_callbacks)
+                 if type(w).__name__ == kind][0]
+        session = js_runner.JsSession(r.filter_callbacks)
+        session.set(w, tp._move_widget_value(w, kind, label))
+        session.run(cb)
+        assert _cell_record(r._last_layout_root.references()) == want

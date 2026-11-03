@@ -1008,6 +1008,7 @@ and now matches Stata.
 
 ### Fixed in WP-42
 
+- colorkeysreverse reverses the key's colours, not its labels; colorlevels() over one value keys 3 3 as twoway (WP-42, CV-11)
 - legend(size()) and legend(rows()/cols()) no longer restyle the colour key (WP-42, CV-5)
 - coloruseplegend keys 5 4 3 2 1 Other with no title (was ascending with (missing) and the variable's label) (WP-42, CV-4)
 - zlabel() and zscale(reverse) are drawn on a discrete colour key (were named) (WP-42, CV-15)

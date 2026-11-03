@@ -1361,14 +1361,13 @@ def _q4204_keys(sp, dp, app):
                 ax = m._dash_keycell["axis"]
                 style.append(str(ax.major_label_text_font_size))
                 up = m.y_range.start <= m.y_range.end
-                for r in m.renderers:
-                    d = r.data_source.data
-                    if "y" in d and ("c" in d or "colour" in d) \
-                            and not (r.name or "").startswith("dash_key_"):
-                        cc = d.get("c", d.get("colour"))
-                        cols += [str(c) for _y, c in sorted(
-                            zip(d["y"], cc), key=lambda t: t[0],
-                            reverse=up)]
+                # The swatches' source (colour_bins.KeyView's reading):
+                # each swatch's place on the axis and its colour.
+                d = m._dash_keycell["src"].data
+                at = d.get("y" if m._dash_keycell["vert"] else "x") or []
+                cols += [str(c) for _y, c in sorted(
+                    zip(at, d.get("c") or []), key=lambda t: t[0],
+                    reverse=up)]
         Macro.setGlobal("q4204_t" + sfx, " ".join(texts))
         Macro.setGlobal("q4204_h" + sfx, title)
         Macro.setGlobal("q4204_g" + sfx, " ".join(sorted(set(kinds))))
@@ -1386,6 +1385,48 @@ def _q4204_svg(path):
                 key=lambda t: (t["y"], t["x"]))
     Macro.setGlobal("q4204_kt", " ".join(t["text"] for t in ts))
     Macro.setGlobal("q4204_kz", " ".join("%g" % t["size"] for t in ts))
+    # The key's filled swatches right of the plot region, top first.
+    sw = sorted((c for c in d["circles"] if c["cx"] is not None
+                 and c["cx"] > r + 1 and c["fill"] not in (None, "none")),
+                key=lambda c: c["cy"])
+    Macro.setGlobal("q4204_kf", " ".join(c["fill"] for c in sw))
+
+def _q4204_near(want):
+    """q4204_ok 1 when both modes' key cell colours (q4204_cs, q4204_cv)
+    are twoway's *want*, top first, to 1/255 a channel (D-17a)."""
+    from sfi import Macro
+
+    def rgb(h):
+        h = h.lstrip("#")
+        return [int(h[i:i + 2], 16) for i in (0, 2, 4)]
+
+    def near(a, b):
+        return len(a) == len(b) and all(
+            max(abs(x - y) for x, y in zip(rgb(p), rgb(q))) <= 1
+            for p, q in zip(a, b))
+    w = want.split()
+    ok = all(near(Macro.getGlobal(k).split(), w)
+             for k in ("q4204_cs", "q4204_cv"))
+    Macro.setGlobal("q4204_ok", "1" if ok else "0")
+
+
+def _q4204_cell_texts(sp, dp, app):
+    """The key cell's labels, unique, top first, into q4204_l<s|v>."""
+    from sfi import Macro
+    from bokeh.models import Plot
+    a, b = _q4203_models(sp, dp, app)
+    for models, sfx in ((a, "s"), (b, "v")):
+        out = []
+        for m in models:
+            if isinstance(m, Plot) and "dash_key_cell" in (m.tags or []):
+                ovr = dict(m._dash_keycell["axis"].major_label_overrides
+                           or {})
+                up = m.y_range.start <= m.y_range.end
+                for _k, v in sorted(ovr.items(), key=lambda t: float(t[0]),
+                                    reverse=up):
+                    if str(v) != "" and str(v) not in out:
+                        out.append(str(v))
+        Macro.setGlobal("q4204_l" + sfx, " ".join(out))
 end
 
 capture program drop _q4204_reg
@@ -1483,6 +1524,59 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w42_run' {
         _w42_expect Q4204-2 `"("`zs_base'" == "`zs_opt'" & "`zv_base'" == "`zv_opt'" & "`zs_opt'" != "")"' `"`opt': saved `zs_opt' (was `zs_base'), served `zv_opt' (was `zv_base')"'
     }
     _w42_done Q4204-2 "legend() leaves the colour key, saved and served"
+
+    foreach f in s.json d.json a.py {
+        capture erase "`q04d'/`f'"
+    }
+    capture rmdir "`q04d'"
+    macro drop q4204_*
+    capture graph drop _all
+    dash clear
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
+* ==== S04 CV-11: colorkeysreverse and a one-value key ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w42_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    local q04d "`w42_work'/s04r"
+    capture mkdir "`q04d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4204-3: colorkeysreverse reverses a discrete key's colours, its
+    // labels where they are; under coloruseplegend it changes nothing;
+    // colorlevels() over one value keys the value with no swatch --
+    // twoway's texts and swatch colours, saved and served.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "scatter mpg weight, colorvar(rep78) colordiscrete colorkeysreverse" "scatter mpg weight, colorvar(rep78) colordiscrete coloruseplegend colorkeysreverse" "scatter mpg weight if rep78 == 3, colorvar(rep78) colorlevels(3)" "scatter mpg weight if rep78 == 3, colorvar(rep78) colorlevels(3) colorvarminmax" {
+        local ++k
+        quietly twoway `c' name(q04r`k', replace)
+        capture erase "`q04d'/q04r`k'.svg"
+        cert_svg_export, name(q04r`k') file("`q04d'/q04r`k'.svg")
+        python: import __main__ as _q4204_m; _q4204_m._q4204_svg("`q04d'/q04r`k'.svg")
+        local tw "${q4204_kt}"
+        local twf "${q4204_kf}"
+        _q4204_reg "`q04d'" `c' name(q04r`k')
+        if `k' == 2 {
+            // The plot legend's texts and swatches, as without the option.
+            _w42_expect Q4204-3 `"("${q4204_ts}" == "`tw'" & "${q4204_tv}" == "`tw'")"' `"`c': twoway `tw', saved ${q4204_ts}, served ${q4204_tv}"'
+        }
+        else {
+            // The key cell: its swatches' colours top first, and its
+            // labels (one value written once) twoway's.
+            local tw1 : list uniq tw
+            python: import __main__ as _q4204_m; _q4204_m._q4204_near("`twf'")
+            _w42_expect Q4204-3 "(${q4204_ok} == 1)" `"`c': swatches twoway `twf', saved ${q4204_cs}, served ${q4204_cv}"'
+            python: import __main__ as _q4204_m; _q4204_m._q4204_cell_texts("`q04d'/s.json", "`q04d'/d.json", "`q04d'/a.py")
+            _w42_expect Q4204-3 `"("${q4204_ls}" == "`tw1'" & "${q4204_lv}" == "`tw1'")"' `"`c': labels twoway `tw1', saved ${q4204_ls}, served ${q4204_lv}"'
+        }
+        capture erase "`q04d'/q04r`k'.svg"
+    }
+    _w42_done Q4204-3 "colorkeysreverse and a one-value key are twoway's, saved and served"
 
     foreach f in s.json d.json a.py {
         capture erase "`q04d'/`f'"
