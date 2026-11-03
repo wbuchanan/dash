@@ -143,6 +143,10 @@ _zk_probe P_bp_s `sc' colorvar(rep78) colordiscrete clegend(bplacement(south))
 _zk_probe P_bm_m `sc' colorvar(rep78) colordiscrete clegend(bmargin(medium))
 _zk_probe P_bm_v `sc' colorvar(rep78) colordiscrete clegend(bmargin(vlarge))
 _zk_probe P_sub `sc' colorvar(rep78) colordiscrete clegend(subtitle("S") note("N") caption("C"))
+// WP-42 LT-12: clegend(title()) on K1, plain and boxed (C_ti, C_cbx on a
+// scatter key).
+_zk_probe P_ti `sc' colorvar(rep78) colordiscrete clegend(title("Z"))
+_zk_probe P_tbx `sc' colorvar(rep78) colordiscrete clegend(title("Z", box))
 _zk_probe P_w `sc' colorvar(rep78) colordiscrete clegend(width(5) height(40))
 _zk_probe Z1 `sc' colorvar(price) ztick(5000 10000)
 _zk_probe Z1p `sc' colorvar(price) zticks(5000 10000)

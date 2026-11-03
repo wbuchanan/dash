@@ -63,7 +63,10 @@ function state() {
           }
           if (m.type === 'GlyphRenderer' && m.data_source) {
             const d = m.data_source.data;
-            if (m.glyph.type === 'Text' && d.text) {
+            if (m.name === 'dash_key_title_box') {
+              rec.box = [xx(d.left[0]), yy(d.top[0]), xx(d.right[0]),
+                         yy(d.bottom[0])];
+            } else if (m.glyph.type === 'Text' && d.text) {
               rec.texts[d.text[0]] = [xx(d.x[0]), yy(d.y[0]), m.level];
             } else if (d.x && d.x.length && rec.swatch === null) {
               rec.swatch = [xx(d.x[0]), m.level];
@@ -148,7 +151,8 @@ def _down(rec, y, frame):
 @pytest.mark.parametrize("mode", ("saved", "served"))
 class TestTheKeyAsDrawn:
 
-    @pytest.mark.parametrize("pid", ("P_bm_m", "P_bm", "P_bm_v", "P_sub"))
+    @pytest.mark.parametrize("pid", ("P_bm_m", "P_bm", "P_bm_v", "P_sub",
+                                     "P_ti", "P_tbx"))
     def test_frame_line_and_swatches(self, mode, pid):
         rec = tck._key_truth()[pid]
         fig, cell, s = _drawn(mode, pid)
@@ -175,12 +179,15 @@ class TestTheKeyAsDrawn:
             assert moved == pytest.approx((gap(k1) - gap(rec)) * s, abs=1.0)
             assert cell["swatch"][1] == "overlay"
 
-    def test_texts(self, mode):
-        rec = tck._key_truth()["P_sub"]
-        fig, cell, s = _drawn(mode, "P_sub")
+    @pytest.mark.parametrize("pid,names", (("P_sub", "SNC"), ("P_ti", "Z"),
+                                           ("P_tbx", "Z")))
+    def test_texts(self, mode, pid, names):
+        rec = tck._key_truth()[pid]
+        fig, cell, s = _drawn(mode, pid)
         pl = rec["plot"]
-        tw = {t["text"]: t for t in rec["texts"] if t["text"] in "SNC"}
-        assert set(cell["texts"]) == {"S", "N", "C"}
+        tw = {t["text"]: t for t in rec["texts"] if t["text"] in names
+              and len(t["text"]) == 1}
+        assert set(cell["texts"]) == set(names)
         for k, (x, y, level) in cell["texts"].items():
             # Baselines from the frame's top, drawn whole (over the frame).
             assert level == "overlay"
@@ -262,3 +269,20 @@ class TestTheKeysRingBesideTheLegend:
     def test_the_default_ring_is_outside_the_legend(self, mode):
         b = _ring_boxes(mode, "")
         assert b["legend"][1] <= b["cell"][0] + 1.0, b
+
+
+@pytest.mark.usefixtures("_auto")
+@pytest.mark.parametrize("mode", ("saved", "served"))
+def test_the_title_box(mode):
+    """LT-12 (P_tbx): title(, box)'s fill is the band from the line's
+    ordinary top to its new one, twoway's width, centred on Z."""
+    rec = tck._key_truth()["P_tbx"]
+    fig, cell, s = _drawn(mode, "P_tbx")
+    fill = [r for r in rec["key"]["rects"] if r["fill"] == "#d9e6eb"][0]
+    f = cell["frame"]
+    x0, y0, x1, y1 = cell["box"]
+    assert x1 - x0 == pytest.approx(fill["w"] * s, abs=2.0)
+    assert y0 - f[1] == pytest.approx(_down(rec, fill["y"], f), abs=2.0)
+    assert y1 - f[1] == pytest.approx(
+        _down(rec, fill["y"] + fill["h"], f), abs=2.0)
+    assert (x0 + x1) / 2.0 == pytest.approx(cell["texts"]["Z"][0], abs=1.0)

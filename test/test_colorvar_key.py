@@ -443,6 +443,75 @@ def _figs_and_cells(root):
 
 @pytest.mark.usefixtures("_auto")
 @pytest.mark.parametrize("mode", _MODES)
+class TestClegendTitle:
+    """LT-12 (colorvar_key_truth.json P_ti, P_tbx on K1; C_ti, C_cbx on a
+    contour draw alike): clegend(title("Z")) draws Z above the key, centred
+    on the key's box, at 1.1 times the labels' size, the axis line's top
+    down by the title's band and the z title kept; title(, box) fills and
+    outlines that band.  dash replaced the z title with the raw text
+    ('"Z", box' with its quotes)."""
+
+    def _texts(self, cell):
+        return {r.data_source.data["text"][0]: r
+                for r in cell._dash_key_texts}
+
+    @pytest.mark.parametrize("pid", ("P_ti", "P_tbx"))
+    def test_the_title_above_the_key(self, mode, pid):
+        rec = _key_truth()[pid]
+        fig, cell, mpx, warns = _p_build(mode, pid)
+        assert not [w for w in warns if "clegend" in w], warns
+        # The z title kept: the one the key draws without clegend().
+        _f, base, _m, _w = _p_build(mode, "K1")
+        assert cell._dash_key_title.text == base._dash_key_title.text
+        texts = self._texts(cell)
+        assert set(texts) == {"Z"}
+        z = texts["Z"]
+        assert z.level == "overlay" and z.glyph.text_align == "center"
+        lab = dr.OptionTranslator.css_to_pt(
+            cell._dash_key_axis.major_label_text_font_size)
+        assert dr.OptionTranslator.css_to_pt(z.glyph.text_font_size) == \
+            pytest.approx(1.1 * lab, rel=0.01)
+        it, ib = cell._dash_keycell["inset"]
+        want_t, want_b = _line_fracs(rec)
+        assert abs(it - want_t) <= 0.012 and abs(ib - want_b) <= 0.012
+        lo, hi = cell._dash_key_axis.bounds
+        assert z.data_source.data["y"][0] > hi
+        # Centred on the key's box: twoway's Z x from the plot region's
+        # edge, in the cell's px.
+        (tw,) = [t for t in rec["texts"] if t["text"] == "Z"]
+        s = mpx / 2880.0
+        to_frame = fig.min_border_right + (cell.min_border_left or 0)
+        assert z.data_source.data["x"][0] + to_frame == pytest.approx(
+            (tw["x"] - rec["plot"]["right"]) * s, abs=1.0)
+
+    def test_box(self, mode):
+        rec = _key_truth()["P_tbx"]
+        fig, cell, mpx, warns = _p_build(mode, "P_tbx")
+        [box] = [r for r in cell.renderers if r.name == "dash_key_title_box"]
+        assert box.level == "overlay"
+        assert box.glyph.fill_color == "#d9e6eb"
+        assert box.glyph.line_color == "#000000"
+        fill = [r for r in rec["key"]["rects"] if r["fill"] == "#d9e6eb"][0]
+        d = box.data_source.data
+        s = mpx / 2880.0
+        assert d["right"][0] - d["left"][0] == pytest.approx(
+            fill["w"] * s, abs=1.0)
+        z = self._texts(cell)["Z"].data_source.data["x"][0]
+        assert (d["left"][0] + d["right"][0]) / 2.0 == pytest.approx(z)
+        # The band from the line's ordinary top to its new one.
+        lo, hi = cell._dash_key_axis.bounds
+        assert d["bottom"][0] == pytest.approx(hi, rel=1e-6) or \
+            d["bottom"][0] > hi
+        assert d["top"][0] > d["bottom"][0]
+
+    def test_no_box_without_box(self, mode):
+        fig, cell, mpx, warns = _p_build(mode, "P_ti")
+        assert not [r for r in cell.renderers
+                    if r.name == "dash_key_title_box"]
+
+
+@pytest.mark.usefixtures("_auto")
+@pytest.mark.parametrize("mode", _MODES)
 class TestColorkeysreverse:
     """Measured 03nov2026 (s2color, SVG): twoway scatter mpg weight,
     colorvar(rep78) colordiscrete colorkeysreverse draws K1's key with its
@@ -1216,6 +1285,8 @@ _P_OPTS = {
     "P_bp_n": "bplacement(north)",
     "P_bp_s": "bplacement(south)",
     "K1": "",
+    "P_ti": 'title("Z")',
+    "P_tbx": 'title("Z", box)',
 }
 
 

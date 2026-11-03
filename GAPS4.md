@@ -454,7 +454,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **CV-10 Tracked:** Closed in WP-42, BUGS.md "Malformed clegend(bogus), plegend(bogus), zlabel(bogus) and zscale(bogus) are drawn with a note (garbled 'using not drawn') where twoway refuses r(198)", commit 50c4922.
 - **CV-14 Tracked:** Closed in WP-42, BUGS.md "Documented acceptances: string colorvar, colpalette()/colornlevels()/colormissing(), cv()/colv(), an empty layer drawing no key, '(missing)' for all-missing", commit 6ed9266.
 - **CV-15 Tracked:** Closed in WP-42, BUGS.md "On a discrete key, zlabel() and zscale() are named and not drawn; clegend() altaxis, region(), bplacement(), bmargin(), subtitle(), note() and caption() are named as 'not a recognised sub-option'", commit 8ae953c.
-- **LT-12 Tracked:** Open (WP-42 section 42-03).
+- **LT-12 Tracked:** Closed in WP-42, BUGS.md "clegend(title()) replaces the z title and prints the raw option text, quotes included, when it has sub-options", commit pending.
 - **AX-12 Tracked:** Partly closed in WP-42 (section 42-03, commit 0cf9703): zlabels(), zticks(), zmlabels() and zmticks() are taken as their singulars, as twoway takes them; open: ztick(), zmlabel() and zmtick() are not drawn (BUGS.md "ztick(), zmlabel() and zmtick() are named in the note and not drawn on the colour key").
 - **sil:SD-4 Tracked:** Closed in WP-42, BUGS.md "The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read", commit d7dffa5.
 - **CV-17 Tracked:** Open (WP-42 section 42-01).

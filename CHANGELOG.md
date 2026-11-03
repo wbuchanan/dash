@@ -1008,6 +1008,7 @@ and now matches Stata.
 ### Fixed in WP-42
 
 - zlabel() and zscale(reverse) are drawn on a discrete colour key (were named) (WP-42, CV-15)
+- clegend(title("Z", box)) draws a boxed Z above the key and keeps the z title (was the raw text replacing it) (WP-42, LT-12)
 - zlabel(), zscale() and clegend(altaxis region() bplacement() bmargin() subtitle() note() caption()) are drawn on the colour key (were named) (WP-42, CV-15)
 - The colour key's title, labels and clegend() texts are drawn as typed in the served app too (a TeX pair was typeset), a binned key draws no swatch for a level no value reaches, colorkeysreverse reverses a discrete key's colours, a colorvar() layer beside a contour keeps contour's key, and clegend(ring(1)) or ring(2) beside a legend at the same side draws the key between the plot and the legend (WP-42, CV-3)
 - clegend(ring(0)) draws twoway's axis-style colour key inside the plot region (was a Legend or colour bar), and the key sits at twoway's gaps under each scheme (WP-42, CV-3)

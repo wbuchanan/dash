@@ -415,7 +415,11 @@ class TestClegend:
         cb = _kv(f)
         assert cb.cell._dash_key_place == "below"
         assert cb.side == "right"
-        assert cb.title == "Z"
+        # Flipped (WP-42 LT-12): title("Z") replaced the z title; twoway
+        # draws Z above the key and keeps the z title (P_ti).
+        assert cb.title == "price"
+        assert [r.data_source.data["text"][0]
+                for r in cb.cell._dash_key_texts] == ["Z"]
         # twoway keeps the key upright below the plot (G01: its swatches
         # stacked at one x), width() its thickness.
         xs = {round(x) for x, _y in PROBES["G01"]["key"]["text_pos"][:5]}

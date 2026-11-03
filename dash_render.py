@@ -17265,9 +17265,16 @@ class GlyphMapper:
         spec = {"kind": kind, "side": side, "lo": lo, "hi": hi,
                 "altaxis": bool(cleg.get("altaxis")), "region": region,
                 "bmargin": cleg.get("bmargin"),
-                "texts": {k: cleg.get(k) for k in ("subtitle", "note",
-                                                   "caption")
+                # clegend()'s texts, their sub-options off (LT-12: title()
+                # above the key, its box drawn under box).
+                "texts": {k: _parse_textbox_opt(str(cleg.get(k)))[0]
+                          for k in ("title", "subtitle", "note", "caption")
                           if cleg.get(k)},
+                "title_box": bool(cleg.get("title")) and "box" in
+                _parse_textbox_opt(str(cleg.get("title")))[1],
+                "box_fill": str(self.scheme._props.get(
+                    "color text_option_fill", "#d9e6eb")
+                    if hasattr(self.scheme, "_props") else "#d9e6eb"),
                 "reverse": bool(_dash_key_zlabel(self.z_options)["reverse"]),
                 "msize": float(_ms) if isinstance(_ms, (int, float))
                 and not isinstance(_ms, bool) and _ms > 0 else None,
@@ -17317,8 +17324,10 @@ class GlyphMapper:
         key._dash_cleg = place
         if getattr(key, "_dash_cvar_key", False):
             self._colorvar_drop_earlier_keys(fig, key)
-        if place.get("title") is not None:
-            key.title = place["title"]
+        if place.get("title") is not None and which == "plegend":
+            # plegend(title()) titles the plot legend's key; clegend()'s
+            # is drawn above the key cell (WP-42 LT-12), the z title kept.
+            key.title = _parse_textbox_opt(str(place["title"]))[0]
         # contour's ContourColorBar sizes as a ColorBar does (WP-31 B4b).
         is_bar = type(key).__name__ in ("ColorBar", "ContourColorBar")
         _named = list(place.get("other") or [])
@@ -55150,7 +55159,8 @@ def _dash_key_suboptions(fig, cell, mpx, band, gap, tpx, ring0=None):
             - est.get("above", 0) - est.get("below", 0)
         if fh > 1:
             names = {getattr(t, "_dash_key_text", "") for t in texts}
-            top = dm + (_DASH_KEY_SUB_TOP * mpx if "subtitle" in names else 0)
+            top = dm + (_DASH_KEY_SUB_TOP * mpx if "subtitle" in names else 0) \
+                + (_DASH_KEY_TITLE_TOP * mpx if "title" in names else 0)
             bot = dm + (_DASH_KEY_NOTE_BOTTOM * mpx
                         if names & {"note", "caption"} else 0)
             it = _DASH_KEY_AXIS_INSET + top / fh
@@ -55167,7 +55177,14 @@ def _dash_key_suboptions(fig, cell, mpx, band, gap, tpx, ring0=None):
             below = 0
             for lab in texts:
                 k = lab._dash_key_text
-                if k == "subtitle":
+                if k == "title":
+                    # clegend(title()) (LT-12, P_ti): its baseline above
+                    # the line's top, centred on the key's box.
+                    off = -_DASH_KEY_TITLE_BASE * mpx
+                    frac = 1.0 - it - off / fh
+                    x = box_c - plot_to_frame
+                    px.append([lab.data_source, "top", off])
+                elif k == "subtitle":
                     off = -_DASH_KEY_SUB_BASE * mpx
                     frac = 1.0 - it - off / fh
                     x = box_c - plot_to_frame
@@ -55183,6 +55200,27 @@ def _dash_key_suboptions(fig, cell, mpx, band, gap, tpx, ring0=None):
                                             y=[rlo + frac * (rhi - rlo)])
                 out.append([lab.data_source, frac])
             kc["texts"] = out
+            box = None
+            tb = getattr(cell, "_dash_key_title_box", None)
+            if tb is not None:
+                # title(, box) (P_tbx): the title's band, from the line's
+                # top before the title to its top, twoway's width about
+                # the title (its text at 0.6 of its size a character).
+                tt = _DASH_KEY_TITLE_TOP * mpx
+                (tl,) = [t for t in texts if t._dash_key_text == "title"]
+                tpt = OptionTranslator.css_to_pt(tl.glyph.text_font_size) \
+                    or 11.0
+                w = 0.6 * tpt * 4.0 / 3.0 * len(
+                    str(tl.data_source.data["text"][0])) \
+                    + 2.0 * _DASH_KEY_TITLE_PAD * mpx
+                cx = tl.data_source.data["x"][0]
+                ft, fb = 1.0 - it + tt / fh, 1.0 - it
+                tb.data_source.data = {
+                    "left": [cx - w / 2.0], "right": [cx + w / 2.0],
+                    "top": [rlo + ft * (rhi - rlo)],
+                    "bottom": [rlo + fb * (rhi - rlo)]}
+                tb.glyph.line_width = round(_DASH_KEY_TITLE_LINE * mpx, 3)
+                box = [tb.data_source, tt]
             # The same in px of the drawn frame, which _DASH_KEY_CELL_JS
             # reads (this frame's height is _dash_frame_borders's estimate).
             cell._dash_key_px = {"top": top, "bot": bot,
@@ -55190,7 +55228,8 @@ def _dash_key_suboptions(fig, cell, mpx, band, gap, tpx, ring0=None):
                                  "log": bool(kc.get("log")),
                                  "reverse": bool(kc.get("reverse")),
                                  "axis": cell._dash_key_axis,
-                                 "range": kc["range"], "texts": px}
+                                 "range": kc["range"], "texts": px,
+                                 "box": box}
 
 
 def _dash_key_scale_entries(cell):
@@ -60106,7 +60145,17 @@ _DASH_KEY_NOTE_BOTTOM = 248.99 / 2880.0
 _DASH_KEY_NOTE_BASE = 73.1 / 2880.0
 _DASH_KEY_NOTE_STEP = 128.63 / 2880.0
 _DASH_KEY_NOTE_X = 152.59 / 2880.0
-_DASH_KEY_BOX_W = (3859.2 - 3180.37) / 2880.0
+_DASH_KEY_BOX_W = (3859.2 - 3180.37) / 2880
+#: WP-42 LT-12 (colorvar_key_truth.json P_ti, P_tbx; C_ti, C_cbx alike):
+#: clegend(title()) shortens the axis line at its top by _DASH_KEY_TITLE_TOP
+#: and sits its baseline _DASH_KEY_TITLE_BASE above the line's top; its box
+#: pads the text by _DASH_KEY_TITLE_PAD each side (197.13 about a Z of
+#: 110.01, taken at 0.6 of its size) and is outlined
+#: _DASH_KEY_TITLE_LINE thick (the outline 2.88 inside the fill).
+_DASH_KEY_TITLE_TOP = (472.86 - 236.12) / 2880
+_DASH_KEY_TITLE_BASE = (472.86 - 376.43) / 2880
+_DASH_KEY_TITLE_PAD = (197.13 - 0.6 * 110.01) / 2.0 / 2880
+_DASH_KEY_TITLE_LINE = 5.76 / 2880.0
 
 #: WP-42 CV-3: an upright key below or above the plot runs its axis line
 #: this share of the graph's height (colorvar_options_truth.json G01,
@@ -60232,6 +60281,19 @@ if (vert) {
         const y = kpx.log ? Math.pow(10, y0) : y0;
         if (src && src.data && !(src.data.y && src.data.y[0] === y)) {
           src.data = Object.assign({}, src.data, {y: [y]});
+        }
+      }
+      if (kpx.box && kpx.box[0] && kpx.box[0].data) {
+        // clegend(title(, box)) (WP-42 LT-12): the title's band.
+        const bs = kpx.box[0], tt = Number(kpx.box[1]) * kk;
+        const lin = (v) => kpx.log ? Math.log10(v) : v;
+        const at = (down) => {
+          const v = lin(r[1]) + (lin(r[0]) - lin(r[1])) * down / FH;
+          return kpx.log ? Math.pow(10, v) : v;
+        };
+        const t = at(it * FH - tt), b = at(it * FH);
+        if (bs.data.top[0] !== t || bs.data.bottom[0] !== b) {
+          bs.data = Object.assign({}, bs.data, {top: [t], bottom: [b]});
         }
       }
     }
@@ -60488,22 +60550,38 @@ def _dash_key_cell(spec):
     # it), placed with the key in _dash_key_wrap; in a side panel they
     # stacked and raised the frame's foot above the plot region's.
     texts = []
-    sizes = {"subtitle": 1.1, "note": 0.8, "caption": 1.0}
+    sizes = {"title": 1.1, "subtitle": 1.1, "note": 0.8, "caption": 1.0}
     pt0 = OptionTranslator.css_to_pt(axis.major_label_text_font_size) or 10.0
-    for k in ("subtitle", "note", "caption"):
+    for k in ("title", "subtitle", "note", "caption"):
         t = (spec.get("texts") or {}).get(k)
         if not t:
             continue
         lab = cell.add_glyph(
             ColumnDataSource({"x": [0.0], "y": [0.0], "text": [str(t)]}),
             Text(x="x", y="y", text="text",
-                 text_align="center" if k == "subtitle" else "left",
+                 text_align="center" if k in ("title", "subtitle")
+                 else "left",
                  text_baseline="alphabetic",
                  text_font_size="%gpt" % round(pt0 * sizes[k], 3),
                  text_color=axis.major_label_text_color),
             level="overlay", name="dash_key_" + k)
         lab._dash_key_text = k
         texts.append(lab)
+    tbox = None
+    if spec.get("title_box") and (spec.get("texts") or {}).get("title"):
+        # clegend(title(, box)) (LT-12, P_tbx): the title's band filled in
+        # the scheme's text_option_fill and outlined, over the frame; its
+        # place is set with the title's in _dash_key_suboptions.
+        tbox = cell.add_glyph(
+            ColumnDataSource({"left": [0.0], "right": [0.0], "top": [0.0],
+                              "bottom": [0.0]}),
+            Quad(left="left", right="right", top="top", bottom="bottom",
+                 fill_color=str(spec.get("box_fill") or "#d9e6eb"),
+                 line_color="#000000", line_width=0.77),
+            level="overlay", name="dash_key_title_box")
+        # Drawn under the title.
+        cell.renderers = [tbox] + [r for r in cell.renderers if r is not tbox]
+    cell._dash_key_title_box = tbox
     cell._dash_key_texts = texts
     cell._dash_key_axis = axis
     cell._dash_key_band = band
@@ -73648,6 +73726,8 @@ class ServerAppBuilder:
                       "_DASH_KEY_SUB_BASE", "_DASH_KEY_NOTE_BOTTOM",
                       "_DASH_KEY_NOTE_BASE", "_DASH_KEY_NOTE_STEP",
                       "_DASH_KEY_NOTE_X", "_DASH_KEY_BOX_W",
+                      "_DASH_KEY_TITLE_TOP", "_DASH_KEY_TITLE_BASE",
+                      "_DASH_KEY_TITLE_PAD", "_DASH_KEY_TITLE_LINE",
                       # twoway's weight acceptance per layer, read by
                       # GlyphMapper._layer_weights.
                       "_DASH_WEIGHT_ACCEPTS", "_DASH_WEIGHT_INERT",

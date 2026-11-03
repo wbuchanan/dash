@@ -6001,7 +6001,10 @@ o'clock, as in {cmd:twoway}), {cmd:ring()} ({cmd:ring(0)} inside the
 plot at the position, the scheme's 3 o'clock unless {cmd:position()} is
 given; a ring inside the legend's 3 between the plot and the legend, as in
 {cmd:twoway}; the scheme's {cmd:gridringstyle zyx2legend_ring} where
-{cmd:ring()} is not given), {cmd:title()}, and on the colour bar {cmd:width()} and {cmd:height()}.
+{cmd:ring()} is not given), {cmd:title()} (drawn above the key, which
+shortens to make room, the z title kept; {cmd:title(, box)} draws it in a
+filled, outlined box, as in {cmd:twoway}), and on the colour bar
+{cmd:width()} and {cmd:height()}.
 {cmd:altaxis} moves the z axis to the swatches' other side,
 {cmd:region()} draws the key's box, {cmd:bmargin()} is the space around
 it, {cmd:bplacement()} is taken and, as in {cmd:twoway}, does not move the

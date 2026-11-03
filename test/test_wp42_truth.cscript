@@ -856,11 +856,20 @@ def _q4203_cells(sp, dp, app):
     import dash_render as dr
     a, b = _q4203_models(sp, dp, app)
     for models, sfx in ((a, "s"), (b, "v")):
-        texts, other = [], 0
+        texts, other, ztitle, boxes = [], 0, "", 0
         for m in models:
             if not isinstance(m, Plot):
                 continue
             if "dash_key_cell" in (m.tags or []):
+                # The z title (a Label up the axis) and title(, box)'s box
+                # (WP-42 LT-12).
+                for side in (m.right, m.left):
+                    for lab in side:
+                        if type(lab).__name__ == "Label" and \
+                                (lab.name or "") == "dash_key_title":
+                            ztitle = str(lab.text)
+                boxes += sum(1 for r in m.renderers
+                             if (r.name or "") == "dash_key_title_box")
                 ax = (list(m.right) + list(m.left))[0]
                 ovr = dict(ax.major_label_overrides or {})
                 up = m.y_range.start <= m.y_range.end
@@ -883,6 +892,8 @@ def _q4203_cells(sp, dp, app):
                         other += 1
         Macro.setGlobal("q4203_k" + sfx, " ".join(texts))
         Macro.setGlobal("q4203_o" + sfx, str(other))
+        Macro.setGlobal("q4203_z" + sfx, ztitle)
+        Macro.setGlobal("q4203_b" + sfx, str(boxes))
 
 
 def _q4203_svgk(path):
@@ -894,6 +905,13 @@ def _q4203_svgk(path):
                  and t["x"] > r + 1 and not t["rotate"]),
                 key=lambda t: t["y"])
     Macro.setGlobal("q4203_kt", " ".join(t["text"] for t in ts))
+    # The rotated z title right of the plot region, and the filled boxes
+    # there (WP-42 LT-12).
+    zt = [t["text"] for t in d["texts"] if t["x"] is not None
+          and t["x"] > r + 1 and t["rotate"]]
+    Macro.setGlobal("q4203_ktz", zt[0] if zt else "")
+    Macro.setGlobal("q4203_ktb", str(sum(1 for g in d["regions"]
+                                         if g.get("left", 0) > r + 1)))
 end
 
 capture program drop _q4203_kreg
@@ -983,6 +1001,51 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
     }
     capture rmdir "`q03d'"
     macro drop q4203_ks q4203_kv q4203_os q4203_ov q4203_kt
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+* ==== S03 LT-12: clegend(title()) drawn above the key ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03d "`w42_work'/s03t"
+    capture mkdir "`q03d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // Q4203-3: clegend(title(Z)) draws Z above the key and keeps the z
+    // title; title(Z, box) draws it in a box -- the key's texts top
+    // first, the z title and the box count are twoway's, saved and
+    // served, on a scatter key and on a contour's.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "auto|scatter mpg weight, colorvar(rep78) colordiscrete clegend(title(Z))" "auto|scatter mpg weight, colorvar(rep78) colordiscrete clegend(title(Z, box))" "sandstone|contour depth northing easting, clegend(title(Z, box))" {
+        local ++k
+        gettoken ds cmd : c, parse("|")
+        local cmd = substr(`"`cmd'"', 2, .)
+        quietly sysuse `ds', clear
+        quietly twoway `cmd' name(q03t`k', replace)
+        capture erase "`q03d'/q03t`k'.svg"
+        cert_svg_export, name(q03t`k') file("`q03d'/q03t`k'.svg")
+        python: import __main__ as _q4203_m; _q4203_m._q4203_svgk("`q03d'/q03t`k'.svg")
+        local tw "${q4203_kt}"
+        local twz "${q4203_ktz}"
+        local twb "${q4203_ktb}"
+        _q4203_kreg "`q03d'" `cmd' name(q03t`k')
+        _w42_expect Q4203-3 `"("${q4203_ks}" == "`tw'" & "${q4203_kv}" == "`tw'")"' `"`cmd': twoway `tw', saved ${q4203_ks}, served ${q4203_kv}"'
+        _w42_expect Q4203-3 `"("${q4203_zs}" == "`twz'" & "${q4203_zv}" == "`twz'")"' `"`cmd': z title twoway `twz', saved ${q4203_zs}, served ${q4203_zv}"'
+        _w42_expect Q4203-3 "(${q4203_bs} == `twb' & ${q4203_bv} == `twb')" "`cmd': boxes twoway `twb', saved ${q4203_bs}, served ${q4203_bv}"
+    }
+    _w42_done Q4203-3 "clegend(title()) is drawn above the colour key, boxed under box, the z title kept, saved and served"
+
+    foreach f in q03t1.svg q03t2.svg q03t3.svg s.json d.json a.py {
+        capture erase "`q03d'/`f'"
+    }
+    capture rmdir "`q03d'"
+    macro drop q4203_ks q4203_kv q4203_os q4203_ov q4203_kt q4203_ktz q4203_ktb q4203_zs q4203_zv q4203_bs q4203_bv
     capture graph drop _all
     dash clear
     display as text "S03 end " c(current_date) " " c(current_time)
