@@ -1,0 +1,84 @@
+{
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "9f4ab080e2ce811c49cefc78879826a03c6188c0",
+  "extracted": " 3 Nov 2026 13:03:45",
+  "source": "scripts/extract_colorlist_truth.do",
+  "stata_version": "19.5"
+ },
+ "probes": {
+  "C3": {
+   "command": " twoway contour depth northing easting, levels(3) ccolors(\"255 0 0\" \"0 255 0\" \"0 0 255\")",
+   "fills": {
+    "#eaf2f3": 2,
+    "#ffffff": 1
+   },
+   "lines": [],
+   "rc": 0,
+   "style_fills": {
+    "#000000": 14,
+    "#0000ff": 7185,
+    "#00ff00": 4800,
+    "#eaf2f3": 2,
+    "#ff0000": 477,
+    "#ffffff": 1
+   }
+  },
+  "L8": {
+   "command": " twoway scatter mpg weight, colorvar(price) colorlevels(8) colorlist(\"68 1 84\" \"70 50 126\" \"54 92 141\" \"39 127 142\" \"31 161 135\" \"74 193 109\" \"160 218 57\" \"253 231 37\")",
+   "fills": {
+    "#1fa187": 5,
+    "#277f8e": 3,
+    "#365c8d": 5,
+    "#440154": 36,
+    "#46327e": 22,
+    "#4ac16d": 4,
+    "#a0da39": 4,
+    "#eaf2f3": 2,
+    "#fde725": 3,
+    "#ffffff": 1
+   },
+   "lines": [],
+   "rc": 0,
+   "style_fills": {
+    "#000000": 18,
+    "#1fa187": 5,
+    "#277f8e": 3,
+    "#365c8d": 5,
+    "#440154": 36,
+    "#46327e": 22,
+    "#4ac16d": 4,
+    "#a0da39": 4,
+    "#eaf2f3": 2,
+    "#fde725": 3,
+    "#ffffff": 1
+   }
+  },
+  "LM": {
+   "command": " twoway scatter mpg weight, colorvar(rep78) colordiscrete colorlist(\"255 0 0\" green \"0 0 255\")",
+   "fills": {
+    "#0000ff": 31,
+    "#008000": 9,
+    "#65ff00": 19,
+    "#808080": 5,
+    "#eaf2f3": 2,
+    "#ff0000": 3,
+    "#ffcc00": 12,
+    "#ffffff": 1
+   },
+   "lines": [],
+   "rc": 0,
+   "style_fills": {
+    "#000000": 16,
+    "#0000ff": 31,
+    "#008000": 9,
+    "#65ff00": 19,
+    "#808080": 5,
+    "#eaf2f3": 2,
+    "#ff0000": 3,
+    "#ffcc00": 12,
+    "#ffffff": 1
+   }
+  }
+ }
+}

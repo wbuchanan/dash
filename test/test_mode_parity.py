@@ -1883,6 +1883,10 @@ CORPUS = [
     _case("colorvar colorkeysreverse",
           [_sc(colorvar="rep", colordiscrete="colordiscrete",
                colorkeysreverse="colorkeysreverse")]),
+    # WP-42 CV-17: a colorlist() of quoted RGB colours, one colour each.
+    _case("colorvar colorlist quoted rgb",
+          [_sc(colorvar="price", colorlevels="3",
+               colorlist='"68 1 84" "33 145 140" "253 231 37"')]),
     # WP-42 CV-6: two colorvar layers draw one key and a plot legend.
     _case("two colorvar layers",
           [_sc(colorvar="rep"),

@@ -260,6 +260,11 @@ def _q4201_draw(sp, dp, app):
         cols, width, fw, sig = set(), 0, 0, []
         for f in figs:
             fw = float(f.width or 0)
+            # WP-42 CV-3: the key is a key cell beside the figure, its
+            # swatch band the key's thickness (was a ColorBar's width).
+            kc = getattr(f, "_dash_key_cell", None)
+            if kc is not None and getattr(kc, "_dash_key_band", None):
+                width = kc._dash_key_band
             for side in (f.right, f.left, f.above, f.below, f.center):
                 for m in side:
                     if type(m).__name__ in ("ColorBar", "ContourColorBar") \
@@ -455,6 +460,94 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w42_run' {
     }
     capture rmdir "`q01d'"
     macro drop q4201_s q4201_v q4201_ws q4201_wv q4201_rs q4201_rv q4201_gs q4201_gv q4201_tw q4201_kw
+    capture graph drop _all
+    dash clear
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
+python:
+def _q4217_keys(sp, dp, app):
+    # The colour key cell's level colours (WP-42 CV-17) of the saved page
+    # and the served document, each sorted and space-separated.
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_q4217_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_q4217_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    for models, sfx in ((r._last_layout_root.references(), "s"),
+                        (doc.models, "v")):
+        cols = set()
+        for m in models:
+            if "dash_key_cell" in (getattr(m, "tags", None) or []):
+                for rr in m.renderers:
+                    d = getattr(rr.data_source, "data", {}) or {}
+                    cols.update(str(c).lower()[:7] for c in d.get("c", []))
+        Macro.setGlobal("q4217_" + sfx, " ".join(sorted(cols)))
+end
+
+capture program drop _q4217_reg
+program define _q4217_reg
+    // _q4217_reg <dir> <dash command...>: register one graph and read the
+    // colours of its key in both modes.
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4217_m; _q4217_m._q4217_keys("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
+* ==== S01 CV-17: a colorlist() of quoted RGB colours ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w42_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+    local q17d "`w42_work'/s01q"
+    capture mkdir "`q17d'"
+    local lf "`q17d'/try.log"
+    capture graph drop _all
+    sysuse auto, clear
+    local cl `""68 1 84" "70 50 126" "54 92 141" "39 127 142" "31 161 135" "74 193 109" "160 218 57" "253 231 37""'
+
+    // ------------------------------------------------------------
+    // Q4201-6: the corpus example ex-feature_tour-eaf70b99 keys the eight
+    // listed colours twoway draws (measured live from twoway's SVG),
+    // saved and served, with rc 0 and no note.
+    // ------------------------------------------------------------
+    quietly twoway scatter mpg weight, colorvar(price) colorlevels(8) colorlist(`cl') scheme(s2color) name(q17a, replace)
+    capture erase "`q17d'/q17a.svg"
+    cert_svg_export, name(q17a) file("`q17d'/q17a.svg")
+    python: import __main__ as _q4201_m; _q4201_m._q4201_svg("`q17d'/q17a.svg")
+    local tw "${q4201_tw}"
+    _q4201_try "`lf'" dash scatter mpg weight, colorvar(price) colorlevels(8) colorlist(`cl') name(q17a)
+    _w42_expect Q4201-6 "(r(rc) == 0 & r(note) == 0)" "dash rc `r(rc)', note `r(note)'"
+    cert_log_has "`lf'", needle("class color")
+    _w42_expect Q4201-6 "(r(found) == 0)" "dash printed a colour note"
+    _q4217_reg "`q17d'" scatter mpg weight, colorvar(price) colorlevels(8) colorlist(`cl') scheme(s2color) name(q17a)
+    _w42_expect Q4201-6 "(`: word count `tw'' == 8)" `"twoway draws `tw'"'
+    _w42_expect Q4201-6 `"(`"${q4217_s}"' == `"`tw'"')"' `"saved ${q4217_s}, twoway `tw'"'
+    _w42_expect Q4201-6 `"(`"${q4217_v}"' == `"`tw'"')"' `"served ${q4217_v}, twoway `tw'"'
+    _w42_done Q4201-6 "colorlist() of quoted RGB colours: twoway's eight colours, saved and served"
+
+    foreach f in q17a.svg s.json d.json a.py try.log {
+        capture erase "`q17d'/`f'"
+    }
+    capture rmdir "`q17d'"
+    macro drop q4201_tw q4217_s q4217_v
     capture graph drop _all
     dash clear
     display as text "S01 end " c(current_date) " " c(current_time)

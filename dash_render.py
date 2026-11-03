@@ -16485,8 +16485,9 @@ class GlyphMapper:
         # colorlist(): one colour a level, in order, the last repeated
         # over levels it does not reach (D03); each read as a colour.
         _c_list = []
+        # A quoted colour is one colour (WP-42 CV-17).
         for _tok in _dash_by_tokens(str(options.get("colorlist", "")
-                                        or "").strip()):
+                                        or "").strip(), top_quotes=True):
             _c, _ = self.tr.parse_color_alpha(_dash_unquoted(_tok),
                                               "colorlist")
             if _c:
@@ -30989,7 +30990,7 @@ def _dash_contour_colours(options, n_levels, scheme, parse=None):
     raw = str(opts.get("ccolors", "") or "").strip()
     if raw:
         cols = [(_col(_dash_unquoted(t)) or "#000000")
-                for t in _dash_by_tokens(raw)]
+                for t in _dash_by_tokens(raw, top_quotes=True)]
         if cols:
             return [cols[min(i, len(cols) - 1)] for i in range(k)]
     d_rule, d_start, d_end = _dash_colorrule_default(scheme)
@@ -38049,7 +38050,7 @@ _DASH_BY_TEXT_SPELLINGS = {
 }
 
 
-def _dash_by_tokens(subopts):
+def _dash_by_tokens(subopts, *, top_quotes=False):
     """Split a by() sub-option string into its options.
 
     ``rows(2) title("By origin") compact`` is three options, not five words:
@@ -38064,6 +38065,11 @@ def _dash_by_tokens(subopts):
     legend() or any option split here, was dropped without a word.  One
     pass over the text, whatever quotes and parentheses it holds or leaves
     open.
+
+    *top_quotes* reads a string outside parentheses as one word too: a
+    colour list's ``"68 1 84"`` is one colour, as twoway reads it (WP-42
+    CV-17: colorlist() and ccolors() were split into ``"68``, ``1``,
+    ``84"``).
     """
     text = str(subopts)
     out, buf, depth = [], [], 0
@@ -38087,12 +38093,12 @@ def _dash_by_tokens(subopts):
             simple = ch != '"'
             i += 1
             continue
-        if depth and two == '`"':
+        if (depth or top_quotes) and two == '`"':
             compound = 1
             buf.append(two)
             i += 2
             continue
-        if depth and ch == '"':
+        if (depth or top_quotes) and ch == '"':
             simple = True
             buf.append(ch)
             i += 1

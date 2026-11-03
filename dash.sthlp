@@ -6066,7 +6066,9 @@ includes, with its own {cmd:zyx2rule contour}, {cmd:color contour_begin},
 colour's saturation and value, so green to orange is drawn at green's
 darkness); {it:k} levels of {cmd:colordiscrete} take the first {it:k}
 of {it:k}+1 steps, {it:k} bins {it:k} steps.  {cmd:colorlist()} wins, then
-the rule.  A rule's name abbreviates as
+the rule; a quoted colour in it is one colour, as in {cmd:twoway}:
+{cmd:colorlist("68 1 84" "253 231 37")} lists two, and {opt ccolors()}
+reads its list the same way.  A rule's name abbreviates as
 {cmd:twoway}'s does: {cmd:colorrule(lin)} is {cmd:colorrule(linear)},
 {cmd:colorrule(int)} {cmd:colorrule(intensity)} and {cmd:colorrule(revlin)}
 {cmd:colorrule(revlinear)}, in {cmd:crule()} too; a name {cmd:twoway} has

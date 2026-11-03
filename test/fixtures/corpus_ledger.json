@@ -1,7 +1,7 @@
 {
   "_meta": {
     "born_date": "22 Oct 2026",
-    "dash_commit": "8f1f80c71f4e9939530b9c9729acf87f82568967",
+    "dash_commit": "9f4ab080e2ce811c49cefc78879826a03c6188c0",
     "extracted": "03 Nov 2026",
     "source": "scripts/corpus/ledger.py",
     "stata_version": "19.5",
@@ -34,33 +34,6 @@
       "note": "twoway contour with levels() ignores options it does not know; dash refuses them (D54, 35-06)",
       "plottype": "contour",
       "when": "\\blevels?\\("
-    },
-    {
-      "check": "legend",
-      "form": "plain",
-      "gaps4_id": "CV-17",
-      "id": "CV-17",
-      "note": "dash reads a quoted RGB colorlist() word by word: black markers and a range legend where twoway draws the listed colours with a colour bar (WP-42 42-01)",
-      "plottype": "*",
-      "when": "\\bcolorlist\\("
-    },
-    {
-      "check": "texts",
-      "form": "plain",
-      "gaps4_id": "CV-17",
-      "id": "CV-17",
-      "note": "dash reads a quoted RGB colorlist() word by word: black markers and a range legend where twoway draws the listed colours with a colour bar (WP-42 42-01)",
-      "plottype": "*",
-      "when": "\\bcolorlist\\("
-    },
-    {
-      "check": "colours",
-      "form": "plain",
-      "gaps4_id": "CV-17",
-      "id": "CV-17",
-      "note": "dash reads a quoted RGB colorlist() word by word: black markers and a range legend where twoway draws the listed colours with a colour bar (WP-42 42-01)",
-      "plottype": "*",
-      "when": "\\bcolorlist\\("
     },
     {
       "check": "text_size",
