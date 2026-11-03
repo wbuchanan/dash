@@ -683,7 +683,11 @@ def _saved_figures(r):
 
 
 def _served_figures(doc):
-    return list(doc.select({"type": Plot}))
+    # Flipped (WP-42 CV-3): a colour key cell is a Plot beside its figure,
+    # not a figure (it holds no data to hover); the figure keeps its
+    # HoverTool.
+    return [p for p in doc.select({"type": Plot})
+            if "dash_key_cell" not in (p.tags or [])]
 
 
 def _fields(tool):

@@ -4240,6 +4240,10 @@ MOVE_CORPUS = [
                [plot_for("contour", {"ccuts": "4000 6000 8000"})]),
     _move_case("contourline, dropdown to Foreign", _MOVES[0],
                [plot_for("contourline", {"ccuts": "4000 6000 8000"})]),
+    # WP-42 LT-22: contourline's level legend keyed for the kept rows (the
+    # saved page's legend: test_contour_key_moves.py and its Chrome check).
+    _move_case("LT-22 contourline colorlines, dropdown to Foreign", _MOVES[0],
+               [plot_for("contourline", {"colorlines": "colorlines"})]),
 
     # WP-31 D3 (section 30): textbox placement
     _move_case("ring(0) note after a dropdown move (WP-31 D3)", _MOVES[0],
@@ -4378,11 +4382,6 @@ _CVAR_MOVES = [
     _move_case("scatter colorvar stepped price, rep dropdown to 3",
                ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
                 "rep == 3"), [plot_for("scatter", {"colorvar": "price"})]),
-    # WP-42 LT-22: contourline's level legend keyed for the kept rows.
-    _move_case("LT-22 contourline colorlines, rep dropdown to 3",
-               ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
-                "rep == 3"),
-               [plot_for("contourline", {"colorlines": "colorlines"})]),
     _move_case("scatter colorvar date, rep dropdown to 3",
                ("rep dropdown to 3", "rep, type(dropdown)", ("Select", "3"),
                 "rep == 3"), [plot_for("scatter", {"colorvar": "when"})],

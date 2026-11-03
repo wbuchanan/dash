@@ -190,3 +190,92 @@ class TestInChrome:
         assert "Predicted mpg" in k["labels"], k
         assert "Predicted mpg (unfiltered)" not in k["labels"], k
         assert k["status"] is None, k
+
+
+#: WP-42 LT-22: contourline's level legend (the Legend named as the colour
+#: key) before and after the dropdown moves to Foreign, as BokehJS holds it:
+#: each item's label, line colour and line width, highest level first.
+_LEVELS_PROBE = r"""
+<script>
+(function () {
+  function snap() {
+    const out = [];
+    for (const doc of window.Bokeh.documents)
+      for (const m of doc.all_models)
+        if (m.type === "Legend" && m.name === "%s")
+          for (const it of m.items) {
+            const lab = it.label;
+            const g = it.renderers[0].glyph;
+            out.push([lab && typeof lab === "object" && "value" in lab
+                      ? lab.value : lab, g.line_color, g.line_width]);
+          }
+    return out;
+  }
+  function select() {
+    for (const doc of window.Bokeh.documents)
+      for (const m of doc.all_models)
+        if (m.type === "Select") return m;
+    return null;
+  }
+  function wait() {
+    if (!window.Bokeh || !window.Bokeh.documents ||
+        !window.Bokeh.documents.length || !select()) {
+      setTimeout(wait, 100);
+      return;
+    }
+    setTimeout(function () {
+      const res = {before: snap()};
+      const sel = select();
+      const opt = sel.options.find((o) => (Array.isArray(o) ? o[1] : o)
+                                    === "Foreign");
+      sel.value = Array.isArray(opt) ? opt[0] : opt;
+      setTimeout(function () {
+        res.after = snap();
+        const pre = document.createElement("pre");
+        pre.id = "r";
+        pre.textContent = JSON.stringify(res);
+        document.body.appendChild(pre);
+      }, 500);
+    }, 500);
+  }
+  wait();
+})();
+</script>
+""" % dr._COLORVAR_LEGEND_NAME
+
+
+class TestTheLevelLegendInChrome:
+    """WP-42 LT-22: after a saved page's filter move contourline's level
+    legend keys the kept rows' cuts (test_contour_key_moves.py runs the
+    page's script under node against stand-ins); here BokehJS holds the
+    rekeyed items, as a fresh build over the kept rows keys them."""
+
+    def test_the_saved_legend_follows_the_move(self):
+        if responsive_probe.find_chrome() is None:
+            pytest.skip("headless Chrome is not installed; set DASH_CHROME "
+                        "(a skip is red under DASH_STRICT=1)")
+        import test_contour_js as cj
+        import test_contour_key_moves as ckm
+        import test_horizontal_moves as hm
+        import test_saved_filter_layers as sf
+        _l, filt, action, oracle = sf._MOVES[0]
+        assert action == ("Select", "Foreign")
+        df = cj._page_df()
+        spec = cj._page_spec("contourline", {"colorlines": "colorlines"},
+                             filt)
+        sp, dp = _write(spec, df)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            page = dr.DashRenderer(sp, dp).render()
+        got = _run_chrome(responsive_probe.admit_script(page, _LEVELS_PROBE))
+        want = ckm._level_legend(hm._kept(spec, oracle, "saved", df=df))
+        def _v(x):
+            # BokehJS reads a glyph's value back as its spec, {value: x}.
+            return x.get("value") if isinstance(x, dict) else x
+
+        def norm(rows):
+            return [[str(t), str(_v(c)).lower(), round(float(_v(w)), 6)]
+                    for t, c, w in rows]
+        assert got["before"] and got["after"]
+        assert norm(got["after"]) == norm(want)
+        assert norm(got["after"]) != norm(got["before"])

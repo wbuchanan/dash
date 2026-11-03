@@ -25273,9 +25273,6 @@ class GlyphMapper:
         ey = [float(np.min(y)), float(np.max(y))] if y.size else [np.nan] * 2
         hull = fig.scatter(x=ex, y=ey, size=0, fill_alpha=0, line_alpha=0,
                            tags=["dash_contour_extent"])
-        # The saved page's refit moves it to the kept rows' corners, as the
-        # served redraw does (WP-42 LT-22; contour_hulls).
-        cr._dash_hull = hull
         # The key whenever z has values (WP-37 DG-8): twoway keys a contour
         # whose points make no surface -- two observations, points on one
         # line -- from the levels it would cut at (contour price mpg
@@ -36808,24 +36805,6 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             const tz = new Float64Array(S.nx * S.ny);
             for (let iy = 0; iy < S.ny; iy++) for (let ix = 0; ix < S.nx; ix++) tz[ix * S.ny + iy] = S.gz[iy * S.nx + ix];
             S = {gx: S.gy, gy: S.gx, gz: tz, nx: S.ny, ny: S.nx, n: S.n, note: S.note};
-        }
-        // WP-42 LT-22: the layer's extent scatter at the kept rows'
-        // corners, as the served redraw draws it (map_contour's hull).
-        const _hl = (typeof contour_hulls !== "undefined" && contour_hulls && ac.hkey !== undefined)
-            ? contour_hulls[ac.hkey] : null;
-        if (_hl) {
-            let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-            for (let i = 0; i < _zu.length; i++) {
-                const a = _cx[i], b = _cy[i];
-                if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(_zu[i])) continue;
-                if (a < x0) x0 = a; if (a > x1) x1 = a;
-                if (b < y0) y0 = b; if (b > y1) y1 = b;
-            }
-            if (x0 <= x1) {
-                const hx = ac.horizontal ? [y0, y1] : [x0, x1];
-                const hy = ac.horizontal ? [x0, x1] : [y0, y1];
-                _hl.data = Object.assign({}, _hl.data, {x: hx, y: hy});
-            }
         }
         // The kept rows' z range, over the rows with x, y and z.
         let _zmin = Infinity, _zmax = -Infinity;
@@ -72599,8 +72578,7 @@ class DashRenderer:
         # WP-42 LT-22: contourline's level legends, by position (``lkey``).
         _contour_legs_all: list = []
         _legs = getattr(self, "_contour_legends", {})
-        _contour_hulls_all: list = []
-        _hulls = getattr(self, "_contour_hulls", {})
+
         # WP-31 H6: the CI outlines the refit redraws, each config naming
         # its own by position (``outline``).
         _outlines_all: list = []
@@ -72624,9 +72602,7 @@ class DashRenderer:
                 if id(_agg_cds) in _legs:
                     _agg_cfgs_all[-1]["lkey"] = len(_contour_legs_all)
                     _contour_legs_all.append(_legs[id(_agg_cds)])
-                if id(_agg_cds) in _hulls:
-                    _agg_cfgs_all[-1]["hkey"] = len(_contour_hulls_all)
-                    _contour_hulls_all.append(_hulls[id(_agg_cds)])
+
                 if id(_agg_cds) in _outl:
                     _agg_cfgs_all[-1]["outline"] = len(_outlines_all)
                     _outlines_all.append(_outl[id(_agg_cds)])
@@ -72741,8 +72717,7 @@ class DashRenderer:
                 _cb.args["contour_keys"] = _contour_keys_all
             if _contour_legs_all:
                 _cb.args["contour_legends"] = _contour_legs_all
-            if _contour_hulls_all:
-                _cb.args["contour_hulls"] = _contour_hulls_all
+
             if _outlines_all:
                 _cb.args["ci_outlines"] = _outlines_all
             if _fext_all:
@@ -73248,8 +73223,6 @@ class DashRenderer:
         self._contour_bars = {}
         # WP-42 LT-22: contourline's level legends, by agg source.
         self._contour_legends = {}
-        # WP-42 LT-22: each contour layer's extent scatter, by agg source.
-        self._contour_hulls = {}
         self._ci_outlines = {}
         self._fit_extents = {}
         for _gname, _fig in self.figures.items():
@@ -73301,10 +73274,7 @@ class DashRenderer:
                 if _clv:
                     self._contour_legends[id(_r._dash_agg_source)] = {
                         k: v for k, v in _clv.items() if k != "state"}
-                _hl = getattr(_r, "_dash_hull", None)
-                if _hl is not None:
-                    self._contour_hulls[id(_r._dash_agg_source)] = \
-                        _hl.data_source
+
             if _agg_list:
                 self.agg_source_registry[_gname] = _agg_list
 

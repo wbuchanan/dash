@@ -668,7 +668,11 @@ _SAVED_DIGEST = (
     # and the contour's extent scatter moved by the filter JS's refit (code
     # only: the base's relevel, span and filter JS give the old digest on
     # the new tree); the same under both Pythons.
-    "814421b96e619cd2b0f46474a804696b2dfa510780d10d7db6d805fc3b54f36b")
+    # 814421b9... -> 62d2de2a...: WP-42 LT-22's follow-up, the contour
+    # extent scatter's move taken back out of the filter JS (code only: the
+    # base's relevel, span and filter JS give the old digest on the new
+    # tree); the same under both Pythons.
+    "62d2de2adb72cb3f9a583211deca402560d6ffbdd548ffd16f498ca2e8726862")
 
 
 # ===========================================================================
