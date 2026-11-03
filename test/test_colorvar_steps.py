@@ -179,8 +179,10 @@ def _close(got, want):
 
 
 def _bars(figs):
-    return [m for f in figs for side in ("right", "left", "above", "below")
-            for m in getattr(f, side) if isinstance(m, ColorBar)]
+    # Flipped (WP-42 CV-3): dash's colour key was a ColorBar; twoway draws
+    # swatches beside a z axis (CV-3): the figure's key cell
+    # (colour_bins.KeyView: its axis's ticks and labels, its levels).
+    return [v for f in figs for v in cb.key_views(f)]
 
 
 class TestTheFixture:
@@ -273,11 +275,13 @@ class TestTheKey:
         want = [t for t in TRUTH["M_s2color"]["key_texts"] if t != "Price"]
         assert labels == want, labels
         cuts = [t for t in ticks if t >= min(_AUTO_DF["price"])]
-        bm = bar.color_mapper
-        assert bm is not glyph_m
-        assert len(bm.palette) == len(cuts) + 1 == 4
-        assert bm.low <= ticks[0] and bm.high >= ticks[-1]
-        assert [_hex(c) for c in bm.palette] == TRUTH["M_s2color"][
+        # Flipped (WP-42 CV-3): one swatch a level, lowest first, between
+        # the ticks; the axis from its 0 tick to the maximum.
+        assert glyph_m is not None
+        assert len(bar.colours) == len(cuts) + 1 == 4
+        lo, hi = bar.cell._dash_key_axis.bounds
+        assert lo <= ticks[0] and hi >= ticks[-1]
+        assert [_hex(c) for c in bar.colours] == TRUTH["M_s2color"][
             "key_fills"]
 
 
@@ -344,15 +348,19 @@ class TestTheStepmapRelevel:
         r, _ = tp._standalone(spec)
         [plan] = dr._dash_cvar_plans([r._last_layout_root])
         assert plan["kind"] == "stepmap"
-        assert plan["bar"] is not plan["mapper"]
-        # The Python twin over the foreign cars' prices: the bar takes one
-        # colour a level, its low end at or below the first tick.
+        # Flipped (WP-42 CV-3): dash's colour key was a ColorBar with a
+        # mapper of its own; twoway draws swatches beside a z axis (CV-3):
+        # the plan ticks the key cell's axis and redraws its swatches.
+        assert plan["bar"] is None and plan["keycell"] is not None
+        assert plan["cbar"] is plan["keycell"]["axis"]
+        # The Python twin over the foreign cars' prices: one swatch a
+        # level, the axis's low end at or below the first tick.
         dr._dash_cvar_relevel_stepmap(plan, [4749.0, 4816.0, 4453.0,
                                              10372.0, 11385.0])
-        bar = plan["bar"]
-        assert len(bar.palette) == len(
+        src = plan["keycell"]["src"]
+        assert len(src.data["c"]) == len(
             [t for t in plan["cbar"].ticker.ticks if t >= 4453.0]) + 1
-        assert bar.low <= min(plan["cbar"].ticker.ticks)
+        assert plan["cbar"].bounds[0] <= min(plan["cbar"].ticker.ticks)
 
 
 class TestTheBarHelpers:
@@ -431,12 +439,19 @@ def _scheme_bo(name, schemes):
     return bo
 
 
+class _Band(cb.KeyView):
+    """A key cell read as a bar, its swatch band the bar's thickness."""
+
+    def __init__(self, cell):
+        super().__init__(cell)
+        self.width = cell._dash_key_band
+
+
 def _key_bars(figs):
-    return [m for f in figs for side in ("right", "left", "above", "below",
-                                         "center")
-            for m in getattr(f, side)
-            if type(m).__name__ in ("ColorBar", "ContourColorBar")
-            and m.name != "dash_by_label_box"]
+    # Flipped (WP-42 CV-3): dash's colour key was a ColorBar; twoway draws
+    # swatches beside a z axis (CV-3): the key cell's swatch band is the
+    # key's thickness (clegend_width).
+    return [_Band(v.cell) for f in figs for v in cb.key_views(f)]
 
 
 class TestTheKeyWidth:

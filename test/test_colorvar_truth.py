@@ -245,6 +245,15 @@ def _stepped_bar(lo, hi):
     return (cuts[0] - step, cuts[-1] + step)
 
 
+def _key_axis(lo, hi):
+    """WP-42 CV-3: (low, high) of the stepped key cell's z axis over a
+    layer's rows *lo* .. *hi*: from the lower of the minimum and the
+    first tick (natscale #5) to the higher of the maximum and the last,
+    as twoway runs it (colorvar_key_truth.json K_cont: 0 to 15,906)."""
+    t = dr._dash_cvar_ticks(lo, hi, {"mode": "auto"})
+    return (min([lo] + t), max([hi] + t))
+
+
 def _render(spec, mode):
     if mode == "saved":
         r, _ = tp._standalone(spec)
@@ -305,8 +314,11 @@ class TestTheKeyIsDrawnFromTheLayersRows:
             plot_for("scatter", if_expr="foreign == 0")])
         # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); the bar is the stepped key over
         # the layer's own rows.
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+        # twoway draws swatches beside a z axis (CV-3), the axis over the
+        # layer's own rows and its ticks.
         assert cb.colour_bars(_render(spec, mode)) == [
-            _stepped_bar(p["summ_min"], p["summ_max"])]
+            _key_axis(p["summ_min"], p["summ_max"])]
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_colordiscrete_levels_of_a_layers_own_if(self, mode):
@@ -318,11 +330,12 @@ class TestTheKeyIsDrawnFromTheLayersRows:
         root = _render(spec, mode)
         (rend,) = cb.colour_renderers(root)
         assert list(cb.colour_mapper(rend).factors) == ["3", "4", "5"]
-        (fig,) = _colour_figs(root)
-        legs = [a for a in fig.right if type(a).__name__ == "Legend"
-                and a.name == dr._COLORVAR_LEGEND_NAME]
-        last = legs[0].items[-1].label
-        assert "(missing)" in str(getattr(last, "value", last))
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+        # twoway draws swatches beside a z axis (CV-3): the layer's own
+        # levels at its z ticks, no "(missing)" entry.
+        (cell,) = cb.axis_key_cells(root)
+        assert cb.axis_key_texts(cell) == ["5", "4.5", "4", "3.5", "3"]
+        assert not [t for t in cb.axis_key_texts(cell) if "missing" in t]
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_colorlevels_cuts_of_a_layers_own_if(self, mode):
@@ -354,8 +367,10 @@ class TestTheKeyIsDrawnFromTheLayersRows:
         spec = _linked_spec([plot_for("scatter", {"colorvar": "price"})],
                             if_expr="foreign == 1", linked=True)
         # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8).
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+        # twoway draws swatches beside a z axis (CV-3).
         assert cb.colour_bars(_render(spec, mode)) == [
-            _stepped_bar(p["summ_min"], p["summ_max"])]
+            _key_axis(p["summ_min"], p["summ_max"])]
 
     @pytest.mark.parametrize("linked", [False, True],
                              ids=["unlinked", "linked"])
@@ -391,13 +406,13 @@ class TestTheKeyIsDrawnFromTheLayersRows:
         cells = [m for r in roots for m in r.references()
                  if getattr(m, "name", None) == "dash_by_clegend"]
         assert len(cells) == 1
-        bars = [(a.color_mapper.low, a.color_mapper.high)
-                for side in ("left", "right", "above", "below")
-                for a in getattr(cells[0], side)
-                if type(a).__name__ == "ColorBar"]
         # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); panel 1's stepped key.
-        assert bars == [_stepped_bar(probes["by_lv4_p0"]["summ_min"],
-                                     probes["by_lv4_p0"]["summ_max"])]
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+        # twoway draws swatches beside a z axis (CV-3): by()'s key is panel
+        # 1's key cell, its axis over panel 1's rows and ticks.
+        assert "dash_key_cell" in (cells[0].tags or [])
+        assert cb.colour_bars(cells[0]) == [_key_axis(
+            probes["by_lv4_p0"]["summ_min"], probes["by_lv4_p0"]["summ_max"])]
 
     def _one_cut(self, mode, linked, ptype, y, x, pid):
         p = _qtruth()["probes"][pid]
@@ -483,85 +498,24 @@ _CV_DRAWN = tuple(p for p in _CV_PROBES if p not in _CV_REFUSALS)
 #: D-33-13.f: each difference keyed "<probe>:<check>" to the live GAPS4
 #: item that fixes it (known_differences.py's rules), measured 21oct2026,
 #: the same in both modes (WP-42 CV-1 closed colorfillonly's line
-#: colours, WP-42 CV-2 the colordiscrete + colorlevels(k) cuts).  CV-3: the
-#: discrete/binned clegend (ascending, value labels and interval texts,
-#: '(missing)', a frame); CV-4: the coloruseplegend key (WP-42 CV-6
+#: colours, WP-42 CV-2 the colordiscrete + colorlevels(k) cuts; WP-42
+#: CV-3 the discrete/binned clegend's form: ascending, value labels and
+#: interval texts, '(missing)', a frame); CV-4: the coloruseplegend key (WP-42 CV-6
 #: closed the key a layer of two colorvar layers); CV-8: the continuous default's gradient and ColorBar
 #: (zscale(log) and zscale(reverse) included); WP-42 CV-10 closed
 #: zlabel(bogus), refused r(198) as twoway refuses it.
 COLORVAR_KNOWN = {
-    "selfcheck_foreign:key_texts": "CV-3",
-    "selfcheck_foreign:key_frame": "CV-3",
-    "disc_rep78:key_texts": "CV-3",
-    "disc_rep78:key_frame": "CV-3",
-    "disc_cuts_2_4:key_texts": "CV-3",
-    "disc_cuts_2_4:key_frame": "CV-3",
-    "cuts_2_4:key_texts": "CV-3",
-    "cuts_2_4:key_frame": "CV-3",
-    "cuts_0_2_4:key_texts": "CV-3",
-    "cuts_0_2_4:key_frame": "CV-3",
-    "disc_cuts_0_2_4:key_texts": "CV-3",
-    "disc_cuts_0_2_4:key_frame": "CV-3",
-    "cuts_all_below:key_texts": "CV-3",
-    "cuts_all_below:key_frame": "CV-3",
-    "levels_price_4:key_texts": "CV-3",
-    "levels_price_4:key_frame": "CV-3",
-    "levels_price_4_minmax:key_texts": "CV-3",
-    "levels_price_4_minmax:key_frame": "CV-3",
-    "cuts_price_minmax:key_texts": "CV-3",
-    "cuts_price_minmax:key_frame": "CV-3",
-    # WP-42 CV-2 closed the cuts: the texts left differ as CV-3's
-    # (ascending, '(missing)').
-    "disc_levels_price_4:key_texts": "CV-3",
-    "disc_levels_price_4:key_frame": "CV-3",
-    "ztitle_disc:key_texts": "CV-3",
-    "ztitle_disc:key_frame": "CV-3",
-    # WP-42 CV-8 closed the levels; the key drawn upside down under
-    # zscale(reverse) is the key cell's (42-03, CV-3).
-    "zscale_rev:key_texts": "CV-3",
-    "cv16_line_disc_rep78:key_texts": "CV-3",
-    "cv16_line_disc_rep78:key_frame": "CV-3",
-    "cv16_line_levels_price_4:key_texts": "CV-3",
-    "cv16_line_levels_price_4:key_frame": "CV-3",
-    "cv16_connected_disc_rep78:key_texts": "CV-3",
-    "cv16_connected_disc_rep78:key_frame": "CV-3",
-    "cv16_connected_levels_price_4:key_texts": "CV-3",
-    "cv16_connected_levels_price_4:key_frame": "CV-3",
-    "cv16_bar_disc_rep78:key_texts": "CV-3",
-    "cv16_bar_disc_rep78:key_frame": "CV-3",
-    "cv16_bar_levels_price_4:key_texts": "CV-3",
-    "cv16_bar_levels_price_4:key_frame": "CV-3",
-    "cv16_spike_disc_rep78:key_texts": "CV-3",
-    "cv16_spike_disc_rep78:key_frame": "CV-3",
-    "cv16_spike_levels_price_4:key_texts": "CV-3",
-    "cv16_spike_levels_price_4:key_frame": "CV-3",
-    "cv16_rcap_disc_rep78:key_texts": "CV-3",
-    "cv16_rcap_disc_rep78:key_frame": "CV-3",
-    "cv16_rcap_levels_price_4:key_texts": "CV-3",
-    "cv16_rcap_levels_price_4:key_frame": "CV-3",
-    "cv16_pcspike_disc_rep78:key_texts": "CV-3",
-    "cv16_pcspike_disc_rep78:key_frame": "CV-3",
-    "cv16_pcspike_levels_price_4:key_texts": "CV-3",
-    "cv16_pcspike_levels_price_4:key_frame": "CV-3",
-    "cv16_bar_fillonly:key_texts": "CV-3",
-    "cv16_bar_fillonly:key_frame": "CV-3",
-    "cv16_line_fillonly:key_texts": "CV-3",
-    "cv16_line_fillonly:key_frame": "CV-3",
+    # WP-42 CV-3 closed the discrete, binned and stepped keys' form (the
+    # axis-style key cell).  zscale(reverse) drawn on the key cell is
+    # CV-15's (42-03).
+    "zscale_rev:key_texts": "CV-15",
     "cv16_line_plegend:key_texts": "CV-4",
     "cv16_line_plegend:key_frame": "CV-4",
-    "cv16_bar_keysrange:key_texts": "CV-3",
-    "cv16_bar_keysrange:key_frame": "CV-3",
-    "cv16_line_cuts_list:key_texts": "CV-3",
-    "cv16_line_cuts_list:key_frame": "CV-3",
-    # WP-42 CV-6 closed the key a layer: the one key left is the last
-    # layer's discrete key, drawn as CV-3's (ascending, '(missing)', a
-    # frame), as disc_rep78's is.
-    "cv16_two_layers:key_texts": "CV-3",
-    "cv16_two_layers:key_frame": "CV-3",
-    "cv16_legend_rows2:key_texts": "CV-3",
-    "cv16_legend_rows2:key_frame": "CV-3",
-    "cv16_disc_levels_rep78_3:key_texts": "CV-3",
-    "cv16_disc_levels_rep78_3:key_frame": "CV-3",
+    # The one key left is the last layer's, twoway's texts (5 .. 1); the
+    # two layers' plot legend beside it (twoway's two Mileage (mpg) keys
+    # among the key's texts) is the plot legend's interplay with the key
+    # (42-04, CV-4).
+    "cv16_two_layers:key_texts": "CV-4",
 }
 COLORVAR_DELIBERATE = {}
 
@@ -803,6 +757,11 @@ def _cv_label(lab):
 def _dash_key(models):
     """(texts top to bottom, framed) of dash's colour key: a ColorBar's
     tick labels, the colorvar Legend's or the plot Legend's items."""
+    # Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+    # twoway draws swatches beside a z axis (CV-3), unframed: a key
+    # cell's axis labels, top to bottom.
+    for c in cb.axis_key_cells(models):
+        return cb.axis_key_texts(c), False
     figs = cb._figures(models) + cb._key_cells(models)
     for f in figs:
         for side in ("right", "left", "above", "below", "center"):

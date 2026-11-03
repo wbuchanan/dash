@@ -266,9 +266,10 @@ class TestTheRenderer:
         assert not [m for m in msgs if "contour" in m], msgs
         [cr] = _crs(fig)
         assert [float(v) for v in cr.levels[1:-1]] == [-1.0, 0.0, 1.0]
-        bars = [m for side in (fig.right, fig.left, fig.above, fig.below,
-                               fig.center) for m in side
-                if type(m).__name__ == "ContourColorBar"]
+        # Flipped (WP-42 CV-3): dash's colour key was a ContourColorBar;
+        # twoway draws swatches beside a z axis (CV-3): the key cell.
+        import colour_bins
+        bars = colour_bins.key_views(fig)
         assert [float(t) for t in bars[0].ticker.ticks] == [-1.0, 0.0, 1.0]
 
     def test_levels_out_of_order_go_to_their_bands(self, mode):
@@ -502,15 +503,17 @@ class TestTheSavedPage:
         lines = ({k: list(v) for k, v in
                   _fill(r, "line", "dash_contour_lines").items()}
                  if part == "alpattern" else None)
-        bar = r.figures and [m for f in jo._saved_figs(r)
-                             for side in (f.right, f.left, f.above, f.below,
-                                          f.center) for m in side
-                             if type(m).__name__ == "ContourColorBar"][0]
+        # Flipped (WP-42 CV-3): dash's colour key was a ContourColorBar;
+        # twoway draws swatches beside a z axis (CV-3): the key cell.
+        import colour_bins
+        bar = r.figures and [v for f in jo._saved_figs(r)
+                             for v in colour_bins.key_views(f)][0]
         lv, tk = list(bar.levels), list(bar.ticker.ticks)
         _move_and_back(r, "1")
         _same_data(_fill(r), built)
         if lines is not None:
             _same_data(_fill(r, "line", "dash_contour_lines"), lines)
+        bar = colour_bins.KeyView(bar.cell)
         assert list(bar.levels) == lv and list(bar.ticker.ticks) == tk
         assert not _cue_on(r)
 

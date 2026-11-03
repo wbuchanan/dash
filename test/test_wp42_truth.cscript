@@ -795,6 +795,11 @@ def _q4203_bykeys(sp, dp, app):
         for m in models:
             if not isinstance(m, Plot):
                 continue
+            # WP-42 CV-3: the by() key is a key cell (dash_key_cell).
+            if "dash_key_cell" in (m.tags or []):
+                if getattr(m, "name", None) == "dash_by_clegend":
+                    in_cell += 1
+                continue
             for side in (m.right, m.left, m.above, m.below, m.center):
                 for k in side:
                     if type(k).__name__ != "ContourColorBar":
@@ -838,6 +843,101 @@ program define _q4203_reg
     _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
     python: import __main__ as _q4203_m; _q4203_m._q4203_bykeys("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
 end
+
+// S03 CV-3 helpers: _q4203_cells: the colour key both modes draw for a
+// registered graph -- the key cell's axis labels top first into
+// q4203_ks/q4203_kv, the Legend or ColorBar keys drawn on a figure into
+// q4203_os/q4203_ov; _q4203_svgk: twoway's unrotated texts right of the
+// plot region, top first, into q4203_kt.
+python:
+def _q4203_cells(sp, dp, app):
+    from sfi import Macro
+    from bokeh.models import ColorBar, Legend, Plot
+    import dash_render as dr
+    a, b = _q4203_models(sp, dp, app)
+    for models, sfx in ((a, "s"), (b, "v")):
+        texts, other = [], 0
+        for m in models:
+            if not isinstance(m, Plot):
+                continue
+            if "dash_key_cell" in (m.tags or []):
+                ax = (list(m.right) + list(m.left))[0]
+                ovr = dict(ax.major_label_overrides or {})
+                keys = sorted(ovr, key=float, reverse=True)
+                texts += [str(ovr[k]) for k in keys]
+                continue
+            for side in (m.right, m.left, m.above, m.below, m.center):
+                for k in side:
+                    bar = isinstance(k, ColorBar) and k.name != "dash_by_label_box"
+                    leg = isinstance(k, Legend) and k.name == dr._COLORVAR_LEGEND_NAME
+                    if bar or leg:
+                        other += 1
+        Macro.setGlobal("q4203_k" + sfx, " ".join(texts))
+        Macro.setGlobal("q4203_o" + sfx, str(other))
+
+
+def _q4203_svgk(path):
+    from sfi import Macro
+    from svg_truth import svg_document
+    d = svg_document(path)
+    r = d["plotregion"]["right"]
+    ts = sorted((t for t in d["texts"] if t["x"] is not None
+                 and t["x"] > r + 1 and not t["rotate"]),
+                key=lambda t: t["y"])
+    Macro.setGlobal("q4203_kt", " ".join(t["text"] for t in ts))
+end
+
+capture program drop _q4203_kreg
+program define _q4203_kreg
+    // _q4203_kreg <dir> <dash command...>: register one graph and read
+    // the colour key both modes draw.
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4203_m; _q4203_m._q4203_cells("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
+* ==== S03 CV-3: twoway's axis-style colour key ====
+local only : env WP42_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w42_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03d "`w42_work'/s03k"
+    capture mkdir "`q03d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4203-1: the colour key's texts, top first, are twoway's -- the
+    // highest level at the top, a discrete key labelled at its axis's
+    // ticks, a binned or stepped key at its cuts, no missing entry --
+    // and no figure draws a Legend or ColorBar key, saved and served.
+    // ------------------------------------------------------------
+    local k 0
+    foreach o in "colorvar(rep78) colordiscrete" "colorvar(rep78) colorlevels(3)" "colorvar(rep78) colorcuts(2 4)" "colorvar(price)" {
+        local ++k
+        quietly twoway scatter mpg weight, `o' name(q03k`k', replace)
+        capture erase "`q03d'/q03k`k'.svg"
+        cert_svg_export, name(q03k`k') file("`q03d'/q03k`k'.svg")
+        python: import __main__ as _q4203_m; _q4203_m._q4203_svgk("`q03d'/q03k`k'.svg")
+        local tw "${q4203_kt}"
+        _q4203_kreg "`q03d'" scatter mpg weight, `o' name(q03k`k')
+        _w42_expect Q4203-1 `"("${q4203_ks}" == "`tw'" & "${q4203_kv}" == "`tw'")"' `"`o': twoway `tw', saved ${q4203_ks}, served ${q4203_kv}"'
+        _w42_expect Q4203-1 "(${q4203_os} == 0 & ${q4203_ov} == 0)" "`o': Legend or ColorBar keys saved ${q4203_os}, served ${q4203_ov}"
+    }
+    _w42_done Q4203-1 "the colour key is twoway's axis-style key, saved and served"
+
+    foreach f in q03k1.svg q03k2.svg q03k3.svg q03k4.svg s.json d.json a.py {
+        capture erase "`q03d'/`f'"
+    }
+    capture rmdir "`q03d'"
+    macro drop q4203_ks q4203_kv q4203_os q4203_ov q4203_kt
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
 
 * ==== S03 CV-8a: a by() contour draws twoway's one key ====
 local only : env WP42_ONLY

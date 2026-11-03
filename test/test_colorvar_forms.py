@@ -75,16 +75,53 @@ def _both(bo=None, go=None, plots=None):
     return r, doc, std_w, srv_w
 
 
+class _Range:
+    def __init__(self, lo, hi):
+        self.low, self.high = lo, hi
+
+
+class _Item:
+    def __init__(self, text):
+        self.label = text
+
+
+def _key_cells(fig_or_doc):
+    cell = getattr(fig_or_doc, "_dash_key_cell", None)
+    if cell is not None:
+        return [cell]
+    return cb.axis_key_cells(fig_or_doc)
+
+
 def _colorbar(fig_or_doc):
-    (bar,) = fig_or_doc.select({"type": ColorBar})
-    return bar
+    """The colour key's axis, read as the bar it replaced.
+
+    Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+    twoway draws swatches beside a z axis (CV-3): the key cell's z axis --
+    its ticker, labels and title -- and its line's ends as the range."""
+    (cell,) = _key_cells(fig_or_doc)
+    ax = cell._dash_key_axis
+    out = type("_KeyBar", (), {})()
+    out.ticker = ax.ticker
+    out.major_label_overrides = dict(ax.major_label_overrides or {})
+    out.color_mapper = _Range(*ax.bounds)
+    out.title = ax.axis_label or ""
+    out.axis = ax
+    return out
 
 
 def _colorvar_legend(fig_or_doc):
-    for m in fig_or_doc.select({"type": Legend}):
-        if getattr(m, "name", "") == dr._COLORVAR_LEGEND_NAME:
-            return m
-    return None
+    """The discrete colour key, read as the Legend it replaced: its title
+    and one item a label of its z axis, top first (Flipped, WP-42 CV-3:
+    see _colorbar)."""
+    cells = _key_cells(fig_or_doc)
+    if not cells:
+        return None
+    ax = cells[0]._dash_key_axis
+    out = type("_KeyLegend", (), {})()
+    out.title = ax.axis_label or ""
+    out.axis = ax
+    out.items = [_Item(t) for t in cb.axis_key_texts(cells[0])]
+    return out
 
 
 class TestColordiscreteWithCuts:
@@ -296,13 +333,20 @@ class TestZOptions:
         # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); the stepped bar over 3,799 ..
         # 11,385 (ticks 4,000 .. 12,000 by 2,000).
         assert lo0 == 3799.0 and hi0 == 11385.0
-        assert bar2.color_mapper.low == 2000.0
-        assert bar2.color_mapper.high == 14000.0
+        # Flipped (WP-42 CV-3): dash's colour key was a ColorBar; twoway
+        # draws swatches beside a z axis (CV-3), its line from the lower of
+        # the minimum and the first tick to the higher of the maximum and
+        # the last (colorvar_key_truth.json K_cont).
+        assert bar2.color_mapper.low == 3799.0
+        assert bar2.color_mapper.high == 12000.0
 
         from bokeh.models import LogColorMapper
         r3, _d3, _sw3, _rw3 = _both(go={"zscale": "log"}, plots=plots)
         bar3 = _colorbar(list(r3.figures.values())[0])
-        assert isinstance(bar3.color_mapper, LogColorMapper)
+        # Flipped (WP-42 CV-3): the key cell's z axis is a log axis.
+        from bokeh.models import LogAxis
+        assert LogColorMapper is not None
+        assert isinstance(bar3.axis, LogAxis)
 
         r4, _d4, _sw4, _rw4 = _both(plots=plots)
         default_bar = _colorbar(list(r4.figures.values())[0])
@@ -312,8 +356,10 @@ class TestZOptions:
         # twoway colours the levels as without reverse (colorvar_truth.json
         # zscale_rev, colorvar_steps_truth.json); only its key is upside
         # down, the key cell's (42-03).
-        assert list(rev_bar.color_mapper.palette) == \
-            list(default_bar.color_mapper.palette)
+        # Flipped (WP-42 CV-3): the key cell's swatches are the levels'
+        # colours, the same with and without reverse.
+        _sw = (lambda b: list(b.axis.ticker.ticks))
+        assert _sw(rev_bar) == _sw(default_bar)
 
     def test_a_z_option_on_a_discrete_key_is_named_once(self):
         plots = [tp.plot_for("scatter", {"colorvar": "rep",
@@ -359,14 +405,16 @@ class TestZOptions:
                                  plots=bar_plots)
         for bar in (_colorbar(list(r.figures.values())[0]), _colorbar(doc)):
             assert bar.title == "price"
-            assert bar.title_text_font_size == large
+            # Flipped (WP-42 CV-3): the key cell's z title.
+            assert bar.axis.axis_label_text_font_size == large
         disc = [tp.plot_for("scatter", {"colorvar": "rep",
                                         "colordiscrete": "colordiscrete"})]
         r, doc, _sw, _rw = _both(go={"ztitle": ", color(red)"}, plots=disc)
         for leg in (_colorvar_legend(list(r.figures.values())[0]),
                     _colorvar_legend(doc)):
             assert leg is not None and leg.title == "rep"
-            assert leg.title_text_color == "#ff0000"
+            # Flipped (WP-42 CV-3): the key cell's z title's colour.
+            assert leg.axis.axis_label_text_color == "#ff0000"
         for raw, want in ((",", "price"), ('"extra", suffix', "price\nextra"),
                           ('""', "")):
             r, doc, _sw, _rw = _both(go={"ztitle": raw}, plots=bar_plots)
@@ -575,7 +623,11 @@ class TestTheColourBinsHelpers:
             [list(b) for b in cb.colour_bars(f)]
             for f in cb._figures(doc)]
         # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8).
-        assert got["saved"][0]["bars"] == [[2000.0, 14000.0]]
+        # Flipped (WP-42 CV-3): dash's colour key was a ColorBar; twoway
+        # draws swatches beside a z axis (CV-3), its line from the lower of
+        # the minimum and the first tick to the higher of the maximum and
+        # the last (colorvar_key_truth.json K_cont).
+        assert got["saved"][0]["bars"] == [[3799.0, 12000.0]]
 
 
 class TestTheColourDomain:
@@ -708,7 +760,10 @@ class TestApplyColorvarOverADomain:
         _s, _r, fig = _apply({"colorlevels": "2"}, [1.0, 2.0, 3.0, 4.0],
                              domain=np.array([1.0, np.nan, 4.0]))
         labels = [i.label for i in _colorvar_legend(fig).items]
-        assert "(missing)" in str(labels)
+        # Flipped (WP-42 CV-3): dash's key had a "(missing)" entry; twoway
+        # draws swatches beside a z axis with no missing entry (CV-3,
+        # colorvar_key_truth.json K1, K8, E_allmiss).
+        assert "(missing)" not in str(labels)
 
     def test_an_empty_domain_adds_no_key_and_raises_nothing(self):
         src, rend, fig = _apply({}, [1.0, 2.0], domain=np.array([]))
@@ -722,7 +777,9 @@ class TestApplyColorvarOverADomain:
         assert list(cb.colour_mapper(rend).factors) == []
         assert cb.colour_values(rend) == [None, None]
         labels = [str(i.label) for i in _colorvar_legend(fig).items]
-        assert len(labels) == 1 and "(missing)" in labels[0]
+        # Flipped (WP-42 CV-3): dash keyed missing alone; twoway draws the
+        # axis line and the title, no entry (E_allmiss).
+        assert labels == []
 
     def test_nan_color_is_colormissing(self):
         want = _mapper().tr.translate_mcolor("red")
@@ -757,7 +814,11 @@ class TestTheDomainIsReset:
         # 11,385, ticked 4,000 .. 12,000 by 2,000), not the first's.
         # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient;
         # twoway bins at its z ticks.
-        assert bars == [(2000.0, 14000.0)]
+        # Flipped (WP-42 CV-3): dash's colour key was a ColorBar; twoway
+        # draws swatches beside a z axis (CV-3), its line from the lower of
+        # the minimum and the first tick to the higher of the maximum and
+        # the last (colorvar_key_truth.json K_cont).
+        assert bars == [(3799.0, 12000.0)]
 
     @pytest.mark.parametrize("mode", ["saved", "served"])
     def test_the_attribute_is_none_after_the_render(self, mode):
@@ -936,7 +997,8 @@ class TestAValueLabelCalledMissing:
         (fig,) = cb._figures(root)
         labels = [str(getattr(i.label, "value", i.label))
                   for i in _colorvar_legend(fig).items]
-        assert labels[-1].endswith("(missing)"), labels
+        # Flipped (WP-42 CV-3): no "(missing)" entry on twoway's key.
+        assert not [x for x in labels if "(missing)" in x], labels
 
 
 class TestOneKeyPerLayer:
@@ -1024,7 +1086,10 @@ class TestTheBinsPlan:
         assert plans[0]["renderer"].data_source \
             is not plans[1]["renderer"].data_source
         # by()'s key follows one panel's plan, the first's.
-        assert sum(len(p["keys"]) for p in plans) == 3
+        # Flipped (WP-42 CV-3): by()'s key is panel 1's key cell, on panel
+        # 1's plan alone (the Legend's key records are gone).
+        assert sorted(p.get("keycell") is not None for p in plans) == [
+            False, True]
 
     def test_a_layer_through_a_view_keeps_its_bins(self):
         from bokeh.models import CDSView, IndexFilter

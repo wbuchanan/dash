@@ -110,6 +110,16 @@ def _labels(leg):
     return out
 
 
+def _cell(fig):
+    """The figure's colour key cell (WP-42 CV-3), or None."""
+    return getattr(fig, "_dash_key_cell", None)
+
+
+def _cell_labels(fig):
+    import colour_bins
+    return colour_bins.axis_key_texts(_cell(fig))
+
+
 _DISCRETE = [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
               "options": {"colorvar": "rep78", "colordiscrete": "yes"}}]
 
@@ -122,29 +132,29 @@ class TestTheDiscreteColourKeySurvives:
 
     def test_it_keeps_one_key_per_category(self):
         fig, _ = _render(_DISCRETE)
-        cv = [l for l in _legends(fig) if _labels(l) != ["mpg"]]
-        assert cv, (
-            f"every legend was overwritten with the y-variable key: "
-            f"{[_labels(l) for l in _legends(fig)]}"
-        )
-        assert _labels(cv[0]) == ["Poor", "Fair", "Avg", "Good", "Exc"], (
-            _labels(cv[0])
-        )
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend of value
+        # labels; twoway draws swatches beside a z axis labelled at its
+        # ticks, no value labels without zlabel(, valuelabel) (CV-3;
+        # colorvar_key_truth.json K1).
+        assert _cell(fig) is not None
+        assert _cell_labels(fig) == ["5", "4", "3", "2", "1"]
+        assert len(_cell(fig)._dash_keycell["src"].data["c"]) == 5
 
     def test_it_is_visible(self):
         fig, _ = _render(_DISCRETE)
-        cv = [l for l in _legends(fig) if len(l.items) > 1]
-        assert cv, "no multi-key legend survived"
-        assert cv[0].visible is True, (
-            "the colour key was hidden by the plot legend's "
-            "fewer-than-two-keys rule"
-        )
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend of value
+        # labels; twoway draws swatches beside a z axis labelled at its
+        # ticks, no value labels without zlabel(, valuelabel) (CV-3;
+        # colorvar_key_truth.json K1).
+        assert _cell(fig) is not None and _cell(fig).visible is True
 
     def test_the_y_variable_is_not_a_colour_key(self):
         fig, _ = _render(_DISCRETE)
-        cv = [l for l in _legends(fig) if len(l.items) > 1]
-        assert cv
-        assert "mpg" not in _labels(cv[0])
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend of value
+        # labels; twoway draws swatches beside a z axis labelled at its
+        # ticks, no value labels without zlabel(, valuelabel) (CV-3;
+        # colorvar_key_truth.json K1).
+        assert "mpg" not in _cell_labels(fig)
 
 
 class TestTheSchemeChromeIsStillApplied:
@@ -154,12 +164,12 @@ class TestTheSchemeChromeIsStillApplied:
         fig, dr = _render(_DISCRETE, scheme="economist")
         want = dr.scheme.legend_bg_color
         assert want
-        # The loop below passed with no legend to check.  The colour key
-        # must be one it checks -- under economist it is the only legend
-        # (measured 24sep2026).
-        assert [l for l in _legends(fig) if _labels(l) == _CATEGORIES], (
-            [_labels(l) for l in _legends(fig)]
-        )
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend in the
+        # scheme's legend box; twoway draws swatches beside a z axis with
+        # no box of its own (CV-3), so the graph region shows through.
+        c = _cell(fig)
+        assert c is not None
+        assert c.background_fill_alpha == 0.0 and c.border_fill_alpha == 0.0
         for leg in _legends(fig):
             assert str(leg.background_fill_color) == want, (
                 f"legend background {leg.background_fill_color} is not the "
@@ -170,9 +180,9 @@ class TestTheSchemeChromeIsStillApplied:
         fig, dr = _render(_DISCRETE, scheme="economist")
         want = dr.scheme.legend_border_color
         assert want
-        assert [l for l in _legends(fig) if _labels(l) == _CATEGORIES], (
-            [_labels(l) for l in _legends(fig)]
-        )
+        # Flipped (WP-42 CV-3): twoway's colour key has no frame (CV-3).
+        assert _cell(fig) is not None
+        assert _cell(fig).outline_line_color is None
         for leg in _legends(fig):
             assert str(leg.border_line_color) == want
 
@@ -196,15 +206,14 @@ class TestTheMixedCase:
 
     def test_the_colour_key_keeps_its_categories(self):
         fig, _ = _render(self._MIXED)
-        cv = [l for l in _legends(fig)
-              if set(_labels(l)) >= {"Poor", "Exc"}]
-        assert cv, (
-            f"the colour key lost its categories: "
-            f"{[_labels(l) for l in _legends(fig)]}"
-        )
-        # All five, in order: the two ends alone passed a key that had
-        # dropped Fair, Avg and Good.
-        assert _labels(cv[0]) == _CATEGORIES, _labels(cv[0])
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend of value
+        # labels; twoway draws swatches beside a z axis labelled at its
+        # ticks, no value labels without zlabel(, valuelabel) (CV-3;
+        # colorvar_key_truth.json K1).
+        # All five levels, in order.
+        assert _cell_labels(fig) == ["5", "4", "3", "2", "1"]
+        assert sorted(_cell(fig)._dash_keycell["src"].data["y"]) == [
+            1.0, 2.0, 3.0, 4.0, 5.0]
 
     def test_the_plot_legend_is_separate_and_keys_the_series(self):
         fig, _ = _render(self._MIXED)
@@ -217,12 +226,11 @@ class TestTheMixedCase:
 
     def test_they_are_two_different_legends(self):
         fig, _ = _render(self._MIXED)
-        assert len(_legends(fig)) >= 2, (
-            "the colour key and the series key were merged into one legend"
-        )
-        # Exactly the two (measured 24sep2026); a duplicated key passed
-        # ">= 2".
-        assert len(_legends(fig)) == 2, [_labels(l) for l in _legends(fig)]
+        # Flipped (WP-42 CV-3): the colour key is a key cell beside the
+        # figure (twoway's axis-style key), the series legend the
+        # figure's one Legend: still two keys, never merged.
+        assert _cell(fig) is not None
+        assert len(_legends(fig)) == 1, [_labels(l) for l in _legends(fig)]
 
 
 class TestTheContinuousPathIsUnchanged:
@@ -233,9 +241,10 @@ class TestTheContinuousPathIsUnchanged:
         fig, _ = _render([{"type": "scatter", "yvar": "mpg",
                            "xvar": "weight",
                            "options": {"colorvar": "length"}}])
-        bars = list(fig.select({"type": ColorBar}))
-        assert bars, "the continuous colour bar was removed"
-        assert bars[0].visible is True
+        # Flipped (WP-42 CV-3): dash's colour key was a ColorBar; twoway
+        # draws swatches beside a z axis (CV-3): the key cell.
+        assert not list(fig.select({"type": ColorBar}))
+        assert _cell(fig) is not None and _cell(fig).visible is True
 
 
 class TestNoColorvarIsUnchanged:

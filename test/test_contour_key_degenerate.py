@@ -72,9 +72,11 @@ def _figs(mode, tmp_path, ptype, z, y, x, rows):
 
 
 def _bars(fig):
-    return [m for side in (fig.right, fig.left, fig.above, fig.below,
-                           fig.center)
-            for m in side if type(m).__name__ == "ContourColorBar"]
+    # Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+    # twoway draws swatches beside a z axis (CV-3): the figure's key cell,
+    # read as its title, ticks, level edges and side (colour_bins.KeyView).
+    import colour_bins
+    return colour_bins.key_views(fig)
 
 
 @pytest.mark.parametrize("mode", _MODES)

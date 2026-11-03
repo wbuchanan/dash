@@ -123,9 +123,12 @@ def _build(tmp_path, mode, plots, data, formats=None, go=None,
 
 
 def _bar(root):
-    """(ticks, {tick: text}) of the one ColorBar, or (None, None)."""
-    bars = [a for f in cb._figures(root) for a in f.right
-            if isinstance(a, ColorBar)]
+    """(ticks, {tick: text}) of the one colour key's axis.
+
+    Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+    twoway draws swatches beside a z axis (CV-3): the key cell's z axis,
+    at the positions the bar had."""
+    bars = [c._dash_key_axis for c in cb.axis_key_cells(root)]
     assert len(bars) == 1, bars
     b = bars[0]
     if not isinstance(b.ticker, FixedTicker):
@@ -140,13 +143,14 @@ def _bar_texts(root):
 
 
 def _keys(root):
-    """The colorvar Legend's labels."""
-    legs = [a for f in cb._figures(root) for a in f.right
-            if isinstance(a, Legend)
-            and str(a.name or "") == dr._COLORVAR_LEGEND_NAME]
-    assert len(legs) == 1, legs
-    return [it.label.get("value") if isinstance(it.label, dict)
-            else getattr(it.label, "value", it.label) for it in legs[0].items]
+    """The colour key's labels, lowest first.
+
+    Flipped (WP-42 CV-3): dash's colour key was a Legend of its levels;
+    twoway draws swatches beside a z axis (CV-3): the key cell's z axis
+    labels."""
+    cells = cb.axis_key_cells(root)
+    assert len(cells) == 1, cells
+    return list(reversed(cb.axis_key_texts(cells[0])))
 
 
 def _factors(root):
@@ -211,8 +215,11 @@ class TestADateColourKeyIsInStataUnits:
         root, _w, _o = _build(tmp_path, mode,
                               [_sc("date", colordiscrete="colordiscrete")],
                               df)
-        assert _keys(root) == ["14,977", "14,978", "14,979", "14,980",
-                               "14,983"]
+        # Flipped (WP-42 CV-3): dash's discrete key was a Legend of its
+        # levels; twoway draws swatches beside a z axis, labelled at its
+        # natscale ticks (CV-3; colorvar_key_truth.json K1, K2).
+        assert _keys(root) == ["14,976", "14,978", "14,980", "14,982",
+                               "14,984"]
 
     @pytest.mark.parametrize("mode", MODES)
     def test_colorvarminmax_ticks_the_first_and_last_date(self, tmp_path,
@@ -362,8 +369,10 @@ class TestZlabelOnAColourKey:
                              _PRICE.iloc[:5].reset_index(drop=True),
                              formats={"price": "%9.0g"},
                              go={"zlabel": ", format(%9.2f)"})
-        assert _keys(root) == ["3291.00", "4099.00", "4749.00", "5079.00",
-                               "5788.00"]
+        # Flipped (WP-42 CV-3): dash's discrete key was a Legend of its
+        # levels; twoway draws swatches beside a z axis, labelled at its
+        # natscale ticks (CV-3; colorvar_key_truth.json K1, K2).
+        assert _keys(root) == ["3000.00", "4000.00", "5000.00", "6000.00"]
         assert _znotes(w) == []
 
     @pytest.mark.parametrize("mode", MODES)
@@ -406,7 +415,10 @@ class TestANumberKeyIsInTwowaysCommaFormat:
                               [_sc("price", colordiscrete="colordiscrete")],
                               _PRICE.iloc[:5].reset_index(drop=True),
                               formats={"price": "%9.0g"})
-        assert _keys(root) == ["3,291", "4,099", "4,749", "5,079", "5,788"]
+        # Flipped (WP-42 CV-3): dash's discrete key was a Legend of its
+        # levels; twoway draws swatches beside a z axis, labelled at its
+        # natscale ticks (CV-3; colorvar_key_truth.json K1, K2).
+        assert _keys(root) == ["3,000", "4,000", "5,000", "6,000"]
 
 
 # ===========================================================================

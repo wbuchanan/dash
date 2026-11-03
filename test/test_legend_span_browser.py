@@ -274,6 +274,31 @@ function state() {
       // WP-41 41-04: each panel's frame's top left corner (page px).
       pcells.push([cr0.left + v.frame.bbox.x0, cr0.top + v.frame.bbox.y0]);
     }
+    // Flipped (WP-42 CV-3): dash's by() colour key was a ColorBar; twoway
+    // draws swatches beside a z axis (CV-3): a key cell is read as the
+    // key -- its length and "bar" the z axis's line, its "key" box the
+    // swatches to the axis's labels and title, upright.
+    if (v.frame && v.model && (v.model.tags || []).includes('dash_key_cell')) {
+      const cr = v.canvas_view.el.getBoundingClientRect();
+      const f = v.frame.bbox, yr = v.model.y_range;
+      let am = null, ab = null;
+      for (const [m, rv] of v.renderer_views) {
+        if ((m.type || '').endsWith('Axis')) { am = m; ab = rv.bbox; }
+      }
+      if (am && ab && yr && yr.end !== yr.start) {
+        const yy = (z) => cr.top + f.y0 + (yr.end - z) / (yr.end - yr.start) * f.height;
+        const y0 = yy(am.bounds[1]), y1 = yy(am.bounds[0]);
+        const x0 = cr.left + f.x0, x1 = cr.left + ab.x1;
+        boxes.push({type: 'ColorBar', cell: v.model.name || '', text: '',
+                    box: [x0, y0, x1, y1],
+                    canvas: [cr.left, cr.top, cr.left + v.bbox.width,
+                             cr.top + v.bbox.height],
+                    frame: [cr.left + f.x0, cr.left + f.x1],
+                    len: y1 - y0, key: [x0, y0, x1, y1],
+                    bar: [cr.left + f.x1, y0, cr.left + f.x1, y1],
+                    orient: 'vertical'});
+      }
+    }
     if (v.frame && v.renderer_views) {
       const cr = v.canvas_view.el.getBoundingClientRect();
       for (const [m, rv] of v.renderer_views) {
@@ -941,7 +966,10 @@ class TestByPanelBoxUnderOtherSchemes:
 
 
 def _dkey(st):
-    (k,) = [b for b in st["boxes"] if b["type"] == "Legend"
+    # Flipped (WP-42 CV-3): dash's discrete by() key was a Legend; twoway
+    # draws swatches beside a z axis (CV-3): the key cell, read as the
+    # continuous key is (the probe's "ColorBar" box).
+    (k,) = [b for b in st["boxes"] if b["type"] == "ColorBar"
             and b["cell"] == "dash_by_clegend"]
     return k
 

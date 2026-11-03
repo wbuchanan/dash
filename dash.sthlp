@@ -6064,21 +6064,25 @@ at or above its minimum, {it:n} cuts making {it:n} + 1 levels in
 {it:n} + 1 colours of the rule (or of {cmd:colorlist()}), a value on a cut
 in the level below, before and after a filter move;
 {cmd:colorvar(price)} on the auto data draws four colours, keyed
-0 5,000 10,000 15,000.  The key is a bar of those colours ticked at the
-key's ticks.  The bar is as thick as the scheme's {cmd:gsize clegend_width}
-({cmd:huge} under {cmd:s2color}), and as long as its {cmd:clegend_height}
-when that is not zero; {cmd:clegend(width())} and {cmd:clegend(height())}
-win.  {cmd:zscale(log)} and {cmd:zscale(reverse)} keep the levels,
-as in {cmd:twoway}.  The colour bar sits on the
-graph region with no box of its own: its tick labels take the scheme's
+0 5,000 10,000 15,000.  The key is drawn as {cmd:twoway} draws it: a
+column of swatches in the plot type's own key (a marker, a square for
+{cmd:bar} and {cmd:spike}, a line for the line types), the highest level
+at the top, beside a z axis with its axis line, ticked at the axis's
+natural ticks for a discrete key ({cmd:colorvar(rep78) colordiscrete} is
+labelled 5 4 3 2 1, its value labels only under
+{cmd:zlabel(, valuelabel)}) and at the cuts for a binned or stepped key,
+the title running up the axis's side, with no (missing) or other entry and
+no frame.  The swatch band is as thick as the scheme's
+{cmd:gsize clegend_width} ({cmd:huge} under {cmd:s2color});
+{cmd:clegend(width())} wins.  {cmd:zscale(log)} and {cmd:zscale(reverse)}
+keep the levels, as in {cmd:twoway}.  The key sits on the graph region
+with no box of its own: its tick labels take the scheme's
 {cmd:tick_label} size and colour, its title the {cmd:axis_title} size and
-colour, upright, and its ticks the scheme's tick colour, width and length,
-as in {cmd:twoway}'s colour key.  {cmd:twoway} turns the title to run up
-the key's right-hand side and draws an axis line on the side of its
-labels; {cmd:dash} draws the title above the bar and no axis line.
+colour, and its ticks the scheme's tick colour, width and length, as in
+{cmd:twoway}'s colour key; below or above the plot it stays upright.
 {cmd:colordiscrete},
-{cmd:colorcuts()} and {cmd:colorlevels()} bin it, and a discrete key
-entry is drawn per bin, in the rule's colours unless
+{cmd:colorcuts()} and {cmd:colorlevels()} bin it, each bin a swatch, in
+the rule's colours unless
 {cmd:colorlist()} names others.  A string {it:varname} is refused as
 {cmd:twoway} refuses it ({cmd:'make' found where numeric variable expected},
 r(7)).

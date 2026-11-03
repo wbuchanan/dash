@@ -1834,6 +1834,14 @@ CORPUS = [
           [_sc(colorvar="foreign", colordiscrete="colordiscrete")]),
     _case("colorvar() on a continuous variable", [_sc(colorvar="price")]),
     # WP-42 CV-8: every type binned at the key's ticks, not only a line.
+    # WP-42 CV-3: twoway's axis-style colour key (colorvar_key_truth.json
+    # K1, K3, K_cont), the same key cell in both modes.
+    _case("CV-3 K1: colorvar(rep) colordiscrete key cell",
+          [_sc(colorvar="rep", colordiscrete="colordiscrete")]),
+    _case("CV-3 K3: colorvar(rep) colorlevels(3) key cell",
+          [_sc(colorvar="rep", colorlevels="3")]),
+    _case("CV-3 K_cont: colorvar(price) stepped key cell",
+          [_sc(colorvar="price")]),
     _case("colorvar() stepped on bar",
           [plot_for("bar", {"colorvar": "price"})]),
     _case("colorvar() with a palette",
@@ -6837,8 +6845,16 @@ class TestTheLaunchedAppAgrees:
 def _by_keys_of(models):
     """by()'s discrete colour key's labels among *models*."""
     from bokeh.models import Legend
-    return [[_label_of(i) for i in m.items] for m in models
-            if isinstance(m, Legend) and m.name == "dash_by_clegend_key"]
+    # Flipped (WP-42 CV-3): by()'s key is panel 1's key cell (twoway's
+    # axis-style key): its z axis's labels, lowest first.
+    cells = [[str(dict(a.major_label_overrides)[k]) for k in sorted(
+        dict(a.major_label_overrides))]
+        for m in models if "dash_key_cell" in (getattr(m, "tags", None) or [])
+        and getattr(m, "name", None) == "dash_by_clegend"
+        for a in (list(m.right) + list(m.left))[:1]]
+    return cells + [[_label_of(i) for i in m.items] for m in models
+                    if isinstance(m, Legend)
+                    and m.name == "dash_by_clegend_key"]
 
 
 class TestTheByColourKeyAfterAMove:
@@ -6859,13 +6875,14 @@ class TestTheByColourKeyAfterAMove:
             g["if_expr"] = oracle
         r0, _ = _standalone(q)
         want = _by_keys_of(r0._last_layout_root.references())
-        assert want == [["3"]]
+        # Flipped (WP-42 CV-3): by()'s key is panel 1's key cell, its one
+        # level (3) on its z axis, ticked by natscale about it (2 4); the
+        # served app and the saved script draw the same cell.
+        assert want == [["2", "4"]], want
         doc, _ = _served(spec)
         w = [x for x in _widgets_of(doc) if type(x).__name__ == "Select"][0]
         _fire(w, _move_widget_value(w, "Select", "3"))
-        assert _by_keys_of(doc.select({"type": dr.Legend})
-                           if hasattr(dr, "Legend") else
-                           [m for root in doc.roots
+        assert _by_keys_of([m for root in doc.roots
                             for m in root.references()]) == want
         r, _ = _standalone(spec)
         w, cb = [(w, cb) for w, cb in zip(r.filter_widgets,
@@ -6889,6 +6906,20 @@ def _key_ticks_of(models):
         out.append(([_num(v) for v in t],
                     sorted((str(_num(float(k))), str(v)) for k, v in
                            dict(m.major_label_overrides or {}).items())))
+    # Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+    # twoway draws swatches beside a z axis (CV-3): each key cell's axis
+    # ticks and labels, and its swatches (centre, colour).
+    for m in models:
+        if "dash_key_cell" not in (getattr(m, "tags", None) or []) \
+                or type(m).__name__ != "Plot":
+            continue
+        ax = (list(m.right) + list(m.left))[0]
+        d = m.renderers[0].data_source.data if m.renderers else {}
+        out.append(([_num(v) for v in (ax.ticker.ticks or [])],
+                    sorted((str(_num(float(k))), str(v)) for k, v in
+                           dict(ax.major_label_overrides or {}).items()),
+                    sorted((round(float(y), 6), str(c)) for y, c in
+                           zip(d.get("y", []), d.get("c", [])))))
     return sorted(out, key=repr)
 
 
@@ -7071,6 +7102,16 @@ def _key_truth_of(profile, kind):
     figs, ticks, by_keys = profile
     if kind == "ticks":
         return ticks[0][0] if ticks else None
+    # Flipped (WP-42 CV-3): dash's discrete and binned keys were Legends of
+    # level or interval texts; twoway draws swatches beside a z axis
+    # labelled at the cuts (CV-3): a key cell's levels (its swatches'
+    # values) and its axis labels, lowest first.
+    cells = [t for t in ticks if len(t) == 3]
+    if cells:
+        _t, labs, sw = cells[0]
+        lab = dict(labs)
+        return {"labels": [lab[k] for k in sorted(lab, key=float)],
+                "levels": ["%g" % y for y, _c in sw]}
     if by_keys:
         return by_keys[0]
     for f in figs:
@@ -7131,7 +7172,24 @@ class TestAColourKeyCountsTheKeptRowsMissingXOrY:
     def test_the_oracle_is_twoways_key(self, monkeypatch, name, spec, move,
                                        oracle, truth, df):
         want, _srv, _js = self._three(monkeypatch, spec, move, oracle, df)
-        assert _key_truth_of(want, truth[0]) == truth[1], name
+        got = _key_truth_of(want, truth[0])
+        if truth[0] == "labels" and isinstance(got, dict):
+            # Flipped (WP-42 CV-3): the measured bins' inner bounds are the
+            # axis's labels (twoway labels a binned key at its cuts); a
+            # level key's levels are its swatches.
+            ivl = [t for t in truth[1] if "–" in t or t[:1] in "≤>"]
+            if ivl:
+                cuts = []
+                for t in truth[1]:
+                    for part in t.replace("≤", "").replace(">", "").split("–"):
+                        if part not in cuts:
+                            cuts.append(part)
+                inner = cuts if truth[1][0][:1] == "≤" else cuts[1:-1]
+                assert got["labels"] == inner, (name, got, truth)
+            else:
+                assert got["levels"] == truth[1], (name, got, truth)
+            return
+        assert got == truth[1], name
 
     def test_the_served_key_is_the_kept_rows(self, monkeypatch, name, spec,
                                              move, oracle, truth, df):

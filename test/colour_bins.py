@@ -128,6 +128,25 @@ def _key_cells(model):
     return out
 
 
+def axis_key_cells(model):
+    """The axis-style colour key cells (``dash_key_cell``, WP-42 CV-3)
+    under *model*: bare Plots beside their figures."""
+    roots = list(getattr(model, "roots", None) or [model])
+    out = []
+    for r in roots:
+        for m in (r.references() if hasattr(r, "references") else ()):
+            if "dash_key_cell" in (getattr(m, "tags", None) or []) \
+                    and type(m).__name__ == "Plot" and m not in out:
+                out.append(m)
+    return out
+
+
+def axis_key_texts(cell):
+    """A key cell's label texts, top to bottom (WP-42 CV-3)."""
+    ovr = dict(cell._dash_key_axis.major_label_overrides or {})
+    return [str(ovr[k]) for k in sorted(ovr, key=float, reverse=True)]
+
+
 def colour_bars(model):
     """(low, high) of every ColorBar's mapper under *model*, a by() grid's
     colour-key cell included."""
@@ -141,6 +160,12 @@ def colour_bars(model):
                         a.name != "dash_by_label_box":
                     m = a.color_mapper
                     out.append((m.low, m.high))
+    # Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+    # twoway draws swatches beside a z axis (CV-3) -- a key cell's
+    # (low, high) is its z axis's line, from the lowest level or tick to
+    # the highest.
+    for c in axis_key_cells(model):
+        out.append(tuple(c._dash_key_axis.bounds))
     return out
 
 
@@ -156,7 +181,9 @@ def colour_keys(model):
                         tn == "Legend"
                         and str(a.name or "") == dr._COLORVAR_LEGEND_NAME):
                     n += 1
-    return n
+    # Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+    # twoway draws swatches beside a z axis (CV-3) -- a key cell counts.
+    return n + len(axis_key_cells(model))
 
 
 def interval_bounds(labels):
@@ -189,3 +216,35 @@ def figures_by_title(model):
         t = getattr(getattr(f, "title", None), "text", None)
         out[t] = f
     return out
+
+
+class KeyView:
+    """A key cell read as the measured parts of a colour key (WP-42
+    CV-3): its title (the z axis's), ticker and labels, its levels' edges
+    along the axis (a band key's boxes; else each swatch's centre), its
+    side by the figure and the cell itself."""
+
+    def __init__(self, cell):
+        self.cell = cell
+        ax = cell._dash_key_axis
+        self.title = ax.axis_label or ""
+        self.ticker = ax.ticker
+        self.major_label_overrides = dict(ax.major_label_overrides or {})
+        self.side = cell._dash_key_side
+        d = cell._dash_keycell["src"].data
+        vert = cell._dash_keycell["vert"]
+        lo = list(d.get("b" if vert else "l") or [])
+        hi = list(d.get("t" if vert else "r") or [])
+        if lo and any(a != b for a, b in zip(lo, hi)):
+            self.levels = [float(lo[0])] + [float(v) for v in hi]
+        else:
+            self.levels = [float(v) for v in (d.get("y" if vert else "x")
+                                              or [])]
+        self.colours = [str(c) for c in d.get("c") or []]
+
+
+def key_views(fig):
+    """The colour key cell *fig* draws (``fig._dash_key_cell``), as
+    :class:`KeyView`, or []."""
+    cell = getattr(fig, "_dash_key_cell", None)
+    return [KeyView(cell)] if cell is not None else []

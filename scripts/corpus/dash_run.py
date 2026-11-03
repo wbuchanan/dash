@@ -242,6 +242,11 @@ def run_stata(run_dir, jobs=3, timeout=1800, only=None):
 #: region box), fixes it and every
 #: root at W x H (D-33-04.c), and keeps the model to export in
 #: window.__dashCorpusTarget (the first root when there is no lone figure).
+#: WP-42 CV-3 (TR-42-03.3): a figure with its colour key -- a row or
+#: column tagged dash_key_row holding the figure and a Plot tagged
+#: dash_key_cell -- is a lone figure too: the wrapper is fixed at W x H,
+#: the figure at what the key cell leaves, the cell at the figure's other
+#: side, and the wrapper is exported.
 SIZE_JS = r"""(W, H) => {
   const doc = Bokeh.documents[0];
   const roots = doc.roots();
@@ -249,8 +254,12 @@ SIZE_JS = r"""(W, H) => {
     && m.toolbar !== undefined;
   // Through one container holding only it, and the graph region box
   // (GW-6's margin, a column of its own round the figure) inside it.
+  const keyed = (m) => !!m && (m.tags || []).includes("dash_key_row")
+    && m.children && m.children.length === 2
+    && m.children.filter((k) => isPlot(k)).length === 2
+    && m.children.filter((k) => (k.tags || []).includes("dash_key_cell")).length === 1;
   const unwrap = (m, depth = 0) => {
-    if (isPlot(m)) return m;
+    if (isPlot(m) || keyed(m)) return m;
     const kids = m && m.children;
     if (depth < 2 && kids && kids.length === 1) {
       const k = Array.isArray(kids[0]) ? kids[0][0] : kids[0];
@@ -261,7 +270,20 @@ SIZE_JS = r"""(W, H) => {
   const fig = roots.length === 1 ? unwrap(roots[0]) : null;
   let tex = !!document.querySelector("mjx-container");
   for (const m of doc.all_models) if (m && m.type === "TeX") tex = true;
-  if (fig) {
+  if (fig && keyed(fig)) {
+    for (const r of roots) { r.sizing_mode = "fixed"; r.width = W; r.height = H; }
+    const cell = fig.children.find((k) => (k.tags || []).includes("dash_key_cell"));
+    const f = fig.children.find((k) => k !== cell);
+    const across = fig.type === "Row";
+    fig.sizing_mode = "fixed"; fig.width = W; fig.height = H;
+    f.min_height = null; f.max_height = null; f.aspect_ratio = null;
+    f.sizing_mode = "fixed";
+    if (across) {
+      f.width = Math.max(1, W - cell.width); f.height = H; cell.height = H;
+    } else {
+      f.width = W; f.height = Math.max(1, H - cell.height);
+    }
+  } else if (fig) {
     for (const r of roots) { r.sizing_mode = "fixed"; r.width = W; r.height = H; }
     fig.min_height = null; fig.max_height = null; fig.aspect_ratio = null;
     fig.sizing_mode = "fixed"; fig.width = W; fig.height = H;

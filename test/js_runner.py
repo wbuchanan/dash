@@ -207,6 +207,16 @@ def stand_in(m, models, objs):
                 "major_label_overrides": {
                     str(k): v for k, v in
                     dict(m.major_label_overrides or {}).items()}}
+    # WP-42 CV-3: a key cell's z axis, whose labels and line the relevel
+    # writes (its ticker is a FixedTicker of its own).
+    if "dash_key_axis" in (getattr(m, "tags", None) or []):
+        return {"__type__": "KeyAxis",
+                "ticker": encode(m.ticker, models, objs),
+                "bounds": [plain(v) for v in (m.bounds if isinstance(
+                    m.bounds, (tuple, list)) else ())],
+                "major_label_overrides": {
+                    str(k): v for k, v in
+                    dict(m.major_label_overrides or {}).items()}}
     if type(m).__name__ == "CategoricalColorMapper":
         return {"__type__": "CategoricalColorMapper",
                 "factors": [str(f) for f in (m.factors or [])],
@@ -370,6 +380,12 @@ for (const [id, o] of Object.entries(REG)) {
       : Object.entries(o.major_label_overrides || {}).map(([k, v]) => [Number(k), v]);
     out[id] = {barlabels: ov};
   }
+  else if (o.__type__ === "KeyAxis") {
+    const ov = o.major_label_overrides instanceof Map
+      ? Array.from(o.major_label_overrides.entries())
+      : Object.entries(o.major_label_overrides || {}).map(([k, v]) => [Number(k), v]);
+    out[id] = {keyaxis: {overrides: ov, bounds: Array.from(o.bounds || [])}};
+  }
   else if (o.__type__ === "CategoricalColorMapper")
     out[id] = {mapper: {factors: Array.from(o.factors || []),
                         palette: Array.from(o.palette || [])}};
@@ -528,6 +544,15 @@ class JsSession:
                                 and not isinstance(v, bool) \
                                 and getattr(m, k) != v:
                             setattr(m, k, float(v))
+                elif "keyaxis" in state:
+                    ka = state["keyaxis"]
+                    new = {float(k): v for k, v in ka["overrides"]}
+                    if dict(m.major_label_overrides or {}) != new:
+                        m.major_label_overrides = new
+                    b = ka.get("bounds") or []
+                    if len(b) == 2 and all(isinstance(v, (int, float))
+                                           for v in b):
+                        m.bounds = (float(b[0]), float(b[1]))
                 elif "mapper" in state:
                     m.factors = list(state["mapper"]["factors"])
                     m.palette = list(state["mapper"]["palette"])

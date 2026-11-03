@@ -53,15 +53,16 @@ class TestTheMeasurement:
 
 
 def _bar(fig):
-    [cb] = [m for side in (fig.right, fig.left, fig.above, fig.below)
-            for m in side if isinstance(m, ColorBar)]
-    return cb
+    # Flipped (WP-42 CV-3): dash's colour key was a ColorBar; twoway draws
+    # swatches beside a z axis (CV-3): the figure's key cell.
+    import colour_bins
+    [kv] = colour_bins.key_views(fig)
+    return kv
 
 
-def _bar_view(cb):
-    m = cb.color_mapper
-    return (list(m.palette), m.low, m.high, list(cb.ticker.ticks),
-            dict(cb.major_label_overrides), cb.title)
+def _bar_view(kv):
+    return (kv.colours, kv.levels, list(kv.ticker.ticks),
+            dict(kv.major_label_overrides), kv.title)
 
 
 class TestDashDrawsItSilently:

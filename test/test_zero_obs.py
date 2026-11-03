@@ -111,9 +111,11 @@ def _figs(mode, tmp_path, plots):
 
 
 def _bars(fig):
-    return [m for side in (fig.right, fig.left, fig.above, fig.below,
-                           fig.center)
-            for m in side if type(m).__name__ == "ContourColorBar"]
+    # Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+    # twoway draws swatches beside a z axis (CV-3): the figure's key cell,
+    # read as its title, ticks, level edges and side (colour_bins.KeyView).
+    import colour_bins
+    return colour_bins.key_views(fig)
 
 
 class TestAnEmptyContour:
@@ -131,9 +133,10 @@ class TestAnEmptyContour:
         [cb] = _bars(figs[0])
         assert cb.title == "mpg"
         assert list(cb.ticker.ticks) == []
-        # The strip is the bands' fill, transparent, and no outline.
-        assert cb.fill_renderer.glyph.fill_alpha == 0.0
-        assert cb.bar_line_alpha == 0.0
+        # Flipped (WP-42 CV-3): dash's colour key was a ColorBar; twoway
+        # draws swatches beside a z axis (CV-3): the empty key has no
+        # swatch, only its axis line and title.
+        assert cb.levels == [] and cb.colours == []
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_contourline_no_rows_draws(self, mode, tmp_path):

@@ -78,9 +78,11 @@ def _layer(kind, opts=None):
 
 
 def _bars(fig):
-    return [m for side in (fig.right, fig.left, fig.above, fig.below,
-                           fig.center) for m in side
-            if type(m).__name__ == "ContourColorBar"]
+    # Flipped (WP-42 CV-3): dash's colour key was a ContourColorBar;
+    # twoway draws swatches beside a z axis (CV-3): the figure's key cell
+    # (colour_bins.KeyView).
+    import colour_bins
+    return colour_bins.key_views(fig)
 
 
 def _draw(mode, plot, df):
@@ -95,16 +97,14 @@ def _fill(fig):
 
 
 def _key_outlined(bar):
-    """True when the bar is outlined black at a medium line and its line
-    renderer strokes every level black at a medium line."""
-    lr = bar.line_renderer
-    g = lr.glyph
-    n = len(lr.data_source.data.get("xs", []))
-    return (bar.bar_line_color == "#000000"
-            and abs(float(bar.bar_line_width) - _MED) < 1e-9
-            and n == len(bar.levels)
-            and g.line_color == "#000000"
-            and abs(float(g.line_width) - _MED) < 1e-9)
+    """True when every box of the key is stroked black at a medium line.
+    Flipped (WP-42 CV-3): the key was a ContourColorBar with a line
+    renderer a level; twoway draws swatches beside a z axis (CV-3), each
+    box of the key cell stroked."""
+    rs = [r for r in bar.cell.renderers if r.name == "dash_key_swatch"]
+    return bool(rs) and len(bar.levels) >= 2 and all(
+        r.glyph.line_color == "#000000"
+        and abs(float(r.glyph.line_width) - _MED) < 1e-9 for r in rs)
 
 
 class TestTheSpecCarriesThem:
@@ -189,7 +189,9 @@ class TestTheDrawing:
         fig, _ = _draw(mode, plot, df)
         [bar] = _bars(fig)
         assert not _key_outlined(bar)
-        assert bar.bar_line_color is None
+        # Flipped (WP-42 CV-3): each box stroked in its own colour.
+        (r,) = [r for r in bar.cell.renderers if r.name == "dash_key_swatch"]
+        assert r.glyph.line_color == "c"
 
 
 @pytest.mark.parametrize("mode", _MODES)
@@ -217,9 +219,13 @@ def test_the_bar_follow_resizes_the_key_lines():
     fig, _ = _draw("std", plot, df)
     [bar] = _bars(fig)
     lv = list(bar.levels)
-    dr._dash_contour_bar_follow(bar, [lv[0], lv[1], lv[-1]], [], {})
+    # Flipped (WP-42 CV-3): the follow redraws the key cell's record, a
+    # box a band, every box stroked.
+    dr._dash_contour_bar_follow(bar.cell._dash_keycell,
+                                [lv[0], lv[1], lv[-1]], [], {})
+    import colour_bins
+    bar = colour_bins.KeyView(bar.cell)
     assert len(bar.levels) == 3
-    assert len(bar.line_renderer.data_source.data["xs"]) == 3
     assert _key_outlined(bar)
     # A bar with no outlined key keeps its line renderer as it is.
     f2 = figure()

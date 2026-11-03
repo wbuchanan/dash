@@ -72,9 +72,11 @@ def _contours(fig):
 
 
 def _bars(fig):
-    return [m for side in (fig.right, fig.left, fig.above, fig.below,
-                           fig.center)
-            for m in side if type(m).__name__ == "ContourColorBar"]
+    # Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+    # twoway draws swatches beside a z axis (CV-3): the figure's key cell,
+    # read as its title, ticks, level edges and side (colour_bins.KeyView).
+    import colour_bins
+    return colour_bins.key_views(fig)
 
 
 def _hex(c):
@@ -286,7 +288,8 @@ class TestTheKey:
     def test_placement(self, mode, tmp_path):
         figs, _n = _figs(mode, tmp_path, [_plot()])
         [cb] = _bars(figs[0])
-        assert cb in figs[0].right
+        # Flipped (WP-42 CV-3): the key cell sits at the figure's right.
+        assert cb.side == "right"
         assert list(cb.ticker.ticks) == pytest.approx(
             _T["draw"]["default"]["ticks"])
         assert cb.title == "mpg"
@@ -296,7 +299,8 @@ class TestTheKey:
         figs, _n = _figs(mode, tmp_path, [_plot()],
                          go={"clegend": "position(9)"})
         [cb] = _bars(figs[0])
-        assert cb in figs[0].left
+        # Flipped (WP-42 CV-3): the key cell sits at the figure's left.
+        assert cb.side == "left"
 
     def test_reversekey_changes_nothing(self):
         # Measured: twoway's contour key is the same with reversekey.

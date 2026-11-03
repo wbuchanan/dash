@@ -636,7 +636,11 @@ _SAVED_DIGEST = (
     # its own x axis, x title and colour key labels", the graph region box
     # a column of its own round the figure and the width-scale and span
     # JS's graph box; the same under both Pythons.
-    "4f856b60b5841e9d38a11819131043ad4b10c4c736ca252d6f2cb2b7c46edda7")
+    # 4f856b60... -> beb0219e...: WP-42 CV-3, the key cell's relevel twins
+    # in _DASH_CVAR_RELEVEL_JS and its branch of _DASH_SPAN_JS (code only:
+    # the base's _DASH_CVAR_RELEVEL_JS, _DASH_SPAN_JS and _FILTER_JS give
+    # the old digest on the new tree); the same under both Pythons.
+    "beb0219e4b01df418acd66806475aa45eba3e3e47a9fe5a55bb01d6234f419df")
 
 
 # ===========================================================================

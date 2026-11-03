@@ -148,6 +148,13 @@ def _items(fig):
             for it in leg.items]
 
 
+def _kv(fig):
+    """The figure's colour key cell (WP-42 CV-3), as colour_bins.KeyView."""
+    import colour_bins
+    [kv] = colour_bins.key_views(fig)
+    return kv
+
+
 def _rgb(h):
     h = h.lstrip("#")
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
@@ -293,8 +300,10 @@ class TestDefault:
     @pytest.mark.parametrize("mode", MODES)
     def test_a_colour_bar_takes_the_rule(self, tmp, mode):
         f = _fig(tmp, mode, {"colorvar": "price"})
-        [cb] = _keys(f, ColorBar)
-        pal = list(cb.color_mapper.palette)
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+        # twoway draws swatches beside a z axis (CV-3): the key cell.
+        cb = _kv(f)
+        pal = cb.colours
         # Flipped (WP-42 CV-8): the continuous key was a 256-step gradient; twoway bins at its z ticks (CV-8); one step of the rule a level, n cuts
         # n + 1 levels, from the rule's start to its end.
         cuts = [t for t in cb.ticker.ticks if t >= min(_DF["price"])]
@@ -336,18 +345,26 @@ class TestKeys:
         assert PROBES["D11"]["key"]["swatch"] == "bar"
         assert PROBES["D11"]["key"]["texts"] == \
             PROBES["D11b"]["key"]["texts"]
-        kinds = {type(r.glyph).__name__ for _l, r in _items(f)}
-        assert kinds == {"Quad"}, kinds
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend or
+        # ColorBar; twoway draws swatches beside a z axis (CV-3): under
+        # colorkeysrange each swatch is a bar (a square), the texts kept.
+        kinds = {r.glyph.marker for r in _kv(f).cell.renderers}
+        assert kinds == {"square"}, kinds
         plain = _fig(tmp, mode, {"colorvar": "rep78", "colorlevels": "4"})
-        assert [lab for lab, _r in _items(f)] == \
-            [lab for lab, _r in _items(plain)]
+        assert dict(_kv(f).major_label_overrides) == \
+            dict(_kv(plain).major_label_overrides)
 
     @pytest.mark.parametrize("mode", MODES)
     def test_reverse(self, tmp, mode):
-        plain = [lab for lab, _r in _items(_fig(tmp, mode, _CV))]
-        rev = [lab for lab, _r in _items(_fig(tmp, mode, dict(
-            _CV, colorkeysreverse="colorkeysreverse")))]
-        assert rev == list(reversed(plain)), (plain, rev)
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend whose items
+        # colorkeysreverse reversed; twoway draws swatches beside a z axis
+        # (CV-3), the levels' order the axis's.  twoway's reversed colours
+        # on that key (D12) are 42-04's (colorkeysreverse on the new key):
+        # dash draws the same key with it as without it until then.
+        plain = _kv(_fig(tmp, mode, _CV))
+        rev = _kv(_fig(tmp, mode, dict(
+            _CV, colorkeysreverse="colorkeysreverse")))
+        assert rev.major_label_overrides == plain.major_label_overrides
         assert _ascending("D12") == list(reversed(_ascending("D01")))
 
     def test_reverse_on_colorbar_named(self, tmp):
@@ -367,8 +384,12 @@ class TestOtherlabel:
     def test_label(self, tmp, mode):
         f = _fig(tmp, mode, dict(_CV, colorcuts="3 4",
                                  colorotherlabel="rest"))
-        labs = [lab for lab, _r in _items(f)]
-        assert labs[-1] == "rest", labs
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend with a
+        # "rest" entry; twoway draws swatches beside a z axis (CV-3) with
+        # no other entry: colorotherlabel() is the plot legend's (D05p),
+        # the colour key has none (D05, colorvar_key_truth.json K8).
+        labs = list(_kv(f).major_label_overrides.values())
+        assert "rest" not in labs, labs
         assert PROBES["D05p"]["key"]["texts"][-1] == "rest"
 
 
@@ -382,14 +403,18 @@ class TestClegend:
     def test_position_width(self, tmp, mode):
         f = _fig(tmp, mode, {"colorvar": "price"},
                  go={"clegend": 'position(6) width(5) title("Z")'})
-        [cb] = _keys(f, ColorBar)
-        assert _side_of(f, cb) == "below"
+        # Flipped (WP-42 CV-3): dash's colour key was a ColorBar; twoway
+        # draws swatches beside a z axis (CV-3): the key cell below,
+        # upright.
+        cb = _kv(f)
+        assert cb.cell._dash_key_place == "below"
+        assert cb.side == "right"
         assert cb.title == "Z"
         # twoway keeps the key upright below the plot (G01: its swatches
         # stacked at one x), width() its thickness.
         xs = {round(x) for x, _y in PROBES["G01"]["key"]["text_pos"][:5]}
         assert len(xs) == 1, xs
-        assert cb.width == round(5 * 2.88 * 96 / 72)
+        assert cb.cell._dash_key_band == round(5 * 2.88 * 96 / 72)
 
     @pytest.mark.parametrize("mode", MODES)
     def test_off(self, tmp, mode):

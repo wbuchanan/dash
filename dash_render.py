@@ -14722,6 +14722,10 @@ class GlyphMapper:
         # (``{"ids", "graph"}``, _dash_colorvar_domain_ids), set and reset
         # with it.
         self.colorvar_rows = None
+        # WP-42 CV-3: the plot type of the layer being drawn, whose key
+        # swatch (_DASH_KEY_SWATCH_KIND) the colour key draws; set per
+        # layer with colorvar_domain.
+        self.colorvar_type = None
         # A colorlevels()/colorcuts() line probe's bins record, handed from
         # _colorvar_line_parts to its caller.
         self._colorvar_bins_rec = None
@@ -16480,6 +16484,7 @@ class GlyphMapper:
         _fill_only = bool(options.get("colorfillonly"))
         _keys_range = bool(options.get("colorkeysrange"))
         _keys_rev = bool(options.get("colorkeysreverse"))
+        self._colorvar_keysrange = _keys_range
         _other_label = _dash_unquoted(str(options.get("colorotherlabel", "")
                                           or "").strip())
         _cleg = _dash_clegend_opts((self.z_options or {}).get("clegend", ""))
@@ -16879,9 +16884,48 @@ class GlyphMapper:
                                          "the plot legend's placement")
                 else:
                     _place = _cleg
-                self._colorvar_key_place(fig, _legend, _place,
-                                         "plegend" if _use_plegend
-                                         else "clegend")
+                _side = self._colorvar_key_place(fig, _legend, _place,
+                                                 "plegend" if _use_plegend
+                                                 else "clegend")
+                # WP-42 CV-3: twoway's axis-style key in the Legend's place
+                # (the plot legend's form, coloruseplegend, stays a
+                # Legend: 42-04).
+                if not _use_plegend:
+                    _dp = getattr(self, "dp", "period")
+                    _numeric_own = bool(is_numeric and force_discrete
+                                        and cuts is None and nlevels is None)
+                    _pos_of = {}
+                    if is_numeric and dom_all_missing:
+                        _lay = (None, None, [], [], {})
+                    elif _numeric_own or not is_numeric:
+                        if _numeric_own:
+                            _pos_of = {str(lb): float(v) for lb, v in
+                                       zip(labels, unique_sorted)}
+                        _lay = _dash_key_levels_layout(
+                            [str(lb) for lb in labels], _pos_of,
+                            bool(is_numeric), _key_fmt, _dp)
+                    else:
+                        _lay = _dash_key_bins_layout(
+                            dom_units, eff_cuts, bool(force_discrete),
+                            _key_fmt, _dp)
+                    _kc = self._colorvar_key_cell(
+                        fig, renderer, _legend, _side, _lay[0], _lay[1],
+                        _lay[2], list(pal_colors)[:len(_lay[2])], _lay[3],
+                        _lay[4])
+                    if _kc is not None:
+                        # One record every plan holds (by() re-sides it).
+                        _kc.update(pos=_pos_of, numeric=bool(is_numeric),
+                                   fmt=_key_fmt, dp=_dp)
+                        for _p in (getattr(renderer, "_dash_cvar", None),
+                                   getattr(renderer, "_dash_cvar_bins",
+                                           None)):
+                            if not isinstance(_p, dict) \
+                                    or _p.get("kind") not in (None, "bins"):
+                                continue
+                            _p["keycell"] = _kc
+                            # The Legend is not drawn: its items go.
+                            for _ks in _p.get("keys") or []:
+                                _ks.update(legend=None, items=[], miss=None)
 
         # ------------------------------------------------------------------
         # CONTINUOUS path — LinearColorMapper
@@ -17052,7 +17096,49 @@ class GlyphMapper:
             # colorvar_options_truth.json D14r, D14br, D14kr), and so does
             # dash, in silence.
             if _cbar is not None and add_key:
-                self._colorvar_key_place(fig, _cbar, _cleg, "clegend")
+                _side = self._colorvar_key_place(fig, _cbar, _cleg,
+                                                 "clegend")
+                # WP-42 CV-3: twoway's axis-style key in the bar's place,
+                # its levels between the bar's ticks (a log key stays a
+                # bar).
+                _cuts = self._colorvar_step_cuts
+                _cols = self._colorvar_step_colours
+                _log = type(mapper).__name__ == "LogColorMapper"
+                if _cuts is None or not _cols:
+                    # A key with no tick: one level, the rule's middle.
+                    _pl = list(getattr(mapper, "palette", None) or [])
+                    _cuts, _cols = [], ([_pl[len(_pl) // 2]] if _pl
+                                        else [missing_color])
+                if type(mapper).__name__ in ("LinearColorMapper",
+                                             "LogColorMapper"):
+                    try:
+                        _kp = sorted(float(t) for t in
+                                     (_cbar.ticker.ticks or []))
+                        _ko = {float(k): str(v) for k, v in dict(
+                            _cbar.major_label_overrides or {}).items()}
+                    except (AttributeError, TypeError, ValueError):
+                        _kp, _ko = [], {}
+                    # zscale(range()) wider than the rows widens the axis
+                    # (the levels' ends stretched to it, as the bar was).
+                    _zr = getattr(self, "_colorvar_step_zrange", None) \
+                        or [None, None]
+                    _klo = min(lo, _zr[0]) if _zr[0] is not None else lo
+                    _khi = max(hi, _zr[1]) if _zr[1] is not None else hi
+                    _kc = self._colorvar_key_cell(
+                        fig, renderer, _cbar, _side, _klo, _khi,
+                        _dash_key_bin_centres(_klo, _khi, _cuts, _kp,
+                                              log=_log),
+                        list(_cols), _kp, _ko, log=_log)
+                    if _kc is not None:
+                        # The plans tick the cell's axis, the bar not
+                        # being drawn.
+                        for _p in (getattr(renderer, "_dash_cvar", None),
+                                   self._colorvar_step_plan):
+                            if isinstance(_p, dict) and _p.get("cbar") \
+                                    is _cbar:
+                                _p["keycell"] = _kc
+                                _p["cbar"] = _kc["axis"]
+                                _p["bar"] = None
 
         # WP-42 CV-6: the layer's plot-legend item stays; the plot legend
         # follows twoway's rule (_dash_apply_legend: two or more keys draw
@@ -17071,16 +17157,95 @@ class GlyphMapper:
                 renderer._dash_key_level = _lvl1
             self._colorvar_key_proxy(fig, renderer, _kc)
 
-    def _colorvar_key_place(self, fig, key, place, which) -> None:
+    def _colorvar_key_cell(self, fig, renderer, key, side, lo, hi, centres,
+                           colours, ticks, labels, log=False, bands=None,
+                           kind=None):
+        """twoway's axis-style colour key for the key *key* just placed on
+        *side* of *fig* (WP-42 CV-3): a key cell (``_dash_key_cell``) of
+        the layer's swatch kind -- its plot type's (``colorvar_type``,
+        ``_DASH_KEY_SWATCH_KIND``), else read from *renderer*'s glyph --
+        at *centres* in *colours*, its z axis from *lo* to *hi* ticked at
+        *ticks* and labelled *labels*, titled with *key*'s title, in the
+        scheme's key chrome and clegend_width.  The cell is
+        ``fig._dash_key_cell``, which ``_dash_layout_cell`` draws beside
+        the figure in *key*'s place (by()'s one key is panel 1's cell);
+        *key* and its swatches leave the figure.  *log* draws a log z
+        axis, *bands* each level's extent along it (contour's), *kind* the
+        swatch kind when not the type's.  Returns the cell's ``keycell`` relevel record, or None
+        when no cell is drawn (inside the plot, ``ring(0)``)."""
+        if side not in ("right", "left", "above", "below"):
+            return None
+        if kind is None and getattr(self, "_colorvar_keysrange", False):
+            # colorkeysrange: twoway's swatch is a bar (D11).
+            kind = "rect"
+        if kind is None:
+            kind = _DASH_KEY_SWATCH_KIND.get(
+                str(getattr(self, "colorvar_type", "") or ""))
+        if kind is None:
+            g = type(getattr(renderer, "glyph", None)).__name__
+            kind = ("rect" if g in ("VBar", "HBar", "Quad", "Rect",
+                                    "Segment", "Block")
+                    else "line" if g in ("Line", "MultiLine", "Step")
+                    else "marker")
+        try:
+            chrome = dict(self.scheme.colorbar_chrome() or {})
+        except (AttributeError, TypeError):
+            chrome = {}
+        # ztitle()/zlabel() styled the key's texts (_dash_apply_z_options):
+        # the cell's axis takes them.
+        for _a in ("title_text_font_size", "title_text_color",
+                   "title_text_font_style", "major_label_text_font_size",
+                   "major_label_text_color"):
+            _v = getattr(key, _a, None) if _a in key.properties() else None
+            if isinstance(_v, str) and _v:
+                chrome[_a] = _v
+        # Upright wherever it sits: twoway keeps the key upright below the
+        # plot too (G01), its axis at the swatches' right (left at the
+        # figure's left).
+        place = side
+        side = "left" if place == "left" else "right"
+        band = getattr(key, "width", None) \
+            if type(key).__name__ in ("ColorBar", "ContourColorBar") \
+            else None
+        if not isinstance(band, int) or isinstance(band, bool):
+            band = _dash_clegend_px(getattr(self.scheme, "clegend_width_rs",
+                                            6.9444))
+        spec = {"kind": kind, "side": side, "lo": lo, "hi": hi,
+                "log": bool(log), "bands": list(bands or []),
+                "centres": list(centres), "colours": list(colours),
+                "ticks": list(ticks), "labels": dict(labels),
+                "title": str(getattr(key, "title", "") or ""),
+                "chrome": chrome,
+                "width_px": band,
+                "length_px": getattr(fig, "height", None)}
+        cell = _dash_key_cell(spec)
+        cell._dash_key_place = place
+        fig._dash_key_cell = cell
+        # The key the cell replaces leaves the figure, its swatches with it
+        # (no Legend or ColorBar is drawn for it).
+        drop = {id(key)}
+        for it in list(getattr(key, "items", None) or []):
+            drop |= {id(r) for r in (it.renderers or [])}
+        for sd in ("right", "left", "above", "below", "center"):
+            panel = list(getattr(fig, sd))
+            kept = [m for m in panel if id(m) not in drop]
+            if len(kept) != len(panel):
+                setattr(fig, sd, kept)
+        if any(id(r) in drop for r in fig.renderers):
+            fig.renderers = [r for r in fig.renderers if id(r) not in drop]
+        return cell._dash_keycell
+
+    def _colorvar_key_place(self, fig, key, place, which):
         """Add the colour *key* (a Legend or a ColorBar) to *fig* where
         *place* (``_dash_clegend_opts``) puts it (WP-31 C8b): ``off`` adds
         nothing; ``position()`` takes a clock position's side, inside the
         plot at ``ring(0)``; ``title()`` titles it; on a ColorBar
         ``width()``/``height()`` size it (Stata's relative units, through
         ``resolve_size``).  Every other sub-option, and width()/height() on
-        a Legend, is named once under *which*."""
+        a Legend, is named once under *which*.  Returns the side the key
+        went on (``center`` inside the plot), None when it is not drawn."""
         if place.get("off"):
-            return
+            return None
         if getattr(key, "_dash_cvar_key", False):
             self._colorvar_drop_earlier_keys(fig, key)
         if place.get("title") is not None:
@@ -17123,7 +17288,7 @@ class GlyphMapper:
             side = _DASH_CLOCK_SIDE[clock]
         if side == "center":
             fig.add_layout(key, side)
-            return
+            return side
         # Outside, its ring orders it among the side's keys and boxes:
         # the series legend (ring 3, _dash_move_legend reads the tag) sits
         # inside a ring 4 key and outside a ring 1 or 2 one, as twoway
@@ -17152,6 +17317,7 @@ class GlyphMapper:
                      default=-1)
         panel.insert(at, key)
         setattr(fig, side, panel)
+        return side
 
     @staticmethod
     def _colorvar_drop_earlier_keys(fig, key) -> None:
@@ -17160,7 +17326,10 @@ class GlyphMapper:
         draws one colour key a graph, the last colorvar() layer's (WP-42
         CV-6, colorvar_parts_truth.json M1).  contour's own key is not
         marked and stays.  A removed key's relevel plan keeps its
-        reference and updates a model no longer drawn."""
+        reference and updates a model no longer drawn.  An earlier layer's
+        key cell (WP-42 CV-3, ``fig._dash_key_cell``) goes with it."""
+        if getattr(fig, "_dash_key_cell", None) is not None:
+            fig._dash_key_cell = None
         for side in ("right", "left", "above", "below", "center"):
             panel = list(getattr(fig, side))
             kept = [m for m in panel
@@ -25219,8 +25388,31 @@ class GlyphMapper:
         _dash_apply_z_options(fig, cb, None, zo, *self.z_context,
                               units=(zmin, zmax),
                               dp=getattr(self, "dp", "period"))
-        self._colorvar_key_place(
+        side = self._colorvar_key_place(
             fig, cb, _dash_clegend_opts(zo.get("clegend", "")), "clegend")
+        # WP-42 CV-3 (LT-22's axis and side title): twoway's axis-style
+        # key -- a box a band, edge to edge, beside a z axis with its line,
+        # the title up its side (C_plain).
+        lv = [float(v) for v in cb.levels]
+        cols = _dash_contour_band_colours(cr, len(lv) - 1)
+        try:
+            pos = sorted(float(t) for t in (cb.ticker.ticks or []))
+        except (AttributeError, TypeError, ValueError):
+            pos = []
+        ovr = {float(k): str(v) for k, v in
+               dict(cb.major_label_overrides or {}).items()}
+        bands = list(zip(lv[:-1], lv[1:]))
+        kc = self._colorvar_key_cell(
+            fig, cr.fill_renderer, cb, side, lv[0], lv[-1],
+            [(a + b) / 2.0 for a, b in bands], cols, pos, ovr, bands=bands,
+            kind="band")
+        if kc is not None:
+            kc["e"] = [lv[0], lv[-1]]
+            if outlined:
+                for r in fig._dash_key_cell.renderers:
+                    r.glyph.line_color = "#000000"
+                    r.glyph.line_width = cb.bar_line_width
+            cr._dash_contour_bar = kc
 
     def _contourline_key(self, fig, cuts, colours, widths, options) -> None:
         """contourline's level keys (WP-42 LT-22): under ``colorlines`` or
@@ -25288,8 +25480,15 @@ class GlyphMapper:
         cr.fill_renderer.glyph.fill_alpha = 0.0
         cb.bar_line_alpha = 0.0
         zo = dict(self.z_options or {})
-        self._colorvar_key_place(
+        side = self._colorvar_key_place(
             fig, cb, _dash_clegend_opts(zo.get("clegend", "")), "clegend")
+        # WP-42 CV-3: twoway's empty key -- the axis line and the title, no
+        # swatch and no tick (E_allmiss's picture).
+        kc = self._colorvar_key_cell(fig, cr.fill_renderer, cb, side, None,
+                                     None, [], [], [], {}, kind="band")
+        if kc is not None:
+            kc["e"] = [0.0, 1.0]
+            cr._dash_contour_bar = kc
 
     def map_contourline(
         self,
@@ -30462,7 +30661,37 @@ def _dash_contour_cut_rule(options, zopts=None):
     return {"kind": "count", "n": 5}
 
 
-def _dash_contour_bar_follow(bar, levels, ticks, overrides):
+def _dash_contour_band_colours(cr, n):
+    """The fill colour of each of a contour renderer *cr*'s *n* bands,
+    lowest first (its fill source's ``fill_color`` column, else its
+    glyph's one colour), for its key cell (WP-42 CV-3)."""
+    col = []
+    try:
+        col = [str(c) for c in (cr.fill_renderer.data_source.data.get(
+            "fill_color") or [])]
+    except (AttributeError, TypeError):
+        col = []
+    if not col:
+        g = getattr(getattr(cr, "fill_renderer", None), "glyph", None)
+        fc = getattr(g, "fill_color", None)
+        col = [fc] if isinstance(fc, str) else ["#808080"]
+    while len(col) < n:
+        col.append(col[-1])
+    return col[:max(n, 0)]
+
+
+def _dash_contour_key_state(kb):
+    """``(ticks, labels)`` of a contour's key -- a key cell's record
+    (WP-42 CV-3) or a ContourColorBar -- for a redraw to hand the live
+    key; ``([], {})`` for none."""
+    if kb is None:
+        return [], {}
+    ax = kb.get("axis") if isinstance(kb, dict) else kb
+    return (list(getattr(getattr(ax, "ticker", None), "ticks", None) or []),
+            dict(getattr(ax, "major_label_overrides", None) or {}))
+
+
+def _dash_contour_bar_follow(bar, levels, ticks, overrides, colours=None):
     """Give a drawn contour colour bar the cuts and ticks a filter move's
     redraw computed (WP-31 B4d): *levels* the redrawn renderer's
     ``[lo, cuts..., hi]``, *ticks* and *overrides* its bar's.
@@ -30473,8 +30702,28 @@ def _dash_contour_bar_follow(bar, levels, ticks, overrides):
     level count always becomes the bands' count plus one, which BokehJS
     requires to paint the bar, and an outlined key's line renderer one
     line per level.
+
+    WP-42 CV-3: a key cell's record (*bar* a dict, ``_dash_key_cell``) is
+    redrawn the same way: a box a band between its two ends ``e``, in the
+    redraw's band *colours*, ticked at the ticks between the ends.
     """
     from bokeh.models import FixedTicker
+    if isinstance(bar, dict):
+        e0, e1 = (float(v) for v in bar.get("e") or (0.0, 1.0))
+        inner = [min(max(float(v), e0), e1) for v in list(levels)[1:-1]]
+        lv = [e0] + inner + [e1]
+        keep = [float(t) for t in (ticks or []) if e0 <= float(t) <= e1]
+        ovr = {float(k): v for k, v in dict(overrides or {}).items()
+               if float(k) in keep}
+        cols = list(colours or [])
+        if len(cols) != len(lv) - 1:
+            cols = list((bar["src"].data.get("c") or ["#808080"]))
+            cols = (cols + [cols[-1]] * len(lv))[:len(lv) - 1]
+        bands = list(zip(lv[:-1], lv[1:]))
+        _dash_cvar_keycell_update(bar, e0, e1,
+                                  [(a + b) / 2.0 for a, b in bands], cols,
+                                  keep, ovr, bands=bands)
+        return
     e0, e1 = float(bar.levels[0]), float(bar.levels[-1])
     inner = [min(max(float(v), e0), e1) for v in list(levels)[1:-1]]
     bar.levels = [e0] + inner + [e1]
@@ -36325,7 +36574,13 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             ? contour_keys[ac.key] : null;
         if (_sn !== null && src._dash_built === undefined) {
             src._dash_built = src.data;
-            if (_kb0 && _kb0._dash_built === undefined) {
+            if (_kb0 && _kb0._dash_built === undefined && _kb0.src) {
+                // WP-42 CV-3: a key cell's record -- its swatches, axis
+                // and range as built.
+                _kb0._dash_built = {cell: true, data: _kb0.src.data,
+                    ticks: _kb0.ticker.ticks, labels: _kb0.axis.major_label_overrides,
+                    bounds: _kb0.axis.bounds, start: _kb0.range.start, end: _kb0.range.end};
+            } else if (_kb0 && _kb0._dash_built === undefined) {
                 _kb0._dash_built = {levels: _kb0.levels,
                     ticks: _kb0.ticker ? _kb0.ticker.ticks : null,
                     labels: _kb0.major_label_overrides};
@@ -36333,7 +36588,13 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         }
         const _cg_back = () => {
             src.data = src._dash_built;
-            if (_kb0 && _kb0._dash_built) {
+            if (_kb0 && _kb0._dash_built && _kb0._dash_built.cell) {
+                const _bb = _kb0._dash_built;
+                _kb0.src.data = _bb.data; _kb0.ticker.ticks = _bb.ticks;
+                _kb0.axis.major_label_overrides = _bb.labels;
+                _kb0.axis.bounds = _bb.bounds;
+                _kb0.range.start = _bb.start; _kb0.range.end = _bb.end;
+            } else if (_kb0 && _kb0._dash_built) {
                 _kb0.levels = _kb0._dash_built.levels;
                 if (_kb0.ticker && _kb0._dash_built.ticks !== null) _kb0.ticker.ticks = _kb0._dash_built.ticks;
                 _kb0.major_label_overrides = _kb0._dash_built.labels;
@@ -36404,7 +36665,27 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             // format (_dash_contour_bar_follow on the served side).
             const _kb = (typeof contour_keys !== "undefined" && contour_keys && ac.key !== undefined)
                 ? contour_keys[ac.key] : null;
-            if (_kb && _kb.levels && _kb.levels.length >= 2) {
+            if (_kb && _kb.src && Array.isArray(_kb.e) && typeof dash_cvar_keycell_update === "function") {
+                // WP-42 CV-3: the key cell (_dash_contour_bar_follow on the
+                // served side): a box a band between its two ends, in the
+                // bands' colours, ticked between the ends.
+                const e0 = Number(_kb.e[0]), e1 = Number(_kb.e[1]);
+                const _lv = [e0].concat(_cuts.map(c => Math.min(Math.max(c, e0), e1)), [e1]);
+                const _bd = [];
+                for (let i = 0; i + 1 < _lv.length; i++) _bd.push([_lv[i], _lv[i + 1]]);
+                let _cl = Array.isArray(_cd.fill_color) ? _cd.fill_color.slice() : [];
+                if (_cl.length !== _bd.length) {
+                    const _c0 = Array.from(_kb.src.data.c || ["#808080"]);
+                    _cl = _bd.map((_b, i) => _c0[Math.min(i, _c0.length - 1)]);
+                }
+                let _kt = Array.from(_kb.ticker.ticks || []).map(Number);
+                let _kl = _kb.axis.major_label_overrides;
+                if (_ticks !== null && ac.rule.kind !== 'cuts' && ac.rule.kind !== 'ticks') {
+                    _kt = _ticks.filter(t => t >= e0 && t <= e1 && t >= _lo && t <= _hi);
+                    _kl = new Map(_kt.map(t => [t, dash_fmt_text(t, ac.kfmt)]));
+                }
+                dash_cvar_keycell_update(_kb, e0, e1, _bd.map(b => (b[0] + b[1]) / 2), _cl, _kt, _kl, _bd);
+            } else if (_kb && _kb.levels && _kb.levels.length >= 2) {
                 const e0 = _kb.levels[0], e1 = _kb.levels[_kb.levels.length - 1];
                 _kb.levels = [e0].concat(_cuts.map(c => Math.min(Math.max(c, e0), e1)), [e1]);
                 // An outlined key (WP-37 TR-13a): one line per level.
@@ -40529,6 +40810,77 @@ for (const it of items) {
       len = (+it[4] || 0) * gg.gw;
     }
     len = Math.max(20, Math.round(len));
+    if (Array.isArray(m.tags) && m.tags.indexOf("dash_key_cell") >= 0) {
+      // WP-42 CV-3: by()'s key cell.  Its z axis's line is the key's
+      // length: the frame is that over the share of the z range the line
+      // spans; centred in the cell (beside the panels and below or above
+      // them; a cell of its own height there), in a hole from its top.
+      // Across, the swatches and axis sit at their place: 5 px in from
+      // the cell's left or right, or centred.
+      const ax0 = (m.right || [])[0] || (m.left || [])[0];
+      const lp = pxOf(ax0 != null ? ax0.major_label_text_font_size : "");
+      const yr = m.y_range, bd = ax0 != null ? ax0.bounds : null;
+      // The frame: the line and half a label more each end (the range
+      // below puts the line's ends exactly in it).
+      const mg = Math.ceil(lp / 2) + 2;
+      const F = Math.ceil(len) + 2 * mg;
+      const need = F + 2 * Math.max(lp, 8);
+      if (mode === "row") {
+        if (m.height !== need) { m.height = need; }
+      } else if (mode === "side" && m.min_height !== F) {
+        // The cell holds the key, as the bar grew its cell (less than
+        // the gap twoway leaves, so the panels keep their size).
+        m.min_height = F;
+      }
+      const H0 = mode === "row" ? Math.round(+m.height || 0)
+        : Math.round(+m.outer_height || 0);
+      if (!(H0 > 0)) { continue; }
+      let t0 = mode === "hole" ? Math.round(top - mg)
+        : Math.round((H0 - F) / 2);
+      t0 = Math.max(0, t0);
+      const b0 = Math.max(0, H0 - F - t0);
+      if (m.min_border_top !== t0) { m.min_border_top = t0; }
+      if (m.min_border_bottom !== b0) { m.min_border_bottom = b0; }
+      // The z range round the line's ends so the line is exactly len
+      // px of the whole-pixel frame (a linear axis).
+      const Fa = H0 - t0 - b0;
+      if (yr != null && Array.isArray(bd) && Fa > len && bd[1] > bd[0]
+          && !(m.y_scale != null && m.y_scale.type === "LogScale")) {
+        // The line from (top + mg) of the frame for len px.
+        const lo0 = mode === "hole" ? (top - t0) : (Fa - len) / 2;
+        const gt = lo0 / Fa, gb = (Fa - lo0 - len) / Fa;
+        const sp = (bd[1] - bd[0]) / (1 - gt - gb);
+        const s0 = bd[0] - gb * sp, s1 = bd[1] + gt * sp;
+        if (Math.abs(yr.start - s0) > 1e-9 * sp) { yr.start = s0; }
+        if (Math.abs(yr.end - s1) > 1e-9 * sp) { yr.end = s1; }
+      }
+      let aw = 0;
+      for (const [am, av] of (v.renderer_views || [])) {
+        if (String(am.type || "").endsWith("Axis") && av.bbox != null) {
+          aw = av.bbox.width;
+        }
+      }
+      const band = (m.x_range != null && +m.x_range.end > 0) ? +m.x_range.end
+        : 24;
+      if (mode === "hole" && aw > 0) {
+        // In a hole the cell is the key's own width and 5 px each side;
+        // its place across the hole is its alignment (left, centre or
+        // right of the hole, set with it).
+        const wk = Math.ceil(band + aw + 10);
+        if (m.width !== wk) { m.width = wk; }
+      }
+      const W0 = Math.round(mode === "hole" ? +m.width : +m.outer_width || 0);
+      if (W0 > 0 && aw > 0) {
+        const slack = Math.max(0, W0 - band - aw);
+        const l0 = Math.round(mode === "hole" ? 5
+          : place === "left" ? Math.min(5, slack)
+          : place === "right" ? Math.max(0, slack - 5) : slack / 2);
+        const r0 = Math.max(0, W0 - l0 - Math.round(band));
+        if (m.min_border_left !== l0) { m.min_border_left = l0; }
+        if (m.min_border_right !== r0) { m.min_border_right = r0; }
+      }
+      continue;
+    }
     if (m.type === "Legend") {
       // A discrete key (BUGS.md "by()'s discrete colour key was as long
       // as its keys, not twoway's key"): its box is the key's length, its
@@ -45939,6 +46291,181 @@ _FILTER_JS = _FILTER_JS.replace("@@DASH_LPOLY_EPS@@", repr(_LPOLY_WEIGHT_EPS))
 #: The saved page's twin of :func:`_dash_cvar_relevel`, run at the end of
 #: every filter callback over its ``cvar_plans``.
 _DASH_CVAR_RELEVEL_JS = r"""
+function dash_key_get(o, k) {
+  // A dict of the plan, a Map or a plain object.
+  if (o == null) return undefined;
+  return (o instanceof Map) ? o.get(k) : o[k];
+}
+function dash_key_ends(lo, hi, ticks) {
+  // _dash_key_ends: the levels' lo .. hi and every tick, or [null, null].
+  const v = [lo, hi].concat(Array.from(ticks || [])).filter((x) =>
+    x !== null && x !== undefined && Number.isFinite(Number(x))).map(Number);
+  if (!v.length) return [null, null];
+  let a = Infinity, b = -Infinity;
+  for (const x of v) { if (x < a) a = x; if (x > b) b = x; }
+  return [a, b];
+}
+function dash_key_range(lo, hi, inset, log) {
+  // _dash_key_range: the z range round lo .. hi, twoway's inset each end
+  // (in log space under zscale(log)).
+  if (lo === null || hi === null || !Number.isFinite(lo)
+      || !Number.isFinite(hi)) return log ? [1, 10] : [0, 1];
+  if (log) {
+    if (!(lo > 0 && hi > 0)) return [1, 10];
+    const r = dash_key_range(Math.log10(lo), Math.log10(hi), inset, false);
+    return [Math.pow(10, r[0]), Math.pow(10, r[1])];
+  }
+  if (hi < lo) { const t = lo; lo = hi; hi = t; }
+  if (hi === lo) { lo -= 0.5; hi += 0.5; }
+  const f = Number(inset);
+  const pad = (hi - lo) * f / (1 - 2 * f);
+  return [lo - pad, hi + pad];
+}
+function dash_key_bin_centres(lo, hi, cuts, ticks, log) {
+  // _dash_key_bin_centres: the levels between the axis ends and the cuts.
+  const cs = Array.from(cuts || []).map(Number).sort((a, b) => a - b);
+  const e = dash_key_ends(lo, hi, Array.from(ticks || []).concat(cs));
+  if (e[0] === null) return [];
+  const edges = [e[0]].concat(cs, [e[1]]);
+  const geo = !!log && edges.every((v) => v > 0);
+  const out = [];
+  for (let i = 0; i + 1 < edges.length; i++) {
+    out.push(geo ? Math.sqrt(edges[i] * edges[i + 1])
+      : (edges[i] + edges[i + 1]) / 2);
+  }
+  return out;
+}
+function dash_key_cell_data(centres, colours, vert, mid, bands, band) {
+  // _dash_key_cell_data: the swatch columns.
+  const n = Math.min(centres.length, colours.length);
+  const cs = centres.slice(0, n).map(Number);
+  const m = cs.map(() => Number(mid));
+  const w = (band !== null && band !== undefined) ? Number(band) : 2 * Number(mid);
+  let bd = Array.from(bands || []).slice(0, n);
+  if (bd.length !== n) bd = cs.map((c) => [c, c]);
+  const lo = bd.map((p) => Number(p[0])), hi = bd.map((p) => Number(p[1]));
+  const zero = cs.map(() => 0), full = cs.map(() => w);
+  return {x: vert ? m : cs, y: vert ? cs : m, c: colours.slice(0, n).map(String),
+          l: vert ? zero : lo, r: vert ? full : hi,
+          b: vert ? lo : zero, t: vert ? hi : full};
+}
+function dash_key_ticks_plain(units, fmt, dp) {
+  // _dash_key_ticks with no date kind: [positions, {position: text}].
+  const out = new Map();
+  for (const x of Array.from(units || [])) {
+    const u = Number(x);
+    if (x === null || x === undefined || !Number.isFinite(u) || out.has(u)) continue;
+    out.set(u, dash_fmt_text(u, fmt || "%8.0gc", null, dp || "period", null));
+  }
+  const pos = Array.from(out.keys()).sort((a, b) => a - b);
+  const ovr = {};
+  for (const q of pos) ovr[String(q)] = out.get(q);
+  return [pos, ovr];
+}
+function dash_cvar_keycell_update(kc, lo, hi, centres, colours, ticks, labels, bands) {
+  // _dash_cvar_keycell_update: a key cell's swatches, ticks, labels, axis
+  // line and range after a move (WP-42 CV-3).
+  if (!kc) return;
+  try {
+    const log = !!dash_key_get(kc, "log");
+    let cs = Array.from(centres || []).map(Number);
+    const cols = Array.from(colours || []).slice(0, cs.length).map(String);
+    cs = cs.slice(0, cols.length);
+    const ent = (labels instanceof Map) ? Array.from(labels.entries())
+      : Object.entries(labels || {});
+    const lab = {};
+    for (const [k, t] of ent) {
+      if (!log || Number(k) > 0) lab[String(Number(k))] = String(t);
+    }
+    let tk = Object.keys(lab).map(Number).sort((a, b) => a - b);
+    if (!tk.length) {
+      tk = Array.from(ticks || []).map(Number).filter((t) => !log || t > 0)
+        .sort((a, b) => a - b);
+    }
+    const e = dash_key_ends(lo, hi, tk);
+    const vert = !!dash_key_get(kc, "vert");
+    const src = dash_key_get(kc, "src"), axis = dash_key_get(kc, "axis");
+    const rng = dash_key_get(kc, "range"), tkr = dash_key_get(kc, "ticker");
+    src.data = dash_key_cell_data(cs, cols, vert, dash_key_get(kc, "mid"),
+                                  bands, dash_key_get(kc, "band"));
+    if (JSON.stringify(Array.from(tkr.ticks || [])) !== JSON.stringify(tk)) tkr.ticks = tk;
+    axis.major_label_overrides = lab;
+    axis.bounds = e[0] === null ? [0, 1] : [e[0], e[1]];
+    const r = dash_key_range(e[0], e[1], dash_key_get(kc, "inset"), log);
+    if (rng.start !== r[0]) rng.start = r[0];
+    if (rng.end !== r[1]) rng.end = r[1];
+  } catch (err) {
+    return;
+  }
+}
+function dash_cvar_keycell_steps(pl, lo, hi, cuts, colours) {
+  // _dash_cvar_keycell_steps: a stepped key cell from the bar's ticks.
+  const kc = pl.keycell, bar = pl.cbar;
+  if (!kc || !bar) return;
+  const log = !!dash_key_get(kc, "log");
+  const pos = Array.from(bar.ticker.ticks || []).map(Number)
+    .filter((t) => !log || t > 0).sort((a, b) => a - b);
+  const o = bar.major_label_overrides || {};
+  const zr = pl.zrange || [null, null];
+  if (zr[0] !== null && zr[0] !== undefined) lo = Math.min(lo, Number(zr[0]));
+  if (zr[1] !== null && zr[1] !== undefined) hi = Math.max(hi, Number(zr[1]));
+  dash_cvar_keycell_update(kc, lo, hi, dash_key_bin_centres(lo, hi, cuts, pos, log),
+                           colours, pos, o);
+}
+function dash_key_levels_layout(kept, posOf, numeric, fmt, dp) {
+  // _dash_key_levels_layout: [lo, hi, centres, positions, labels].
+  if (numeric) {
+    const cs = [];
+    for (const lv of kept) {
+      const p = dash_key_get(posOf, lv);
+      if (p !== undefined && p !== null) cs.push(Number(p));
+    }
+    if (!cs.length) return [null, null, [], [], {}];
+    let lo = Infinity, hi = -Infinity;
+    for (const c of cs) { if (c < lo) lo = c; if (c > hi) hi = c; }
+    let t = dash_natscale(lo, hi, 5) || [];
+    if (!t.length) t = [lo];
+    const tp = dash_key_ticks_plain(t, fmt, dp);
+    return [lo, hi, cs, tp[0], tp[1]];
+  }
+  const cs = kept.map((lv, i) => i + 1);
+  const ovr = {};
+  cs.forEach((c, i) => { ovr[String(c)] = String(kept[i]); });
+  return [kept.length ? 1 : null, kept.length ? kept.length : null, cs,
+          cs.slice(), ovr];
+}
+function dash_key_bins_layout(dom, eff, discrete, fmt, dp) {
+  // _dash_key_bins_layout: [lo, hi, centres, positions, labels].
+  const fin = Array.from(dom || []).map(Number).filter((v) => Number.isFinite(v));
+  const cuts = Array.from(eff || []).map(Number).sort((a, b) => a - b);
+  let lo = null, hi = null;
+  for (const v of fin) {
+    if (lo === null || v < lo) lo = v;
+    if (hi === null || v > hi) hi = v;
+  }
+  if (!fin.length || !cuts.length) return [lo, hi, [], [], {}];
+  const cs = discrete ? cuts.slice() : dash_key_bin_centres(lo, hi, cuts, []);
+  const tp = dash_key_ticks_plain(cuts, fmt, dp);
+  return [lo, hi, cs, tp[0], tp[1]];
+}
+function dash_cvar_keycell_levels(pl, kept, pal) {
+  // _dash_cvar_keycell_levels.
+  const kc = pl.keycell;
+  if (!kc) return;
+  const l = dash_key_levels_layout(kept, dash_key_get(kc, "pos") || {},
+    !!dash_key_get(kc, "numeric"), dash_key_get(kc, "fmt"),
+    dash_key_get(kc, "dp") || "period");
+  dash_cvar_keycell_update(kc, l[0], l[1], l[2], Array.from(pal || []).slice(0, l[2].length),
+                           l[3], l[4]);
+}
+function dash_cvar_keycell_bins(pl, dom, eff, pal) {
+  // _dash_cvar_keycell_bins.
+  const kc = pl.keycell;
+  if (!kc) return;
+  const l = dash_key_bins_layout(dom, eff, !!pl.discrete, pl.fmt, pl.dp || "period");
+  dash_cvar_keycell_update(kc, l[0], l[1], l[2], Array.from(pal || []).slice(0, l[2].length),
+                           l[3], l[4]);
+}
 function dash_cvar_ticks(lo, hi, ts) {
   // _dash_cvar_ticks: by the tick spec, in the variable's Stata units.
   ts = ts || {mode: "auto"};
@@ -46031,6 +46558,7 @@ function dash_cvar_relevel_steps(pl, dom) {
   const colours = (pl.cols || {})[String(cuts.length + 1)];
   const pool = pl.pool || [];
   if (!colours) return;
+  dash_cvar_keycell_steps(pl, lo, hi, cuts, colours);
   const idx = vals.map((v) => v === null ? -1
     : cuts.filter((c) => c < v).length);
   // The colour rows' levels (dom's when given, each a line even when no
@@ -46158,6 +46686,7 @@ function dash_cvar_relevel_stepmap(pl, dom) {
     const colours = (pl.cols || {})[String(cuts.length + 1)];
     const m = pl.mapper;
     if (!colours || !m) return;
+    dash_cvar_keycell_steps(pl, lo, hi, cuts, colours);
     if (pl.log) {
       dash_cvar_drop_nonpositive_ticks(pl.cbar);
       const lo_l = lo, hi_l = hi > lo ? hi : lo + 1;
@@ -46315,6 +46844,7 @@ function dash_cvar_relevel_bins(pl, kv) {
   const k = labels.length;
   const pal = (pl.pals || {})[String(k)] || [];
   if (k && pal.length !== k) return;
+  dash_cvar_keycell_bins(pl, dom, eff, pal);
   if (src) {
     const d = Object.assign({}, src.data);
     d[pl.field] = bin(kv ? units(src.data[pl.var]) : dom);
@@ -46474,6 +47004,7 @@ function dash_cvar_relevel(plans) {
     const levels = pl.levels || [];
     const kept = levels.filter((lv) => present.has(lv));
     const pal = (pl.pals || {})[String(kept.length)] || [];
+    dash_cvar_keycell_levels(pl, kept, pal);
     const m = pl.mapper;
     if (m) {
       if (JSON.stringify(Array.from(m.factors || [])) !== JSON.stringify(kept))
@@ -53000,11 +53531,22 @@ def _dash_name_save(model, name=None, composite=None):
     # A figure's graph region box (GW-6's margin round it) names its
     # figure's save button.
     target = model
+    export = None
     kids = getattr(model, "children", None) or []
     if getattr(model, "toolbar", None) is None and len(kids) == 1 \
             and "dash_graph_region" in (getattr(model, "tags", None) or []) \
             and getattr(kids[0], "toolbar", None) is not None:
         target = kids[0]
+    elif getattr(model, "toolbar", None) is None and len(kids) == 1 \
+            and "dash_graph_region" in (getattr(model, "tags", None) or []) \
+            and "dash_key_row" in (getattr(kids[0], "tags", None) or []):
+        # WP-42 CV-3: a figure and its key cell -- the figure's save
+        # button, and the Save as SVG action exports both.
+        figs = [k for k in kids[0].children
+                if getattr(k, "toolbar", None) is not None
+                and "dash_key_cell" not in (getattr(k, "tags", None) or [])]
+        if figs:
+            target, export = figs[0], kids[0]
     toolbar = getattr(target, "toolbar", None)
     saved = False
     for tool in (getattr(toolbar, "tools", None) or ()):
@@ -53013,7 +53555,8 @@ def _dash_name_save(model, name=None, composite=None):
             saved = True
     if not saved:
         return model
-    args = {"grid": target, "name": filename, **(composite or {})}
+    args = {"grid": export if export is not None else target,
+            "name": filename, **(composite or {})}
     svg_code = (_DASH_COMPOSITE_JS + _DASH_SVG_SAVE_JS if composite
                 else _DASH_SVG_SAVE_JS)
     actions = {}
@@ -53944,6 +54487,23 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
                             cn)
         if not _comb:
             _dash_by_row_gaps(grid.children, _rows_px)
+        # WP-42 CV-3: by(, ilegends)'s panels each keep their key cell
+        # (_dash_by_keys), drawn beside the panel.
+        from bokeh.models import CustomJS
+        _kids = list(grid.children)
+        for _i, _ch in enumerate(_kids):
+            _kc = getattr(_ch[0], "_dash_key_cell", None)
+            if _kc is None or type(_ch[0]).__name__ != "figure":
+                continue
+            _kc.sizing_mode = None
+            _kc.width_policy, _kc.height_policy = "fixed", "max"
+            _kcb = CustomJS(args={"fig": _ch[0], "cell": _kc, "vert": True,
+                                  "ar": 0.0}, code=_DASH_KEY_CELL_JS)
+            for _p in ("outer_height", "inner_height"):
+                _ch[0].js_on_change(_p, _kcb)
+            _kids[_i] = (row(_ch[0], _kc, sizing_mode="stretch_both"),) \
+                + tuple(_ch[1:])
+        grid.children = _kids
         # WP-41 BY-2: by(, scale(#)) scales by()'s overall cells -- its
         # texts, the outer axis titles, the legend and the colour key --
         # once; the panels took it in their size multiplier above.
@@ -54015,7 +54575,11 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
         tbl = getattr(figures[name], "_dash_table", None)
         _nom = getattr(figures[name], "_dash_nominal_px", None)
         _gm = getattr(figures[name], "_dash_gmargin", None)
-        _cell = figures[name]
+        # WP-42 CV-3: the figure and its colour key cell, the key inside
+        # the graph region as twoway draws it.
+        _kcell = getattr(figures[name], "_dash_key_cell", None)
+        _kw = _dash_key_wrap(figures[name], gopts_of(name) or {})
+        _cell = _kw
         if _nom and getattr(figures[name], "sizing_mode", None) != "fixed":
             _f = figures[name]
             if _gm:
@@ -54037,19 +54601,26 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
                         # In the box's flex column a figure's fixed
                         # height would be its flex basis, over its ratio.
                         _f.height_policy = "fit"
-                    _cell = column(_f, sizing_mode="stretch_width")
+                    _cell = column(_kw, sizing_mode="stretch_width")
                     _dash_graph_region_box(_cell, _gm, _f.border_fill_color)
                     _f._dash_region_cell = _cell
                 # D66: the graph drawn as one picture (the figure's width
                 # against what the margin leaves of the graph's inch width).
-                _dash_width_scale(_f, [_f], float(_nom[0]) * (
-                    1.0 - (_gm[0] + _gm[1]) / 100.0),
-                    OptionTranslator.size_ref_of(_f))
+                _nw = float(_nom[0]) * (1.0 - (_gm[0] + _gm[1]) / 100.0)
             else:
                 # D66: the graph drawn as one picture (its box's width
                 # against the graph's inch width).
-                _dash_width_scale(_f, [_f], float(_nom[0]),
-                                  OptionTranslator.size_ref_of(_f))
+                _nw = float(_nom[0])
+            _wmodels = [_f]
+            if _kcell is not None and _kw is not _f:
+                _nw = _dash_key_hold_shape(_f, _kcell, _nw)
+                _wmodels.append(_kcell)
+            _wcb = _dash_width_scale(_f, _wmodels, _nw,
+                                     OptionTranslator.size_ref_of(_f))
+            if _wcb is not None and len(_wmodels) > 1:
+                # The cell's thickness scales with its text (D66).
+                _wcb.args = dict(_wcb.args, entries=list(
+                    _wcb.args["entries"]) + _dash_key_scale_entries(_kcell))
         elif _nom:
             # A box at 96 px an inch: twoway's unit only.
             _dash_width_scale(figures[name], [figures[name]],
@@ -54059,7 +54630,7 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
             # WP-45 VF-4: a figure at its xsize()/ysize() box keeps its
             # size in a narrower cell, which scrolls sideways (the page
             # does not).
-            return column(figures[name], *(tbl or ()),
+            return column(_kw, *(tbl or ()),
                           sizing_mode="stretch_width",
                           styles={"overflow-x": "auto", "max-width": "100%"})
         return column(_cell, *tbl, sizing_mode="stretch_width") \
@@ -54068,6 +54639,157 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
         return kpi_divs[name]
     return (image_divs or {}).get(name)
 
+
+def _dash_key_wrap(fig, graph_opts, fixed_w=None):
+    """*fig* and its colour key cell (``fig._dash_key_cell``, WP-42 CV-3)
+    as one renderable, the key where twoway draws it, inside the graph
+    region: ``row(fig, cell)`` for a key at the right (``row(cell, fig)``
+    at the left, a ``column`` above or below), tagged ``dash_key_row``;
+    *fig* itself when it has no cell.  Once per figure (kept as
+    ``fig._dash_key_row``).  scale() reaches the cell as it reached the
+    figure, and its thickness is then re-estimated
+    (``_dash_key_cell_extent``).  A fixed figure gives the cell its width
+    (above or below its height), so the two fill the xsize()/ysize() box
+    -- through ``_dash_frame_sizes`` again under aspectratio() -- and the
+    cell takes the figure's other side; a stretched figure's cell follows
+    its drawn size through ``_DASH_KEY_CELL_JS``.  The cell's frame
+    borders start at the figure's estimated ones."""
+    cell = getattr(fig, "_dash_key_cell", None)
+    if cell is None:
+        return fig
+    done = getattr(fig, "_dash_key_row", None)
+    if done is not None:
+        return done
+    from bokeh.layouts import column, row
+    from bokeh.models import CustomJS
+    side = getattr(cell, "_dash_key_place", None) \
+        or getattr(cell, "_dash_key_side", "right")
+    vert = side in ("right", "left")
+    _dash_apply_scale(cell, getattr(fig, "_dash_scale", None))
+    ext = _dash_key_cell_extent(cell, cell._dash_key_band)
+    far = max(0, ext - int(cell._dash_key_band))
+    # The cell is upright wherever it sits (G01): its thickness is its
+    # width, its axis in the border on its axis side.
+    cell.width = ext
+    setattr(cell, "min_border_" + getattr(cell, "_dash_key_side", "right"),
+            far)
+    if not vert:
+        # Above or below the plot: an upright key, centred across the
+        # graph, its axis line _DASH_KEY_BELOW_SHARE of the graph's height
+        # (G01), its frame that over the axis's share of it and half a
+        # label more each end.
+        nom = getattr(fig, "_dash_nominal_px", None)
+        gh = float(nom[1]) if nom else (
+            float(fig.height) if isinstance(fig.height, (int, float))
+            else 384.0)
+        ax = cell._dash_key_axis
+        lpx = (OptionTranslator.css_to_pt(ax.major_label_text_font_size)
+               or 9.0) * 4.0 / 3.0
+        frame = _DASH_KEY_BELOW_SHARE * gh / (1.0 - 2.0 * _DASH_KEY_AXIS_INSET)
+        cell.height = int(math.ceil(frame + 2 * (lpx / 2.0 + 2)))
+        cell.align = "center"
+    go = graph_opts or {}
+    fixed = getattr(fig, "sizing_mode", None) == "fixed" \
+        and isinstance(fig.width, (int, float)) \
+        and isinstance(fig.height, (int, float))
+    if fixed:
+        ar = _dash_frame_aspect(go)
+        box = getattr(fig, "_dash_frame_box", None)
+        if box and ar:
+            e = getattr(fig, "_dash_frame_est", None)
+            if isinstance(e, dict):
+                fig.min_border_left, fig.min_border_right, \
+                    fig.min_border_top, fig.min_border_bottom = (
+                        int(round(e[k])) for k in ("left", "right",
+                                                   "above", "below"))
+            if vert:
+                _dash_frame_sizes(fig, ar, go.get("aspectplacement", "")
+                                  or "c", box[0] - cell.width, box[1])
+            else:
+                _dash_frame_sizes(fig, ar, go.get("aspectplacement", "")
+                                  or "c", box[0], box[1] - cell.height)
+        elif vert:
+            fig.width = max(1, int(fig.width) - int(cell.width))
+        else:
+            fig.height = max(1, int(fig.height) - int(cell.height))
+    try:
+        est = _dash_frame_borders(fig)
+    except (AttributeError, TypeError, ValueError):
+        est = {}
+    if vert:
+        if isinstance(fig.height, (int, float)):
+            cell.height = int(fig.height)
+        cell.min_border_top = int(round(est.get("above", 0)))
+        cell.min_border_bottom = int(round(est.get("below", 0)))
+    else:
+        mb = int(math.ceil(lpx / 2.0 + 2))
+        cell.min_border_top = cell.min_border_bottom = mb
+    cb = CustomJS(args={"fig": fig, "cell": cell, "vert": bool(vert),
+                        "ar": 0.0}, code=_DASH_KEY_CELL_JS)
+    for prop in ("outer_width", "outer_height", "inner_width",
+                 "inner_height"):
+        fig.js_on_change(prop, cb)
+    kids = {"right": (fig, cell), "left": (cell, fig),
+            "above": (cell, fig), "below": (fig, cell)}[side]
+    mode = "fixed" if fixed else "stretch_width"
+    wrap = (row if vert else column)(*kids, sizing_mode=mode)
+    wrap.tags = list(wrap.tags or []) + ["dash_key_row"]
+    fig._dash_key_row = wrap
+    return wrap
+
+
+def _dash_key_scale_entries(cell):
+    """The width scale's entries (D66, ``_DASH_WIDTH_SCALE_JS``) for a key
+    cell's thickness -- its width (above or below its height) and the
+    border its axis is drawn in -- so the cell grows with its text (WP-42
+    CV-3)."""
+    side = getattr(cell, "_dash_key_side", "right")
+    border = "min_border_" + {"above": "top", "below": "bottom"}.get(side,
+                                                                    side)
+    out = []
+    for prop in ("width", border):
+        v = getattr(cell, prop, None)
+        if isinstance(v, int) and not isinstance(v, bool):
+            out.append([cell, prop, float(v), "int"])
+    return out
+
+def _dash_key_hold_shape(fig, cell, nominal_w):
+    """Keep a stretched graph's shape with its key cell beside it (WP-42
+    CV-3): the figure's height is no longer its aspect ratio's (a figure
+    in a row is laid out at its own height) but the whole graph's --
+    figure and cell -- at the figure's ratio *ar*, which
+    ``_DASH_KEY_CELL_JS`` writes at every drawn width (``fig.height``,
+    policy fixed); at the graph's nominal width *nominal_w* (px, what the
+    graph margin leaves) it starts there.  Returns the figure's own
+    nominal width (the graph's less the cell's, a key above or below the
+    graph's), which the width scale (D66) reads it against."""
+    done = getattr(fig, "_dash_key_shape", None)
+    if done is not None:
+        return done
+    ar = getattr(fig, "aspect_ratio", None)
+    if not isinstance(ar, (int, float)) or ar <= 0 or not nominal_w:
+        return nominal_w
+    w = float(nominal_w)
+    h = w / float(ar)
+    vert = (getattr(cell, "_dash_key_place", None)
+            or getattr(cell, "_dash_key_side", "right")) in ("right", "left")
+    fig._dash_key_ar = float(ar)
+    fig.height_policy = "fixed"
+    if vert:
+        fw = max(1.0, w - float(cell.width or 0))
+        fig.height = max(1, int(round(h)))
+    else:
+        fw = w
+        fig.height = max(1, int(round(h - float(cell.height or 0))))
+    fig._dash_key_shape = fw
+    seen = set()
+    for cbs in (getattr(fig, "js_property_callbacks", None) or {}).values():
+        for cb in cbs:
+            if getattr(cb, "code", None) == _DASH_KEY_CELL_JS \
+                    and id(cb) not in seen:
+                seen.add(id(cb))
+                cb.args = dict(cb.args, ar=float(ar))
+    return fw
 
 def _dash_fxy_size(item, graph_opts):
     """fysize(#) and fxsize(#) (WP-31 D5; WP-45 VF-11, GW-20, D-45-04.c):
@@ -54798,6 +55520,7 @@ def _dash_cvar_relevel(plan, kept=None):
         if list(m.palette) != pal:
             m.palette = pal
     missing = any(_none(v) for v in col)
+    _dash_cvar_keycell_levels(plan, kept, pal)
     for ks in plan.get("keys") or []:
         items = list(ks.get("items") or [])
         if len(items) != len(levels):
@@ -54834,6 +55557,86 @@ def _dash_cvar_relevel(plan, kept=None):
         if [id(x) for x in fig.renderers] != [id(x) for x in new]:
             fig.renderers = new
 
+
+
+def _dash_key_levels_layout(kept, pos_of, numeric, fmt, dp="period"):
+    """A key of the layer's own levels (WP-42 CV-3): ``(lo, hi, centres,
+    positions, labels)`` for the *kept* levels -- each at its value
+    (*pos_of*, a level's text to its number) and the axis ticked by
+    natscale #5 over them in *fmt* when *numeric* (K1: rep78's 1..5
+    ticked 1 2 3 4 5; K2: foreign's 0 and 1 ticked 0 .2 .4 .6 .8 1), a
+    string's levels at 1..k labelled with their texts."""
+    if numeric:
+        cs = [float(pos_of[lv]) for lv in kept if lv in pos_of]
+        if cs:
+            lo, hi = min(cs), max(cs)
+            t = list(_dash_axis_count_ticks(lo, hi, 5, None) or [lo])
+        else:
+            lo = hi = None
+            t = []
+        pos, ovr = _dash_key_ticks(t, "", fmt or "%8.0gc", dp=dp)
+        return lo, hi, cs, pos, ovr
+    cs = [float(i + 1) for i in range(len(kept))]
+    lo, hi = (1.0, float(len(kept))) if kept else (None, None)
+    return lo, hi, cs, list(cs), {c: str(lv) for c, lv in zip(cs, kept)}
+
+
+def _dash_key_bins_layout(dom, eff, discrete, fmt, dp="period"):
+    """A binned key (WP-42 CV-3): ``(lo, hi, centres, positions,
+    labels)`` over the domain *dom* (Stata units) cut at *eff*: the axis
+    from the domain's minimum to its maximum, ticked and labelled at the
+    cuts in *fmt*; under colordiscrete each cut a level at its value (K8:
+    colorcuts(3 4) keyed at 3 and 4 on a 1..5 axis), else the levels
+    between the cuts (K3, K4: colorcuts(2 4) centred at 1.5, 3 and 4.5).
+    No level and no tick without a finite value or a cut."""
+    fin = []
+    for v in dom if dom is not None else ():
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(f):
+            fin.append(f)
+    cuts = sorted(float(c) for c in eff or [])
+    if not fin or not cuts:
+        return (min(fin) if fin else None, max(fin) if fin else None,
+                [], [], {})
+    lo, hi = min(fin), max(fin)
+    cs = list(cuts) if discrete else _dash_key_bin_centres(lo, hi, cuts)
+    pos, ovr = _dash_key_ticks(cuts, "", fmt or "%8.0gc", dp=dp)
+    return lo, hi, cs, pos, ovr
+
+
+def _dash_cvar_keycell_levels(plan, kept, pal):
+    """A key cell of the layer's own levels after a move (WP-42 CV-3,
+    ``_dash_key_levels_layout`` over the *kept* levels, in *pal*).  Never
+    raises."""
+    kc = plan.get("keycell")
+    if not isinstance(kc, dict):
+        return
+    try:
+        lo, hi, cs, pos, ovr = _dash_key_levels_layout(
+            kept, kc.get("pos") or {}, kc.get("numeric"), kc.get("fmt"),
+            kc.get("dp") or "period")
+    except (KeyError, TypeError, ValueError):
+        return
+    _dash_cvar_keycell_update(kc, lo, hi, cs, list(pal)[:len(cs)], pos, ovr)
+
+
+def _dash_cvar_keycell_bins(plan, dom, eff, pal):
+    """A binned key cell after a move (WP-42 CV-3,
+    ``_dash_key_bins_layout`` over the kept rows *dom* cut at *eff*, in
+    *pal*).  Never raises."""
+    kc = plan.get("keycell")
+    if not isinstance(kc, dict):
+        return
+    try:
+        lo, hi, cs, pos, ovr = _dash_key_bins_layout(
+            dom, eff, plan.get("discrete"), plan.get("fmt"),
+            plan.get("dp") or "period")
+    except (TypeError, ValueError):
+        return
+    _dash_cvar_keycell_update(kc, lo, hi, cs, list(pal)[:len(cs)], pos, ovr)
 
 #: The lines a continuous colorvar() line keeps for its levels after a
 #: move: natscale #5 gives at most 6 cuts, so 7 levels, and the missing one.
@@ -54969,6 +55772,7 @@ def _dash_cvar_relevel_steps(plan, dom=None):
     pool = list(plan.get("pool") or [])
     if not colours:
         return
+    _dash_cvar_keycell_steps(plan, lo, hi, cuts, colours)
     idx = [-1 if v is None else sum(1 for c in cuts if c < v) for v in vals]
     # The levels of the colour rows (the domain's when given, each a line
     # even when no drawn row is in it, as the build draws them).
@@ -55104,6 +55908,7 @@ def _dash_cvar_relevel_stepmap(plan, dom=None):
         m = plan.get("mapper")
         if not colours or m is None:
             return
+        _dash_cvar_keycell_steps(plan, lo, hi, cuts, colours)
         if plan.get("log"):
             if plan.get("cbar") is not None:
                 _dash_cvar_drop_nonpositive_ticks(plan["cbar"])
@@ -55302,6 +56107,7 @@ def _dash_cvar_relevel_bins(plan, kv=None):
     pal = list((plan.get("pals") or {}).get(str(k), []))
     if k and len(pal) != k:
         return
+    _dash_cvar_keycell_bins(plan, dom, eff, pal)
     if src is not None:
         if kv is not None:
             try:
@@ -58648,19 +59454,18 @@ def _dash_by_legend_cell(scheme, name, side, legend, items, tag,
 
 
 def _dash_by_colour_bar_cell(scheme, legend):
-    """The colour-bar key a by() graph draws for a coloruseplegend key
+    """The colour key a by() graph draws for a coloruseplegend key
     *legend* under ``by(, clegend(on))`` (WP-41 BY-14, D-41-04.d), or
     None when it holds no level.
 
-    twoway draws a stepped colour bar there, labelled with panel 1's
+    twoway draws its axis-style key there, labelled with panel 1's
     levels and titled with the variable's label, with no "(missing)" or
     other entry (by_chrome_truth.json K09: 1-5, "Repair record 1978").
-    The bar is a ``ColorBar`` over a ``LinearColorMapper`` of the levels'
-    swatch colours from 0 to n, ticked at each step's middle with the
-    level's label; ``_dash_by_keys`` places it as it places a continuous
-    key.  The missing entry (its swatch named ``__missing__``) and an
+    WP-42 CV-3: a key cell (``_dash_key_cell``) of the levels' swatch
+    colours at 1..n, the highest at the top, each labelled with its
+    level's label; ``_dash_by_keys`` places it as it places panel 1's
+    key cell.  The missing entry (its swatch named ``__missing__``) and an
     empty spare entry are dropped."""
-    from bokeh.models import ColorBar, FixedTicker, LinearColorMapper
     cols, labs = [], []
     for it in list(getattr(legend, "items", None) or ()):
         lab = str(getattr(it.label, "value", it.label) or "")
@@ -58676,24 +59481,23 @@ def _dash_by_colour_bar_cell(scheme, legend):
         labs.append(lab)
     if not cols:
         return None
-    ticks = [i + 0.5 for i in range(len(cols))]
     chrome = {}
     try:
         chrome = dict(scheme.colorbar_chrome()) if scheme is not None \
             and hasattr(scheme, "colorbar_chrome") else {}
     except Exception:  # noqa: BLE001 -- Bokeh's defaults
         chrome = {}
-    bar = ColorBar(
-        color_mapper=LinearColorMapper(palette=cols, low=0, high=len(cols)),
-        ticker=FixedTicker(ticks=ticks),
-        major_label_overrides=dict(zip(ticks, labs)),
-        label_standoff=8, location=(0, 0),
-        title=getattr(legend, "title", None), **chrome)
-    _dash_clegend_size(bar, scheme)
     if getattr(legend, "label_text_font_size", None):
-        bar.major_label_text_font_size = legend.label_text_font_size
-    return bar
-
+        chrome["major_label_text_font_size"] = legend.label_text_font_size
+    pos = [float(i + 1) for i in range(len(cols))]
+    title = getattr(legend, "title", None)
+    return _dash_key_cell({
+        "kind": "rect", "side": "right", "lo": pos[0], "hi": pos[-1],
+        "centres": pos, "colours": cols, "ticks": pos,
+        "labels": dict(zip(pos, labs)),
+        "title": str(title) if title else "", "chrome": chrome,
+        "width_px": _dash_clegend_px(getattr(scheme, "clegend_width_rs",
+                                             6.9444))})
 
 def _dash_clegend_px(rs):
     """WP-42 sil:SD-4: a colour key's thickness in px from the scheme's
@@ -58721,6 +59525,402 @@ def _dash_clegend_size(bar, scheme):
     h = getattr(scheme, "clegend_height_rs", 0.0) or 0.0
     if h > 0:
         bar.height = _dash_clegend_px(h)
+
+
+#: WP-42 CV-3: the swatch twoway keys each plot type's colour levels with
+#: (measured, colorvar_key_truth.json S_<type>: a filled circle, a square,
+#: a horizontal line, a circle on a line, or none for an area).
+_DASH_KEY_SWATCH_KIND = {
+    "scatter": "marker", "connected": "marker+line", "line": "line",
+    "area": "none", "bar": "rect", "spike": "rect", "dropline": "marker",
+    "dot": "marker", "rarea": "none", "rbar": "rect", "rspike": "rect",
+    "rcap": "marker", "rcapsym": "marker", "rscatter": "marker",
+    "rline": "line", "rconnected": "marker+line", "pcspike": "rect",
+    "pccapsym": "marker", "pcarrow": "rect", "pcbarrow": "rect",
+    "pcscatter": "marker", "tsline": "line", "tsrline": "line",
+}
+
+#: WP-42 CV-3: the share of the plot region's height twoway leaves at each
+#: end of the colour key's z axis (colorvar_key_truth.json K1: the axis
+#: from 236.12 to 2353.80 of a plot region from 100.86 to 2489.19).
+_DASH_KEY_AXIS_INSET = 135.3 / 2388.33
+
+#: WP-42 CV-3: an upright key below or above the plot runs its axis line
+#: this share of the graph's height (colorvar_options_truth.json G01,
+#: ``clegend(position(6))``: levels 1 to 5 from 2573.47 to 2151.84 of a
+#: 2880-unit graph).
+_DASH_KEY_BELOW_SHARE = (2573.47 - 2151.84) / 2880.0
+
+#: WP-42 CV-3: the orientation that reads upward for a right-hand axis's
+#: title (measured 03nov2026 in headless Chrome, Bokeh's SVG backend:
+#: pi/2 draws the title through matrix(0, -1, 1, 0, ..), a -90 degree
+#: turn, which reads bottom to top as twoway's key title does; -pi/2 and
+#: "parallel" draw matrix(0, 1, -1, 0, ..), reading top to bottom).
+_DASH_KEY_TITLE_UP = math.pi / 2
+
+#: WP-42 CV-3: the swatch sizes, px at 96 an inch (K1, T1, T_line on a
+#: 5.5-inch graph of 3960 SVG units: a circle 52.7 across, a square 47.09,
+#: a line 153.82 long and 8.64 wide).
+_DASH_KEY_SWATCH_PX = {"marker": 7.0, "rect": 6.3, "line": 20.5,
+                       "line_width": 1.15}
+
+#: WP-42 CV-3: a key cell's frame follows its figure's (the z axis spans
+#: the plot region, as twoway's does), and its other side the figure's
+#: drawn size, at every layout.
+_DASH_KEY_CELL_JS = r"""
+let v = null;
+try { v = Bokeh.index.find_one(fig); } catch (e) { v = null; }
+if (v == null || v.frame == null || v.frame.bbox == null) { return; }
+const fb = v.frame.bbox;
+if (ar > 0) {
+  // A stretched figure: the graph -- figure and key -- keeps its shape.
+  const want = vert
+    ? Math.round(((fig.outer_width || 0) + (cell.width || 0)) / ar)
+    : Math.round((fig.outer_width || 0) / ar - (cell.height || 0));
+  if (want > 0 && fig.height !== want) { fig.height = want; }
+}
+if (vert) {
+  // Beside the figure: the cell's frame is the figure's.
+  const H = Math.round(fig.outer_height || 0);
+  if (!(H > 0)) { return; }
+  const t = Math.max(0, Math.round(fb.top));
+  const b = Math.max(0, Math.round(H - fb.bottom));
+  if (cell.height !== H) { cell.height = H; }
+  if (cell.min_border_top !== t) { cell.min_border_top = t; }
+  if (cell.min_border_bottom !== b) { cell.min_border_bottom = b; }
+}
+"""
+
+
+def _dash_key_range(lo, hi, inset=_DASH_KEY_AXIS_INSET, log=False):
+    """The z range of a key cell whose axis runs *lo* .. *hi*: wider by
+    twoway's inset at each end (``_DASH_KEY_AXIS_INSET`` of the whole), a
+    single value widened by a half each way, (0, 1) when either end is not
+    a finite number (WP-42 CV-3).  *log* (zscale(log)): the inset is taken
+    in log space, of positive ends only ((1, 10) else)."""
+    try:
+        lo, hi = float(lo), float(hi)
+    except (TypeError, ValueError):
+        return (1.0, 10.0) if log else (0.0, 1.0)
+    if not (math.isfinite(lo) and math.isfinite(hi)):
+        return (1.0, 10.0) if log else (0.0, 1.0)
+    if log:
+        if not (lo > 0 and hi > 0):
+            return 1.0, 10.0
+        a, b = _dash_key_range(math.log10(lo), math.log10(hi), inset)
+        return 10.0 ** a, 10.0 ** b
+    if hi < lo:
+        lo, hi = hi, lo
+    if hi == lo:
+        lo, hi = lo - 0.5, hi + 0.5
+    pad = (hi - lo) * inset / (1.0 - 2.0 * inset)
+    return lo - pad, hi + pad
+
+
+def _dash_key_ends(lo, hi, ticks):
+    """The ends of a key's z axis: the levels' *lo* .. *hi* and every tick
+    (twoway runs K_cont's axis from its 0 tick to the maximum, 15,906);
+    None, None when there is neither (WP-42 CV-3)."""
+    vals = []
+    for v in [lo, hi] + list(ticks or []):
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(f):
+            vals.append(f)
+    if not vals:
+        return None, None
+    return min(vals), max(vals)
+
+
+def _dash_key_cell_extent(cell, band_px):
+    """A key cell's thickness: its swatch band *band_px* plus its axis's
+    ticks, standoff and labels (the longest label's characters at 0.6 of
+    the label font's px; for a key above or below the font's px) and the
+    title's font px and 10 more when it has one, plus the axis line, as
+    ``_dash_frame_borders`` estimates a border (WP-42 CV-3)."""
+    ax = getattr(cell, "_dash_key_axis", None)
+    try:
+        band = float(band_px)
+    except (TypeError, ValueError):
+        band = 24.0
+    if ax is None:
+        return int(math.ceil(band))
+    vert = getattr(cell, "_dash_key_side", "right") in ("right", "left")
+    pt = OptionTranslator.css_to_pt(ax.major_label_text_font_size) or 9.0
+    px = pt * 4.0 / 3.0
+    texts = [str(t) for t in dict(ax.major_label_overrides or {}).values()]
+    if vert:
+        n = max((len(t) for t in texts), default=0)
+        lab = math.ceil(n * 0.6 * px) if n else 0
+    else:
+        lab = math.ceil(px) if texts else 0
+    out = float(ax.major_tick_out or 0) + float(ax.major_label_standoff or 0) \
+        + lab
+    if str(ax.axis_label or "").strip():
+        tpt = OptionTranslator.css_to_pt(ax.axis_label_text_font_size) or 10.0
+        out += math.ceil(tpt * 4.0 / 3.0) + 10 \
+            + float(ax.axis_label_standoff or 0)
+    out += math.ceil(float(ax.axis_line_width or 1))
+    return int(math.ceil(band + out))
+
+
+def _dash_key_cell(spec):
+    """twoway's colour key as a cell of its own (WP-42 CV-3, D-42-03.a): a
+    bare Plot of the key's swatches -- *spec*'s ``kind`` (``marker``,
+    ``rect``, ``line``, ``marker+line`` or ``none``) at each level's
+    ``centres`` in its ``colours`` -- beside a z axis with its axis line
+    from ``lo`` to ``hi`` (``_dash_key_ends``), ticked at ``ticks`` and
+    labelled ``labels`` (``{position: text}``), titled ``title`` up its
+    side, styled by ``chrome`` (``SchemeParser.colorbar_chrome``), with no
+    toolbar, outline, grid or fill.  ``side`` (right, left, above, below)
+    is where the key sits by its figure, and its axis on the side away
+    from the figure; ``width_px`` the swatch band.  The cell is
+    ``sizing_mode="fixed"``, tagged ``dash_key_cell``, its thickness
+    numeric (``_dash_key_cell_extent``); its length and frame borders are
+    its figure's, set where it is wrapped with it and followed by
+    ``_DASH_KEY_CELL_JS``.  The relevel plan's ``keycell`` record is
+    ``cell._dash_keycell`` (``_dash_cvar_keycell_update``).  Room is left
+    for zlabel()/zscale()/clegend() sub-options (``reverse``, ``log``,
+    ``minor``, ``title_above``) without a new structure."""
+    from bokeh.models import (ColumnDataSource, FixedTicker, GlyphRenderer,
+                              LinearAxis, LinearScale, LogAxis, LogScale,
+                              Plot, Quad, Range1d, Scatter)
+    side = spec.get("side") or "right"
+    if side not in ("right", "left", "above", "below"):
+        side = "right"
+    vert = side in ("right", "left")
+    try:
+        band = max(1, int(round(float(spec.get("width_px") or 24))))
+    except (TypeError, ValueError):
+        band = 24
+    kind = spec.get("kind") or "marker"
+    centres = [float(c) for c in spec.get("centres") or []]
+    colours = [str(c) for c in spec.get("colours") or []]
+    ticks = [float(t) for t in spec.get("ticks") or []]
+    labels = {float(k): str(v) for k, v in (spec.get("labels") or {}).items()}
+    log = bool(spec.get("log"))
+    if log:
+        ticks = [t for t in ticks if t > 0]
+        labels = {k: v for k, v in labels.items() if k > 0}
+    lo, hi = _dash_key_ends(spec.get("lo"), spec.get("hi"), ticks)
+    rlo, rhi = _dash_key_range(lo, hi, log=log)
+    zr = Range1d(start=rlo, end=rhi)
+    br = Range1d(start=0.0, end=float(band))
+    mid = band / 2.0
+    bands = [(float(a), float(b)) for a, b in spec.get("bands") or []]
+    src = ColumnDataSource(_dash_key_cell_data(centres, colours, vert, mid,
+                                               bands))
+    zs = LogScale() if log else LinearScale()
+    cell = Plot(x_range=br if vert else zr, y_range=zr if vert else br,
+                x_scale=LinearScale() if vert else zs,
+                y_scale=zs if vert else LinearScale(),
+                toolbar_location=None, outline_line_color=None,
+                background_fill_alpha=0.0, border_fill_alpha=0.0,
+                min_border_left=0, min_border_right=0, min_border_top=0,
+                min_border_bottom=0, sizing_mode="fixed",
+                name="dash_key_cell", tags=["dash_key_cell"])
+    sw = _DASH_KEY_SWATCH_PX
+    marks = []
+    if kind in ("line", "marker+line"):
+        marks.append(Scatter(x="x", y="y", marker="dash",
+                             size=sw["line"],
+                             line_color="c", line_width=sw["line_width"],
+                             fill_color=None))
+    if kind in ("marker", "marker+line"):
+        marks.append(Scatter(x="x", y="y", marker="circle", size=sw["marker"],
+                             fill_color="c", line_color="c"))
+    if kind == "rect":
+        marks.append(Scatter(x="x", y="y", marker="square", size=sw["rect"],
+                             fill_color="c", line_color="c"))
+    if kind == "band":
+        # contour's key: each level a box over its band, the swatch
+        # band's whole width, edge to edge (C_plain).
+        marks.append(Quad(left="l", right="r", bottom="b", top="t",
+                          fill_color="c", line_color="c"))
+    for g in marks:
+        cell.renderers.append(GlyphRenderer(data_source=src, glyph=g,
+                                            name="dash_key_swatch"))
+    chrome = dict(spec.get("chrome") or {})
+    ax_kw = {}
+    for src_k, dst_k in (("major_label_text_font_size",
+                          "major_label_text_font_size"),
+                         ("major_label_text_color", "major_label_text_color"),
+                         ("title_text_font_size", "axis_label_text_font_size"),
+                         ("title_text_color", "axis_label_text_color"),
+                         ("title_text_font_style",
+                          "axis_label_text_font_style"),
+                         ("major_tick_line_color", "major_tick_line_color"),
+                         ("major_tick_line_width", "major_tick_line_width"),
+                         ("major_tick_in", "major_tick_in"),
+                         ("major_tick_out", "major_tick_out")):
+        if src_k in chrome and chrome[src_k] is not None:
+            ax_kw[dst_k] = chrome[src_k]
+    ax_kw["axis_line_color"] = chrome.get("major_tick_line_color") or "black"
+    ax_kw["axis_line_width"] = chrome.get("major_tick_line_width") or 1
+    title = str(spec.get("title") or "")
+    axis = (LogAxis if log else LinearAxis)(
+                      ticker=FixedTicker(ticks=sorted(labels) or ticks),
+                      major_label_overrides=labels, axis_label=title or None,
+                      minor_tick_line_color=None,
+                      bounds=(lo, hi) if lo is not None else (0.0, 1.0),
+                      tags=["dash_key_axis"], **ax_kw)
+    if side == "right":
+        axis.axis_label_orientation = _DASH_KEY_TITLE_UP
+    cell.add_layout(axis, side)
+    cell._dash_key_axis = axis
+    cell._dash_key_band = band
+    cell._dash_key_len = spec.get("length_px")
+    cell._dash_key_side = side
+    cell._dash_key_spec = spec
+    ext = _dash_key_cell_extent(cell, band)
+    far = max(0, ext - band)
+    if vert:
+        cell.width = ext
+        cell.height = int(spec.get("length_px") or 300)
+        setattr(cell, "min_border_" + side, far)
+    else:
+        cell.height = ext
+        cell.width = int(spec.get("length_px") or 300)
+        setattr(cell, "min_border_" + {"above": "top",
+                                       "below": "bottom"}[side], far)
+    cell._dash_keycell = {"src": src, "ticker": axis.ticker, "axis": axis,
+                          "range": zr, "vert": bool(vert), "mid": mid,
+                          "band": float(band), "log": log,
+                          "inset": float(_DASH_KEY_AXIS_INSET)}
+    return cell
+
+
+def _dash_key_cell_data(centres, colours, vert, mid, bands=None, band=None):
+    """A key cell's swatch columns (WP-42 CV-3): each level's point (x, y)
+    at its centre on the z axis and the band's middle *mid* across it, its
+    colour ``c``, and its box (``l``, ``r``, ``b``, ``t``): the level's
+    *bands* along the axis (a contour key's), the swatch band across."""
+    n = min(len(centres), len(colours))
+    cs = [float(c) for c in centres][:n]
+    m = [float(mid)] * n
+    w = float(band) if band is not None else 2.0 * float(mid)
+    bd = list(bands or [])[:n]
+    if len(bd) != n:
+        bd = [(c, c) for c in cs]
+    lo = [float(a) for a, _b in bd]
+    hi = [float(b) for _a, b in bd]
+    zero, full = [0.0] * n, [w] * n
+    return {"x": m if vert else cs, "y": cs if vert else m,
+            "c": [str(c) for c in colours][:n],
+            "l": zero if vert else lo, "r": full if vert else hi,
+            "b": lo if vert else zero, "t": hi if vert else full}
+
+
+def _dash_key_cell_reside(cell, side):
+    """*cell* drawn on *side* instead (WP-42 CV-3; a by() graph's one key
+    at by()'s clegend() position): a new key cell from the cell's spec,
+    whose models the cell's ``_dash_keycell`` record -- the one every
+    relevel plan holds -- now names.  *cell* itself when the side is
+    its own."""
+    if getattr(cell, "_dash_key_side", None) == side:
+        return cell
+    spec = dict(getattr(cell, "_dash_key_spec", None) or {})
+    spec["side"] = side
+    new = _dash_key_cell(spec)
+    rec = getattr(cell, "_dash_keycell", None)
+    if isinstance(rec, dict):
+        rec.update(new._dash_keycell)
+        new._dash_keycell = rec
+    return new
+
+
+def _dash_cvar_keycell_update(kc, lo, hi, centres, colours, ticks, labels,
+                              bands=None):
+    """Redraw a key cell (its ``_dash_keycell`` record *kc*) after a filter
+    move (WP-42 CV-3, D-42-03.d): the swatches at *centres* in *colours*,
+    the axis ticked at *ticks* and labelled *labels* (``{position:
+    text}``), its line and range over *lo* .. *hi* and the ticks
+    (``_dash_key_ends``, ``_dash_key_range``).  The page's twin is
+    ``dash_cvar_keycell_update`` in :data:`_DASH_CVAR_RELEVEL_JS` (a
+    contour's refit: ``dash_contour_keycell``).  *bands* are a contour
+    key's levels along the axis.  A log key (zscale(log)) keeps its
+    positive ticks.  Never raises; a model is written only when its value
+    changes."""
+    if not isinstance(kc, dict):
+        return
+    try:
+        log = bool(kc.get("log"))
+        centres = [float(c) for c in centres or []]
+        colours = [str(c) for c in colours or []][:len(centres)]
+        centres = centres[:len(colours)]
+        lab = {float(k): str(v) for k, v in (labels or {}).items()
+               if not log or float(k) > 0}
+        tk = sorted(lab) if lab else sorted(
+            float(t) for t in ticks or [] if not log or float(t) > 0)
+        zlo, zhi = _dash_key_ends(lo, hi, tk)
+        src, axis, rng = kc["src"], kc["axis"], kc["range"]
+        new = _dash_key_cell_data(centres, colours, bool(kc.get("vert")),
+                                  float(kc.get("mid", 12.0)), bands,
+                                  kc.get("band"))
+        if {k: list(v) for k, v in src.data.items()} != new:
+            src.data = new
+        if list(kc["ticker"].ticks or []) != tk:
+            kc["ticker"].ticks = tk
+        if dict(axis.major_label_overrides or {}) != lab:
+            axis.major_label_overrides = lab
+        b = (zlo, zhi) if zlo is not None else (0.0, 1.0)
+        if axis.bounds != b:
+            axis.bounds = b
+        rlo, rhi = _dash_key_range(zlo, zhi, kc.get("inset",
+                                                    _DASH_KEY_AXIS_INSET),
+                                   log=log)
+        if rng.start != rlo:
+            rng.start = rlo
+        if rng.end != rhi:
+            rng.end = rhi
+    except (KeyError, AttributeError, TypeError, ValueError, IndexError):
+        return
+
+
+def _dash_key_bin_centres(lo, hi, cuts, ticks=(), log=False):
+    """The centres of a binned or stepped key's levels (WP-42 CV-3): the
+    bins between the key's axis ends (``_dash_key_ends`` over *lo*, *hi*
+    and *ticks*) and the *cuts*, n cuts n + 1 levels (K3: colorlevels(3)
+    of 1..5 centred at 1.67, 3 and 4.33; K_cont: price's levels at 2,500,
+    7,500, 12,500 and 15,453 on an axis from its 0 tick to 15,906)."""
+    zlo, zhi = _dash_key_ends(lo, hi, list(ticks or []) + list(cuts or []))
+    if zlo is None:
+        return []
+    edges = [zlo] + sorted(float(c) for c in cuts or []) + [zhi]
+    if log and all(e > 0 for e in edges):
+        # On a log axis a level's middle is its ends' geometric mean.
+        return [math.sqrt(a * b) for a, b in zip(edges[:-1], edges[1:])]
+    return [(a + b) / 2.0 for a, b in zip(edges[:-1], edges[1:])]
+
+
+def _dash_cvar_keycell_steps(plan, lo, hi, cuts, colours):
+    """A stepped key cell after a move (WP-42 CV-3): the plan's bar's
+    ticks and labels, its levels between them (``_dash_key_bin_centres``)
+    in *colours*.  Never raises."""
+    kc = plan.get("keycell")
+    bar = plan.get("cbar")
+    if not isinstance(kc, dict) or bar is None:
+        return
+    try:
+        pos = sorted(float(t) for t in (bar.ticker.ticks or []))
+        ovr = {float(k): str(v) for k, v in
+               dict(bar.major_label_overrides or {}).items()}
+    except (AttributeError, TypeError, ValueError):
+        return
+    if kc.get("log"):
+        pos = [t for t in pos if t > 0]
+        ovr = {k: v for k, v in ovr.items() if k > 0}
+    zr = plan.get("zrange") or [None, None]
+    if zr[0] is not None:
+        lo = min(lo, float(zr[0]))
+    if zr[1] is not None:
+        hi = max(hi, float(zr[1]))
+    _dash_cvar_keycell_update(kc, lo, hi,
+                              _dash_key_bin_centres(lo, hi, cuts, pos,
+                                                    log=kc.get("log")),
+                              colours, pos, ovr)
 
 
 def _dash_by_keys(figs, opts, scheme):
@@ -58925,7 +60125,99 @@ def _dash_by_keys(figs, opts, scheme):
                 _cell.height_policy = "max"
                 _cell.frame_align = False
             out["legend_side"], out["legend_at"] = side, at
-    if not ilegends and keys1:
+    # WP-42 CV-3: a panel's colour key is twoway's axis-style key cell
+    # (fig._dash_key_cell); by(, clegend(on)) draws panel 1's beside the
+    # panels, at by()'s clegend() position, and no panel draws its own.
+    kcell = getattr(figs[0], "_dash_key_cell", None)
+
+    def _place_cell(c, side, at):
+        # Upright wherever it sits, as twoway draws by()'s key (below the
+        # panels at 6 o'clock and in an at() hole too).
+        c = _dash_key_cell_reside(c, "left" if side == "left" and not at
+                                  else "right")
+        c.name = "dash_by_clegend"
+        c.sizing_mode = None
+        c.width_policy = "fixed"
+        if side in ("right", "left") and not at:
+            c.height_policy = "max"
+        else:
+            c.height_policy = "fixed"
+            c.height = 200
+        c.min_border_top = c.min_border_bottom = 0
+        # Centred on the panels' height, not on their frames (by()'s
+        # key, BUGS.md "by()'s colour key ran past the panels' foot").
+        c.frame_align = False
+        setattr(c, _DASH_GRAPH_TEXT_DONE, True)
+        # twoway's length and place (_DASH_SPAN_JS "key"): beside the
+        # panels their box less a gap, below or above a share of the
+        # grid's width, in an at() hole on its row's plot regions.
+        if not at and side in ("above", "below"):
+            # Across the graph, its key placed in it by the span (which a
+            # cell that does not resize would not rerun).
+            c.frame_width = None
+            c.width = None
+            c.width_policy = "max"
+        if at:
+            c.height_policy = "max"
+            c.min_height = 160
+            _w, _calls = _dash_legend_parts(opts.get("clegend", ""))
+            _pos = _dash_legend_arg(_calls, ("position",))
+            try:
+                _clock = int(str(_pos if _pos is not None else getattr(
+                    scheme, "zyx2_position", 3)).strip())
+            except (TypeError, ValueError):
+                _clock = 3
+            _across = ("left" if _clock in (7, 8, 9, 10, 11) else
+                       "center" if _clock in (0, 6, 12) else "right")
+            c.align = {"left": "start", "center": "center",
+                       "right": "end"}[_across]
+            _dash_span(c, c, "key", "center", _across, ref="grid",
+                       mode="hole")
+        elif side in ("above", "below"):
+            _dash_span(c, c, "key", side, "center",
+                       _dash_by_key_share(figs[0]), ref="grid", mode="row")
+        else:
+            _dash_span(c, c, "key", side, "center", ref="grid",
+                       mode="side")
+        box = c
+        if at:
+            # In a hole the cell sits in a box of the hole's size, placed
+            # across it by its alignment: a Plot there would share its
+            # grid column's frames with the panels'.
+            from bokeh.layouts import column as _column
+            box = _column(c, sizing_mode=None, width_policy="max",
+                          height_policy="max", name="dash_by_clegend")
+            box.min_height = 160
+            box._dash_key_cell = c
+        out["clegend"] = box
+        out["clegend_side"], out["clegend_at"] = side, at
+        return c
+
+    if not ilegends and kcell is not None:
+        words, at, side, _ring = place(opts.get("clegend", ""),
+                                       getattr(scheme, "zyx2_position", 3))
+        out["clegend_at"] = at
+        if words & {"on", "draw"} and not words & {"off", "nodraw"}:
+            _place_cell(kcell, side, at)
+        else:
+            kcell = None
+    elif kcell is not None:
+        kcell = None
+    # by(, ilegends): each panel draws its own key, as twoway does
+    # (measured 03nov2026: ``scatter mpg weight, colorvar(price)
+    # by(foreign, ilegends)`` draws two keys titled Price, each panel's
+    # own ticks; by(foreign) none) -- beside its panel
+    # (_dash_layout_cell), each on its own panel's plan.
+    for _i, _f in enumerate(figs if not ilegends else ()):
+        _f._dash_key_cell = None
+        if _i == 0 and kcell is not None:
+            continue
+        for _r in list(_f.renderers):
+            for _a in ("_dash_cvar", "_dash_cvar_bins"):
+                _pp = getattr(_r, _a, None)
+                if isinstance(_pp, dict) and "keycell" in _pp:
+                    _pp["keycell"] = None
+    if not ilegends and keys1 and out["clegend"] is None:
         words, at, side, _ring = place(opts.get("clegend", ""),
                                        getattr(scheme, "zyx2_position", 3))
         # WP-41 BY-3: drawn or not, as twoway's SetClegend reserves it
@@ -58933,12 +60225,17 @@ def _dash_by_keys(figs, opts, scheme):
         out["clegend_at"] = at
         if words & {"on", "draw"} and not words & {"off", "nodraw"}:
             _kside, key = keys1[0]
+            _ucell = None
             if getattr(key, "_dash_useplegend", False):
                 # WP-41 BY-14: coloruseplegend's key is drawn as a colour
-                # bar under by(, clegend(on)), as twoway draws it (K09);
+                # key under by(, clegend(on)), as twoway draws it (K09);
                 # it keeps the build's levels after a move (the relevel
-                # plan recolours the panels' levels, not this bar's).
-                key = _dash_by_colour_bar_cell(scheme, key) or key
+                # plan recolours the panels' levels, not this key's).
+                # WP-42 CV-3: twoway's axis-style key cell.
+                _ucell = _dash_by_colour_bar_cell(scheme, key)
+            if _ucell is not None:
+                _place_cell(_ucell, side, at)
+                key = None
             vertical = (side if not at else "right") in ("left", "right")
             _bars = (ColorBar, ContourColorBar)
 
@@ -59007,7 +60304,7 @@ def _dash_by_keys(figs, opts, scheme):
                 # whole height").
                 _dash_span(cell, bar, "key", side, "center", ref="grid",
                            mode="side")
-            else:
+            elif key is not None:
                 cell = _dash_by_legend_cell(scheme, "dash_by_clegend",
                                             side if not at else "right", key,
                                             list(key.items), "c")
@@ -59091,9 +60388,10 @@ def _dash_by_keys(figs, opts, scheme):
             # key ran past the panels' foot"): the key is centred on the
             # panels' height, as twoway centres it (measured 19oct2026:
             # its title at y 1499.34 of 3240, the y title's).
-            cell.frame_align = False
-            out["clegend"] = cell
-            out["clegend_side"], out["clegend_at"] = side, at
+            if key is not None:
+                cell.frame_align = False
+                out["clegend"] = cell
+                out["clegend_side"], out["clegend_at"] = side, at
     # WP-41 BY-14: by(, plegend(on|draw)) under coloruseplegend draws
     # panel 1's colour keys as one plot legend, placed by plegend()'s
     # position() else the scheme's zyx2legend_position, as twoway's
@@ -67999,6 +69297,7 @@ class DashRenderer:
                                                  _cv_mask),
                 "graph": None} if str(popts.get("colorvar") or "").strip()
                 else None)
+            self.mapper.colorvar_type = str(ptype or "").lower()
 
             # Snapshot renderer list so new glyphs can be identified -- and
             # the annotations, so a yaxis(2) layer's labels and arrowheads
@@ -71541,6 +72840,10 @@ class ServerAppBuilder:
                       # (WP-31 C8b).
                       "_DASH_COLORRULES", "_DASH_ZYX2_SCHEME_RULES",
                       "_DASH_CLEGEND_SUBOPTS",
+                      # WP-42 CV-3: twoway's axis-style colour key.
+                      "_DASH_KEY_SWATCH_KIND", "_DASH_KEY_AXIS_INSET",
+                      "_DASH_KEY_TITLE_UP", "_DASH_KEY_SWATCH_PX",
+                      "_DASH_KEY_CELL_JS", "_DASH_KEY_BELOW_SHARE",
                       # twoway's weight acceptance per layer, read by
                       # GlyphMapper._layer_weights.
                       "_DASH_WEIGHT_ACCEPTS", "_DASH_WEIGHT_INERT",
@@ -72419,6 +73722,16 @@ class ServerAppBuilder:
                          "_dash_zyx2_derive", "_dash_scheme_choice",
                          "_resolve_scheme_name", "_dash_scheme_dirs_of",
                          "_dash_clegend_opts", "_dash_pcycle",
+                         # WP-42 CV-3: the axis-style colour key cell.
+                         "_dash_key_range", "_dash_key_ends",
+                         "_dash_key_cell_extent", "_dash_key_cell",
+                         "_dash_cvar_keycell_update",
+                         "_dash_key_bin_centres", "_dash_cvar_keycell_steps",
+                         "_dash_key_levels_layout", "_dash_key_bins_layout",
+                         "_dash_cvar_keycell_levels",
+                         "_dash_cvar_keycell_bins", "_dash_key_wrap",
+                         "_dash_key_hold_shape", "_dash_key_scale_entries",
+                         "_dash_key_cell_data", "_dash_key_cell_reside",
                          "_dash_clegend_px", "_dash_clegend_size",
                          # a filled layer's vertices under cmissing(n) and
                          # rarea's connect() (WP-31 C6).
@@ -72752,6 +74065,7 @@ class ServerAppBuilder:
                     # map_contour draws with, in both renderers.
                     _dash_contour_zticks, _dash_contour_cuts,
                     _dash_contour_cut_rule, _dash_contour_bar_follow,
+                    _dash_contour_band_colours, _dash_contour_key_state,
                     # WP-32: the stale cue of a fit drawn from Stata's
                     # points, built and followed on the served page.
                     _dash_stale_cue_title, _dash_points_stale_models,
@@ -74658,6 +75972,7 @@ class ServerAppBuilder:
             "            {'ids': _dash_colorvar_domain_ids(g_df), 'graph': gname}",
             "            if cv_domain is None and str(opts.get('colorvar') or '').strip()",
             "            else None)",
+            "        _m.colorvar_type = str(ptype or '').lower()",
             "        try:",
             "            if ptype == 'scatteri':",
             "                _m.map_scatteri(fig, plot.get('values', []), opts, color_idx=_sidx)",
@@ -74896,11 +76211,10 @@ class ServerAppBuilder:
             "                if _out and hasattr(_rr, '_dash_contour_sources'):",
             "                    _kb = getattr(_rr, '_dash_contour_bar', None)",
             "                    _out[0]._dash_ckey = (",
-            "                        list(_rr.levels),",
-            "                        list(getattr(_kb.ticker, 'ticks', None) or [])",
-            "                        if _kb is not None else [],",
-            "                        dict(_kb.major_label_overrides or {})",
-            "                        if _kb is not None else {})",
+            "                        (list(_rr.levels),)",
+            "                        + tuple(_dash_contour_key_state(_kb))",
+            "                        + (_dash_contour_band_colours(",
+            "                            _rr, len(list(_rr.levels)) - 1),))",
             "            # WP-32: a fit drawn from Stata's points over fewer rows",
             "            # than Stata's sample is stale; the page says so.",
             "            if _out:",
@@ -75235,7 +76549,12 @@ class ServerAppBuilder:
             "                _evl = [_e for _e in _evl if isinstance(_e, dict)]",
             "                if _evl:",
             "                    agg_sources[(gname, pi)]['evalext'] = _evl[0]['source']",
-            "                # WP-31 B4d: the contour's colour key, moved with it.",
+            "                # WP-31 B4d: the contour's colour key, moved with it",
+            "                # (WP-42 CV-3: its key cell's record).",
+            "                for _rr in fig.renderers[_r_before:]:",
+            "                    _kr = getattr(_rr, '_dash_contour_bar', None)",
+            "                    if isinstance(_kr, dict):",
+            "                        agg_sources[(gname, pi)]['ckey'] = _kr",
             "                for _side in ('right', 'left', 'above', 'below', 'center'):",
             "                    for _km in getattr(fig, _side, None) or []:",
             "                        if (type(_km).__name__ == 'ContourColorBar'",

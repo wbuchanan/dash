@@ -330,6 +330,17 @@ class _StubProbe:
         raise AssertionError(expr[:40])
 
 
+class TestExport:
+
+    def test_a_keyed_figure_exports_its_row(self):
+        """WP-42 CV-3 (TR-42-03.3): a figure with its colour key cell (a
+        dash_key_row holding the figure and a dash_key_cell Plot) is
+        sized and exported as one lone figure."""
+        assert "dash_key_row" in dash_run.SIZE_JS
+        assert "dash_key_cell" in dash_run.SIZE_JS
+        assert "W - cell.width" in dash_run.SIZE_JS
+
+
 class TestExportPages:
 
     def test_writes_svg_and_view_per_page(self, tmp_path, monkeypatch):
@@ -469,6 +480,20 @@ class TestInChrome:
         assert all(r["visible"] is True for r in rs)
         sizes = [r["size"] for r in rs if r["glyph"] == "Scatter"]
         assert sizes and all(isinstance(z, dict) and z["value"] > 0 for z in sizes), sizes
+
+    def test_a_keyed_figure_exports_its_row(self, tmp_path):
+        """WP-42 CV-3: scatter mpg weight, colorvar(price) exported at 720
+        x 432 is one SVG of that size, the key's tick labels among its
+        texts."""
+        import test_default_axes as tda
+        page = _page(tmp_path, tda._spec([tda.P("scatter", "mpg", "weight",
+                                                colorvar="price")]))
+        with dash_run.CorpusProbe(page, timeout=120) as p:
+            got = dash_run.export_page(p, page, 720, 432)
+        root = _ROOT_SVG.search(got["svg"]).group(0)
+        assert 'width="720"' in root and 'height="432"' in root, root
+        assert got["size_matched"] is True and got["js_errors"] == []
+        assert ">15,000<" in got["svg"] or "15,000" in got["svg"]
 
     def test_a_scatter_counts_the_points_it_draws(self, tmp_path):
         # D56: rep78 is missing for five cars; the source holds 74 rows, the

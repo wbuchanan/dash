@@ -81,8 +81,11 @@ class TestTheByContourKey:
         cell = tbk._cell(grid, "dash_by_clegend")
         assert cell is not None
         assert tbk._cell_side(grid, cell) == "right"
-        (bar,) = _contour_bars(cell[0])
-        assert bar.title == "Temperature"
+        # Flipped (WP-42 CV-3): dash's colour key was a ContourColorBar;
+        # twoway draws swatches beside a z axis (CV-3): panel 1's key
+        # cell, titled with z's label.
+        assert "dash_key_cell" in (cell[0].tags or [])
+        assert cell[0]._dash_key_axis.axis_label == "Temperature"
 
     def test_one_key_below_under_pos6(self, mode):
         """by(date, clegend(on pos(6))): the one key below the panels."""
@@ -92,7 +95,8 @@ class TestTheByContourKey:
         cell = tbk._cell(grid, "dash_by_clegend")
         assert cell is not None
         assert tbk._cell_side(grid, cell) == "below"
-        assert len(_contour_bars(cell[0])) == 1
+        # Flipped (WP-42 CV-3): the key cell (see above).
+        assert "dash_key_cell" in (cell[0].tags or [])
 
 
 # ---------------------------------------------------------------------------
@@ -235,3 +239,607 @@ class TestContourlineLegend:
         fig, msgs = _co._draw(mode, plot, _co._scatter_df())
         assert not _level_legends(fig)
         assert not [m for m in msgs if "contourline" in str(m)]
+
+
+# ---------------------------------------------------------------------------
+# CV-3: every colour key is twoway's axis-style key (colorvar_key_truth.json
+# K*, S_*, E_allmiss): a key cell of swatches in the plot type's key kind,
+# highest level at the top, a z axis with its axis line ticked at natscale
+# (a discrete key) or the cuts (a binned or stepped key), the title up the
+# axis side, no missing entry, no frame.
+# ---------------------------------------------------------------------------
+
+import math  # noqa: E402
+
+import test_colorvar_truth as _tct  # noqa: E402
+from test_mode_parity import plot_for  # noqa: E402
+
+#: The probes' plot options (colorvar_key_truth.json "command").
+_KEY_OPTS = {
+    "K1": {"colorvar": "rep78", "colordiscrete": "colordiscrete"},
+    "K2": {"colorvar": "foreign", "colordiscrete": "colordiscrete"},
+    "K3": {"colorvar": "rep78", "colorlevels": "3"},
+    "K4": {"colorvar": "rep78", "colorcuts": "2 4"},
+    "K8": {"colorvar": "rep78", "colordiscrete": "colordiscrete",
+           "colorcuts": "3 4", "colorotherlabel": '"rest"'},
+    "K_cont": {"colorvar": "price"},
+}
+
+
+def _key_cells(root):
+    refs = root.references() if hasattr(root, "references") else [
+        m for r in root.roots for m in r.references()]
+    return [m for m in refs if "dash_key_cell" in (m.tags or [])
+            and type(m).__name__ == "Plot"]
+
+
+def _render_root(spec, mode):
+    return _tct._render(spec, mode)
+
+
+def _figure_keys(root):
+    """The colour key models drawn on a figure: a Legend named as the
+    colour key, a ColorBar (a by() label box excepted)."""
+    from bokeh.models import ColorBar, Legend, Plot
+    refs = root.references() if hasattr(root, "references") else [
+        m for r in root.roots for m in r.references()]
+    out = []
+    for f in refs:
+        if not isinstance(f, Plot) or "dash_key_cell" in (f.tags or []):
+            continue
+        for side in ("left", "right", "above", "below", "center"):
+            for m in getattr(f, side):
+                if isinstance(m, ColorBar) and m.name != "dash_by_label_box":
+                    out.append(m)
+                elif isinstance(m, Legend) \
+                        and m.name == dr._COLORVAR_LEGEND_NAME:
+                    out.append(m)
+    return out
+
+
+def _cell_state(cell):
+    """(swatch kinds, swatches top first as (value, colour), label texts
+    top first, axis bounds, axis title)."""
+    ax = cell._dash_key_axis
+    rs = [r for r in cell.renderers if r.name == "dash_key_swatch"]
+    kinds = sorted(r.glyph.marker for r in rs)
+    d = rs[0].data_source.data if rs else cell._dash_keycell["src"].data
+    sw = sorted(zip(d["y"], d["c"]), key=lambda t: -t[0])
+    ovr = dict(ax.major_label_overrides or {})
+    texts = [ovr[k] for k in sorted(ovr, key=float, reverse=True)]
+    return kinds, sw, texts, tuple(ax.bounds), ax.axis_label
+
+
+def _hex(c):
+    c = str(c).lstrip("#")
+    return tuple(int(c[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def _truth_swatches(rec):
+    """twoway's filled swatches top first as (value, fill): the axis line
+    runs lo .. hi from its y1 (bottom) to its y2 (top)."""
+    k = rec["key"]
+    fills = [(c["cy"], c["fill"]) for c in k.get("circles", [])
+             if c.get("fill") not in (None, "none")]
+    fills += [(r["cy"], r["fill"]) for r in k.get("rects", [])
+              if r.get("fill") not in (None, "none")]
+    return sorted(fills)
+
+
+@pytest.fixture
+def _auto(monkeypatch):
+    monkeypatch.setattr(tp, "_DF", _tct._auto_frame())
+
+
+@pytest.mark.usefixtures("_auto")
+class TestTheAxisKey:
+    """CV-3: the key cell's swatches top to bottom, their colours and
+    positions, the axis's labels and its line, no missing entry, no
+    Legend or ColorBar on the figure (twoway's K probes)."""
+
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("pid", sorted(_KEY_OPTS))
+    def test_probe(self, pid, mode):
+        rec = _key_truth()[pid]
+        root = _render_root(tp._spec([plot_for("scatter", _KEY_OPTS[pid],
+                                               yvar="mpg", xvar="weight")]),
+                            mode)
+        assert not _figure_keys(root)
+        (cell,) = _key_cells(root)
+        kinds, sw, texts, bounds, title = _cell_state(cell)
+        assert kinds == ["circle"]
+        assert texts == _key_texts(rec)
+        assert not [t for t in texts if "missing" in t or t == "rest"]
+        want = _truth_swatches(rec)
+        assert len(sw) == len(want)
+        # twoway's axis line runs from the bottom end to the top end.
+        (vl,) = rec["key"]["vlines"]
+        lo, hi = bounds
+        for (v, col), (cy, fill) in zip(sw, want):
+            tv = lo + (vl["y1"] - cy) / (vl["y1"] - vl["y2"]) * (hi - lo)
+            assert abs(v - tv) <= 0.01 * (hi - lo), (pid, sw, want)
+            assert max(abs(a - b) for a, b in zip(_hex(col), _hex(fill))) \
+                <= 2, (pid, col, fill)
+        assert cell._dash_key_axis.axis_label_orientation == \
+            pytest.approx(math.pi / 2)
+        assert title
+        assert cell._dash_key_axis.axis_line_color is not None
+        assert cell.outline_line_color is None
+
+    @pytest.mark.parametrize("ptype", sorted(_SWATCH_KIND))
+    def test_swatch_kind_table(self, ptype):
+        """dash's swatch table is twoway's (S_<type>)."""
+        assert dr._DASH_KEY_SWATCH_KIND[ptype] == _SWATCH_KIND[ptype]
+
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("ptype,want", [
+        ("bar", ["square"]), ("line", ["dash"]),
+        ("connected", ["circle", "dash"]), ("spike", ["square"])])
+    def test_swatch_kind(self, ptype, want, mode):
+        opts = dict(_KEY_OPTS["K1"])
+        if ptype in ("line", "connected", "spike"):
+            opts["sort"] = "sort"
+        root = _render_root(tp._spec([plot_for(ptype, opts, yvar="mpg",
+                                               xvar="weight")]), mode)
+        (cell,) = _key_cells(root)
+        assert _cell_state(cell)[0] == want
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_all_missing_draws_the_title_alone(self, mode, monkeypatch):
+        """E_allmiss: an all-missing colorvar() draws the axis line and the
+        title, no swatch and no tick."""
+        df = _tct._auto_frame()
+        df["zmiss"] = np.nan
+        monkeypatch.setattr(tp, "_DF", df)
+        rec = _key_truth()["E_allmiss"]
+        assert not _key_texts(rec)
+        root = _render_root(tp._spec([plot_for(
+            "scatter", {"colorvar": "zmiss"}, yvar="mpg", xvar="weight")]),
+            mode)
+        assert not _figure_keys(root)
+        (cell,) = _key_cells(root)
+        _kinds, sw, texts, _b, title = _cell_state(cell)
+        assert sw == [] and texts == []
+        assert title
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_two_layers_ring0_one_key(self, mode):
+        """One key a graph (CV-6): a later layer's key inside the plot
+        replaces an earlier layer's key cell."""
+        spec = tp._spec([
+            plot_for("scatter", {"colorvar": "rep78",
+                                 "colordiscrete": "colordiscrete"},
+                     yvar="mpg", xvar="weight"),
+            plot_for("scatter", {"colorvar": "foreign",
+                                 "colordiscrete": "colordiscrete",
+                                 "colorallowmultiple": "colorallowmultiple"},
+                     yvar="price", xvar="weight")],
+            None, {"clegend": "ring(0)"})
+        root = _render_root(spec, mode)
+        assert not _key_cells(root)
+        assert len(_figure_keys(root)) == 1
+
+
+def _layout_of(mode, plots, go=None):
+    spec = tp._spec(plots, None, go or {})
+    return _render_root(spec, mode)
+
+
+def _figs_and_cells(root):
+    from bokeh.models import Plot
+    refs = root.references() if hasattr(root, "references") else [
+        m for r in root.roots for m in r.references()]
+    figs = [m for m in refs if isinstance(m, Plot)
+            and "dash_key_cell" not in (m.tags or []) and m.renderers]
+    return figs, _key_cells(root)
+
+
+@pytest.mark.usefixtures("_auto")
+@pytest.mark.parametrize("mode", _MODES)
+class TestTheLayoutIsUnchanged:
+    """CV-3: a graph with no colour key lays out as before; a key cell
+    sits beside its figure inside the graph region, at a width known at
+    build, and takes scale() and the xsize()/ysize() box as the key
+    did."""
+
+    def test_no_key(self, mode):
+        root = _layout_of(mode, [plot_for("scatter", yvar="mpg",
+                                          xvar="weight")])
+        refs = root.references() if hasattr(root, "references") else [
+            m for r in root.roots for m in r.references()]
+        assert not [m for m in refs if "dash_key_row" in (m.tags or [])]
+        assert not _key_cells(root)
+
+    def test_the_cell_has_a_width(self, mode):
+        root = _layout_of(mode, [plot_for("scatter", {"colorvar": "price"},
+                                          yvar="mpg", xvar="weight")])
+        (cell,) = _key_cells(root)
+        assert isinstance(cell.width, int)
+        assert cell.width == dr._dash_key_cell_extent(cell,
+                                                      cell._dash_key_band)
+        refs = root.references() if hasattr(root, "references") else [
+            m for r in root.roots for m in r.references()]
+        (row,) = [m for m in refs if "dash_key_row" in (m.tags or [])]
+        assert row.children[1] is cell
+        # Inside the graph region box (GW-6), as twoway draws its key.
+        (reg,) = [m for m in refs if "dash_graph_region" in (m.tags or [])]
+        assert row in list(reg.children)
+
+    def test_xsize_box_holds_the_key(self, mode):
+        root = _layout_of(mode, [plot_for("scatter", {"colorvar": "price"},
+                                          yvar="mpg", xvar="weight")],
+                          {"xsize": "6", "ysize": "4", "aspectratio": "1"})
+        (fig,), (cell,) = _figs_and_cells(root)
+        assert fig.width + cell.width == 576
+        assert fig.height == 384 and cell.height == 384
+        assert abs(fig.frame_width - fig.frame_height) <= 1
+
+    def test_scale_reaches_the_key(self, mode):
+        def px(go):
+            root = _layout_of(mode, [plot_for(
+                "scatter", {"colorvar": "price"}, yvar="mpg",
+                xvar="weight")], go)
+            (cell,) = _key_cells(root)
+            return dr.OptionTranslator.css_to_pt(
+                cell._dash_key_axis.major_label_text_font_size)
+        assert px({"scale": "1.5"}) == pytest.approx(1.5 * px({}), rel=0.01)
+
+
+def _cell_record(models):
+    """Every key cell's (labels, swatches) among *models*, sorted."""
+    out = []
+    for m in models:
+        if "dash_key_cell" not in (getattr(m, "tags", None) or []) \
+                or type(m).__name__ != "Plot":
+            continue
+        _k, sw, texts, bounds, _t = _cell_state(m)
+        out.append((texts, [(round(v, 6), str(c)) for v, c in sw],
+                    tuple(round(b, 6) for b in bounds)))
+    return sorted(out, key=repr)
+
+
+@pytest.mark.parametrize("name", [
+    "scatter colordiscrete, range to 4500-11385",
+    "scatter colorlevels(4), rep dropdown to 3",
+    "scatter colorcuts(), rep dropdown to 3",
+    "scatter colorvar stepped price, rep dropdown to 3",
+    "line colorvar levels (D-15f), rep dropdown to 3"],
+    ids=["levels", "bins", "cuts", "stepmap", "steps"])
+class TestTheKeyAfterAMove:
+    """CV-3 (D-42-03.d): after a filter move the key cell's labels and
+    swatches equal a fresh build over the kept rows, served (the Python
+    twin) and saved (the page's script under node)."""
+
+    def test_twins_agree(self, name):
+        import json as _json
+        import js_runner
+        case = [c for c in tp.MOVE_CORPUS if c.values[0] == name][0]
+        _name, spec, action, oracle = case.values
+        q = _json.loads(_json.dumps(spec))
+        q["build_options"]["filter"] = ""
+        for g in q["graphs"]:
+            g["if_expr"] = oracle
+        r0, _ = tp._standalone(q)
+        want = _cell_record(r0._last_layout_root.references())
+        before, _ = tp._standalone(spec)
+        assert want and want != _cell_record(
+            before._last_layout_root.references())
+        doc, _ = tp._served(spec)
+        kind, label = action
+        w = [x for x in tp._widgets_of(doc) if type(x).__name__ == kind][0]
+        tp._fire(w, tp._move_widget_value(w, kind, label))
+        assert _cell_record([m for root in doc.roots
+                             for m in root.references()]) == want
+        r, _ = tp._standalone(spec)
+        w, cb = [(w, cb) for w, cb in zip(r.filter_widgets,
+                                          r.filter_callbacks)
+                 if type(w).__name__ == kind][0]
+        session = js_runner.JsSession(r.filter_callbacks)
+        session.set(w, tp._move_widget_value(w, kind, label))
+        session.run(cb)
+        assert _cell_record(r._last_layout_root.references()) == want
+
+
+#: Every plot's canvas and frame in page px, its tags and its axes' boxes.
+_FRAMES_JS = r"""
+<script>
+addEventListener('load', () => setTimeout(() => {
+  const plots = [];
+  const visit = (v) => {
+    if (!v) return;
+    if (v.frame && v.canvas_view) {
+      const c = v.canvas_view.el.getBoundingClientRect();
+      const f = v.frame.bbox;
+      const parts = [];
+      for (const [m, rv] of (v.renderer_views || [])) {
+        if (!m.visible || !rv.bbox || !String(m.type).endsWith('Axis')) continue;
+        const b = rv.bbox;
+        parts.push([m.axis_label || '', b.x0, b.y0, b.x1, b.y1]);
+      }
+      plots.push({tags: v.model.tags || [], canvas: [c.left, c.top, c.width,
+                  c.height], frame: [c.left + f.left, c.top + f.top,
+                  c.left + f.right, c.top + f.bottom], parts});
+    }
+    for (const k of (v.child_views || [])) visit(k);
+  };
+  for (const v of Object.values(Bokeh.index)) { if (!v.parent) visit(v); }
+  parent.postMessage('DASHPROBE' + JSON.stringify({W: innerWidth, plots}),
+                     '*');
+}, 3500));
+</script>
+"""
+
+
+def _keyed_page(mode, tmp):
+    import warnings as _w
+    import test_sizing as ts
+    spec = tbk._spec([tbk._graph("g1", [tbk._p("scatter", colorvar="weight")],
+                                 {}, title=False)], scheme="stcolor")
+    sp = os.path.join(tmp, "s.json")
+    dp = os.path.join(tmp, "d.json")
+    with open(sp, "w", encoding="utf-8") as fh:
+        json.dump(spec, fh)
+    with open(dp, "w", encoding="utf-8") as fh:
+        json.dump(tbk.tg._data(), fh)
+    with _w.catch_warnings():
+        _w.simplefilter("ignore")
+        if mode == "saved":
+            return dr.DashRenderer(sp, dp).render()
+        from bokeh.document import Document
+        from bokeh.embed import file_html
+        from bokeh.resources import INLINE
+        ap = os.path.join(tmp, "a.py")
+        dr.ServerAppBuilder(sp, dp).build(ap)
+        mod = ts.load_app(ap, "_cvk_app_%s" % mode, draw=False)
+        doc = Document()
+        mod.make_document(doc)
+        return file_html(doc, INLINE, "served")
+
+
+@pytest.mark.release
+@pytest.mark.parametrize("mode", _MODES)
+class TestTheKeyCellInChrome:
+    """CV-3 in Chrome: the key cell's z axis spans its figure's plot region
+    (the frames' tops and bottoms within 2 px) at 600, 1000 and 1400 px;
+    the figure and the cell together keep the graph's shape (the figure's
+    height the graph's at the figure's ratio) and the key's labels and
+    title lie inside the cell's canvas."""
+
+    def test_alignment(self, mode, tmp_path):
+        import responsive_probe
+        html = _keyed_page(mode, str(tmp_path))
+        mp = pytest.MonkeyPatch()
+        mp.setattr(responsive_probe, "PROBE_JS", _FRAMES_JS)
+        try:
+            rec = responsive_probe.measure_many(html, (600, 1000, 1400))
+        finally:
+            mp.undo()
+        ratios = []
+        for w, r in rec.items():
+            cells = [p for p in r["plots"] if "dash_key_cell" in p["tags"]]
+            figs = [p for p in r["plots"] if "dash_key_cell" not in p["tags"]]
+            assert len(cells) == 1 and len(figs) == 1, (w, r)
+            c, f = cells[0], figs[0]
+            assert abs(c["frame"][1] - f["frame"][1]) <= 2, (w, c, f)
+            assert abs(c["frame"][3] - f["frame"][3]) <= 2, (w, c, f)
+            # Side by side, the cell at the figure's right.
+            assert abs(c["canvas"][0] - (f["canvas"][0] + f["canvas"][2])) \
+                <= 2, (w, c, f)
+            cw, ch = c["canvas"][2:]
+            for q in c["parts"]:
+                assert q[1] >= -0.5 and q[3] <= cw + 0.5, (w, q, c)
+                assert q[2] >= -0.5 and q[4] <= ch + 0.5, (w, q, c)
+            ratios.append((f["canvas"][2] + cw) / f["canvas"][3])
+        assert max(ratios) - min(ratios) <= 0.02, ratios
+
+    def test_title_reads_upward(self, mode):
+        """Measured 03nov2026 (headless Chrome): a right axis's title at
+        pi/2 reads upward; the key cell's title is set so."""
+        assert dr._DASH_KEY_TITLE_UP == pytest.approx(math.pi / 2)
+
+
+class TestTheKeyCellHelpers:
+    """CV-3: the key cell's module helpers, each on its own."""
+
+    def test_range(self):
+        lo, hi = dr._dash_key_range(1.0, 5.0)
+        f = dr._DASH_KEY_AXIS_INSET
+        # The axis's ends sit twoway's inset (K1: 135.3 of 2388.33) in.
+        assert (1.0 - lo) / (hi - lo) == pytest.approx(f)
+        assert dr._dash_key_range(None, 1) == (0.0, 1.0)
+        assert dr._dash_key_range(2, 2) == dr._dash_key_range(1.5, 2.5)
+        a, b = dr._dash_key_range(10, 1000, log=True)
+        assert math.log10(10) - math.log10(a) == pytest.approx(
+            math.log10(b) - math.log10(1000))
+        assert dr._dash_key_range(-1, 10, log=True) == (1.0, 10.0)
+
+    def test_ends(self):
+        # K_cont: from its 0 tick to the maximum.
+        assert dr._dash_key_ends(3291, 15906, [0, 5000, 15000]) == (
+            0.0, 15906.0)
+        assert dr._dash_key_ends(None, None, []) == (None, None)
+
+    def test_bin_centres(self):
+        assert dr._dash_key_bin_centres(3291, 15906, [5000, 10000, 15000],
+                                        [0]) == [2500.0, 7500.0, 12500.0,
+                                                 15453.0]
+        assert dr._dash_key_bin_centres(1, 100, [10], log=True) == [
+            pytest.approx(math.sqrt(10)), pytest.approx(math.sqrt(1000))]
+        assert dr._dash_key_bin_centres(None, None, []) == []
+
+    def test_levels_layout(self):
+        lo, hi, cs, pos, ovr = dr._dash_key_levels_layout(
+            ["1", "2", "5"], {"1": 1.0, "2": 2.0, "5": 5.0}, True, "%8.0gc")
+        assert (lo, hi, cs) == (1.0, 5.0, [1.0, 2.0, 5.0])
+        assert pos == [1.0, 2.0, 3.0, 4.0, 5.0]
+        lo, hi, cs, pos, ovr = dr._dash_key_levels_layout(["a", "b"], {},
+                                                          False, None)
+        assert cs == pos == [1.0, 2.0] and ovr == {1.0: "a", 2.0: "b"}
+        assert dr._dash_key_levels_layout([], {}, True, None)[2] == []
+
+    def test_bins_layout(self):
+        lo, hi, cs, pos, ovr = dr._dash_key_bins_layout(
+            [1.0, 3.0, 5.0, float("nan")], [2.0, 4.0], False, "%8.0gc")
+        assert (lo, hi, cs, pos) == (1.0, 5.0, [1.5, 3.0, 4.5], [2.0, 4.0])
+        assert dr._dash_key_bins_layout([1.0, 5.0], [3.0, 4.0], True,
+                                        None)[2] == [3.0, 4.0]
+        assert dr._dash_key_bins_layout([float("nan")], [2.0], False,
+                                        None)[2:] == ([], [], {})
+
+    def _cell(self, **kw):
+        spec = {"kind": "marker", "side": "right", "lo": 1.0, "hi": 5.0,
+                "centres": [1.0, 5.0], "colours": ["#0000ff", "#ffcc00"],
+                "ticks": [1.0, 5.0], "labels": {1.0: "1", 5.0: "5"},
+                "title": "Z", "chrome": {}, "width_px": 24,
+                "length_px": 300}
+        spec.update(kw)
+        return dr._dash_key_cell(spec)
+
+    def test_cell_and_its_data(self):
+        c = self._cell()
+        assert "dash_key_cell" in c.tags and c.toolbar_location is None
+        assert c._dash_key_axis.bounds == (1.0, 5.0)
+        assert c._dash_key_axis.axis_label_orientation == pytest.approx(
+            math.pi / 2)
+        d = dr._dash_key_cell_data([1.0, 2.0], ["a", "b"], True, 12.0,
+                                   [(0, 1), (1, 2)], 24)
+        assert d["x"] == [12.0, 12.0] and d["b"] == [0.0, 1.0]
+        assert d["t"] == [1.0, 2.0] and d["r"] == [24.0, 24.0]
+        band = self._cell(kind="band", bands=[(1.0, 3.0), (3.0, 5.0)],
+                          centres=[2.0, 4.0])
+        assert [type(r.glyph).__name__ for r in band.renderers] == ["Quad"]
+        assert type(self._cell(log=True)._dash_key_axis).__name__ \
+            == "LogAxis"
+
+    def test_extent(self):
+        c = self._cell()
+        w = dr._dash_key_cell_extent(c, 24)
+        assert w > 24 and c.width == w
+        c2 = self._cell(title="")
+        assert dr._dash_key_cell_extent(c2, 24) < w
+
+    def test_update(self):
+        c = self._cell()
+        kc = c._dash_keycell
+        dr._dash_cvar_keycell_update(kc, 2.0, 4.0, [2.0, 3.0, 4.0],
+                                     ["a", "b", "c"], [2.0, 4.0],
+                                     {2.0: "2", 4.0: "4"})
+        assert list(kc["src"].data["y"]) == [2.0, 3.0, 4.0]
+        assert c._dash_key_axis.bounds == (2.0, 4.0)
+        assert list(kc["ticker"].ticks) == [2.0, 4.0]
+        assert kc["range"].start < 2.0 < 4.0 < kc["range"].end
+        dr._dash_cvar_keycell_update(None, 0, 1, [], [], [], {})
+
+    def test_reside(self):
+        c = self._cell()
+        rec = c._dash_keycell
+        assert dr._dash_key_cell_reside(c, "right") is c
+        n = dr._dash_key_cell_reside(c, "left")
+        assert n._dash_keycell is rec and n._dash_key_side == "left"
+        assert rec["axis"] is n._dash_key_axis
+
+    def test_scale_entries_and_shape(self):
+        c = self._cell()
+        ents = dr._dash_key_scale_entries(c)
+        assert [e[1] for e in ents] == ["width", "min_border_right"]
+        from bokeh.plotting import figure
+        f = figure(sizing_mode="stretch_width", aspect_ratio=2.0)
+        fw = dr._dash_key_hold_shape(f, c, 720.0)
+        # The figure's nominal width less the cell's; the graph's height.
+        assert fw == 720.0 - c.width and f.height == 360
+        assert dr._dash_key_hold_shape(f, c, 720.0) == fw
+
+    def test_the_level_and_bin_relevels(self):
+        c = self._cell()
+        plan = {"keycell": dict(c._dash_keycell, pos={"1": 1.0, "3": 3.0},
+                                numeric=True, fmt="%8.0gc", dp="period")}
+        plan["keycell"]["src"] = c._dash_keycell["src"]
+        dr._dash_cvar_keycell_levels(plan, ["1", "3"], ["#a", "#b"])
+        assert list(c._dash_keycell["src"].data["y"]) == [1.0, 3.0]
+        plan = {"keycell": c._dash_keycell, "discrete": False,
+                "fmt": "%8.0gc"}
+        dr._dash_cvar_keycell_bins(plan, [1.0, 5.0], [3.0], ["#a", "#b"])
+        assert list(c._dash_keycell["src"].data["y"]) == [2.0, 4.0]
+
+    def test_the_step_relevel(self):
+        c = self._cell()
+        ax = c._dash_key_axis
+        ax.ticker.ticks = [0.0, 5000.0]
+        ax.major_label_overrides = {0.0: "0", 5000.0: "5,000"}
+        plan = {"keycell": c._dash_keycell, "cbar": ax, "zrange": None}
+        dr._dash_cvar_keycell_steps(plan, 3000.0, 6000.0, [5000.0],
+                                    ["#a", "#b"])
+        assert list(c._dash_keycell["src"].data["y"]) == [2500.0, 5500.0]
+        assert ax.bounds == (0.0, 6000.0)
+
+    def test_the_contour_helpers(self):
+        from bokeh.plotting import figure
+        f = figure()
+        cr = f.contour(x=[[0, 1], [0, 1]], y=[[0, 0], [1, 1]],
+                       z=[[0, 1], [1, 2]], levels=[0, 1, 2],
+                       fill_color=["#ff0000", "#0000ff"])
+        assert dr._dash_contour_band_colours(cr, 3) == [
+            "#ff0000", "#0000ff", "#0000ff"]
+        c = self._cell()
+        assert dr._dash_contour_key_state(c._dash_keycell) == (
+            [1.0, 5.0], {1.0: "1", 5.0: "5"})
+        assert dr._dash_contour_key_state(None) == ([], {})
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestIlegendsKeys:
+    """by(, ilegends): twoway draws each panel's own colour key (measured
+    03nov2026: ``scatter mpg weight, colorvar(price) by(foreign,
+    ilegends)`` exports two keys titled Price; by(foreign) none)."""
+
+    def test_each_panel_draws_its_key(self, mode):
+        spec = tbk._spec([tbk._graph("g1", [tbk._p("scatter",
+                                                   colorvar="headroom")],
+                                     {"by": "foreign, ilegends"})])
+        roots, _n, _o = tbk._build(mode, spec)
+        grids = [m for r in roots for m in r.references()
+                 if type(m).__name__ == "GridPlot"
+                 and any(type(c[0]).__name__ == "Row" for c in m.children)]
+        (grid,) = grids
+        rows = [c[0] for c in grid.children
+                if type(c[0]).__name__ == "Row"]
+        assert len(rows) == 2
+        for r in rows:
+            f, cell = r.children
+            assert type(f).__name__ == "figure"
+            assert "dash_key_cell" in (cell.tags or [])
+        assert tbk._cell(grid, "dash_by_clegend") is None
+
+
+@pytest.mark.parametrize("mode", _MODES)
+def test_an_upright_key_below_runs_twoways_length(mode):
+    """clegend(position(6)): the key below the plot is upright, its axis
+    line G01's share of the graph's height (421.6 of 2880)."""
+    root = _layout_of(mode, [plot_for("scatter", {"colorvar": "price"},
+                                      yvar="mpg", xvar="weight")],
+                      {"clegend": "position(6)"})
+    (cell,) = _key_cells(root)
+    figs, _c = _figs_and_cells(root)
+    gh = float(figs[0]._dash_nominal_px[1])
+    frame = cell.height - cell.min_border_top - cell.min_border_bottom
+    line = frame * (1 - 2 * dr._DASH_KEY_AXIS_INSET)
+    assert abs(line - 421.6 / 2880 * gh) <= 1.5, (line, gh)
+    assert cell._dash_key_place == "below" and cell._dash_key_side == "right"
+
+
+@pytest.mark.usefixtures("_auto")
+@pytest.mark.parametrize("mode", _MODES)
+def test_save_as_svg_exports_the_key_with_its_figure(mode):
+    """The figure's Save as SVG action exports its graph with the key
+    cell beside it (the key row), not the figure alone."""
+    root = _layout_of(mode, [plot_for("scatter", {"colorvar": "price"},
+                                      yvar="mpg", xvar="weight")])
+    refs = root.references() if hasattr(root, "references") else [
+        m for r in root.roots for m in r.references()]
+    acts = [m for m in refs if type(m).__name__ == "CustomAction"
+            and "dash_svg_save" in (m.tags or [])]
+    rows = [m for m in refs if "dash_key_row" in (m.tags or [])]
+    assert len(rows) == 1
+    grids = [a.callback.args.get("grid") for a in acts]
+    assert any(g is rows[0] or (g is not None and rows[0] in [
+        x for x in g.references()]) for g in grids), grids

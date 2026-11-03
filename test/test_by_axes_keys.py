@@ -204,6 +204,11 @@ def _cell(grid, name):
     for c in grid.children:
         if getattr(c[0], "name", None) == name:
             c = tuple(c)
+            # Flipped (WP-42 CV-3): by()'s colour key in an at() hole is a
+            # key cell in a box of the hole's size; the cell is read.
+            kids = list(getattr(c[0], "children", None) or [])
+            if len(kids) == 1 and "dash_key_cell" in (kids[0].tags or []):
+                c = (kids[0],) + c[1:]
             return c if len(c) == 5 else c + (1, 1)
     return None
 
@@ -783,24 +788,20 @@ class TestColourKeyUnderBy:
             # colour key across the graph, where twoway draws it upright"):
             # an upright key below or above the panels, or in a hole, is
             # in its cell's centre.
-            bars = [m for s in ("left", "right", "above", "below", "center")
-                    for m in getattr(c[0], s) if isinstance(m, ColorBar)]
-            legs = [m for s in ("left", "right", "above", "below")
-                    for m in getattr(c[0], s) if isinstance(m, Legend)]
-            mappers = {id(getattr(getattr(r.glyph, "fill_color", None),
-                                  "transform", None))
-                       for r in panels[0].renderers}
-            # Flipped (WP-42 CV-8): the continuous key was a 256-step
-            # gradient on the glyphs' own mapper; twoway bins at its z
-            # ticks (CV-8), and the key is panel 1's stepped bar, its own
-            # mapper on panel 1's relevel plan.
-            mappers |= {id((getattr(r, "_dash_cvar", None) or {}).get("bar"))
-                        for r in panels[0].renderers}
-            if pid == "q08":
-                if len(legs) != 1 or not legs[0].items:
-                    bad.append((pid, "discrete key"))
-            elif len(bars) != 1 or id(bars[0].color_mapper) not in mappers:
-                bad.append((pid, "mapper"))
+            # Flipped (WP-42 CV-3): dash's colour key was a Legend or
+            # ColorBar; twoway draws swatches beside a z axis (CV-3): the
+            # one key is panel 1's key cell, on panel 1's relevel plan.
+            if "dash_key_cell" not in (c[0].tags or []):
+                bad.append((pid, "key cell"))
+                continue
+            rec = c[0]._dash_keycell
+            plans = [(getattr(r, a, None) or {}).get("keycell")
+                     for r in panels[0].renderers
+                     for a in ("_dash_cvar", "_dash_cvar_bins")]
+            if not any(x is rec for x in plans):
+                bad.append((pid, "plan"))
+            if not dict(c[0]._dash_key_axis.major_label_overrides or {}):
+                bad.append((pid, "labels"))
         assert not bad, bad
 
 
@@ -819,9 +820,10 @@ class TestAfterAFilterMove:
         def state():
             panels = _panels(grid)
             key = _cell(grid, "dash_by_clegend")[0]
-            (bar,) = [m for m in key.left + key.above
-                      if isinstance(m, ColorBar)]
-            m = bar.color_mapper
+            # Flipped (WP-42 CV-3): dash's colour key was a Legend or
+            # ColorBar; twoway draws swatches beside a z axis (CV-3): the
+            # key cell's swatch source stands for it.
+            m = key._dash_keycell["src"]
             boxes = [b.major_label_overrides for f in panels
                      for b in f.above if b.name == "dash_by_label_box"]
             return ([(_axis_drawn(f, "y"), _axis_drawn(f, "x"))
@@ -834,17 +836,15 @@ class TestAfterAFilterMove:
             assert state()[0] == before[0] and state()[2] == before[2]
             panels = _panels(grid)
             key = _cell(grid, "dash_by_clegend")[0]
-            (bar,) = [m for m in key.left + key.above
-                      if isinstance(m, ColorBar)]
-            mappers = [getattr(r.glyph.fill_color, "transform", None)
-                       for r in panels[0].renderers
-                       if hasattr(r, "glyph")]
             # Flipped (WP-42 CV-8): the key is panel 1's stepped bar, its
             # own mapper on panel 1's relevel plan (twoway bins at its z
             # ticks).
-            mappers += [(getattr(r, "_dash_cvar", None) or {}).get("bar")
-                        for r in panels[0].renderers]
-            assert any(m is bar.color_mapper for m in mappers)
+            # Flipped (WP-42 CV-3): dash's colour key was a Legend or
+            # ColorBar; twoway draws swatches beside a z axis (CV-3): the
+            # key cell is on panel 1's relevel plan.
+            recs = [(getattr(r, "_dash_cvar", None) or {}).get("keycell")
+                    for r in panels[0].renderers]
+            assert any(x is key._dash_keycell for x in recs)
         else:
             side_ids = {id(c[0]) for c in grid.children
                         if str(getattr(c[0], "name", "") or "").startswith(
@@ -1289,8 +1289,11 @@ def test_the_colour_key_is_upright_below_the_panels(mode):
         roots, _n, _o = _build(mode, spec)
         (grid,) = _grids(roots).values()
         cell = _cell(grid, "dash_by_clegend")[0]
-        (bar,) = [m for m in cell.center if isinstance(m, ColorBar)]
-        assert bar.orientation == "vertical"
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend or
+        # ColorBar; twoway draws swatches beside a z axis (CV-3): by()'s
+        # key is panel 1's key cell, placed by the same span item.
+        # Upright: its axis at the right of its swatches.
+        assert cell._dash_key_side == "right"
         (cb,) = [c for c in cell.js_property_callbacks["change:inner_width"]
                  if c.code == dr._DASH_SPAN_JS]
         (it,) = cb.args["items"]
@@ -1314,8 +1317,10 @@ def test_the_colour_key_in_a_hole_is_placed_by_its_row(mode):
         roots, _n, _o = _build(mode, spec)
         (grid,) = _grids(roots).values()
         cell = _cell(grid, "dash_by_clegend")[0]
-        (bar,) = [m for m in cell.center if isinstance(m, ColorBar)]
-        assert bar.orientation == "vertical"
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend or
+        # ColorBar; twoway draws swatches beside a z axis (CV-3): by()'s
+        # key is panel 1's key cell, placed by the same span item.
+        assert cell._dash_key_side == "right"
         (cb,) = [c for c in cell.js_property_callbacks["change:inner_width"]
                  if c.code == dr._DASH_SPAN_JS]
         (it,) = cb.args["items"]
@@ -1335,12 +1340,14 @@ def test_the_colour_key_beside_the_panels_is_their_box_less_a_gap(mode):
         roots, _n, _o = _build(mode, spec)
         (grid,) = _grids(roots).values()
         cell = _cell(grid, "dash_by_clegend")[0]
-        (bar,) = [m for m in cell.left + cell.right
-                  if isinstance(m, ColorBar)]
-        assert bar.location == "center"
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend or
+        # ColorBar; twoway draws swatches beside a z axis (CV-3): by()'s
+        # key is panel 1's key cell, placed by the same span item.
+        assert "dash_key_cell" in (cell.tags or [])
         (cb,) = [c for c in cell.js_property_callbacks["change:inner_width"]
                  if c.code == dr._DASH_SPAN_JS]
         (it,) = cb.args["items"]
+        assert it[0] is cell
         assert (it[1], it[7]) == ("key", "side"), pos
 
 
@@ -1362,9 +1369,11 @@ def test_the_discrete_colour_key_is_placed_as_twoways_key(mode):
         roots, _n, _o = _build(mode, spec)
         (grid,) = _grids(roots).values()
         cell = _cell(grid, "dash_by_clegend")[0]
-        (lg,) = [m for sd in ("left", "right", "above", "below", "center")
-                 for m in getattr(cell, sd) if isinstance(m, Legend)]
-        assert lg.orientation == "vertical" and lg.location == loc, by
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend or
+        # ColorBar; twoway draws swatches beside a z axis (CV-3): by()'s
+        # key is panel 1's key cell, placed by the same span item.
+        # Upright (its axis at the right of its swatches) wherever it is.
+        assert cell._dash_key_side == "right", (by, loc)
         (cb,) = [c for c in cell.js_property_callbacks["change:inner_width"]
                  if c.code == dr._DASH_SPAN_JS]
         (it,) = cb.args["items"]
@@ -1436,11 +1445,14 @@ def test_the_discrete_key_holds_panel_ones_levels_as_twoways_does(mode):
     assert factors == [(["1", "2", "3"], ["#0000ff", "#00ffaa", "#aaff00"]),
                        (["3", "4", "5"], ["#0000ff", "#00ffaa", "#aaff00"])]
     cell = _cell(grid, "dash_by_clegend")[0]
-    labels = [getattr(i.label, "value", i.label)
-              for sd in ("left", "right", "above", "below", "center")
-              for m in getattr(cell, sd) if isinstance(m, Legend)
-              for i in m.items]
-    assert labels == ["1", "2", "3"]
+    # Flipped (WP-42 CV-3): dash's colour key was a Legend or ColorBar;
+    # twoway draws swatches beside a z axis (CV-3): panel 1's levels on
+    # its z axis, top first.
+    ovr = dict(cell._dash_key_axis.major_label_overrides or {})
+    labels = [ovr[k] for k in sorted(ovr, reverse=True)]
+    assert labels == ["3", "2.5", "2", "1.5", "1"]
+    sw = cell._dash_keycell["src"].data
+    assert sorted(sw["y"]) == [1.0, 2.0, 3.0]
 
 
 # ---------------------------------------------------------------------------
@@ -1681,15 +1693,15 @@ class TestColorUsePlegendUnderBy:
         assert _key_place(grid, "dash_by_clegend")[0] == "right"
         cell = _cell(grid, "dash_by_clegend")[0]
         sides = ("left", "right", "above", "below", "center")
-        bars = [m for s in sides for m in getattr(cell, s)
-                if isinstance(m, ColorBar)]
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend or
+        # ColorBar; twoway draws swatches beside a z axis (CV-3).
         assert not [m for s in sides for m in getattr(cell, s)
-                    if isinstance(m, Legend)]
-        assert len(bars) == 1
-        labels = [bars[0].major_label_overrides[k]
-                  for k in sorted(bars[0].major_label_overrides)]
+                    if isinstance(m, (ColorBar, Legend))]
+        assert "dash_key_cell" in (cell.tags or [])
+        ovr = cell._dash_key_axis.major_label_overrides
+        labels = [ovr[k] for k in sorted(ovr)]
         assert labels == ["1", "2", "3", "4", "5"]
-        assert bars[0].title == "Repair record 1978"
+        assert cell._dash_key_axis.axis_label == "Repair record 1978"
         assert _cell(grid, "dash_by_plegend") is None
 
     @pytest.mark.parametrize("mode", _MODES)
@@ -1717,11 +1729,17 @@ class TestColorUsePlegendUnderBy:
             items.append(LegendItem(label=lab, renderers=[r]))
         lg = Legend(items=items, title="Repair record")
         bar = dr._dash_by_colour_bar_cell(dr.SchemeParser("stcolor"), lg)
-        assert list(bar.color_mapper.palette) == ["#0000ff", "#00ff00"]
-        assert (bar.color_mapper.low, bar.color_mapper.high) == (0, 2)
-        assert list(bar.ticker.ticks) == [0.5, 1.5]
-        assert bar.major_label_overrides == {0.5: "1", 1.5: "2"}
-        assert bar.title == "Repair record"
+        # Flipped (WP-42 CV-3): dash's colour key was a Legend or
+        # ColorBar; twoway draws swatches beside a z axis (CV-3): a key
+        # cell, one square a level at 1..n, labelled on its z axis.
+        assert "dash_key_cell" in (bar.tags or [])
+        d = bar._dash_keycell["src"].data
+        assert list(d["c"]) == ["#0000ff", "#00ff00"]
+        assert list(d["y"]) == [1.0, 2.0]
+        assert list(bar._dash_key_axis.ticker.ticks) == [1.0, 2.0]
+        assert bar._dash_key_axis.major_label_overrides == {1.0: "1",
+                                                            2.0: "2"}
+        assert bar._dash_key_axis.axis_label == "Repair record"
         assert dr._dash_by_colour_bar_cell(None, Legend(items=[])) is None
 
 
@@ -1783,8 +1801,8 @@ class TestHoleLegendScale:
         sizes = {}
         for k in ("hole", "side"):
             cell = _cell(grids[k], "dash_by_clegend")[0]
-            (bar,) = [m for s in ("left", "right", "above", "below",
-                                  "center")
-                      for m in getattr(cell, s) if isinstance(m, ColorBar)]
-            sizes[k] = _pt(bar.major_label_text_font_size)
+            # Flipped (WP-42 CV-3): dash's colour key was a Legend or
+            # ColorBar; twoway draws swatches beside a z axis (CV-3): the
+            # key cell's axis labels.
+            sizes[k] = _pt(cell._dash_key_axis.major_label_text_font_size)
         assert abs(sizes["hole"] / sizes["side"] - want) < 0.01, sizes
