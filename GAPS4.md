@@ -457,7 +457,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-12 Tracked:** Closed in WP-42, BUGS.md "clegend(title()) replaces the z title and prints the raw option text, quotes included, when it has sub-options", commit cdbd13b.
 - **AX-12 Tracked:** Closed in WP-42, BUGS.md "The z tick family: zlabels/zticks/zmlabels/zmticks are refused (twoway takes them); ztick(), zmlabel() and zmtick() are noted and not drawn, and are absent from the Unsupported list", commit 4b76b44.
 - **sil:SD-4 Tracked:** Closed in WP-42, BUGS.md "The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read", commit d7dffa5.
-- **CV-17 Tracked:** Closed in WP-42, BUGS.md "colorlist() with quoted RGB colours is not applied under colorvar(): every marker is black and the key is a legend of ranges where twoway draws the listed colours with a colour bar", commit pending.
+- **CV-17 Tracked:** Closed in WP-42, BUGS.md "colorlist() with quoted RGB colours is not applied under colorvar(): every marker is black and the key is a legend of ranges where twoway draws the listed colours with a colour bar", commit 642cb58.
 - **LT-22 Tracked:** Closed in WP-42, BUGS.md "contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line", commit 514098a.
 - **LT-1 Tracked:** Open (WP-43 section 43-01).
 - **LT-4 Tracked:** Open (WP-43 section 43-02).
