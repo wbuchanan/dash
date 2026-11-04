@@ -536,3 +536,130 @@ class TestGapsUnderScale:
         assert (lg.spacing, lg.label_standoff) == (
             lg0.spacing, lg0.label_standoff)
         assert lg.glyph_height == round(lg0.glyph_height * 1.5)
+
+
+# ---------------------------------------------------------------------------
+# Fix pass (04nov2026): by()'s legend and bplacement().  twoway's by()
+# draws its legend where it draws it without bplacement(), inside by() or
+# in the graph's own legend(), ring(0), pos(0) and pos(3) alike, and notes
+# nothing for a name compass2dir does not know inside by(); the graph's
+# own legend(bplacement(bogus)) is noted, once per panel
+# (legend_place_truth.json by_*: the same SVG regions).  dash's by() cell
+# reads position(), ring() and at() alone, so it draws the same.
+# ---------------------------------------------------------------------------
+
+#: by() probe -> (the by() text, the graph's legend(), its twoway twin).
+_BY_BP = dict(
+    [("by_r0_bp_" + x, ("foreign, legend(ring(0) bplacement(%s))" % x, "",
+                        "by_r0")) for x in COMPASS]
+    + [("by_bp_" + x, ("foreign, legend(bplacement(%s))" % x, "",
+                       "by_default")) for x in COMPASS]
+    + [("by_pos0_bp_nw", ("foreign, legend(pos(0) bplacement(nw))", "",
+                          "by_pos0")),
+       ("by_r0_bp_nea", ("foreign, legend(ring(0) bplacement(nea))", "",
+                         "by_r0")),
+       ("by_r0_bp_bogus", ("foreign, legend(ring(0) bplacement(bogus))", "",
+                           "by_r0")),
+       ("by_pos3_bp_n", ("foreign, legend(pos(3) bplacement(n))", "",
+                         "by_r0_pos3_bp_nw")),
+       ("by_g_r0_bp_nw", ("foreign", "ring(0) bplacement(nw)",
+                          "by_default"))])
+
+#: The twin each probe is drawn as, in dash's terms.
+_BY_TWIN = {"by_r0": ("foreign, legend(ring(0))", ""),
+            "by_default": ("foreign", ""),
+            "by_pos0": ("foreign, legend(pos(0))", ""),
+            "by_r0_pos3_bp_nw": ("foreign, legend(pos(3))", "")}
+
+
+class TestByBplacementTruth:
+
+    @pytest.mark.parametrize("key", sorted(_BY_BP))
+    def test_drawn_as_without(self, key):
+        twin = _BY_BP[key][2]
+        assert TRUTH[key]["rc"] == 0 and TRUTH[key]["drawn"] == 1
+        assert TRUTH[key]["regions"] == TRUTH[twin]["regions"], key
+
+    def test_notes(self):
+        assert TRUTH["by_r0_bp_bogus"]["log"] == []
+        assert TRUTH["by_r0_bp_bogus"]["regions"] == TRUTH["by_r0"]["regions"]
+        log = TRUTH["by_g_r0_bp_bogus"]["log"]
+        assert log and all("compass2dir" in ln for ln in log), log
+        assert TRUTH["by_g_r0_bp_bogus"]["regions"] == TRUTH[
+            "by_default"]["regions"]
+
+
+def _by_cell_sig(mode, by, legend):
+    """The by() legend cell's place: its grid cell, the key's side in it,
+    location, orientation and the cell's sizing; and the notes."""
+    from bokeh.models import Legend, Plot
+    import test_mode_parity as tp
+    go = {"by": by}
+    if legend:
+        go["legend"] = legend
+    spec = tp._spec(G.TWO, {"scheme": "s2color"}, go)
+    if mode == "saved":
+        r, caught = tp._standalone(spec)
+        roots = [r._last_layout_root]
+    else:
+        doc, caught = tp._served(spec)
+        roots = list(doc.roots)
+    models = [m for root in roots for m in root.references()]
+    lgs = [m for m in models if isinstance(m, Legend)
+           and m.name == "dash_by_legend_key"]
+    assert len(lgs) == 1, lgs
+    lg = lgs[0]
+    cell = next(m for m in models if isinstance(m, Plot) and lg in (
+        list(m.center) + list(m.above) + list(m.below) + list(m.left)
+        + list(m.right)))
+    side = next(sd for sd in ("center", "above", "below", "left", "right")
+                if lg in list(getattr(cell, sd)))
+
+    def path(node):
+        # The cell's place in the layout: each container's type and the
+        # child index (a grid's row and column) on the way down.
+        if node is cell:
+            return []
+        for i, ch in enumerate(getattr(node, "children", None) or ()):
+            m, at = (ch[0], tuple(ch[1:])) if isinstance(ch, tuple) else (
+                ch, i)
+            sub = path(m)
+            if sub is not None:
+                return [(type(node).__name__, at)] + sub
+        return None
+
+    where = [path(root) for root in roots]
+    # The span hook's items for the key and the cell (kind, side, place,
+    # offset, ref, margin, mode).
+    span = sorted(
+        (str(it[0] is lg), tuple(str(v) for v in it[1:]))
+        for cb in cell.js_property_callbacks.get(
+            "change:" + dr._DASH_SPAN_KEYS[0], [])
+        if getattr(cb, "code", None) == dr._DASH_SPAN_JS
+        for it in cb.args.get("items", []))
+    sig = (where, side, lg.location, lg.orientation, lg.ncols, lg.nrows,
+           cell.width_policy, cell.height_policy, cell.frame_align,
+           cell.min_border_top, cell.min_border_bottom, span)
+    return sig, [str(w) for w in caught if "bplacement" in str(w)]
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestByBplacement:
+
+    @pytest.mark.parametrize("key", sorted(_BY_BP))
+    def test_drawn_as_without(self, mode, key):
+        """by()'s legend sits where it sits without bplacement(), as
+        twoway's does; nothing is noted for it inside by()."""
+        by, legend, twin = _BY_BP[key]
+        got, notes = _by_cell_sig(mode, by, legend)
+        want, _n = _by_cell_sig(mode, *_BY_TWIN[twin])
+        assert got == want, (key, got, want)
+        assert notes == [], notes
+
+    def test_graph_bogus_noted(self, mode):
+        """The graph's own legend(bplacement(bogus)) under by() is noted,
+        as twoway notes it, and draws the legend as by() alone."""
+        got, notes = _by_cell_sig(mode, "foreign",
+                                  "ring(0) bplacement(bogus)")
+        assert got == _by_cell_sig(mode, "foreign", "")[0]
+        assert len(notes) == 1 and "bogus" in notes[0], notes
