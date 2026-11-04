@@ -36,6 +36,7 @@ sys.path.insert(0, _HERE)
 import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 _FIX = os.path.join(_HERE, "fixtures", "axes_n_truth.json")
 _SRC = os.path.join(_HERE, "..", "dash_render.py")
@@ -62,7 +63,7 @@ def _build(mode, plots, go=None):
         warnings.simplefilter("ignore")
         models = _models(mode, tp._spec(plots, None, go))
     figs = [m for m in models if isinstance(m, Plot)
-            and any(isinstance(r, GlyphRenderer) for r in m.renderers)]
+            and any(isinstance(r, GlyphRenderer) for r in drawn_renderers(m))]
     assert len(figs) == 1, figs
     return figs[0]
 
@@ -84,7 +85,7 @@ def _axes(fig, letter):
 
 def _glyphs(fig):
     from bokeh.models import GlyphRenderer
-    return [r for r in fig.renderers if isinstance(r, GlyphRenderer)]
+    return [r for r in drawn_renderers(fig) if isinstance(r, GlyphRenderer)]
 
 
 def _three():

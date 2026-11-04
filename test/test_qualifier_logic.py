@@ -58,6 +58,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 from conftest import exec_app  # noqa: E402
+from conftest import drawn_renderers, is_key_proxy  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # The data: (id, g, x, r, s, m), exactly as Stata was given it with `input'
@@ -299,7 +300,7 @@ def _page_scatter(page):
         for rr in o.get("attributes", {}).get("renderers", []):
             g = ref(rr)
             a = g.get("attributes", {})
-            if g.get("name") != "GlyphRenderer" or \
+            if g.get("name") != "GlyphRenderer" or is_key_proxy(g) or \
                     ref(a.get("glyph", {})).get("name") != "Scatter":
                 continue
             data = dict((k, v) for k, v in ref(a.get("data_source", {}))
@@ -325,7 +326,7 @@ def _doc_scatter(roots):
     found = []
     for root in roots:
         for fig in root.select({"type": Plot}):
-            for r in fig.renderers:
+            for r in drawn_renderers(fig):
                 if isinstance(r, GlyphRenderer) and \
                         type(r.glyph).__name__ == "Scatter":
                     found.append(r)

@@ -21,6 +21,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 import test_by_axes_keys as bk  # noqa: E402
+from conftest import is_key_proxy  # noqa: E402
 
 MODES = ("saved", "served")
 
@@ -384,3 +385,265 @@ class TestHorizontalKey:
                                        _kd(horizontal="horizontal",
                                            recast=target)])
         assert keys == ["Mileage (mpg)", "kdensity mpg"]
+
+
+# ---- LT-21: marker keys at the marker's size (the key painter) ----------
+
+def _sc(y="mpg", **o):
+    return bk._p("scatter", y=y, **o)
+
+
+def _figs(mode, plots, scheme="s2color", go=None):
+    """The figures of one graph of *plots* in *mode*."""
+    from bokeh.models import Plot
+    spec = bk._spec([bk._graph("g1", plots, dict(go or {}), title=False)],
+                    scheme=scheme)
+    roots, _notes, _owner = bk._build(mode, spec)
+    out = []
+    for r in roots:
+        out += [m for m in r.references() if isinstance(m, Plot)
+                and m not in out]
+    return out
+
+
+def _proxies(fig):
+    return [r for r in fig.renderers if is_key_proxy(r)]
+
+
+def _twoway_marker(case):
+    """twoway's marker keys of *case* in text sizes: each filled key
+    marker's width over the key text's font size."""
+    fs = [float(e["a"]["style"].split("font-size:")[1].split("px")[0])
+          for e in _TRUTH[case]["els"] if e["tag"] == "text"
+          and e["text"] == "Mileage (mpg)"][0]
+    return [(m[1] - m[0]) / fs for m in _key_marks(case)
+            if m[1] - m[0] < 200]
+
+
+#: The marker probes: (plots, scheme, graph options).
+_MARKER_CASES = {
+    "mk_s2color": ([_sc(), _sc("headroom")], "s2color", None),
+    "mk_large": ([_sc(msize="large"), _sc("headroom")], "s2color", None),
+    "mk_economist": ([_sc(), _sc("headroom")], "economist", None),
+    "mk_scale": ([_sc(), _sc("headroom")], "s2color", {"scale": "1.5"}),
+}
+
+
+class TestMarkerKeySize:
+    """LT-21: twoway draws a key marker at the plot's own marker size
+    (its width over the key text's size: s2color 0.527, msize(large)
+    0.787, economist 0.951, at scale(1.5) the same 0.527), and a legend of
+    marker keys only as wide as its marker, whatever symxsize() says
+    (mk_symx); Bokeh drew 0.4 of the key box."""
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("case", sorted(_MARKER_CASES))
+    def test_size_and_angle(self, mode, case):
+        plots, scheme, go = _MARKER_CASES[case]
+        lg, _n = _legend(mode, plots, "", scheme=scheme, go=go)
+        fs = dr.OptionTranslator.css_to_pt(lg.label_text_font_size) * 4 / 3
+        want = _twoway_marker(case)
+        for it, tw in zip(lg.items, want):
+            [p] = it.renderers
+            assert str(p.name) == "__dash_keyproxy"
+            real = p._dash_key_for
+            assert p.glyph.size == real.glyph.size
+            cb = p.glyph.defs["@dash_key"]
+            assert cb.args["real"] is real
+            assert cb.args["mk"] == real.glyph.marker
+            got = (p.glyph.size + p.glyph.line_width) / fs
+            assert abs(got - tw) < 0.01, (case, got, tw)
+        width = (lg.items[0].renderers[0].glyph.size
+                 + lg.items[0].renderers[0].glyph.line_width)
+        # glyph_width is a whole px count, rounded again by scale().
+        assert abs(lg.glyph_width - width) <= 1
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_angle(self, mode):
+        """msangle(45) reaches the painter (mk_angle: twoway turns the
+        square key 45 degrees)."""
+        assert any("rotate(-45.00" in e["a"].get("transform", "")
+                   for e in _TRUTH["mk_angle"]["els"])
+        lg, _n = _legend(mode, [_sc(msymbol="S", msangle="45"),
+                                _sc("headroom")], "")
+        cb = lg.items[0].renderers[0].glyph.defs["@dash_key"]
+        assert cb.args["mk"] == "square"
+        assert abs(cb.args["angle"] - 0.785398) < 1e-4
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_marker_only_width(self, mode):
+        """symxsize(30) leaves a marker-only legend's keys at the
+        marker's width (mk_symx), and a legend with a line key keeps the
+        key box (mk_line: the line key is symxsize wide)."""
+        assert _key_marks("mk_symx") == _key_marks("mk_s2color")
+        two = [_sc(), _sc("headroom")]
+        plain, _n = _legend(mode, two, "")
+        wide, _n = _legend(mode, two, "symxsize(30)")
+        assert plain.glyph_width == wide.glyph_width < 10
+        mixed, _n = _legend(mode, [_sc(), bk._p("line", y="headroom")], "")
+        assert mixed.glyph_width == 50
+        assert mixed.glyph_height >= 13
+
+
+class TestKeyPainter:
+    """The painted key's proxy is 42-02's form: legend-only, on its
+    layer's own source and view filter, out of every HoverTool and
+    DataRange1d, its visible linked to the layer's; a colorvar layer's
+    42-02 proxy is reused, never doubled."""
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("plots", [
+        [_sc(), _sc("headroom")],
+        [_sc(msymbol="T"), _sc("headroom", msymbol="D"), _sc("turn",
+                                                          msymbol="X")],
+        [_sc(connect="l"), bk._p("line", y="headroom")],
+    ], ids=["two", "symbols", "connected"])
+    def test_not_in_hover_or_range(self, mode, plots):
+        from bokeh.models import DataRange1d, HoverTool
+        [fig] = _figs(mode, plots)
+        prox = _proxies(fig)
+        assert prox
+        for p in prox:
+            real = p._dash_key_for
+            assert real._dash_key_proxy is p
+            assert p.data_source is real.data_source
+            assert p.view.filter is real.view.filter
+            assert p.tags == ["dash_key_proxy", str(real.name or "")]
+            assert p.js_property_callbacks.get("change:visible")
+            for f in ("x", "y"):
+                v = getattr(p.glyph, f)
+                v = getattr(v, "value", v)
+                assert v != v
+        for m in fig.references():
+            if isinstance(m, HoverTool) and m.renderers != "auto":
+                assert not set(map(id, m.renderers)) & set(map(id, prox))
+            if isinstance(m, DataRange1d) and m.renderers != "auto":
+                assert not set(map(id, m.renderers)) & set(map(id, prox))
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_colorvar_proxy_reused(self, mode):
+        """scatter mpg weight, colorvar(rep78): the layer keeps its one
+        42-02 proxy, its glyph now the painter, its colours kept."""
+        [fig] = [f for f in _figs(mode, [_sc(colorvar="rep78"),
+                                         _sc("headroom")]) if _proxies(f)]
+        cv = [p for p in _proxies(fig)
+              if p._dash_key_for is fig.renderers[0]]
+        assert len(cv) == 1
+        [p] = cv
+        assert "@dash_key" in p.glyph.defs
+        assert str(p.glyph.fill_color).lower() == "#1a476f"
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("plots,go,n", [
+        ([_sc()], {}, 0),
+        ([_sc(), _sc("headroom")], {"legend": "off"}, 0),
+        ([_sc(), _sc("headroom")], {"legend": "nodraw"}, 0),
+        ([_sc()], {"legend": "on"}, 1),
+        ([_sc(), _sc("headroom")], {}, 2),
+    ], ids=["one_key", "off", "nodraw", "one_key_on", "two"])
+    def test_only_a_drawn_legend_is_painted(self, mode, plots, go, n):
+        """A legend twoway does not draw (one key, off, nodraw) gets no
+        key proxy: it would be a renderer, a source view and a painter in
+        the page for a key nobody sees (WP-43 LT-21)."""
+        [fig] = _figs(mode, plots, go=go)
+        assert len(_proxies(fig)) == n
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("legend", [
+        "order(1 2 1)", 'order(1 2 1) lastlabel(3 "Z")'])
+    def test_a_repeated_key_has_one_proxy(self, mode, legend):
+        """order(1 2 1) draws plot 1's key twice, in one shared item, and
+        lastlabel() on the repeat a fresh item with the same layer: each
+        layer keeps one proxy, both rows hold it, and the legend of
+        markers stays as wide as its marker."""
+        [fig] = _figs(mode, [_sc(), _sc("headroom")], go={"legend": legend})
+        prox = _proxies(fig)
+        assert len(prox) == 2
+        [lg] = [l for l in fig.legend if l.items]
+        assert lg.items[0].renderers == lg.items[2].renderers
+        assert all(r in prox for it in lg.items for r in it.renderers)
+        g = prox[0].glyph
+        assert lg.glyph_width == int(round(g.size + g.line_width))
+
+    def test_unpaintable_glyphs_keep_their_key(self):
+        """A field-sized marker (a weighted layer) keeps Bokeh's key."""
+        from bokeh.models import ColumnDataSource, Legend, LegendItem
+        from bokeh.plotting import figure
+        f = figure()
+        src = ColumnDataSource({"x": [1.0], "y": [1.0], "s": [3.0]})
+        r = f.scatter("x", "y", size="s", source=src)
+        lg = Legend(items=[LegendItem(label="a", renderers=[r])])
+        assert dr._dash_key_painter(f, lg) == 0
+        assert lg.items[0].renderers == [r]
+
+    def test_spec_value(self):
+        from bokeh.core.properties import field, value
+        assert dr._dash_spec_value(3.0) == 3.0
+        assert dr._dash_spec_value(value(2.0)) == 2.0
+        assert dr._dash_spec_value({"value": "red"}) == "red"
+        assert dr._dash_spec_value(field("s")) is None
+        assert dr._dash_spec_value({"field": "s"}) is None
+
+    def test_stale_follow_finds_a_painted_item(self):
+        """The served stale cue reaches an item that holds the frozen
+        layer's proxy (_dash_points_stale_follow)."""
+        from bokeh.models import ColumnDataSource, Legend, LegendItem
+        from bokeh.plotting import figure
+        f = figure()
+        src = ColumnDataSource({"x": [1.0], "y": [1.0]})
+        r = f.scatter("x", "y", size=6, source=src)
+        lg = Legend(items=[LegendItem(label="Fit", renderers=[r])])
+        f.add_layout(lg)
+        assert dr._dash_key_painter(f, lg) == 1
+        cue = dr._dash_stale_cue_title()
+        dr._dash_points_stale_follow({("g1", 0): {
+            "frozen": [r], "cue": cue, "fig": f, "stale": True}})
+        assert lg.items[0].label.value == \
+            "Fit" + dr._DASH_STALE_SUFFIX["fit"]
+
+
+def _paint(real_count, size, mk="circle", angle=0.0):
+    """The ctx calls _DASH_KEY_PAINT_JS makes under node for a layer whose
+    own view keeps *real_count* rows (None: a view with no indices yet)."""
+    import js_runner
+    code = dr._DASH_KEY_PAINT_JS
+    view = ("null" if real_count is None
+            else "{indices: {count: %d}}" % real_count)
+    src = """
+const calls = [];
+const ctx = new Proxy({}, {get: (t, k) => (...a) => { calls.push(k); }});
+const visuals = {fill: {apply: () => calls.push("fill")},
+                 hatch: {apply: () => {}},
+                 line: {apply: () => calls.push("line")}};
+const run = new Function("real", "mk", "angle", "cb_obj", "cb_data", %s);
+run({view: %s}, %s, %s, {size: {value: %s}},
+    {ctx, i: 0, r: 2, visuals});
+process.stdout.write(JSON.stringify(calls));
+""" % (json.dumps(code), view, json.dumps(mk), json.dumps(angle),
+       json.dumps(size))
+    return js_runner.run_js(src)
+
+
+class TestThePainterScript:
+    """The painter draws from its args and the glyph's size, and draws
+    nothing while its layer's own view keeps no row, as BokehJS's
+    draw_legend skips a renderer whose view is empty (R4-26)."""
+
+    def test_draws_at_the_glyph_size(self):
+        import js_runner
+        js_runner.node()
+        calls = _paint(3, 9.0)
+        assert "arc" in calls and "fill" in calls and "line" in calls
+        sq = _paint(3, 9.0, "square", 0.785)
+        assert "rect" in sq and "rotate" in sq
+
+    @pytest.mark.parametrize("count", [0, None])
+    def test_empty_view_draws_nothing(self, count):
+        import js_runner
+        js_runner.node()
+        assert _paint(count, 9.0) == []
+
+    def test_bad_size_draws_nothing(self):
+        import js_runner
+        js_runner.node()
+        assert _paint(3, -1) == [] and _paint(3, 1e9) == []

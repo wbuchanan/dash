@@ -55,6 +55,7 @@ from bokeh.models.tickers import (BasicTicker, CustomJSTicker,   # noqa: E402
                                   FixedTicker)
 
 from conftest import make_spec, stata_base                       # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 from test_adversarial_matrix import (_app_source, _load_app,     # noqa: E402
                                      _session, _write_inputs)
 
@@ -759,7 +760,7 @@ def _layer_styles(mode, tmp_path, spec, tag):
     df = pd.DataFrame(_DATA["values"])
     fig = _figure(mode, tmp_path, spec, df, tag)
     out = []
-    for r in fig.renderers:
+    for r in drawn_renderers(fig):
         g = getattr(r, "glyph", None)
         if g is None:
             continue
@@ -821,7 +822,7 @@ class TestTheSchemeOpacityStopsWhereTheHelpSays:
                             "xvar": "weight", "options": {"malpha": "50"}}],
                           build={"scheme": "sttrans"})
         fig = _figure(mode, tmp_path, spec, tag="malpha")
-        g = [r.glyph for r in fig.renderers if hasattr(r, "glyph")][0]
+        g = [r.glyph for r in drawn_renderers(fig) if hasattr(r, "glyph")][0]
         assert g.fill_alpha == pytest.approx(0.5)
 
 
@@ -842,7 +843,7 @@ class TestAFunctionTakesItsPlaceInTheCycle:
                "options": {"mcolor": "black"}} for _ in range(position)]
         spec = _one_graph(sc + [fn], build={"scheme": "s2color"})
         fig = _figure(mode, tmp_path, spec, tag="fn%d" % position)
-        lines = [r.glyph for r in fig.renderers
+        lines = [r.glyph for r in drawn_renderers(fig)
                  if type(getattr(r, "glyph", None)).__name__ == "Line"]
         assert [g.line_color.lower() for g in lines] == [colour]
 
@@ -869,7 +870,7 @@ class TestARangeLineIsOneSeries:
         fig = _figure(mode, tmp_path, spec, df,
                       tag="%s%d" % (ptype, position))
         cols = set()
-        for r in fig.renderers:
+        for r in drawn_renderers(fig):
             g = getattr(r, "glyph", None)
             for a in ("line_color", "fill_color"):
                 c = getattr(g, a, None)
@@ -884,7 +885,7 @@ class TestARangeLineIsOneSeries:
         spec = _one_graph([_plot_for("rconnected")],
                           build={"scheme": "s2mono"})
         fig = _figure(mode, tmp_path, spec, df, tag="rconsym")
-        markers = {r.glyph.marker for r in fig.renderers
+        markers = {r.glyph.marker for r in drawn_renderers(fig)
                    if type(getattr(r, "glyph", None)).__name__ == "Scatter"}
         assert len(markers) == 1, markers
 
@@ -921,7 +922,7 @@ class TestAnExplicitOptionBeatsTheScheme:
                             "options": {"lwidth": "vthin"}}],
                           build={"scheme": "economist"})
         fig = _figure(mode, tmp_path, spec, tag="lwidth")
-        g = [r.glyph for r in fig.renderers if hasattr(r, "glyph")][0]
+        g = [r.glyph for r in drawn_renderers(fig) if hasattr(r, "glyph")][0]
         assert g.line_width == dr.OptionTranslator.translate_lwidth("vthin")
         assert g.line_width < dr.SchemeParser("economist").default_line_width
 
@@ -1494,7 +1495,7 @@ class TestTheUnsupportedProseIsTrue:
                             "options": opts}])
         fig = _figure(mode, tmp_path, spec, tag="bar" + flag)
         cls, at = ("HBar", "y") if flag else ("VBar", "x")
-        bars = [r for r in fig.renderers
+        bars = [r for r in drawn_renderers(fig)
                 if type(getattr(r, "glyph", None)).__name__ == cls]
         assert len(bars) == 1
         g = bars[0].glyph
@@ -1513,7 +1514,7 @@ class TestTheUnsupportedProseIsTrue:
         spec = _one_graph([{"type": ptype, "yvar": "y", "xvar": "x",
                             "options": {}}])
         fig = _figure(mode, tmp_path, spec, df, tag="miss" + ptype)
-        lines = [r for r in fig.renderers
+        lines = [r for r in drawn_renderers(fig)
                  if type(getattr(r, "glyph", None)).__name__ == "Line"]
         assert lines
         d = lines[0].data_source.data
@@ -1528,7 +1529,7 @@ class TestTheUnsupportedProseIsTrue:
         spec = _one_graph([{"type": "spike", "yvar": "mpg", "xvar": "weight",
                             "options": {"horizontal": "horizontal"}}])
         fig = _figure(mode, tmp_path, spec, tag="spikeh")
-        segs = [r for r in fig.renderers
+        segs = [r for r in drawn_renderers(fig)
                 if type(getattr(r, "glyph", None)).__name__ == "Segment"]
         assert segs
         g, d = segs[0].glyph, segs[0].data_source.data
@@ -1539,7 +1540,7 @@ class TestTheUnsupportedProseIsTrue:
                             "xvar": "weight",
                             "options": {"mlpattern": "dash"}}])
         fig = _figure(mode, tmp_path, spec, tag="mlpat")
-        g = [r.glyph for r in fig.renderers
+        g = [r.glyph for r in drawn_renderers(fig)
              if type(getattr(r, "glyph", None)).__name__ == "Scatter"][0]
         assert list(g.line_dash) == []
 

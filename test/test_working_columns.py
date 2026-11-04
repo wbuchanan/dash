@@ -31,6 +31,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 from test_adversarial_matrix import _load_app, _write_inputs  # noqa: E402
 
 _SEQ = itertools.count()
@@ -124,7 +125,7 @@ def _user_spec():
 
 
 def _scatter_ys(fig):
-    [sc] = [x for x in fig.renderers
+    [sc] = [x for x in drawn_renderers(fig)
             if type(x.glyph).__name__ == "Scatter"]
     return list(sc.data_source.data["__dashq1"]), sc.data_source.data
 
@@ -281,7 +282,7 @@ class TestTheRendererNames:
     def test_a_user_column_named_like_a_renderer_column(self, tmp_path,
                                                           mode):
         fig = _figure_of(tmp_path, mode, _clash_spec(), _clash_df())
-        [sc] = [x for x in fig.renderers
+        [sc] = [x for x in drawn_renderers(fig)
                 if type(x.glyph).__name__ == "Scatter"]
         data = sc.data_source.data
         # hover(__dash_row__) reads the user's values, not row ids.

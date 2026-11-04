@@ -110,6 +110,7 @@ _TMP = tempfile.mkdtemp(prefix="dash_marker_label_parity_")
 
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _write(spec, df, value_labels, label_names):
@@ -301,7 +302,7 @@ def test_the_partition_covers_every_plot_type_once():
 def _markers(fig):
     return [(g.line_color, float(g.line_width), round(float(g.line_alpha), 4),
              g.fill_color, round(float(g.fill_alpha), 4))
-            for g in (r.glyph for r in fig.renderers)
+            for g in (r.glyph for r in drawn_renderers(fig))
             if type(g).__name__ == "Scatter"]
 
 
@@ -388,7 +389,7 @@ def test_the_lines_still_take_the_line_options(ptype, kind):
     std, srv, _, _ = _both([plot_for(ptype, {"lcolor": "red",
                                              "lwidth": "vthick"})])
     for base, fig in ((b_std, std), (b_srv, srv)):
-        lines = [r.glyph for r in fig.renderers
+        lines = [r.glyph for r in drawn_renderers(fig)
                  if type(r.glyph).__name__ == kind]
         assert lines and all(g.line_color.lower() == _hex("red")
                              for g in lines), (ptype, kind)
@@ -518,7 +519,7 @@ def test_a_per_plot_qualifier_labels_only_the_qualified_ends():
 
 def _marker_points(fig):
     pts = set()
-    for r in fig.renderers:
+    for r in drawn_renderers(fig):
         g = r.glyph
         if type(g).__name__ != "Scatter":
             continue

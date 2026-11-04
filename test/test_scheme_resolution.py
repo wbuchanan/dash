@@ -50,6 +50,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 from conftest import load_app  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 from probe_groups import probe_params, representative  # noqa: E402
@@ -626,7 +627,7 @@ def _props_scheme(props):
 
 
 def _glyphs(fig):
-    return [r.glyph for r in fig.renderers if isinstance(r, GlyphRenderer)]
+    return [r.glyph for r in drawn_renderers(fig) if isinstance(r, GlyphRenderer)]
 
 
 def _alpha_of(glyph):

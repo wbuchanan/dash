@@ -73,6 +73,7 @@ _WIDGET = {"dropdown": Select, "range": RangeSlider, "slider": Slider}
 
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _rows_of(mask):
@@ -217,7 +218,7 @@ def _served_figures(doc):
 
 
 def _served_rows(doc):
-    return {title: [_drawn_served(r) for r in f.renderers
+    return {title: [_drawn_served(r) for r in drawn_renderers(f)
                     if isinstance(r, GlyphRenderer)]
             for title, f in _served_figures(doc).items()}
 
@@ -314,7 +315,7 @@ def _saved(tmp_path, spec, moves):
     out = {}
     for fig in r.figures.values():
         per = []
-        for gr in [x for x in fig.renderers if isinstance(x, GlyphRenderer)]:
+        for gr in [x for x in drawn_renderers(fig) if isinstance(x, GlyphRenderer)]:
             src = gr.data_source
             ids = (state[src.id]["ids"] if src.id in state
                    else list(src.data[dr._ROW_ID_COLUMN]))
@@ -436,7 +437,7 @@ class TestEveryMoveStartsFromTheOwnedRows:
 
 def _shared_source(doc):
     """The source g2 -- a linked graph with no view -- draws from."""
-    [r] = [r for r in _served_figures(doc)["g2"].renderers
+    [r] = [r for r in drawn_renderers(_served_figures(doc)["g2"])
            if isinstance(r, GlyphRenderer)]
     assert isinstance(r.view.filter, type(CDSView().filter))
     return r.data_source
@@ -492,7 +493,7 @@ class TestNoServedViewPointsPastItsSource:
         for value in [(4000.0, 5000.0), (3000.0, 12000.0), (4500.0, 4800.0)]:
             _fire(doc, "price", value)
             for title, fig in _served_figures(doc).items():
-                for r in fig.renderers:
+                for r in drawn_renderers(fig):
                     flt = getattr(getattr(r, "view", None), "filter", None)
                     if not isinstance(flt, IndexFilter) or \
                             flt.indices is None:
@@ -552,7 +553,7 @@ class TestALayerRedrawnFromACopyOfTheSharedSource:
         doc = _served_doc(tmp_path, spec)
         _fire(doc, "foreign", "1")
         fig = _served_figures(doc)["g1"]
-        return [r for r in fig.renderers if isinstance(r, GlyphRenderer)]
+        return [r for r in drawn_renderers(fig) if isinstance(r, GlyphRenderer)]
 
     def _want_points(self):
         return sorted((float(_DF["weight"][i]), float(_DF["mpg"][i]))
@@ -582,9 +583,9 @@ class TestALayerRedrawnFromACopyOfTheSharedSource:
                      [_filter("dropdown", ["g1"])])
         doc = _served_doc(tmp_path, spec)
         fig = _served_figures(doc)["g1"]
-        [line] = [r for r in fig.renderers
+        [line] = [r for r in drawn_renderers(fig)
                   if type(r.glyph).__name__ == "Line"]
-        [marks] = [r for r in fig.renderers
+        [marks] = [r for r in drawn_renderers(fig)
                    if type(r.glyph).__name__ == "Scatter"]
         before = _points(line)
         _fire(doc, "foreign", "1")

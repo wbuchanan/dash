@@ -29,6 +29,7 @@ from bokeh.models import ColumnDataSource, GlyphRenderer, HoverTool
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 @pytest.fixture
@@ -865,7 +866,7 @@ class TestMapRcapsym:
         result = gm.map_rcapsym(fig, range_cds, "lo", "hi", "xvar", {})
         assert isinstance(result[1].glyph, Scatter)
         assert isinstance(result[2].glyph, Scatter)
-        assert [r for r in fig.renderers
+        assert [r for r in drawn_renderers(fig)
                 if isinstance(r.glyph, Segment)] == [result[0]]
 
     def test_rcapsym_dots_are_scatter(self, fig, range_cds, gm):
@@ -1730,7 +1731,7 @@ class TestMapPcarrow:
         measured 13oct2026, lcolor(red) lwidth(thick): heads at 0.3 rs in
         the series colour); mlwidth() is the head's."""
         gm.map_pcarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {"lwidth": "thick"})
-        [head] = [r for r in fig.renderers if "dash-arrowhead" in r.tags]
+        [head] = [r for r in drawn_renderers(fig) if "dash-arrowhead" in r.tags]
         assert head.glyph.line_width == gm.scheme.plot_line_width(0, "arrowline")
 
 
@@ -1772,7 +1773,7 @@ class TestMapPcbarrow:
         """lwidth(thick) widens the shaft only; the heads keep the scheme's
         arrow line width (Flipped, WP-31 C1, as pcarrow's above)."""
         gm.map_pcbarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {"lwidth": "thick"})
-        [head] = [r for r in fig.renderers if "dash-arrowhead" in r.tags]
+        [head] = [r for r in drawn_renderers(fig) if "dash-arrowhead" in r.tags]
         assert head.glyph.line_width == gm.scheme.plot_line_width(0, "arrowline")
 
 
@@ -2322,13 +2323,13 @@ class TestAreaBorderLine:
         # 24sep2026: [VArea, Line]).  renderers_before was taken and never
         # read, and `>= 1' passed with the border drawn twice, or drawn
         # UNDER the fill, which hides it.
-        added = [type(r.glyph).__name__ for r in fig.renderers[renderers_before:]]
+        added = [type(r.glyph).__name__ for r in drawn_renderers(fig)[renderers_before:]]
         # Flipped (WP-34 PIC-1): the outline is the area's whole polygon,
         # one ring rebuilt from the fill's source (A-6), followed by the
         # area's key swatch.
         assert added == ["VArea", "Line", "Quad"], (
             f"lcolor must add the area, then one border line over it: {added}")
-        line_renderers = [r for r in fig.renderers
+        line_renderers = [r for r in drawn_renderers(fig)
                           if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
         assert len(line_renderers) == 1, \
             "lcolor option must add a Line renderer as area border"
@@ -2343,13 +2344,13 @@ class TestAreaBorderLine:
         gm.map_area(fig, cds, "mpg", "weight", {"lwidth": "thick"})
         # [VArea, Line], as for lcolor above: `>= 1' passed with the border
         # drawn twice or under the fill (24sep2026).
-        added = [type(r.glyph).__name__ for r in fig.renderers[renderers_before:]]
+        added = [type(r.glyph).__name__ for r in drawn_renderers(fig)[renderers_before:]]
         # Flipped (WP-34 PIC-1): the outline is the area's whole polygon,
         # one ring rebuilt from the fill's source (A-6), followed by the
         # area's key swatch.
         assert added == ["VArea", "Line", "Quad"], (
             f"lwidth must add the area, then one border line over it: {added}")
-        line_renderers = [r for r in fig.renderers
+        line_renderers = [r for r in drawn_renderers(fig)
                           if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
         assert len(line_renderers) == 1, "lwidth must trigger border line"
         assert line_renderers[-1].glyph.line_width > 1.0, \
@@ -2360,7 +2361,7 @@ class TestAreaBorderLine:
         from bokeh.models import GlyphRenderer
         from bokeh.models.glyphs import Line
         gm.map_area(fig, cds, "mpg", "weight", {})
-        line_renderers = [r for r in fig.renderers
+        line_renderers = [r for r in drawn_renderers(fig)
                           if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
         # Flipped (WP-34 PIC-1): twoway outlines every area, so the ring
         # is drawn with no line option too, in the area line style.
@@ -2447,7 +2448,7 @@ class TestNewPlotTypes:
         from bokeh.models.glyphs import Scatter
         gm = GlyphMapper(OptionTranslator())
         gm.map_pcscatter(fig, pc_cds, "y1", "x1", "y2", "x2", {})
-        scatter_rs = [r for r in fig.renderers
+        scatter_rs = [r for r in drawn_renderers(fig)
                       if isinstance(r, GlyphRenderer)
                       and isinstance(r.glyph, Scatter)]
         assert len(scatter_rs) == 1
@@ -2459,7 +2460,7 @@ class TestNewPlotTypes:
         from bokeh.models.glyphs import Scatter
         gm = GlyphMapper(OptionTranslator())
         gm.map_rscatter(fig, range_cds, "y1", "y2", "x", {})
-        scatter_rs = [r for r in fig.renderers
+        scatter_rs = [r for r in drawn_renderers(fig)
                       if isinstance(r, GlyphRenderer)
                       and isinstance(r.glyph, Scatter)]
         assert len(scatter_rs) == 1
@@ -2475,7 +2476,7 @@ class TestNewPlotTypes:
             "x":  [1.0, 2.0, 3.0],
         })
         gm.map_rscatter(fig, cds_nan, "y1", "y2", "x", {})
-        scatter_rs = [r for r in fig.renderers
+        scatter_rs = [r for r in drawn_renderers(fig)
                       if isinstance(r, GlyphRenderer)
                       and isinstance(r.glyph, Scatter)]
         # Row 0: both valid; row 1: y1=NaN drops that x from y1-side only;
@@ -2487,7 +2488,7 @@ class TestNewPlotTypes:
         from bokeh.models.glyphs import Line
         gm = GlyphMapper(OptionTranslator())
         gm.map_mband(fig, xy_cds, "y", "x", {})
-        line_rs = [r for r in fig.renderers
+        line_rs = [r for r in drawn_renderers(fig)
                    if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
         # One line through the cross medians, and nothing else drawn:
         # ">= 1" passed it drawn twice.
@@ -2499,7 +2500,7 @@ class TestNewPlotTypes:
         from bokeh.models.glyphs import Line
         gm = GlyphMapper(OptionTranslator())
         gm.map_mband(fig, xy_cds, "y", "x", {})
-        line_rs = [r for r in fig.renderers
+        line_rs = [r for r in drawn_renderers(fig)
                    if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
         n_raw = len(xy_cds.data["x"])
         n_band = len(line_rs[0].data_source.data["x_mb"])
@@ -2532,7 +2533,7 @@ class TestNewPlotTypes:
         fig2 = figure()
         cds_small = ColumnDataSource({"y": [1.0, 2.0], "x": [1.0, 2.0]})
         gm.map_mband(fig2, cds_small, "y", "x", {})
-        line_rs = [r for r in fig2.renderers
+        line_rs = [r for r in drawn_renderers(fig2)
                    if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
         assert len(line_rs) == 1
         assert list(line_rs[0].data_source.data["x_mb"]) == [1.0, 2.0]
@@ -3067,7 +3068,7 @@ class TestHoverToolRendererScope:
             if not tool.renderers or tool.renderers == "auto":
                 # unrestricted hover — check all renderers have needed cols
                 for col in _all_hover_cols(fig):
-                    for rend in fig.renderers:
+                    for rend in drawn_renderers(fig):
                         assert _renderer_has_col(rend, col), (
                             f"Unrestricted HoverTool references col '{col}' "
                             f"not in renderer {rend}"
@@ -3085,7 +3086,7 @@ class TestHoverToolRendererScope:
         # bound to nothing -- no tooltip at all -- passed too (24sep2026).
         scoped = [r for t in fig.tools if isinstance(t, HoverTool)
                   for r in _hover_scope(t, fig)]
-        scatter = [r for r in fig.renderers
+        scatter = [r for r in drawn_renderers(fig)
                    if type(r.glyph).__name__ == "Scatter"]
         assert scatter and all(any(s is r for r in scoped) for s in scatter), (
             "no HoverTool answers for the scatter")
@@ -3141,7 +3142,7 @@ class TestHoverToolRendererScope:
 
         # Identify lfit renderer: it uses fit_source with "x"/"y" not "mpg"/"weight"
         lfit_renderers = [
-            r for r in fig.renderers
+            r for r in drawn_renderers(fig)
             if hasattr(r, "data_source") and
             "x" in r.data_source.data and
             "mpg" not in r.data_source.data

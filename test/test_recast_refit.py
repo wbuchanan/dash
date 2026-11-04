@@ -29,6 +29,7 @@ from js_runner import requires_node  # noqa: E402
 from test_mode_parity import _spec  # noqa: E402
 from test_saved_filter_layers import _MOVES, _move, _render  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 #: The recast targets whose source is the computed points' (dot draws its
 #: dots on the axis rows and keeps the cue).
@@ -51,7 +52,7 @@ def _pair(ptype, target, move=_MOVES[0], extra=None):
 def _plain_points(r, ptype):
     """The un-recast layer's (x, y): bar midpoints and heights, or the
     curve."""
-    for g in r.figures["g1"].renderers:
+    for g in drawn_renderers(r.figures["g1"]):
         d = g.data_source.data
         if ptype == "histogram" and "top" in d:
             # The bars drawn now (WP-31 H6: a default grid is binned again
@@ -68,7 +69,7 @@ def _plain_points(r, ptype):
 def _recast_renderers(r):
     # Flipped (WP-34 PIC-1): an area's outline ring is drawn from its
     # fill's source by its own script; the fill is the recounted renderer.
-    return [g for g in r.figures["g2"].renderers
+    return [g for g in drawn_renderers(r.figures["g2"])
             if not dr._dash_is_swatch(g)
             and "dash_area_outline" not in (getattr(g, "tags", None) or ())]
 

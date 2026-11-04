@@ -80,6 +80,7 @@ _HELP = os.path.join(_HERE, "..", "dash.sthlp")
 # ===========================================================================
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _auto():
@@ -680,7 +681,7 @@ class TestTheTotalAndMissingPanels:
     @staticmethod
     def _points(fig):
         n = 0
-        for rr in fig.renderers:
+        for rr in drawn_renderers(fig):
             if type(rr.glyph).__name__ != "Scatter":
                 continue
             filt = getattr(rr.view, "filter", None)
@@ -992,7 +993,7 @@ class TestAFacetedGraphInALinkGroup:
             assert len(figs) == 3
             # dot's rows of dots draw from a source of their own, the
             # rows its marker draws (WP-31 B5b); the markers share one.
-            markers = [rr for f in figs for rr in f.renderers
+            markers = [rr for f in figs for rr in drawn_renderers(f)
                        if type(rr.glyph).__name__ == "Scatter"
                        and "dash_dots" not in (rr.tags or [])]
             assert len({id(rr.data_source) for rr in markers}) == 1, (
@@ -1006,14 +1007,14 @@ class TestAFacetedGraphInALinkGroup:
                     dr._NONSELECTION_ALPHA
             for f in figs:
                 assert any(isinstance(t, BoxSelectTool) for t in f.tools)
-            panel_views = [rr.view for f in figs[:2] for rr in f.renderers
+            panel_views = [rr.view for f in figs[:2] for rr in drawn_renderers(f)
                            if type(rr.glyph).__name__ == "Scatter"
                            and "dash_dots" not in (rr.tags or [])]
             # One marker renderer a panel, two panels (measured 24sep2026,
             # every type here, both modes): `panel_views and' passed a
             # panel that drew no markers at all.
             assert len(panel_views) == 2, [
-                [type(rr.glyph).__name__ for rr in f.renderers]
+                [type(rr.glyph).__name__ for rr in drawn_renderers(f)]
                 for f in figs[:2]]
             assert panel_views and all(
                 type(v.filter).__name__ in ("BooleanFilter", "IndexFilter")
@@ -1035,9 +1036,9 @@ class TestAFacetedGraphInALinkGroup:
                       ("g2", [_scatter()], {})], build={"link": "g1 g2"})
         r, doc, _, _ = _both(spec, _payload(_auto()))
         for figs in (list(r.figures.values()), _served_figures(doc)):
-            shared = [rr.data_source for rr in figs[-1].renderers
+            shared = [rr.data_source for rr in drawn_renderers(figs[-1])
                       if type(rr.glyph).__name__ == "Scatter"][0]
-            layer = [rr for f in figs[:-1] for rr in f.renderers
+            layer = [rr for f in figs[:-1] for rr in drawn_renderers(f)
                      if not str(getattr(rr, "name", "") or "")
                      .startswith("__dash")]
             assert layer and all(rr.data_source is not shared
@@ -1065,7 +1066,7 @@ def _drawn_labels(fig):
 
 def _marker_points(fig):
     pts = set()
-    for rr in fig.renderers:
+    for rr in drawn_renderers(fig):
         g = rr.glyph
         if type(g).__name__ != "Scatter":
             continue
@@ -1106,7 +1107,7 @@ def _drawn_ends(fig):
         return [(e[0], e[1]), (e[2], e[3])]
 
     out = {}
-    for rr in fig.renderers:
+    for rr in drawn_renderers(fig):
         g, d = rr.glyph, rr.data_source.data
         kind = type(g).__name__
         if kind == "Scatter":
@@ -1177,7 +1178,7 @@ class TestEachEndOfARangeIsLabelledOnItsOwn:
 
         def rows(fig):
             out = []
-            for rr in fig.renderers:
+            for rr in drawn_renderers(fig):
                 d = rr.data_source.data
                 out.append((type(rr.glyph).__name__,
                             len(next(iter(d.values()))) if d else 0))

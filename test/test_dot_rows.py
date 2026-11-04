@@ -48,6 +48,7 @@ import test_mode_parity as tp  # noqa: E402
 import test_saved_filter_layers as sf  # noqa: E402
 from js_runner import requires_node  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "dot_truth.json")
 with open(_FIXTURE, encoding="utf-8") as _fh:
@@ -85,10 +86,10 @@ def _dots(f):
 
 
 def _marker(f):
-    [r] = [r for r in f.renderers if not _is_dots(r)
+    # Flipped (WP-42 CV-7): not the layer's hidden legend proxy
+    # (drawn_renderers).
+    [r] = [r for r in drawn_renderers(f) if not _is_dots(r)
            and not dr._dash_is_swatch(r)
-           # Flipped (WP-42 CV-7): not the layer's hidden legend proxy.
-           and str(getattr(r, "name", None) or "") != "__dash_keyproxy"
            and type(getattr(r, "glyph", None)).__name__ == "Scatter"]
     return r
 

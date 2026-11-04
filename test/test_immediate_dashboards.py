@@ -90,6 +90,7 @@ _SEQ = itertools.count()
 # ===========================================================================
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _graph(name, plots, **graph_options):
@@ -166,7 +167,7 @@ def _layers(figs):
     served document lists its figures in does not matter."""
     out = []
     for f in figs:
-        for r in f.renderers:
+        for r in drawn_renderers(f):
             g = getattr(r, "glyph", None)
             if g is None:
                 continue
@@ -188,7 +189,7 @@ def _empty_reports(warns):
 
 def _one_line(plot_type, figs):
     """The renderers of *figs* whose glyph is a *plot_type* glyph."""
-    return [r for f in figs for r in f.renderers
+    return [r for f in figs for r in drawn_renderers(f)
             if type(getattr(r, "glyph", None)).__name__ == plot_type]
 
 

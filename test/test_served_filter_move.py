@@ -67,6 +67,7 @@ import test_mode_parity as tp  # noqa: E402
 from test_filter_exclude import _node  # noqa: E402
 from test_help_claims_4 import _encode  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "kpi_pctile_truth.json")
 
@@ -143,7 +144,7 @@ def _move(doc, kind, want):
 
 def _drawn_source(fig):
     """The data source a figure's first glyph draws from."""
-    return [r.data_source for r in fig.renderers
+    return [r.data_source for r in drawn_renderers(fig)
             if isinstance(r, GlyphRenderer)][0]
 
 
@@ -351,7 +352,7 @@ class TestTheReportedCase:
             warnings.simplefilter("ignore")
             r, _ = tp._standalone(self._SPEC)
         (fig,) = r.figures.values()
-        sc = [g for g in fig.renderers if isinstance(g, GlyphRenderer)][0]
+        sc = [g for g in drawn_renderers(fig) if isinstance(g, GlyphRenderer)][0]
         flt = sc.view.filter
         assert sum(bool(b) for b in flt.booleans) == 21
         (w,), (cb,) = r.filter_widgets, r.filter_callbacks
@@ -653,7 +654,7 @@ class TestAdversarialFilterMoves:
         (fig,) = _figures(doc)
         return [sorted(int(labels[int(i)]) if labels is not None else int(i)
                        for i in r.data_source.data["index"])
-                for r in fig.renderers if isinstance(r, GlyphRenderer)]
+                for r in drawn_renderers(fig) if isinstance(r, GlyphRenderer)]
 
     def _after(self, *values):
         """The layers' rows in a fresh session after the Select is set to

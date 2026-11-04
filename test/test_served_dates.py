@@ -48,6 +48,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 from test_date_range import (_COMPUTED, _DATES, _HALF_GAP, _HI_MS,  # noqa: E402
                              _ISO, _LO_MS, _MS, _PAST, _card, _filter, _frame,
                              _iso, _kpi, _outside, _plot_for, _saved, _served,
@@ -100,7 +101,7 @@ def _fire(widget, value):
 def _drawn(fig, var="date"):
     """The ISO dates of every glyph source that carries *var*."""
     out = []
-    for r in fig.renderers:
+    for r in drawn_renderers(fig):
         if isinstance(r, GlyphRenderer) and var in r.data_source.data:
             out.append([_iso(v) for v in r.data_source.data[var]])
     return out

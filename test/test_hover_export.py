@@ -52,6 +52,7 @@ _TMP = tempfile.mkdtemp(prefix="dash_hover_export_")
 
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _read(name):
@@ -284,7 +285,7 @@ class TestRowsWithAMissingHoverValueAreKept:
         r = _saved(spec, data)
         fig = r.figures["g1"]
         rows = []
-        for rend in fig.renderers:
+        for rend in drawn_renderers(fig):
             if type(rend.glyph).__name__ == "Scatter":
                 data_ = rend.data_source.data
                 rows.append(max(len(v) for v in data_.values()))

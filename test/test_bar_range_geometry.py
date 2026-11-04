@@ -68,6 +68,7 @@ _HI = [4.0, 5, 3, 6, 2]
 # ---------------------------------------------------------------------------
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _spec(plots, formats=None, bo=None):
@@ -129,7 +130,7 @@ def _figs(mode, tmp_path, spec, df):
 
 
 def _glyphs(figs, name):
-    return [r for f in figs for r in f.renderers
+    return [r for f in figs for r in drawn_renderers(f)
             if type(getattr(r, "glyph", None)).__name__ == name]
 
 
@@ -164,7 +165,7 @@ def _width_value(r):
 
 
 def _caps(figs):
-    return [r for f in figs for r in f.renderers
+    return [r for f in figs for r in drawn_renderers(f)
             if "dash_cap" in (getattr(r, "tags", None) or [])]
 
 
@@ -509,7 +510,7 @@ class TestRcapsymDrawsNoCaps:
     def test_spine_and_two_markers(self, mode, tmp_path):
         figs, _ = _figs(mode, tmp_path, _spec([_bar("rcapsym")]),
                         _frame(_X["s1"]))
-        types = [type(r.glyph).__name__ for f in figs for r in f.renderers
+        types = [type(r.glyph).__name__ for f in figs for r in drawn_renderers(f)
                  if hasattr(r, "glyph")]
         assert types == ["Segment", "Scatter", "Scatter"], types
         assert _T["rcapsym"]["default"]["cap_lines"] == 0
@@ -535,7 +536,7 @@ class TestTheSpacingMachineryIsGone:
                         _spec([_bar("bar"), _bar("rbar"), _bar("rcap"),
                                _bar("rcapsym")]), _frame(_X["s1"]))
         for f in figs:
-            for r in f.renderers:
+            for r in drawn_renderers(f):
                 src = getattr(r, "data_source", None)
                 assert not hasattr(src, "_dash_spacing")
                 assert not hasattr(src, "_dash_spacing_glyphs")
@@ -674,7 +675,7 @@ def _db_base(r):
 
 
 def _db_based(f):
-    return [r for r in f.renderers
+    return [r for r in drawn_renderers(f)
             if type(getattr(r, "glyph", None)).__name__ in _DB_PROPS]
 
 
@@ -838,7 +839,7 @@ class TestTheMappersMarkTheirBase:
                 src = ColumnDataSource({"x": [1.0, 2.0], "y": [3.0, 4.0]})
                 out = getattr(_gm(), "map_" + t)(fig, src, "y", "x",
                                                  dict(opts))
-                rs = [r for r in fig.renderers
+                rs = [r for r in drawn_renderers(fig)
                       if dr._dash_base_spec(r) is not None]
                 specs = [dr._dash_base_spec(r) for r in rs]
                 if specs != [{"auto": auto, "letter": "y", "prop": prop,

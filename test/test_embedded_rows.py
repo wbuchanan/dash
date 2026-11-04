@@ -68,6 +68,7 @@ _NODE_RUNS = []
 
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _truth():
@@ -1140,7 +1141,7 @@ def _view_rows(renderer, id_col):
 def _scatter_rows(figs, id_col, labels):
     out = []
     for fig in figs:
-        rs = [g for g in fig.renderers if isinstance(g, GlyphRenderer)
+        rs = [g for g in drawn_renderers(fig) if isinstance(g, GlyphRenderer)
               and type(g.glyph).__name__ == "Scatter"
               and "mpg" in g.data_source.data]
         got = set()
@@ -1218,7 +1219,7 @@ class TestTheJoinKeyFollowsThePagesRows:
 
         def line_of(figs):
             (fig,) = figs
-            (line,) = [g for g in fig.renderers
+            (line,) = [g for g in drawn_renderers(fig)
                        if isinstance(g, GlyphRenderer)
                        and type(g.glyph).__name__ == "Line"]
             return line
@@ -1289,7 +1290,7 @@ def _scatter_pairs(figs, id_col):
     """``{mpg: id}`` over every scatter renderer's drawn rows."""
     out = {}
     for fig in figs:
-        for g in fig.renderers:
+        for g in drawn_renderers(fig):
             if not (isinstance(g, GlyphRenderer)
                     and type(g.glyph).__name__ == "Scatter"):
                 continue
@@ -1375,13 +1376,13 @@ class TestTheServedIndexIsARank:
                         {"filter": _RANGE}, kpis=[tp._kpi(update="brush")])
         r, _ = tp._standalone(spec)
         (fig,) = r.figures.values()
-        (g,) = [x for x in fig.renderers if isinstance(x, GlyphRenderer)]
+        (g,) = [x for x in drawn_renderers(fig) if isinstance(x, GlyphRenderer)]
         pos = _drawn_positions(g)[:2]
         _, std, _ = sfm._saved_selection(spec, 0, pos, [])
         _NODE_RUNS.append(1)
         doc, _ = tp._served(spec)
         (sfig,) = sfm._figures(doc)
-        (sg,) = [x for x in sfig.renderers if isinstance(x, GlyphRenderer)]
+        (sg,) = [x for x in drawn_renderers(sfig) if isinstance(x, GlyphRenderer)]
         spos = _drawn_positions(sg)[:2]
         srv, _, _ = sfm._served_selection(spec, 0, spos, [])
         std_b, _, _ = sfm._saved_selection(spec, 0, pos, [])
@@ -1563,7 +1564,7 @@ class TestWholeDataRulesStillRead:
                         if_expr="foreign == 1")
         r, _ = tp._standalone(spec)
         (fig,) = r.figures.values()
-        (g,) = [x for x in fig.renderers if isinstance(x, GlyphRenderer)]
+        (g,) = [x for x in drawn_renderers(fig) if isinstance(x, GlyphRenderer)]
         ys = [float(v) for v in g.data_source.data[g.glyph.y]]
         assert len(ys) == 22
         assert abs(float(np.mean(ys)) - t["mean"]) < 1e-6
@@ -1575,7 +1576,7 @@ class TestWholeDataRulesStillRead:
         spec = tp._spec([plot_for("lpoly")], if_expr="foreign == 1")
         r, _ = tp._standalone(spec)
         (fig,) = r.figures.values()
-        (g,) = [x for x in fig.renderers if isinstance(x, GlyphRenderer)]
+        (g,) = [x for x in drawn_renderers(fig) if isinstance(x, GlyphRenderer)]
         xs = [float(v) for v in g.data_source.data[g.glyph.x] if v == v]
         assert len(xs) == est["n_points"]
         assert abs(xs[-1] - est["x_at_last"]) < 1e-6
@@ -1623,7 +1624,7 @@ class TestWholeDataRulesStillRead:
                         if_expr="foreign == 1")
         r, _ = tp._standalone(spec)
         (fig,) = r.figures.values()
-        (g,) = [x for x in fig.renderers if isinstance(x, GlyphRenderer)]
+        (g,) = [x for x in drawn_renderers(fig) if isinstance(x, GlyphRenderer)]
         assert len(_drawn_positions(g)) == t["count_foreign_in_40_60"]
 
 

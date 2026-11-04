@@ -141,6 +141,9 @@ def _ql_models(roots):
         for fig in root.select({"type": Plot}):
             hit = False
             for r in fig.renderers:
+                # Flipped (WP-43 LT-21): not a legend-only key proxy.
+                if "dash_key_proxy" in (r.tags or []):
+                    continue
                 if isinstance(r, GlyphRenderer) and type(r.glyph).__name__ == "Scatter":
                     hit = True
                     xs = [float(v) for v in r.data_source.data["rowid"]]
@@ -235,6 +238,10 @@ def _ql_page():
             g = ref(rr)
             a = g.get("attributes", {})
             if g.get("name") != "GlyphRenderer" or ref(a.get("glyph", {})).get("name") != "Scatter":
+                continue
+            # Flipped (WP-43 LT-21): not a legend-only key proxy (tag
+            # dash_key_proxy), which paints a marker key and no row.
+            if "dash_key_proxy" in (a.get("tags") or []):
                 continue
             hit = True
             data = dict((k, v) for k, v in ref(a.get("data_source", {})).get("attributes", {}).get("data", {}).get("entries", []))

@@ -62,6 +62,7 @@ _SEQ = count()
 
 
 from conftest import exec_app, render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -1193,7 +1194,7 @@ def _agg_renderers(figures):
     from by_panel_probe import panel_label
     out = []
     for fig in figures:
-        for rr in fig.renderers:
+        for rr in drawn_renderers(fig):
             data = rr.data_source.data
             if "top" in data or ("x" in data and "y" in data
                                  and _ROW_ID_NOT_IN(data)):
@@ -1501,7 +1502,7 @@ class TestAFitLineOnAFilterMove:
     @staticmethod
     def _fit_source(figures):
         for fig in figures:
-            for rr in fig.renderers:
+            for rr in drawn_renderers(fig):
                 d = rr.data_source.data
                 if "x" in d and "y" in d and dr._ROW_ID_COLUMN not in d:
                     return rr.data_source
@@ -1535,7 +1536,7 @@ class TestAFitLineOnAFilterMove:
         spec = _pair_spec(filters=_AGG_FILTERS, plots2=self._FIT)
         r = _saved(tmp_path, spec, _auto(truth))
         src = self._fit_source(r.figures.values())
-        rend = [rr for f in r.figures.values() for rr in f.renderers
+        rend = [rr for f in r.figures.values() for rr in drawn_renderers(f)
                 if rr.data_source is src]
         cues = [t for f in r.figures.values() for t in f.above
                 if "dash_stale_cue" in (getattr(t, "tags", None) or [])]
@@ -1827,13 +1828,13 @@ class TestTheModesDifferHere:
         spec = _pair_spec(link="g1 g2")
         r = _saved(tmp_path, spec, _auto(truth))
         saved = {round(float(rr.nonselection_glyph.fill_alpha), 4)
-                 for fig in r.figures.values() for rr in fig.renderers
+                 for fig in r.figures.values() for rr in drawn_renderers(fig)
                  if hasattr(rr, "nonselection_glyph")}
         ns = _served_app(tmp_path, spec, _auto(truth))
         doc = _served_session(ns)
         served = {round(float(rr.nonselection_glyph.fill_alpha), 4)
                   for fig in doc.select({"type": type(r_fig())})
-                  for rr in fig.renderers
+                  for rr in drawn_renderers(fig)
                   if hasattr(rr, "nonselection_glyph")}
         assert saved == served == {0.15}
 

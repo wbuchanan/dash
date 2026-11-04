@@ -42,6 +42,7 @@ import test_horizontal_moves as hm  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 import test_saved_filter_layers as sf  # noqa: E402
 from js_runner import requires_node  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "rangept_truth.json")
 with open(_FIXTURE, encoding="utf-8") as _fh:
@@ -74,7 +75,7 @@ def _fig(mode, tmp_path, ptype="rpcap", opts=None, plots=None, bo=None):
 
 
 def _drawn(f):
-    return [r for f_r in [f] for r in f_r.renderers
+    return [r for f_r in [f] for r in drawn_renderers(f_r)
             if getattr(r, "glyph", None) is not None
             and not dr._dash_is_swatch(r)]
 

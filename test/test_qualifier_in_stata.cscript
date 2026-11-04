@@ -115,6 +115,9 @@ def _qs_models(roots):
                 # row, named _clegend_by_*) are keys, not a layer.
                 if str(r.name or "").startswith("_clegend_"):
                     continue
+                # Flipped (WP-43 LT-21): nor a legend-only key proxy.
+                if "dash_key_proxy" in (r.tags or []):
+                    continue
                 if isinstance(r, GlyphRenderer) and type(r.glyph).__name__ == "Scatter":
                     hit = True
                     xs = [float(v) for v in r.data_source.data["rowid"]]
@@ -225,6 +228,10 @@ def _qs_page():
             # WP-30 P1.15c: the by() legend cell's swatch clones (one NaN
             # row, named _clegend_by_*) are keys, not a layer.
             if str(a.get("name") or "").startswith("_clegend_"):
+                continue
+            # Flipped (WP-43 LT-21): nor a legend-only key proxy (tag
+            # dash_key_proxy), which paints a marker key and no row.
+            if "dash_key_proxy" in (a.get("tags") or []):
                 continue
             hit = True
             data = dict((k, v) for k, v in ref(a.get("data_source", {})).get("attributes", {}).get("data", {}).get("entries", []))

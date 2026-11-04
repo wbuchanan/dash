@@ -54,6 +54,7 @@ VSHORT = list(T.translate_lpattern("vshortdash"))
 
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _hex(c):
@@ -65,7 +66,7 @@ def _draw(plots, scheme="stcolor", mode="standalone"):
     if isinstance(plots, dict):
         plots = [plots]
     d = tsr._draw(tp._spec(list(plots), {"scheme": scheme}, {}), mode)
-    rs = [r for f in d.figures for r in f.renderers
+    rs = [r for f in d.figures for r in drawn_renderers(f)
           if isinstance(r, GlyphRenderer)]
     return rs, [m for m in d.warnings if m.startswith("dash")]
 
@@ -318,7 +319,8 @@ class TestAfterAFilterMove:
         doc = lv._served_doc(tmp_path, spec)
 
         def look():
-            [r] = [r for r in doc.select({"type": GlyphRenderer})
+            [r] = [r for r in drawn_renderers(
+                       doc.select({"type": GlyphRenderer}))
                    if type(r.glyph).__name__ == "Scatter"]
             return _hex(r.glyph.fill_color), lv._drawn_served(r)
 
@@ -384,7 +386,7 @@ class TestLegendAndStale:
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
             render_models(r)
-        [line] = [rr for f in r.figures.values() for rr in f.renderers
+        [line] = [rr for f in r.figures.values() for rr in drawn_renderers(f)
                   if isinstance(rr, GlyphRenderer)
                   and type(rr.glyph).__name__ == "Line"]
         assert _hex(line.muted_glyph.line_color) == P3
@@ -617,7 +619,7 @@ _OPTS = ("pstyle", "p", "lstyle", "clstyle", "mstyle", "mlstyle", "astyle",
 
 def _drawn_colours(fig):
     out = set()
-    for r in fig.renderers:
+    for r in drawn_renderers(fig):
         if not isinstance(r, GlyphRenderer):
             continue
         g = r.glyph

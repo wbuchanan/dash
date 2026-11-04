@@ -31,6 +31,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 from conftest import load_app, make_data_json, render_models  # noqa: E402
+from conftest import is_key_proxy  # noqa: E402
 from test_server_layer_defects import _figures_of, make_spec  # noqa: E402
 from test_colorvar_steps import _colour_of, _hex, _rgb  # noqa: E402
 
@@ -145,7 +146,7 @@ def _painted(figs):
         for r in f.renderers:
             g = getattr(r, "glyph", None)
             if g is None or not r.visible or dr._dash_is_swatch(r) \
-                    or str(r.name or "") == "__dash_keyproxy":
+                    or is_key_proxy(r):
                 continue
             kind = type(g).__name__
             if kind in _LINE_GLYPHS:
@@ -239,6 +240,20 @@ _AUTO = pd.DataFrame({
 _AUTO_LABELS = {"mpg": "Mileage (mpg)", "weight": "Weight (lbs.)",
                 "price": "Price", "foreign": "Car origin",
                 "rep78": "Repair record 1978"}
+
+
+def _cv_proxies(fig):
+    """The key proxies of *fig*'s colorvar() layers (42-02's, WP-42
+    CV-7): since WP-43 LT-21 every painted marker key has one, so the
+    plain scatter beside a colorvar layer has its own."""
+    def colorvar(real):
+        if getattr(real, "_dash_cvar", None) is not None:
+            return True
+        fc = getattr(getattr(real, "glyph", None), "fill_color", None)
+        return (fc.get("field") if isinstance(fc, dict)
+                else getattr(fc, "field", None)) is not None
+    return [r for r in fig.renderers if is_key_proxy(r)
+            and colorvar(getattr(r, "_dash_key_for", None))]
 
 
 def _auto_figs(tmp, mode, plots, go=None, df=None, bo=None, ifx=""):
@@ -422,8 +437,9 @@ class TestTheProxySwatch:
         """The proxy draws nothing (NaN coordinates), is in no HoverTool,
         and holds its layer's rows: the layer's source and filter."""
         [fig] = _auto_figs(tmp, mode, _K9)
-        [p] = [r for r in fig.renderers
-               if str(r.name or "") == "__dash_keyproxy"]
+        # Flipped (WP-43 LT-21): the colorvar layer's proxy; the plain
+        # scatter's painted key has its own.
+        [p] = _cv_proxies(fig)
         base = [r for r in fig.renderers
                 if getattr(r, "_dash_key_proxy", None) is p]
         assert len(base) == 1
@@ -470,8 +486,9 @@ class TestTheProxySwatch:
             doc = Document()
             mod.make_document(doc)
             [fig] = _figures_of(doc)
-            prox = [r for r in fig.renderers
-                    if str(r.name or "") == "__dash_keyproxy"]
+            # Flipped (WP-43 LT-21): the colorvar layer's proxy; the
+            # plain scatter's painted key has its own.
+            prox = _cv_proxies(fig)
             assert len(prox) == 1 and _rows(prox[0])
             [w] = [x for x in tp._widgets_of(doc)
                    if type(x).__name__ == "Select"]
@@ -490,11 +507,11 @@ class TestTheProxySwatch:
         panels = [f for f in figs if any(
             str(r.name or "") == "__dash_keyproxy" for r in f.renderers)]
         assert len(panels) == 2
-        [p] = [r for r in panels[0].renderers
-               if str(r.name or "") == "__dash_keyproxy"]
+        # Flipped (WP-43 LT-21): the colorvar layer's proxy; the plain
+        # scatter's painted key has its own.
+        [p] = _cv_proxies(panels[0])
         cbs = p.js_property_callbacks.get("change:visible", [])
         assert cbs, "the proxy's visible is not linked"
         got = dr._dash_by_panel_matches([p], panels)
-        want = [r for f in panels for r in f.renderers
-                if str(r.name or "") == "__dash_keyproxy"]
+        want = [r for f in panels for r in _cv_proxies(f)]
         assert got == want

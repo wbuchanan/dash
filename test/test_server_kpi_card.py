@@ -38,6 +38,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr
 from conftest import make_data_json
+from conftest import drawn_renderers  # noqa: E402
 
 _SEQ = itertools.count()
 _DF = pd.DataFrame({"mpg": [22.0, 18.0, 25.0, 30.0],
@@ -193,8 +194,9 @@ class TestAPlotOfAVariableAgainstItself:
         std.render()                                   # must not raise
         drawn = {}
         for mode, renderers in (
-                ("saved", std.figures["g1"].renderers),
-                ("served", [m for m in _server_doc(tmp_path, spec).models
+                ("saved", drawn_renderers(std.figures["g1"])),
+                ("served", [m for m in drawn_renderers(
+                                _server_doc(tmp_path, spec).models)
                             if isinstance(m, GlyphRenderer)])):
             # Both modes draw the four points on the diagonal: x and y are
             # the one column.

@@ -37,6 +37,7 @@ import test_mode_parity as tp  # noqa: E402
 from test_scheme_resolution import MODES, _draw  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 from probe_groups import probe_params, representative  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 _FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures",
                         "symbol_pattern_truth.json")
@@ -102,7 +103,7 @@ def _sc(**o):
 
 def _drawn(mode, plots, scheme="s2color"):
     d = _draw(tp._spec(plots, {"scheme": scheme}), mode)
-    ms = [r.glyph for r in d.figures[0].renderers
+    ms = [r.glyph for r in drawn_renderers(d.figures[0])
           if isinstance(r, GlyphRenderer) and not dr._dash_is_swatch(r)
           and type(r.glyph).__name__ == "Scatter"]
     return ms, d.warnings

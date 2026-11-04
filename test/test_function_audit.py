@@ -47,6 +47,7 @@ _ATTACH = "if __name__ != '__main__':\n    make_document(curdoc())"
 # ---------------------------------------------------------------------------
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _spec(plots, kpis=None, build_options=None, graph_options=None,
@@ -147,7 +148,7 @@ def _served_cards(doc):
 
 
 def _renderers(figs):
-    return [r for f in figs for r in f.renderers
+    return [r for f in figs for r in drawn_renderers(f)
             if isinstance(r, GlyphRenderer)]
 
 
@@ -839,7 +840,7 @@ class TestAColourKeyDoesNotWidenTheFirstAxis:
         # figure; twoway draws them beside a z axis, in the key cell, a
         # plot of its own, so none can widen the figure's axis.
         assert fig._dash_key_cell is not None, "no colour key was drawn"
-        swatches = [r for r in fig.renderers
+        swatches = [r for r in drawn_renderers(fig)
                     if str(getattr(r, "name", "") or "").startswith(
                         dr._DASH_SWATCH_PREFIX)]
         assert not swatches
@@ -847,7 +848,7 @@ class TestAColourKeyDoesNotWidenTheFirstAxis:
         # ticks (it listed renderers); the swatches are no part of it and
         # the scatter the key belongs to is.
         ext = dr._dash_layer_extent(
-            [r for r in fig.renderers if r not in swatches],
+            [r for r in drawn_renderers(fig) if r not in swatches],
             "y_range_name", "default")
         assert dr._dash_layer_extent(fig.renderers, "y_range_name",
                                      "default") == ext

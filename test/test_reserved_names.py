@@ -59,6 +59,7 @@ _SEQ = itertools.count()
 # ---------------------------------------------------------------------------
 
 from conftest import figure_in, render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _graph(name, **go):
@@ -546,7 +547,7 @@ class TestTheDashPrefix:
         r = DashRenderer(sp, dp)
         render_models(r)
         [fig] = list(r.figures.values())
-        [sc] = [x for x in fig.renderers
+        [sc] = [x for x in drawn_renderers(fig)
                if type(x.glyph).__name__ == "Scatter"]
         # The qualifier keeps rows 0 and 2 (mpg 22.0, 25.0); the column
         # itself never reaches the source.
@@ -584,7 +585,7 @@ class TestTheDashPrefix:
         r = DashRenderer(sp, dp)
         render_models(r)
         [fig] = list(r.figures.values())
-        [renderer] = [x for x in fig.renderers
+        [renderer] = [x for x in drawn_renderers(fig)
                       if type(x.glyph).__name__ == "Scatter"]
         src = renderer.data_source
         assert list(src.data[name]) == values
@@ -603,7 +604,7 @@ class TestTheDashPrefix:
         doc = Document()
         ns["make_document"](doc)
         [sfig] = _figures(doc)
-        [srenderer] = [x for x in sfig.renderers
+        [srenderer] = [x for x in drawn_renderers(sfig)
                        if type(x.glyph).__name__ == "Scatter"]
         assert list(srenderer.data_source.data[name]) == values
 

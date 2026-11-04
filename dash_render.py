@@ -2684,7 +2684,9 @@ def _dash_points_stale_follow(aggs):
                 if not isinstance(leg, Legend):
                     continue
                 for it in leg.items:
-                    if not any(id(x) in ids for x in it.renderers):
+                    # WP-43 LT-21: a painted key holds its layer's proxy.
+                    if not any(id(getattr(x, "_dash_key_for", x)) in ids
+                               for x in it.renderers):
                         continue
                     base = getattr(it, "_dash_stale_base", None)
                     if base is None:
@@ -42602,6 +42604,19 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
             lg.margin = int(chrome.get("legend_boxmargin", 5))
         except (TypeError, ValueError):
             pass
+    # 3c. Marker keys at the marker's size and angle, a legend of markers
+    #     only as wide as its widest (WP-43 LT-21, _dash_key_painter) --
+    #     only on a legend step 8 draws: a key proxy on a legend twoway
+    #     does not draw (one key, off, nodraw) is a renderer, a view and a
+    #     painter in the page for a key nobody sees.  Step 8's rule, read
+    #     here because the box geometry below needs the painted widths.
+    forced_on = bool({"on", "draw"} & _words)
+    turned_off = bool({"off", "nodraw"} & _words) and not forced_on
+    if n_keys is None:
+        n_keys = len(legend.items) if legend is not None else 0
+    show = not (turned_off or (n_keys < 2 and not forced_on))
+    if legend is not None and show:
+        _dash_key_painter(fig, legend)
 
     # 4. Placement (WP-31 D4): twoway's clock table and ring.  The clock is
     #    position(), else the scheme's `clockdir legend_position'; the ring
@@ -42821,11 +42836,7 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     #    and on, applied after, so on and draw win in either order
     #    (_fr_legend_parse_and_log.ado; legend_place_truth.json draw_1,
     #    nodraw_2, on_nodraw, nodraw_on, off_draw, draw_off).
-    forced_on = bool({"on", "draw"} & _words)
-    turned_off = bool({"off", "nodraw"} & _words) and not forced_on
-    if n_keys is None:
-        n_keys = len(legend.items) if legend is not None else 0
-    show = not (turned_off or (n_keys < 2 and not forced_on))
+    #    (forced_on, turned_off and show are read at step 3c.)
     for lg in plot_legends:
         lg.visible = show
     for lg in cv_legends:
@@ -65797,6 +65808,192 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
     return out
 
 
+#: The key painter (WP-43 LT-21, D-43-04.c, ruling D69): the custom
+#: marker (``Scatter.defs``, BokehJS's function form, compiled under the
+#: page's 'unsafe-eval' as every CustomJS is) a key proxy's glyph draws its
+#: legend picture with.  BokehJS draws a legend marker at 0.4 of the key
+#: box and at no angle (``MarkerView._get_legend_args``); this draws it at
+#: the proxy glyph's own ``size`` and ``line_width`` -- the layer's marker
+#: as drawn in the plot, which scale() and the width scale multiply as they
+#: multiply every glyph's -- and at *angle* (msangle()).  Scatter's paint
+#: has already moved the origin to the key box's centre.  It draws nothing
+#: while its layer's own view keeps no row (BokehJS's draw_legend skips a
+#: renderer whose view is empty; the proxy shares the layer's filter, and
+#: this keeps that rule for the layer's view whatever filter copy the
+#: proxy's holds).  Only numbers, fixed names and model references dash
+#: wrote reach its args; it writes no text.
+_DASH_KEY_PAINT_JS = """
+const {ctx, i, visuals} = cb_data;
+const view = real != null ? real.view : null;
+const kept = view != null && view.indices != null ? view.indices.count : 0;
+if (!(kept > 0)) return;
+const num = (v) => (typeof v === "number" ? v
+  : (v != null && typeof v.value === "number" ? v.value : NaN));
+const s = num(cb_obj.size);
+if (!(isFinite(s) && s > 0 && s < 10000)) return;
+const r = s / 2;
+const paint = (fill) => {
+  if (fill) { visuals.fill.apply(ctx, i); visuals.hatch.apply(ctx, i); }
+  visuals.line.apply(ctx, i);
+};
+ctx.save();
+if (angle) ctx.rotate(-angle);
+ctx.beginPath();
+if (mk === "square") {
+  ctx.rect(-r, -r, 2 * r, 2 * r); paint(true);
+} else if (mk === "triangle") {
+  const h = r * Math.sqrt(3), a = h / 3;
+  ctx.moveTo(-r, a); ctx.lineTo(r, a); ctx.lineTo(0, a - h);
+  ctx.closePath(); paint(true);
+} else if (mk === "diamond") {
+  ctx.moveTo(0, r); ctx.lineTo(r / 1.5, 0); ctx.lineTo(0, -r);
+  ctx.lineTo(-r / 1.5, 0); ctx.closePath(); paint(true);
+} else if (mk === "plus") {
+  const a = 3 * r / 8;
+  const xs = [a, a, r, r, a, a, -a, -a, -r, -r, -a, -a];
+  const ys = [r, a, a, -a, -a, -r, -r, -a, -a, a, a, r];
+  for (let j = 0; j < 12; j++) ctx.lineTo(xs[j], ys[j]);
+  ctx.closePath(); paint(true);
+} else if (mk === "x") {
+  const d = r * Math.SQRT1_2;
+  ctx.moveTo(-d, -d); ctx.lineTo(d, d);
+  ctx.moveTo(-d, d); ctx.lineTo(d, -d); paint(false);
+} else if (mk === "dash") {
+  ctx.moveTo(-r, 0); ctx.lineTo(r, 0); paint(false);
+} else {
+  ctx.arc(0, 0, r, 0, 2 * Math.PI, false); paint(true);
+}
+ctx.restore();
+"""
+
+#: The markers the key painter draws (dash's Bokeh marker names, the
+#: shapes of ``OptionTranslator._MARKER_MAP``).
+_DASH_KEY_PAINT_MARKERS = frozenset({
+    "circle", "square", "triangle", "diamond", "plus", "x", "dash"})
+
+
+def _dash_spec_value(v):
+    """The constant of a Bokeh property value *v* -- the number or string
+    itself, or a ``value()`` spec's with no transform -- else None (a
+    field, an expression, a transform)."""
+    if isinstance(v, dict):
+        if set(v) - {"value", "units"}:
+            return None
+        return v.get("value")
+    if any(getattr(v, a, None) is not None for a in ("field", "expr")):
+        return None
+    if type(v).__name__ == "Value":
+        t = getattr(v, "transform", None)
+        if t is not None and type(t).__name__ != "UnspecifiedType" and \
+                repr(t) != "Unspecified":
+            return None
+        return getattr(v, "value", None)
+    return v
+
+
+def _dash_key_painter(fig, legend):
+    """Paint *legend*'s marker keys at the marker's size and angle (WP-43
+    LT-21, D-43-04.c, ruling D69): each renderer of an item whose glyph is
+    a ``Scatter`` of one constant size, marker and angle is keyed by a key
+    proxy in 42-02's form -- a legend-only ``GlyphRenderer`` on the layer's
+    own source and view filter, its coordinates NaN, named
+    ``__dash_keyproxy``, tagged ``["dash_key_proxy", <layer name>]``, its
+    ``visible`` linked to the layer's -- whose ``Scatter`` paints with
+    :data:`_DASH_KEY_PAINT_JS`.  A layer 42-02 already gave a proxy (a
+    colorvar layer) keeps it, its glyph swapped and its colours kept, so no
+    layer has two.  A legend whose keys are all painted markers is as wide
+    as its widest marker (legend_keys_truth.json mk_*, mk_symx: twoway's
+    marker key is its marker's width, whatever symxsize() says), and every
+    key box at least as tall as it.  Returns the number of keys painted."""
+    from bokeh.core.properties import value
+    from bokeh.models import CDSView, CustomJS, GlyphRenderer, Scatter
+    painted, widths, marker_only, seen = 0, [], True, set()
+    for it in list(getattr(legend, "items", None) or ()):
+        rends = list(it.renderers or ())
+        # order(1 2 1) shares one item between its rows: painted once.
+        if not rends or id(it) in seen:
+            continue
+        seen.add(id(it))
+        out, item_markers = [], True
+        for r in rends:
+            real = getattr(r, "_dash_key_for", None) or r
+            # A layer painted in this legend already (lastlabel()'s fresh
+            # item for a repeated key): its one proxy, never a second.
+            done = getattr(real, "_dash_key_proxy", None)
+            if done is not None and getattr(done, "_dash_key_painted",
+                                            False):
+                dg = done.glyph
+                lw = _dash_spec_value(dg.line_width)
+                widths.append(float(dg.size) + (float(lw) if isinstance(
+                    lw, (int, float)) and math.isfinite(lw) else 0.0))
+                out.append(done)
+                continue
+            g = getattr(r, "glyph", None)
+            ok = (isinstance(g, Scatter)
+                  and not getattr(r, "_dash_key_glyph", False)
+                  and not _dash_is_swatch(r)
+                  and str(getattr(g, "angle_units", "rad")) == "rad")
+            size = _dash_spec_value(g.size) if ok else None
+            mk = _dash_spec_value(g.marker) if ok else None
+            ang = _dash_spec_value(g.angle) if ok else None
+            if not (ok and isinstance(size, (int, float))
+                    and not isinstance(size, bool) and math.isfinite(size)
+                    and 0 < size < 10000 and mk in _DASH_KEY_PAINT_MARKERS
+                    and isinstance(ang, (int, float))
+                    and not isinstance(ang, bool)
+                    and math.isfinite(float(ang))):
+                out.append(r)
+                item_markers = False
+                continue
+            props = {}
+            for k in ("fill_color", "fill_alpha", "line_color", "line_alpha",
+                      "line_width", "line_dash", "hatch_pattern",
+                      "hatch_color", "hatch_alpha"):
+                v = _dash_spec_value(getattr(g, k, None))
+                if v is None:
+                    continue
+                props[k] = v
+            cb = CustomJS(code=_DASH_KEY_PAINT_JS, args={
+                "real": real, "mk": str(mk), "angle": float(ang)})
+            glyph = Scatter(x=value(float("nan")), y=value(float("nan")),
+                            size=float(size), marker="@dash_key",
+                            defs={"@dash_key": cb}, **props)
+            if getattr(r, "_dash_key_for", None) is not None:
+                # 42-02's colorvar proxy: its glyph swapped, its colours
+                # (the series colour 42-02 chose) kept.
+                r.glyph = glyph
+                proxy = r
+            else:
+                flt = getattr(getattr(real, "view", None), "filter", None)
+                view = CDSView(filter=flt) if flt is not None else CDSView()
+                proxy = GlyphRenderer(
+                    data_source=real.data_source, glyph=glyph, view=view,
+                    name=_DASH_RP + "_keyproxy",
+                    x_range_name=real.x_range_name,
+                    y_range_name=real.y_range_name,
+                    tags=["dash_key_proxy", str(real.name or "")])
+                fig.renderers = list(fig.renderers) + [proxy]
+                proxy.js_link("visible", real, "visible")
+                proxy._dash_key_for = real
+                real._dash_key_proxy = proxy
+            proxy._dash_key_painted = True
+            lw = props.get("line_width", 0.0)
+            widths.append(float(size) + (float(lw) if isinstance(
+                lw, (int, float)) and math.isfinite(lw) else 0.0))
+            painted += 1
+            out.append(proxy)
+        it.renderers = out
+        marker_only = marker_only and item_markers
+    if painted and marker_only:
+        w = max(1, int(round(max(widths))))
+        legend.glyph_width = w
+        legend.glyph_height = max(int(legend.glyph_height or 1), w)
+    elif widths:
+        legend.glyph_height = max(int(legend.glyph_height or 1),
+                                  int(math.ceil(max(widths))))
+    return painted
+
+
 def _dash_legend_entries(plot_renderers, var_labels=None,
                          default_level=None):
     """``[(key_text, [renderer, ...]), ...]`` for one figure's layers: the
@@ -74270,7 +74467,10 @@ class DashRenderer:
                 its = []
                 for leg in legends:
                     for it in leg.items:
-                        if not any(id(x) in ids for x in it.renderers):
+                        # WP-43 LT-21: a painted key holds its layer's
+                        # proxy (_dash_key_painter).
+                        if not any(id(getattr(x, "_dash_key_for", x)) in ids
+                                   for x in it.renderers):
                             continue
                         lab = it.label
                         if isinstance(lab, dict):
@@ -75458,6 +75658,8 @@ class ServerAppBuilder:
                       "_DASH_LEGEND_REGION_NAMES", "_DASH_KEY_STYLE_OPTS",
                       "_DASH_LEGEND_KEY_ALIGN", "_DASH_LEGENDSTYLES",
                       "_DASH_KEY_VIEW_TYPE",
+                      # WP-43 LT-21: the key painter.
+                      "_DASH_KEY_PAINT_JS", "_DASH_KEY_PAINT_MARKERS",
                       "_DASH_HIST_YTITLES",
                       "_DASH_OPT_VAR_KEYS", "_DASH_PLOT_VAR_KEYS",
                       "_DASH_SWATCH_PREFIX",
@@ -75925,6 +76127,7 @@ class ServerAppBuilder:
                          "_dash_note_hover_unreached",
                          # Stata's legend keying rules.
                          "_dash_legend_key", "_dash_key_style_id",
+                         "_dash_key_painter", "_dash_spec_value",
                          "_dash_legend_entries",
                          "_dash_layer_series", "_dash_function_yname",
                          # twoway's label-or-name rule (WP-29 P0.3).

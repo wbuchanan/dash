@@ -72,6 +72,7 @@ _DF["weight2"] = _DF["weight"] + 300.0
 
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _spec(plots, scheme, go=None, bo=None):
@@ -176,7 +177,7 @@ def _pt(css):
 
 
 def _scatters(fig):
-    return [r for r in fig.renderers
+    return [r for r in drawn_renderers(fig)
             if type(getattr(r, "glyph", None)).__name__ == "Scatter"]
 
 
@@ -1298,7 +1299,7 @@ def _glyph_props(fig):
     return [(type(r.glyph).__name__,
              {k: repr(v) for k, v in r.glyph.properties_with_values(
                  include_defaults=True).items()})
-            for r in fig.renderers if hasattr(r, "glyph")]
+            for r in drawn_renderers(fig) if hasattr(r, "glyph")]
 
 
 class TestEmptyOptionsChangeNothing:

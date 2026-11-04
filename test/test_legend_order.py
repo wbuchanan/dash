@@ -36,6 +36,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
 from conftest import make_data_json, make_spec, load_app  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "text_truth.json")
 _SEQ = itertools.count()
@@ -172,7 +173,13 @@ def _glyph(r):
 
 
 def _scatters(fig):
-    return [r for r in fig.renderers if _glyph(r) == "Scatter"]
+    return [r for r in drawn_renderers(fig) if _glyph(r) == "Scatter"]
+
+
+def _keyed(it):
+    """The layers *it* keys.  Flipped (WP-43 LT-21): a painted marker
+    key holds its layer's legend-only key proxy, which names the layer."""
+    return [getattr(r, "_dash_key_for", r) for r in it.renderers]
 
 
 MODES = ["saved", "served"]
@@ -189,7 +196,7 @@ class TestOrderText:
         want = truth["probes"]["l_order_text"]["keys_in_drawn_order"]
         assert want == ["Group 2", "Three"]
         assert _rows(lg) == want
-        assert lg.items[0].renderers == _scatters(fig)
+        assert _keyed(lg.items[0]) == _scatters(fig)
         assert [_glyph(r) for r in lg.items[1].renderers] == ["Line"]
         assert lg.visible
 
@@ -213,13 +220,13 @@ class TestLabelByNumber:
         assert _rows(lg) == \
             truth["probes"]["l_order_label"]["keys_in_drawn_order"]
         assert _rows(lg) == ["Fitted values", "Data"]
-        assert lg.items[1].renderers == _scatters(fig)
+        assert _keyed(lg.items[1]) == _scatters(fig)
 
     def test_sub_option_order_does_not_matter(self, mode, wd, truth):
         fig, lg = _legend(mode, P2, 'label(1 "Data") order(2 1)', wd)
         assert _rows(lg) == \
             truth["probes"]["l_label_order"]["keys_in_drawn_order"]
-        assert lg.items[1].renderers == _scatters(fig)
+        assert _keyed(lg.items[1]) == _scatters(fig)
 
     def test_order_text_beats_label(self, mode, wd, truth):
         _, lg = _legend(mode, P2, 'order(1 "O") label(1 "L")', wd)
@@ -313,8 +320,8 @@ class TestKeysAreNumberedByPlot:
         assert _rows(lg) == \
             truth["probes"]["l_ci_order_last"]["keys_in_drawn_order"]
         sc = _scatters(fig)
-        assert lg.items[0].renderers == [sc[-1]]
-        assert lg.items[1].renderers == [sc[0]]
+        assert _keyed(lg.items[0]) == [sc[-1]]
+        assert _keyed(lg.items[1]) == [sc[0]]
         fig, lg = _legend(mode, PC, "order(2 3)", wd)
         assert _rows(lg) == \
             truth["probes"]["l_ci_order_band"]["keys_in_drawn_order"]

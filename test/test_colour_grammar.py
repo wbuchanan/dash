@@ -35,6 +35,7 @@ import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_scheme_resolution import MODES, _draw  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 OT = dr.OptionTranslator
 _FIXTURE = os.path.join(_HERE, "fixtures", "colour_grammar_truth.json")
@@ -430,7 +431,7 @@ class TestTheKpiKeepsItsLeniency:
 # ---------------------------------------------------------------------------
 
 def _glyphs(d, cls):
-    return [r.glyph for f in d.figures for r in f.renderers
+    return [r.glyph for f in d.figures for r in drawn_renderers(f)
             if isinstance(r, GlyphRenderer) and type(r.glyph).__name__ == cls]
 
 

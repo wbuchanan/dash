@@ -63,6 +63,7 @@ _DATA = {
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _render(plot, quiet=True):
@@ -99,7 +100,7 @@ def _drawn(fig):
     and from how many rows of its source."""
     return [(type(r.glyph).__name__,
              max((len(v) for v in r.data_source.data.values()), default=0))
-            for r in fig.renderers]
+            for r in drawn_renderers(fig)]
 
 
 class TestEveryPairedCoordinateTypeDraws:

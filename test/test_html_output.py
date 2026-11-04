@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import warnings  # noqa: E402
 import dash_render  # noqa: E402
 from dash_render import DashRenderer
+from conftest import is_key_proxy  # noqa: E402
 
 
 # ================================================================
@@ -225,7 +226,7 @@ def _figure_layers(html: str) -> list:
             r = resolve(ref)
             attrs = r.get("attributes", {})
             if r.get("name") != "GlyphRenderer" \
-                    or not attrs.get("visible", True):
+                    or not attrs.get("visible", True) or is_key_proxy(r):
                 continue
             src = resolve(attrs.get("data_source")).get(
                 "attributes", {}).get("data", {})

@@ -54,6 +54,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr
 from conftest import make_data_json, load_app, memo_build
+from conftest import drawn_renderers  # noqa: E402
 
 _SEQ = itertools.count()
 
@@ -249,7 +250,7 @@ def _figures_of(doc):
 def glyph_names(figs):
     if not figs:
         return []
-    return [type(r.glyph).__name__ for r in figs[0].renderers
+    return [type(r.glyph).__name__ for r in drawn_renderers(figs[0])
             if getattr(r, "glyph", None) is not None]
 
 
@@ -298,7 +299,7 @@ def drawn_rows(figs):
     if not figs:
         return []
     out = []
-    for r in figs[0].renderers:
+    for r in drawn_renderers(figs[0]):
         src = getattr(r, "data_source", None)
         if src is None:
             continue

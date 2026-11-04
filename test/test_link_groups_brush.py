@@ -36,6 +36,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr
 from conftest import make_data_json
+from conftest import drawn_renderers  # noqa: E402
 from js_runner import requires_node as js_runner_requires_node
 
 _N = 12
@@ -105,7 +106,7 @@ def _served(spec, tmp_path, df=_DF):
 
 
 def _glyph_renderers(fig):
-    return [r for r in fig.renderers
+    return [r for r in drawn_renderers(fig)
             if isinstance(getattr(r, "data_source", None), ColumnDataSource)
             and getattr(r, "glyph", None) is not None]
 

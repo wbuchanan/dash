@@ -27,6 +27,7 @@ import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_scheme_resolution import MODES, _draw  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 with open(os.path.join(_HERE, "fixtures", "colour_width_edges_truth.json"),
           encoding="utf-8") as _fh:
@@ -39,7 +40,7 @@ _CHROME = ("", "none", "#eaf2f3", "#ffffff", "#f0f0f0", "#000000")
 def _glyphs(mode, options, scheme):
     d = _draw(tp._spec([plot_for("lfitci", options)], {"scheme": scheme}),
               mode)
-    return [r.glyph for r in d.figures[0].renderers
+    return [r.glyph for r in drawn_renderers(d.figures[0])
             if isinstance(r, GlyphRenderer) and not dr._dash_is_swatch(r)]
 
 
@@ -138,7 +139,7 @@ def test_every_ciplot_type_is_twoways(mode, scheme, ptype):
             for c in (e[1], e[2]) if c not in _CHROME and c != fit}
     d = _draw(tp._spec([plot_for("lfitci", {"ciplot": ptype})],
                        {"scheme": scheme}), mode)
-    rs = [r for r in d.figures[0].renderers
+    rs = [r for r in drawn_renderers(d.figures[0])
           if isinstance(r, GlyphRenderer) and not dr._dash_is_swatch(r)]
     gs = [r.glyph for r in rs]
     # dot's rows of dots: twoway draws none under ciplot(dot), so dash's

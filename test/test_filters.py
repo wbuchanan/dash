@@ -29,6 +29,7 @@ from bokeh.models import ColumnDataSource, Select, Slider, RangeSlider
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 @pytest.fixture
@@ -1672,7 +1673,7 @@ class _TheLineFilterIsInert(AssertionError):
 class TestFilterReachesTheRenderedSource:
 
     def _sources_behind_glyphs(self, fig):
-        return {id(r.data_source) for r in fig.renderers
+        return {id(r.data_source) for r in drawn_renderers(fig)
                 if hasattr(r, "data_source")}
 
     def _build(self, ptype):
@@ -1739,7 +1740,7 @@ class TestFilterReachesTheRenderedSource:
         targets |= {id(s) for s in cb.args["derived_sources"]}
         [fig] = dr.figures.values()
         if ptype in ("line", "tsline", "connected"):
-            lines = [r for r in fig.renderers
+            lines = [r for r in drawn_renderers(fig)
                      if type(getattr(r, "glyph", None)).__name__ == "Line"]
             assert len(lines) == 1, "the graph draws %d lines" % len(lines)
         rendered = self._sources_behind_glyphs(fig)
@@ -1749,7 +1750,7 @@ class TestFilterReachesTheRenderedSource:
         # on the fill source's data change, and the key swatch draws no
         # row: neither is the filter's to write.
         import dash_render as _dr
-        for r in fig.renderers:
+        for r in drawn_renderers(fig):
             if getattr(r, "_dash_key_glyph", False):
                 rendered.discard(id(r.data_source))
             ring = getattr(r, "_dash_area_ring", None)

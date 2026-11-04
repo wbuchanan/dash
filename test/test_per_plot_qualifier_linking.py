@@ -48,6 +48,7 @@ _N_FOREIGN = int((_DF["foreign"] == 1).sum())
 
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _render(tmp_path, link, plots, second_graph=True, graph_if="", df=None,
@@ -84,7 +85,7 @@ def _render(tmp_path, link, plots, second_graph=True, graph_if="", df=None,
 
 
 def _glyphs(fig):
-    return [ren for ren in fig.renderers if getattr(ren, "glyph", None)]
+    return [ren for ren in drawn_renderers(fig) if getattr(ren, "glyph", None)]
 
 
 def _visible(renderer):

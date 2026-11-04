@@ -32,12 +32,13 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
 from test_varlabel_options import T, MODES, ado_text, figs, sc  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _marker_angles(fs):
     out = []
     for f in fs:
-        for r in f.renderers:
+        for r in drawn_renderers(f):
             g = getattr(r, "glyph", None)
             if type(g).__name__ == "Scatter":
                 a = g.angle

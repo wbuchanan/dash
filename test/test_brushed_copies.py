@@ -36,6 +36,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
 from test_size_units import _build, _figure, _sc  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 _MODES = ("saved", "served")
 _SKIP = {"decorations", "defs"}
@@ -84,7 +85,7 @@ def _assert_same(glyph, copy, what=""):
 
 
 def _renderers(fig):
-    return [r for r in fig.renderers if isinstance(r, GlyphRenderer)]
+    return [r for r in drawn_renderers(fig) if isinstance(r, GlyphRenderer)]
 
 
 def _copies(r):

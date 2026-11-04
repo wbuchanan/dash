@@ -53,6 +53,7 @@ from test_adversarial_matrix import (_DF, _SCATTER, _app_source, _load_app,
                                      _session, _unthrottled, _write_inputs)
 from test_csp import _file_context
 from test_server_layer_defects import plot_for
+from conftest import drawn_renderers  # noqa: E402
 
 _SEQ = itertools.count()
 
@@ -953,7 +954,7 @@ class TestALinkedFigureDimsAlike:
         figs = {f.title.text: f for f in doc.select({"type": figure})}
         for gname in ("g1", "g2"):
             seen = False
-            for r in figs[gname].renderers:
+            for r in drawn_renderers(figs[gname]):
                 ns = getattr(r, "nonselection_glyph", None)
                 if ns is None:
                     continue
@@ -964,7 +965,7 @@ class TestALinkedFigureDimsAlike:
                     assert ns.line_alpha == dr._NONSELECTION_ALPHA
             assert seen, gname
         seen = False
-        for r in figs["g3"].renderers:
+        for r in drawn_renderers(figs["g3"]):
             ns = getattr(r, "nonselection_glyph", None)
             if ns is None:
                 continue
@@ -1032,13 +1033,13 @@ class TestALinkedRangeLayerDrawsTheGroupsSource:
         doc = _served(tmp_path, _range_spec())
         figs = {f.title.text: f for f in doc.select({"type": figure})}
         g1, g2 = figs["g1"], figs["g2"]
-        g2_scatter = next(r for r in g2.renderers
+        g2_scatter = next(r for r in drawn_renderers(g2)
                           if type(r.glyph).__name__ == "Scatter")
-        seg = next(r for r in g1.renderers
+        seg = next(r for r in drawn_renderers(g1)
                   if type(r.glyph).__name__ == "Segment")
-        scatters = [r for r in g1.renderers
+        scatters = [r for r in drawn_renderers(g1)
                    if type(r.glyph).__name__ == "Scatter"]
-        lines = [r for r in g1.renderers if type(r.glyph).__name__ == "Line"]
+        lines = [r for r in drawn_renderers(g1) if type(r.glyph).__name__ == "Line"]
         assert len(scatters) == 2 and len(lines) == 2
         assert seg.data_source is g2_scatter.data_source
         assert all(s.data_source is g2_scatter.data_source for s in scatters)
@@ -1049,7 +1050,7 @@ class TestALinkedRangeLayerDrawsTheGroupsSource:
         from bokeh.models import IndexFilter
         doc = _served(tmp_path, _range_spec(g1_if="foreign==1"))
         figs = {f.title.text: f for f in doc.select({"type": figure})}
-        seg = next(r for r in figs["g1"].renderers
+        seg = next(r for r in drawn_renderers(figs["g1"])
                   if type(r.glyph).__name__ == "Segment")
         assert seg.view is not None
         assert isinstance(seg.view.filter, IndexFilter)
@@ -1064,7 +1065,7 @@ class TestALinkedRangeLayerDrawsTheGroupsSource:
         spec["build_options"]["filter"] = "foreign, type(dropdown)"
         doc = _served(tmp_path, spec)
         figs = {f.title.text: f for f in doc.select({"type": figure})}
-        seg = next(r for r in figs["g1"].renderers
+        seg = next(r for r in drawn_renderers(figs["g1"])
                   if type(r.glyph).__name__ == "Segment")
         shared = seg.data_source
         sel = next(iter(doc.select({"type": Select})))

@@ -42,6 +42,7 @@ from test_mode_parity import (_DF, _fire, _served, _spec,  # noqa: E402
 from test_saved_filter_layers import _MOVES, _render  # noqa: E402
 from test_saved_stale_cue import _act, _one_cue, _text  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 _ROOT = os.path.dirname(_HERE)
 _FIX = os.path.join(_HERE, "fixtures", "fit_options_truth.json")
@@ -68,10 +69,10 @@ def _layer(mode, plots, bo=None):
     else:
         doc, w = _served(spec)
         figs = [m for m in doc.models if isinstance(m, Plot)
-                and any(isinstance(x, GlyphRenderer) for x in m.renderers)]
+                and any(isinstance(x, GlyphRenderer) for x in drawn_renderers(m))]
         assert len(figs) == 1, len(figs)
         fig = figs[0]
-    rends = [x for x in fig.renderers if isinstance(x, GlyphRenderer)]
+    rends = [x for x in drawn_renderers(fig) if isinstance(x, GlyphRenderer)]
     labels = [_text(i.label) for side in (fig.center, fig.above, fig.below,
                                           fig.left, fig.right)
               for L in side if isinstance(L, Legend) for i in L.items]
@@ -120,7 +121,7 @@ class TestAtobs:
         # The saved page's refit reads cfg.atobs (S16's dash_fit_grid).
         for opts, want in (({"atobs": "atobs"}, True), ({}, False)):
             r, _ = _standalone(_spec([plot_for(t, opts)]))
-            tagged = [x for x in r.figures["g1"].renderers
+            tagged = [x for x in drawn_renderers(r.figures["g1"])
                       if hasattr(x, "_dash_agg_config")]
             assert tagged, t
             assert tagged[0]._dash_agg_config["atobs"] is want
@@ -258,7 +259,7 @@ class TestEstoptsPoints:
     def test_saved_page_marks_it_frozen(self, t):
         r = _render(_spec([plot_for("scatter"), _pts_plot(t)],
                           {"filter": _MOVES[0][1]}))
-        rends = list(r.figures["g1"].renderers[1:])
+        rends = drawn_renderers(r.figures["g1"])[1:]
         assert rends
         for x in rends:
             assert not hasattr(x, "_dash_agg_config")
@@ -286,8 +287,8 @@ class TestEstoptsPoints:
             _fire(sel[0], raw)
             _fire(sel[0], raw)
         figs = [m for m in doc.models if isinstance(m, Plot)
-                and any(isinstance(x, GlyphRenderer) for x in m.renderers)]
-        lines = [x for x in figs[0].renderers
+                and any(isinstance(x, GlyphRenderer) for x in drawn_renderers(m))]
+        lines = [x for x in drawn_renderers(figs[0])
                  if type(getattr(x, "glyph", None)).__name__ == "Line"]
         assert _ys(lines[-1]) == _PTS["y"]
         # Flipped (WP-32, BUGS.md "Found by the runtime-notes parity

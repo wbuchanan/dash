@@ -686,7 +686,14 @@ _SAVED_DIGEST = (
     # JS gives the old digest on the new tree).
     # 07fa8f4b... -> b5d0411e...: WP-43 LT-10, the width scale's pair
     # kind takes a legend's four-sided padding (code only, as above).
-    "b5d0411ea1f74e0b865307eafb3a99cf35128055941fcf5670ab4c879f48db30")
+    # b5d0411e... -> 73854c60...: WP-43 LT-21, the scatter's legend key is
+    # painted at its marker's size: its key proxy (a GlyphRenderer on the
+    # layer's source and filter, NaN coordinates, its visible linked),
+    # whose Scatter draws through _DASH_KEY_PAINT_JS, held by the legend
+    # item and scaled by the post-pass; with the painter stubbed out the
+    # tree gives the old digest (masked model diff: nothing else
+    # differs); the same under both Pythons.
+    "73854c60cee2e71d42e8a8eee8af9f872118260d6d188e17ae30645b502f955a")
 
 
 # ===========================================================================

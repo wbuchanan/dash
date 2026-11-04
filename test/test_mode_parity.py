@@ -173,6 +173,7 @@ ALLOWED = {
 
 
 from conftest import render_models, trial_by_blocks  # noqa: E402
+from conftest import is_key_proxy  # noqa: E402
 
 
 def _allowed(key):
@@ -439,7 +440,7 @@ def _glyph_profile(fig):
         if g is None:
             continue
         # WP-42 CV-7: legend-only proxies draw nothing
-        if str(getattr(r, "name", "") or "") == "__dash_keyproxy":
+        if is_key_proxy(r):
             continue
         entry = {"type": type(g).__name__, "visible": r.visible}
         # WP-28 E14: a linked figure's nonselection alpha, and whether this

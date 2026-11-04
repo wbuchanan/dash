@@ -40,6 +40,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 import dash_render as dr  # noqa: E402
 from dash_render import SchemeParser  # noqa: E402
 from conftest import make_data_json, load_app  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 with open(os.path.join(_HERE, "fixtures", "ci_plot_index_truth.json"),
           encoding="utf-8") as _fh:
@@ -303,7 +304,7 @@ _DRAWS = {"scatter": [("Scatter", "scatter")], "line": [("Line", "line")],
 
 def _drawn(fig, glyph):
     out = []
-    for r in fig.renderers:
+    for r in drawn_renderers(fig):
         g = getattr(r, "glyph", None)
         if type(g).__name__ != glyph:
             continue
@@ -356,7 +357,7 @@ class TestBothModes:
         types = ["scatter"] * 13 + ["lfitci", "line"]
         plots = [_layer(t, k) for k, t in enumerate(types)]
         fig = _figure(mode, wd, plots, "z1")
-        widths = [r.glyph.line_width for r in fig.renderers
+        widths = [r.glyph.line_width for r in drawn_renderers(fig)
                   if type(getattr(r, "glyph", None)).__name__ == "Line"]
         tr = dr.OptionTranslator.translate_lwidth
         assert widths == [tr("thick"), tr("vthick")], widths
@@ -367,7 +368,7 @@ class TestBothModes:
         plots = [_layer(t, k) for k, t in
                  enumerate(["scatter", "lpolyci", "scatter"])]
         fig = _figure(mode, wd, plots, "s1mono")
-        marks = [r.glyph.marker for r in fig.renderers
+        marks = [r.glyph.marker for r in drawn_renderers(fig)
                  if type(getattr(r, "glyph", None)).__name__ == "Scatter"]
         sp = SchemeParser("s1mono")
         assert marks == [sp.default_symbol(0), sp.default_symbol(3)], marks

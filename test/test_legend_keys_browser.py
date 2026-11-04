@@ -170,3 +170,81 @@ class TestKeyOrderInChrome:
         ends = {round(it["text"][2]) for it in col["items"]}
         lefts = {round(it["canvas"][0]) for it in col["items"]}
         assert max(ends) - min(ends) <= 1 and len(lefts) == 1, col
+
+
+#: Each series legend's keys' inked pixel counts before and after the
+#: page's dropdown is moved to TARGET.
+_MOVE_JS = r"""
+<script>
+addEventListener('load', () => setTimeout(() => {
+  const ink = (c) => { const x = c.getContext('2d'); const W = c.width, H = c.height;
+    if (!W || !H) return null; const d = x.getImageData(0, 0, W, H).data;
+    let n = 0; for (let k = 3; k < d.length; k += 4) if (d[k] > 60) n++; return n; };
+  const find = () => { const L = []; const visit = (v) => { if (!v) return;
+    if (v.frame && v.renderer_views) for (const [m, rv] of v.renderer_views)
+      if (m.type === 'Legend' && m.visible && rv.grid_el && m.name !== 'dash_colorvar_legend') L.push(rv);
+    for (const c of (v.child_views || [])) visit(c); };
+    ((typeof Bokeh.index[Symbol.iterator] === 'function') ? [...Bokeh.index] : Object.values(Bokeh.index)).forEach(visit); return L; };
+  const read = () => find().map(rv => [...rv.grid_el.children].map(e => ink(e.querySelector('canvas'))));
+  const before = read();
+  let sel = null;
+  for (const doc of Bokeh.documents) for (const m of doc.all_models) if (m.type === 'Select') sel = m;
+  const opts = sel ? sel.options.map(o => Array.isArray(o) ? o : [o, o]) : [];
+  const o = opts.find(o => o[1] === TARGET) || opts[opts.length - 1];
+  if (sel) sel.value = String(o[0]);
+  // Each legend's keys painted again after the move (headless Chrome
+  // runs no animation frame for the page's own repaint).
+  setTimeout(() => find().forEach((rv) => rv._paint_glyphs()), 300);
+  setTimeout(() => parent.postMessage('DASHPROBE' + JSON.stringify({W: innerWidth, before, after: read(), opts}), '*'), 1500);
+}, 3000));
+</script>"""
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestMarkerKeysInChrome:
+
+    def test_size(self, mode):
+        """Each marker key's ink is twoway's marker width in text sizes
+        (s2color 0.527, msize(large) 0.787: mk_s2color, mk_large), and a
+        legend of markers only is as wide as its marker (its key canvas
+        within a pixel of the ink); a legend with a line keeps symxsize
+        (mk_line).  No CSP violation."""
+        legs, viol = _legends(mode, [([_sc(), _sc("headroom")], ""),
+                                     ([_sc(msize="large"), _sc("headroom")],
+                                      ""),
+                                     ([_sc(), _ln()], "")])
+        assert viol == []
+        plain, large, mixed = legs
+        for leg, want in ((plain, [0.527, 0.527]), (large, [0.787, 0.527])):
+            for it, w in zip(leg["items"], want):
+                ink = it["ink"]
+                assert ink is not None, it
+                got = (ink[2] - ink[0]) / it["fs"]
+                assert abs(got - w) < 0.08, (it, w)
+            # The keys are as wide as the widest marker.
+            widest = max(it["ink"][2] - it["ink"][0] for it in leg["items"])
+            for it in leg["items"]:
+                cw = it["canvas"][2] - it["canvas"][0]
+                assert abs(cw - widest) <= 1.5, it
+        m = mixed["items"][0]
+        assert (m["canvas"][2] - m["canvas"][0]) / m["fs"] > 3, m
+        assert abs((m["ink"][2] - m["ink"][0]) / m["fs"] - 0.527) < 0.08
+
+
+def test_emptied_layer_draws_no_key():
+    """Saved: after the dropdown move foreign == 0, which leaves the
+    layer `scatter mpg weight if foreign == 1' no row, its painted key is
+    blank and the other layer's is drawn (the painter's early return on
+    its layer's view; served, the redraw's proxy view keeps no row and
+    BokehJS skips it: test_legend_keys.py::TestThePainterScript)."""
+    lay = dict(_sc(), if_expr="foreign == 1")
+    spec = bk._spec([bk._graph("g0", [lay, _sc("headroom")], {},
+                               title=False)], scheme="s2color",
+                    filt="foreign")
+    got = kb._measure("saved", spec,
+                      _MOVE_JS.replace("TARGET", json.dumps("Domestic")))
+    got = got[1400]
+    [before], [after] = got["before"], got["after"]
+    assert before[0] > 50 and before[1] > 50, got
+    assert after[0] <= 0.05 * before[0], got
+    assert after[1] >= 0.9 * before[1], got

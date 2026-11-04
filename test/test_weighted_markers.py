@@ -41,6 +41,7 @@ import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from js_runner import requires_node  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 FIXTURE = os.path.join(HERE, "fixtures", "weighted_markers_truth.json")
 with open(FIXTURE, encoding="utf-8") as _fh:
@@ -186,7 +187,7 @@ def _markers(figs):
     dot rows and colorvar swatches."""
     out = []
     for f in figs:
-        for r in f.renderers:
+        for r in drawn_renderers(f):
             g = getattr(r, "glyph", None)
             if type(g).__name__ != "Scatter":
                 continue
@@ -353,7 +354,7 @@ class TestTheMarkerlessTypes:
                     for m in root.select({"type": Plot})]
         assert not [s for s in said if "weight" in s.lower()], said
         for f in figs:
-            for r in f.renderers:
+            for r in drawn_renderers(f):
                 src = getattr(r, "data_source", None)
                 if src is not None:
                     assert not [c for c in src.data

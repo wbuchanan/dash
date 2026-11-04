@@ -61,6 +61,7 @@ from by_panel_probe import is_chrome, panel_label  # noqa: E402  (WP-30 P1.15a)
 
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _panel_name(fig):
@@ -196,7 +197,7 @@ def _glyph_layers(roots):
     out = []
     for root in roots:
         for fig in root.select({"type": Plot}):
-            out.extend((fig, r) for r in fig.renderers
+            out.extend((fig, r) for r in drawn_renderers(fig)
                        if isinstance(r, GlyphRenderer))
     return out
 
@@ -862,7 +863,7 @@ def test_compute_kdensity_constant_data_returns_empty(dr_module, auto_df):
             figs = [m for m in doc.select({"type": object})
                     if type(m).__name__ == "figure"]
             return [len(r.data_source.data.get("y", ()))
-                    for f in figs for r in f.renderers]
+                    for f in figs for r in drawn_renderers(f)]
         finally:
             for _p in (spec_path, data_path, out_f.name):
                 try: os.unlink(_p)
@@ -1471,7 +1472,7 @@ class TestServerLinePlotOpts:
         from bokeh.models import GlyphRenderer
 
         def _value(fig):
-            got = [getattr(r.glyph, attr) for r in fig.renderers
+            got = [getattr(r.glyph, attr) for r in drawn_renderers(fig)
                    if isinstance(r, GlyphRenderer)
                    and type(r.glyph).__name__ == glyph]
             assert len(got) == 1, (glyph, got)
@@ -2863,7 +2864,7 @@ class TestServerFitCIFilterRecompute:
             out = {}
             for root in doc.roots:
                 for fig in root.select({"type": Plot}):
-                    for r in fig.renderers:
+                    for r in drawn_renderers(fig):
                         if isinstance(r, GlyphRenderer):
                             out.setdefault(type(r.glyph).__name__, []).append(
                                 {k: [float(x) for x in v]
@@ -3267,7 +3268,7 @@ class TestServerByFaceting:
             app_mod.make_document(doc)
             return {_panel_name(p): [max((len(v) for v in r.data_source.data.values()),
                                        default=0)
-                                   for r in p.renderers
+                                   for r in drawn_renderers(p)
                                    if isinstance(r, GlyphRenderer)]
                     for p in doc.models if isinstance(p, Plot)
                     and not is_chrome(p)}
@@ -3390,7 +3391,7 @@ class TestServerByFaceting:
             for root in roots:
                 for fig in root.select({"type": Plot}):
                     rows = [len(r.data_source.data["weight"])
-                            for r in fig.renderers
+                            for r in drawn_renderers(fig)
                             if isinstance(r, GlyphRenderer)
                             and type(r.glyph).__name__ == "Scatter"]
                     if rows:
@@ -4941,7 +4942,7 @@ def _assert_served_layer_refits(dr_module, df, ptype):
     def _derived(figs):
         out, seen = {}, set()
         for f in figs:
-            for r in f.renderers:
+            for r in drawn_renderers(f):
                 src = getattr(r, "data_source", None)
                 if src is None or id(src) in seen:
                     continue
@@ -5015,7 +5016,7 @@ def _panel_rows_both_modes(dr_module, df, if_expr, in_expr):
         out = []
         for f in figs:
             n = 0
-            for r in f.renderers:
+            for r in drawn_renderers(f):
                 src = getattr(r, "data_source", None)
                 if src is None:
                     continue
@@ -5091,7 +5092,7 @@ def _count_glyph_renderers(doc) -> int:
             return
         visited.add(id(obj))
         if isinstance(obj, Plot):
-            count += sum(1 for r in obj.renderers if hasattr(r, "glyph"))
+            count += sum(1 for r in drawn_renderers(obj) if hasattr(r, "glyph"))
             return  # don't recurse into figure renderers
         if isinstance(obj, GridPlot):
             for item in obj.children:
@@ -5621,7 +5622,7 @@ def _ql_scatter(roots):
     found = []
     for root in roots:
         for fig in root.select({"type": Plot}):
-            for r in fig.renderers:
+            for r in drawn_renderers(fig):
                 if (isinstance(r, GlyphRenderer)
                         and type(r.glyph).__name__ == "Scatter"):
                     found.append(r)
@@ -7233,7 +7234,7 @@ class TestBug21ExcludeSemantics:
             for root in doc.roots:
                 for fig in root.select({"type": Plot}):
                     n = [len(r.data_source.data["weight"])
-                         for r in fig.renderers
+                         for r in drawn_renderers(fig)
                          if isinstance(r, GlyphRenderer)
                          and type(r.glyph).__name__ == "Scatter"]
                     if n:
@@ -7546,12 +7547,12 @@ class TestServerFilterPreservesDerivedColumns:
         def _layer():
             found = [r.data_source for root in doc.roots
                      for fig in root.select({"type": Plot})
-                     for r in fig.renderers
+                     for r in drawn_renderers(fig)
                      if isinstance(r, GlyphRenderer)
                      and type(r.glyph).__name__ == "Scatter"
                      # Flipped (WP-42 CV-7): the layer's hidden legend
-                     # proxy shares its source and is not the layer.
-                     and str(r.name or "") != "__dash_keyproxy"
+                     # proxy shares its source and is not the layer
+                     # (drawn_renderers drops it).
                      and column in r.data_source.data]
             assert len(found) == 1, found
             return found[0]
@@ -7671,7 +7672,7 @@ class TestServerFilterPreservesDerivedColumns:
             # This returned green when the widget was missing.  It is built
             # (measured 24sep2026); a missing one is a failure.
             assert fw is not None, "the foreign filter widget was not built"
-            srcs = [m.data_source for m in all_models
+            srcs = [m.data_source for m in drawn_renderers(all_models)
                     if isinstance(m, GlyphRenderer)
                     and type(m.glyph).__name__ == "Scatter"]
             assert len(srcs) == 1, srcs
@@ -7833,7 +7834,7 @@ class TestServerFilterReappliesGraphQualifiers:
                 None,
             )
             assert fw is not None, "the rep78 filter widget was not built"
-            g1_srcs = [m.data_source for m in all_models
+            g1_srcs = [m.data_source for m in drawn_renderers(all_models)
                        if isinstance(m, GlyphRenderer)
                        and type(m.glyph).__name__ == "Scatter"]
             assert len(g1_srcs) == 1, g1_srcs
@@ -7879,7 +7880,7 @@ class TestServerFilterReappliesGraphQualifiers:
         from bokeh.models import GlyphRenderer, Plot
         return sorted(float(v) for root in doc.roots
                       for fig in root.select({"type": Plot})
-                      for r in fig.renderers
+                      for r in drawn_renderers(fig)
                       if isinstance(r, GlyphRenderer)
                       and type(r.glyph).__name__ == "Scatter"
                       for v in r.data_source.data["weight"])
@@ -7950,7 +7951,7 @@ class TestServerFilterReappliesGraphQualifiers:
             out = []
             for root in doc.roots:
                 for fig in root.select({"type": Plot}):
-                    xs = sorted(float(v) for r in fig.renderers
+                    xs = sorted(float(v) for r in drawn_renderers(fig)
                                 if isinstance(r, GlyphRenderer)
                                 and type(r.glyph).__name__ == "Scatter"
                                 for v in r.data_source.data["weight"])
@@ -8068,7 +8069,7 @@ class TestServerFilterReappliesGraphQualifiers:
             (auto_df["price"] >= lo) & (auto_df["price"] <= hi), "weight"])
         drawn = sorted(float(v) for root in doc.roots
                        for fig in root.select({"type": Plot})
-                       for r in fig.renderers
+                       for r in drawn_renderers(fig)
                        if isinstance(r, GlyphRenderer)
                        and type(r.glyph).__name__ == "Scatter"
                        for v in r.data_source.data["weight"])
@@ -8192,7 +8193,7 @@ class TestLinkedGraphQualifierView:
             g2_fig = renderer.figures.get("g2")
             assert g2_fig is not None, "g2 figure must be built"
             # g2 has no qualifier so must not have a boolean-filter view
-            bool_views = [r.view for r in g2_fig.renderers
+            bool_views = [r.view for r in drawn_renderers(g2_fig)
                           if hasattr(r, "view") and r.view is not None
                           and isinstance(r.view, CDSView)
                           and isinstance(getattr(r.view, "filter", None), BooleanFilter)]
@@ -9450,7 +9451,7 @@ class TestDropdownSentinelCollision:
         def _drawn():
             return sorted(float(v) for root in doc.roots
                           for fig in root.select({"type": Plot})
-                          for r in fig.renderers
+                          for r in drawn_renderers(fig)
                           if isinstance(r, GlyphRenderer)
                           and type(r.glyph).__name__ == "Scatter"
                           for v in r.data_source.data["weight"])
@@ -9582,7 +9583,7 @@ class TestServerByTotalFullDispatch:
                     mod.make_document(doc)
                 out = []
                 for f in [m for m in doc.select({"type": object}) if type(m).__name__ == "figure"]:
-                    for r in f.renderers:
+                    for r in drawn_renderers(f):
                         d = getattr(getattr(r, "data_source", None), "data", {})
                         if "y" in d and len(d["y"]):
                             out.append((_panel_name(f), [round(float(v), 6) for v in d["y"]]))

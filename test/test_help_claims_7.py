@@ -45,6 +45,7 @@ sys.path.insert(0, _HERE)
 import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 _MODES = ("saved", "served")
 _TYPES = sorted(dr._dash_plot_type_names())
@@ -112,10 +113,9 @@ def _glyphs(fig):
     test/fixtures/dot_truth.json D23-D26), and not a colorvar layer's
     hidden legend proxy (``__dash_keyproxy``, WP-42 CV-7), which draws no
     rows and keys the layer in its series colour."""
-    return [r for r in fig.renderers
+    return [r for r in drawn_renderers(fig)
             if getattr(r, "glyph", None) is not None
             and not dr._dash_is_swatch(r)
-            and str(getattr(r, "name", None) or "") != "__dash_keyproxy"
             and "dash_dots" not in (getattr(r, "tags", None) or ())]
 
 

@@ -46,6 +46,7 @@ from test_scheme_resolution import each  # noqa: E402
 
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _df(n=30):
@@ -132,7 +133,7 @@ def _served(*, scheme="", layout="auto", kpis=None, title="",
 def _scatter_glyphs(dr):
     out = []
     for fig in dr.figures.values():
-        for r in fig.renderers:
+        for r in drawn_renderers(fig):
             g = getattr(r, "glyph", None)
             if g is not None and type(g).__name__ == "Scatter":
                 out.append(g)
@@ -318,7 +319,7 @@ class TestPerSeriesStyleCycle:
         _, dr = _render(plots, scheme="s2mono")
         dashes = []
         for fig in dr.figures.values():
-            for r in fig.renderers:
+            for r in drawn_renderers(fig):
                 g = getattr(r, "glyph", None)
                 if g is not None and type(g).__name__ == "Line":
                     dashes.append(str(g.line_dash))
@@ -361,7 +362,7 @@ class TestPerSeriesStyleCycle:
         _, dr = _render(plots, scheme="s1mono")
         colours = []
         for fig in dr.figures.values():
-            for r in fig.renderers:
+            for r in drawn_renderers(fig):
                 g = getattr(r, "glyph", None)
                 if g is not None and type(g).__name__ == "Line":
                     colours.append(str(g.line_color).lower())
@@ -730,7 +731,7 @@ class TestNoParsedKeyIsDiscarded:
         served = [f for root in doc.roots for f in root.select({"type": Plot})]
         assert len(served) == 1, served
         for mode, fig in (("saved", dr.figures["g1"]), ("served", served[0])):
-            areas = [r.glyph for r in fig.renderers
+            areas = [r.glyph for r in drawn_renderers(fig)
                      if isinstance(r, GlyphRenderer)
                      and type(r.glyph).__name__ == "VArea"]
             assert [a.fill_alpha for a in areas] == [1.0], (mode, areas)
@@ -1220,7 +1221,7 @@ class TestLinePatternFollowsStatasOwnChain:
         _, dr = _render(plots, scheme="s1mono")
         dashes = []
         for fig in dr.figures.values():
-            for r in fig.renderers:
+            for r in drawn_renderers(fig):
                 g = getattr(r, "glyph", None)
                 if g is not None and type(g).__name__ == "Line":
                     dashes.append(list(g.line_dash))
@@ -1335,7 +1336,7 @@ class TestDirectivesOnlyAUserSchemeCarries:
             pytest.fail("the build drew %r, not the scheme %r"
                         % (dr.scheme.name, scheme))
         fig = dr.figures["g1"]
-        return fig, [r.glyph for r in fig.renderers
+        return fig, [r.glyph for r in drawn_renderers(fig)
                      if type(getattr(r, "glyph", None)).__name__ == "Line"]
 
     @staticmethod
@@ -2115,7 +2116,7 @@ class TestHistogramSchemeOpacity:
         monkeypatch.chdir(tmp_path)
         fig = _both_modes(tmp_path, [{"type": "histogram", "var": "mpg",
                                       "options": {}}], "u41h")[mode]
-        quads = [r.glyph for r in fig.renderers
+        quads = [r.glyph for r in drawn_renderers(fig)
                  if isinstance(getattr(r, "glyph", None), Quad)]
         assert quads
         assert quads[0].fill_color == "#cac27e"

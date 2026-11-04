@@ -46,6 +46,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 import dash_render as dr  # noqa: E402
 from dash_render import SchemeParser  # noqa: E402
 from conftest import make_data_json, load_app  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 with open(os.path.join(_HERE, "fixtures", "linewidth_chain_truth.json"),
           encoding="utf-8") as _fh:
@@ -326,7 +327,7 @@ _LINE_GLYPHS = {"Line", "Segment", "MultiLine", "VBar"}
 def _widths_by_layer(fig):
     """The line widths of the glyphs each of the two layers drew, in
     renderer order; the two layers draw the same glyphs."""
-    ws = [r.glyph.line_width for r in fig.renderers
+    ws = [r.glyph.line_width for r in drawn_renderers(fig)
           if type(getattr(r, "glyph", None)).__name__ in _LINE_GLYPHS]
     assert ws and len(ws) % 2 == 0, ws
     h = len(ws) // 2
@@ -371,7 +372,7 @@ class TestBothModesDrawEachPlotsWidth:
         # WP-31 C1: the heads are a glyph per layer (the arrowline chain).
         (wd / "lwe2e.scheme").write_text(_SCHEME, encoding="utf-8")
         fig = _figure(mode, wd, _layers("pcarrow"), "lwe2e")
-        heads = [r.glyph.line_width for r in fig.renderers
+        heads = [r.glyph.line_width for r in drawn_renderers(fig)
                  if "dash-arrowhead" in (r.tags or [])]
         tr = dr.OptionTranslator.translate_lwidth
         assert set(heads) == {tr("vthick"), tr("thick")}, heads
@@ -527,7 +528,7 @@ def _mk_layers(ptype):
 def _marker_widths(fig, n=3):
     # dot's rows of dots are outlined in linestyle dotmark, no p# marker
     # outline (WP-31 B5b; test/fixtures/dot_truth.json D01, D25).
-    ws = [r.glyph.line_width for r in fig.renderers
+    ws = [r.glyph.line_width for r in drawn_renderers(fig)
           if type(getattr(r, "glyph", None)).__name__ == "Scatter"
           and "dash_dots" not in (getattr(r, "tags", None) or ())]
     assert ws and len(ws) % n == 0, ws
@@ -663,9 +664,9 @@ class TestBothModesDrawVvvthick:
                  {"type": "scatter", "yvar": "y2", "xvar": "x",
                   "options": {"mlwidth": "vvvthick"}}]
         fig = _figure(mode, wd, plots, "s2color")
-        lines = [r.glyph.line_width for r in fig.renderers
+        lines = [r.glyph.line_width for r in drawn_renderers(fig)
                  if type(getattr(r, "glyph", None)).__name__ == "Line"]
-        marks = [r.glyph.line_width for r in fig.renderers
+        marks = [r.glyph.line_width for r in drawn_renderers(fig)
                  if type(getattr(r, "glyph", None)).__name__ == "Scatter"]
         assert lines == [pytest.approx(16.128)] and marks == [
             pytest.approx(16.128)], (lines, marks)

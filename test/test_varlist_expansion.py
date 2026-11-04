@@ -49,6 +49,7 @@ from conftest import make_data_json, make_spec
 # ============================================================
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _render(plots, df, *, graph_if="", graph_in=""):
@@ -81,7 +82,7 @@ def _render(plots, df, *, graph_if="", graph_in=""):
 
 def _glyph_renderers(fig):
     """Return the figure's glyph renderers in draw order."""
-    return [r for r in fig.renderers if getattr(r, "glyph", None) is not None]
+    return [r for r in drawn_renderers(fig) if getattr(r, "glyph", None) is not None]
 
 
 def _series_colors(fig):

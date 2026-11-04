@@ -415,7 +415,8 @@ def _jse_rows(roots):
     for root in roots:
         for fig in root.select({"type": _jse_Plot}):
             for r in fig.renderers:
-                if isinstance(r, _jse_GR) and type(r.glyph).__name__ == "Scatter":
+                # Flipped (WP-43 LT-21): not a legend-only key proxy.
+                if isinstance(r, _jse_GR) and type(r.glyph).__name__ == "Scatter" and "dash_key_proxy" not in (r.tags or []):
                     out.append(max((len(v) for v in r.data_source.data.values()), default=0))
     return out
 
@@ -667,7 +668,8 @@ def _j2_scatter_rows(roots):
     for root in roots:
         for fig in root.select({"type": Plot}):
             for r in fig.renderers:
-                if isinstance(r, GlyphRenderer) and type(r.glyph).__name__ == "Scatter":
+                # Flipped (WP-43 LT-21): not a legend-only key proxy.
+                if isinstance(r, GlyphRenderer) and type(r.glyph).__name__ == "Scatter" and "dash_key_proxy" not in (r.tags or []):
                     out.append(max((len(v) for v in r.data_source.data.values()), default=0))
     return " ".join(str(n) for n in out)
 
@@ -733,6 +735,10 @@ def _j2_page_rows():
             continue
         a = o.get("attributes", {})
         if ref(a.get("glyph", {})).get("name") != "Scatter":
+            continue
+        # Flipped (WP-43 LT-21): not a legend-only key proxy (tag
+        # dash_key_proxy), which paints a marker key and no row.
+        if "dash_key_proxy" in (a.get("tags") or []):
             continue
         data = ref(a.get("data_source", {})).get("attributes", {}).get("data", {})
         n = 0
@@ -1470,6 +1476,10 @@ def _jg_rows():
             continue
         a = o.get("attributes", {})
         if ref(a.get("glyph", {})).get("name") != "Scatter":
+            continue
+        # Flipped (WP-43 LT-21): not a legend-only key proxy (tag
+        # dash_key_proxy), which paints a marker key and no row.
+        if "dash_key_proxy" in (a.get("tags") or []):
             continue
         data = ref(a.get("data_source", {})).get("attributes", {}).get("data", {})
         n = 0

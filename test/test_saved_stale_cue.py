@@ -55,6 +55,7 @@ from test_mode_parity import (_DF, _fire, _served, _spec,  # noqa: E402
                               _layout_tree, _widgets_of)
 from test_saved_filter_layers import _MOVES, _render  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 #: The two layers a saved page computes at build and marks: the bins and
 #: the grid are the build's; every fit is refitted (WP-31 F1a-F1g).
@@ -191,9 +192,12 @@ def _layer_rends(r, key="g1", start=1):
 
 
 def _items_of(fig, rends):
+    # Flipped (WP-43 LT-21): a painted marker key holds its layer's
+    # legend-only key proxy, which names its layer (_dash_key_for).
     ids = {id(x) for x in rends}
     return [i for L in _legends(fig) for i in L.items
-            if any(id(x) in ids for x in i.renderers)]
+            if any(id(getattr(x, "_dash_key_for", x)) in ids
+                   for x in i.renderers)]
 
 
 def _all_models(r):
@@ -275,7 +279,7 @@ class TestTheCueAppearsOnAMove:
         r = _render(_spec([plot_for("scatter"), plot_for(t)],
                           {"filter": filt}))
         _act(r, action)
-        rends = list(r.figures["g1"].renderers[1:])
+        rends = drawn_renderers(r.figures["g1"])[1:]
         assert sorted(type(x.glyph).__name__ for x in rends) == [
             "Line", "Patch", "VArea"]
         assert not any(hasattr(x, "_dash_frozen") for x in rends)
@@ -301,7 +305,7 @@ class TestTheCueAppearsOnAMove:
         r = _render(_spec([plot_for("scatter"), plot_for("lpolyci")],
                           {"filter": filt}))
         f = r.figures["g1"]
-        layer = list(f.renderers[1:])
+        layer = drawn_renderers(f)[1:]
         srcs = [x.data_source for x in layer]
         if not (len(layer) == 3 and len({id(s) for s in srcs}) == 3
                 and {"y_lower", "y_upper"} <= set(srcs[0].data)
@@ -328,7 +332,7 @@ class TestTheCueAppearsOnAMove:
         r = _render(_spec([plot_for("scatter"),
                            plot_for("lpolyci", if_expr="price > 20000")],
                           {"filter": filt}))
-        layer = list(r.figures["g1"].renderers[1:])
+        layer = drawn_renderers(r.figures["g1"])[1:]
         assert len(layer) == 3
         cb = r.filter_callbacks[0]
         for c in json.loads(cb.args.get("stale_configs_json", "[]")):

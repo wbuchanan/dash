@@ -35,6 +35,8 @@ sys.path.insert(0, _HERE)
 import test_mode_parity as mp  # noqa: E402
 from test_abbreviations import _program_body  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
+import dash_render as dr  # noqa: E402
 
 _ADO = os.path.join(_HERE, "..", "dash.ado")
 _MATA = os.path.join(_HERE, "..", "dash_parse.mata")
@@ -163,8 +165,10 @@ def _figures(models):
 def _series(fig):
     """(colour, marker, dashed) of each drawn glyph, in drawing order."""
     out = []
-    for r in fig.renderers:
-        if not isinstance(r, GlyphRenderer):
+    for r in drawn_renderers(fig):
+        # Flipped (WP-43 LT-21): nor by()'s legend-cell swatch clones,
+        # legend-only renderers that copy the painted key's glyph.
+        if not isinstance(r, GlyphRenderer) or dr._dash_is_swatch(r):
             continue
         g = r.glyph
         name = type(g).__name__
@@ -379,7 +383,7 @@ class TestAfterAFilterMove:
 
         def rows():
             return [len(next(iter(r.data_source.data.values())))
-                    for r in figs[0].renderers
+                    for r in drawn_renderers(figs[0])
                     if isinstance(r, GlyphRenderer)]
         n0 = rows()
         sfm._move(doc, "RangeSlider", (2500.0, 4000.0))

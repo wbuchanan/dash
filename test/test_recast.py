@@ -30,6 +30,7 @@ import dash_render as dr  # noqa: E402
 import test_join_order as jo  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "recast_truth.json")
 _HELP = os.path.join(os.path.dirname(_HERE), "dash.sthlp")
@@ -41,7 +42,7 @@ def _truth():
 
 
 def _glyphs(fig):
-    return [type(g.glyph).__name__ for g in fig.renderers]
+    return [type(g.glyph).__name__ for g in drawn_renderers(fig)]
 
 
 # ===========================================================================
@@ -130,7 +131,7 @@ def _points(fig):
     PIC-1): not an area's outline ring, its whole polygon rebuilt from the
     fill's source (A-6), nor its key swatch."""
     out = set()
-    for g in fig.renderers:
+    for g in drawn_renderers(fig):
         if "dash_area_outline" in (g.tags or []) \
                 or getattr(g, "_dash_key_glyph", False):
             continue
@@ -178,7 +179,7 @@ class TestDerivedRecast:
     def test_bar_is_one_unit_wide(self, mode):
         """kdensity, recast(bar): S14's one-x-unit bar."""
         fig = _figs(mode, True)[[t for t, _, _ in _DERIVED].index("kdensity")]
-        bars = [g.glyph for g in fig.renderers
+        bars = [g.glyph for g in drawn_renderers(fig)
                 if type(g.glyph).__name__ == "VBar"]
         assert bars and all(float(b.width) == 1.0 for b in bars)
 

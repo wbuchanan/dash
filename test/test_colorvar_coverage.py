@@ -51,6 +51,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 from conftest import load_app, make_data_json, render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 from js_runner import requires_node, run_js  # noqa: E402
 from test_server_layer_defects import (_figures_of, make_spec,  # noqa: E402
                                        plot_for)
@@ -170,11 +171,10 @@ def _key_level_colour(fig, v):
 def _plot_renderers(fig):
     """The renderers a layer draws: the colour key's invisible swatches
     are left out."""
-    return [r for r in fig.renderers
+    # WP-42 CV-7: legend-only proxies draw nothing (drawn_renderers)
+    return [r for r in drawn_renderers(fig)
             if not str(getattr(r, "name", "") or "").startswith(
-                dr._DASH_SWATCH_PREFIX)
-            # WP-42 CV-7: legend-only proxies draw nothing
-            and str(getattr(r, "name", "") or "") != "__dash_keyproxy"]
+                dr._DASH_SWATCH_PREFIX)]
 
 
 # ---------------------------------------------------------------------------

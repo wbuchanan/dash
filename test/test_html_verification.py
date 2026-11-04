@@ -34,6 +34,7 @@ from dash_render import DashRenderer, GlyphMapper, OptionTranslator
 from bokeh.document import Document
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, GlyphRenderer
+from conftest import drawn_renderers, drawn_page_models  # noqa: E402
 
 
 # ============================================================
@@ -147,8 +148,7 @@ def _layers(fig) -> list:
     layer is three "Scatter" objects in the JSON (measured 24sep2026).
     """
     # WP-42 CV-7: legend-only proxies draw nothing
-    return [r for r in fig.renderers if isinstance(r, GlyphRenderer)
-            and str(getattr(r, "name", "") or "") != "__dash_keyproxy"]
+    return [r for r in drawn_renderers(fig) if isinstance(r, GlyphRenderer)]
 
 
 def _spec_value(v):
@@ -637,7 +637,7 @@ class TestColorvar:
         assert len(cells) == 1, f"{len(cells)} key cells"
         mapped = _layers(fig)[0].glyph.fill_color
         tr = getattr(mapped, "transform", None)
-        [sw] = [r for r in cells[0].renderers
+        [sw] = [r for r in drawn_renderers(cells[0])
                 if "c" in getattr(r.data_source, "data", {})]
         cols = list(sw.data_source.data["c"])
         assert cols and cols == list(tr.palette)[:len(cols)]
@@ -716,7 +716,10 @@ class TestDualAxisJsonVerification:
              "options": {"yaxis": "2"}},
         ])
         model = _bokeh_model_json(html)
-        scatters = _find_type(model, "Scatter")
+        # Not the legend-only key proxies' own Scatter models (WP-43
+        # LT-21): they draw the legend's keys, not a layer.
+        drawn = {id(d) for d in drawn_page_models(_walk_json(model))}
+        scatters = [d for d in _find_type(model, "Scatter") if id(d) in drawn]
         # Exactly three per layer (glyph, nonselection, muted): the floor
         # of 2 this was is met by ONE scatter layer, which writes three,
         # so the secondary layer could be missing (measured 24sep2026:

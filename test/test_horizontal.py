@@ -63,6 +63,7 @@ def _opts(t, extra=None):
 
 
 from conftest import group_by_params  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 #: Every test of one mode reads that mode's one build (``_pairs``): on one
 #: worker it is built once.
@@ -203,7 +204,7 @@ class TestEveryTurnedTypeIsMapped:
         the property map."""
         bad = []
         for t, (up, _h) in _pairs("saved").items():
-            for r in up.renderers:
+            for r in drawn_renderers(up):
                 for s in _SLOTS:
                     m = getattr(r, s, None)
                     if hasattr(m, "properties_with_values") and \
@@ -278,7 +279,7 @@ class TestHorizontalIsTheTranspose:
                     (hz.yaxis[0].axis_label, hz.xaxis[0].axis_label):
                 bad.append((t, "titles"))
             if any(type(r.glyph).__name__ in ("VBar", "VArea")
-                   for r in hz.renderers):
+                   for r in drawn_renderers(hz)):
                 bad.append((t, "upright glyph left"))
         assert not bad, bad
 
@@ -303,12 +304,12 @@ class TestSwatchesAreSkipped:
                   dict(c._dash_keycell["axis"].major_label_overrides or {}))
                  for c in cells]
         assert state[0] == state[1]
-        sw = [[_props(r.glyph) for r in c.renderers] for c in cells]
+        sw = [[_props(r.glyph) for r in drawn_renderers(c)] for c in cells]
         assert sw[0] and _spec_eq(sw[0], sw[1])
         keys = [[type(a).__name__ for a in list(f.right) + list(f.center)
                  if type(a).__name__ in ("Legend", "ColorBar")] for f in figs]
         assert keys == [[], []]
-        assert {type(r.glyph).__name__ for r in figs[1].renderers
+        assert {type(r.glyph).__name__ for r in drawn_renderers(figs[1])
                 if not dr._dash_is_swatch(r)} == {"Scatter"}
 
 
@@ -470,7 +471,7 @@ class TestTheAxesFollowTheLayer:
         """``(scatter y x) (bar y x, horizontal yaxis(2))``: the bar is on
         y2, whose range spans the bar's x values."""
         fig = _drawn(mode)["HZ-28"]
-        bars = [r for r in fig.renderers
+        bars = [r for r in drawn_renderers(fig)
                 if type(r.glyph).__name__ == "HBar"]
         assert bars and all(r.y_range_name == "y2" for r in bars)
         rng = fig.extra_y_ranges["y2"]
@@ -494,7 +495,7 @@ class TestTheHullSeesTransposedGlyphs:
         fig = jo._saved_figs(r)[0]
         plan = dr._dash_axis_plan({"g1": fig}, {})
         text = plan[0]
-        hb = [g for g in fig.renderers if type(g.glyph).__name__ == "HBar"]
+        hb = [g for g in drawn_renderers(fig) if type(g.glyph).__name__ == "HBar"]
         assert hb
         bs = dr._dash_base_spec(hb[0])
         assert bs and bs["letter"] == "x" and bs["prop"] == "left"

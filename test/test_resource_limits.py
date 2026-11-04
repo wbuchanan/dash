@@ -179,8 +179,10 @@ print("RETURNED")
 _SERVED_PROBE = r'''
 import importlib.util, json, math, sys, warnings
 sys.path.insert(0, %r)
+sys.path.insert(0, %r)
 from bokeh.document import Document
 from bokeh.models import GlyphRenderer
+from conftest import drawn_renderers
 ms = importlib.util.spec_from_file_location("_rl_served_probe", %r)
 mod = importlib.util.module_from_spec(ms)
 with warnings.catch_warnings():
@@ -191,7 +193,7 @@ with warnings.catch_warnings(record=True) as caught:
     warnings.simplefilter("always")
     mod.make_document(doc)
 drawn = []
-for m in doc.models:
+for m in drawn_renderers(doc.models):
     if isinstance(m, GlyphRenderer):
         data = m.data_source.data
         ys = data.get(m.glyph.y, []) if isinstance(m.glyph.y, str) else []
@@ -389,7 +391,8 @@ class TestTheServedAppHasTheSameBounds:
         try:
             p = subprocess.run(
                 [sys.executable, "-c", _SERVED_PROBE % (
-                    os.path.abspath(os.path.join(_HERE, "..")), str(ap))],
+                    os.path.abspath(os.path.join(_HERE, "..")),
+                    os.path.abspath(_HERE), str(ap))],
                 capture_output=True, text=True, timeout=60)
         except subprocess.TimeoutExpired:
             pytest.fail("the served app did not return within 60s from "
@@ -437,6 +440,7 @@ from bokeh.models import RangeSlider, Select
 
 sys.path.insert(0, _HERE)
 from conftest import exec_app, make_data_json  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 _SEQ = itertools.count(1)
 
@@ -862,7 +866,8 @@ class TestADropdownOnAContinuousVariable:
         assert not list(doc.select({"type": Select}))
         assert _named(built, "filter(x) has 12 distinct values",
                       "type(range)")
-        scatters = [r for r in doc.select({"type": GlyphRenderer})
+        scatters = [r for r in drawn_renderers(
+                        doc.select({"type": GlyphRenderer}))
                     if type(r.glyph).__name__ == "Scatter"]
         assert len(scatters) == 1, scatters
         data = scatters[0].data_source.data

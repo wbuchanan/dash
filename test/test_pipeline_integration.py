@@ -30,6 +30,7 @@ from bokeh.plotting import figure
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _make_data_json(columns: dict) -> dict:
@@ -704,7 +705,7 @@ class TestEdgeCaseData:
         """``[(glyph type, rows)]`` for every renderer of the one graph."""
         assert list(dr.figures) == ["g1"], list(dr.figures)
         out = []
-        for r in dr.figures["g1"].renderers:
+        for r in drawn_renderers(dr.figures["g1"]):
             data = r.data_source.data
             out.append((type(r.glyph).__name__,
                         max((len(v) for v in data.values()), default=0)))
@@ -837,7 +838,7 @@ class TestEdgeCaseData:
                 values=values or self._CONST_X,
                 varnames=varnames or ["mpg", "weight"])
         line = band = None
-        for r in dr.figures["g1"].renderers:
+        for r in drawn_renderers(dr.figures["g1"]):
             if type(r.glyph).__name__ == "Line":
                 line = r.data_source.data
             elif type(r.glyph).__name__ == "VArea":

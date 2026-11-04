@@ -36,6 +36,7 @@ sys.path.insert(0, _HERE)
 import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import make_spec, plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 #: A non-ASCII scatter (yvar größe, price's values) and by/colorvar's own
 #: binary variable renamed ausländisch (foreign's values).
@@ -155,16 +156,14 @@ class TestColorvarOnAUnicodeName:
         r, saved_w = tp._standalone(spec)
         [fig] = list(r.figures.values())
         # Flipped (WP-42 CV-7): not the layer's hidden legend proxy.
-        [sc] = [rr for rr in fig.renderers
-               if type(rr.glyph).__name__ == "Scatter"
-               and str(rr.name or "") != "__dash_keyproxy"]
+        [sc] = [rr for rr in drawn_renderers(fig)
+               if type(rr.glyph).__name__ == "Scatter"]
         assert self._has_mapper(sc)
         doc, served_w = tp._served(spec)
         from bokeh.plotting import figure as _fig
         [sfig] = [f for root in doc.roots for f in root.select({"type": _fig})]
-        [ssc] = [rr for rr in sfig.renderers
-                if type(rr.glyph).__name__ == "Scatter"
-                and str(rr.name or "") != "__dash_keyproxy"]
+        [ssc] = [rr for rr in drawn_renderers(sfig)
+                if type(rr.glyph).__name__ == "Scatter"]
         assert self._has_mapper(ssc)
 
 

@@ -67,6 +67,7 @@ _LABEL_NAMES = {"foreign": "origin"}
 
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _write(tmp_path, spec, df=_DF):
@@ -135,7 +136,7 @@ def _label_of(item):
 
 def panel_profile(fig):
     rows = []
-    for r in fig.renderers:
+    for r in drawn_renderers(fig):
         src = getattr(r, "data_source", None)
         if src is None:
             continue
@@ -155,7 +156,7 @@ def panel_profile(fig):
         # Flipped (WP-30 P1.15a): the panel's title held its label; twoway
         # draws the label as a row of its own (by_panel_probe).
         "title": panel_label(f),
-        "glyphs": [type(r.glyph).__name__ for r in f.renderers
+        "glyphs": [type(r.glyph).__name__ for r in drawn_renderers(f)
                    if getattr(r, "glyph", None) is not None],
         "rows": rows,
         "hover": sorted(json.dumps(list(t.tooltips), default=str)
@@ -230,7 +231,7 @@ class TestEveryTypeFacetsTheSameWayInBothModes:
         assert len(figs) == 2, "by(foreign) should give two panels"
         for f in figs:
             assert any(getattr(r, "glyph", None) is not None
-                       for r in f.renderers), (
+                       for r in drawn_renderers(f)), (
                 "%s: %s panel %r has no glyph" % (ptype, mode, f.title.text))
         assert not [w for w in warns if "no glyph mapper" in w], warns
 
@@ -393,7 +394,7 @@ class TestAServedComputedLayerRecomputesWhenAFilterMoves:
         out = {}
         seen = set()
         for f in figs:
-            for r in f.renderers:
+            for r in drawn_renderers(f):
                 src = getattr(r, "data_source", None)
                 # Flipped (WP-34 PIC-1): an area's key swatch is one NaN
                 # row drawn for the legend, no layer's data.

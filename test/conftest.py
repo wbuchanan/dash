@@ -701,6 +701,94 @@ def figure_in(model):
     return model
 
 
+#: The tag every legend-only key proxy carries (WP-42 CV-7, WP-43 LT-21):
+#: a ``GlyphRenderer`` on its layer's source and view filter, coordinates
+#: NaN, named ``__dash_keyproxy``, which draws its layer's legend key and
+#: nothing in the plot.
+KEY_PROXY_TAG = "dash_key_proxy"
+KEY_PROXY_NAME = "__dash_keyproxy"
+
+#: A key proxy's own parts in the page's JSON: what it alone holds.
+_KEY_PROXY_PARTS = ("glyph", "selection_glyph", "nonselection_glyph",
+                    "hover_glyph", "muted_glyph", "view")
+
+
+def is_key_proxy(r):
+    """Whether *r* -- a renderer model, or a renderer's model dict in the
+    page's JSON -- is a legend-only key proxy (tag ``dash_key_proxy`` or
+    name ``__dash_keyproxy``)."""
+    if isinstance(r, dict):
+        attrs = r.get("attributes", r)
+        if not isinstance(attrs, dict):
+            return False
+        name, tags = attrs.get("name"), attrs.get("tags")
+    else:
+        name, tags = getattr(r, "name", None), getattr(r, "tags", None)
+    if str(name or "") == KEY_PROXY_NAME:
+        return True
+    return any(t == KEY_PROXY_TAG for t in (tags or ())
+               if isinstance(t, str))
+
+
+def drawn_renderers(fig):
+    """*fig*'s renderers (a figure, or a list of renderers) without the
+    legend-only key proxies: what the plot draws.  Since WP-43 LT-21 every
+    marker layer a legend keys has a proxy, so a count or an unpacking of a
+    figure's glyph renderers reads this."""
+    rends = fig.renderers if hasattr(fig, "renderers") else fig
+    return [r for r in list(rends or ()) if not is_key_proxy(r)]
+
+
+def _page_id(v):
+    return v.get("id") if isinstance(v, dict) else None
+
+
+def _page_values(v):
+    """The values of a JSON map (Bokeh's ``{"type": "map", "entries":
+    [[k, v], ...]}`` or a plain dict)."""
+    if isinstance(v, dict) and v.get("type") == "map":
+        return [e[1] for e in v.get("entries", []) if len(e) == 2]
+    if isinstance(v, dict):
+        return list(v.values())
+    return []
+
+
+def drawn_page_models(models):
+    """*models* -- the page's model dicts (each with ``id``, ``name`` and
+    ``attributes``: a flat iterable, a walk of the nested document, or an
+    ``{id: model}`` dict) without the legend-only key proxies and the parts
+    only they hold (their glyph, their view, their glyph's painter): what
+    the page draws.  The JSON form of :func:`drawn_renderers`; returns a
+    list, or a dict for a dict."""
+    items = list(models.values()) if isinstance(models, dict) \
+        else list(models)
+    drop = set()
+    for m in items:
+        if not isinstance(m, dict) or m.get("name") != "GlyphRenderer" \
+                or not is_key_proxy(m):
+            continue
+        drop.add(m.get("id"))
+        attrs = m.get("attributes", {})
+        for k in _KEY_PROXY_PARTS:
+            drop.add(_page_id(attrs.get(k)))
+    byid = {}
+    for m in items:
+        if isinstance(m, dict) and m.get("id") is not None \
+                and "attributes" in m:
+            byid.setdefault(m["id"], m)
+    for gid in list(drop):
+        defs = (byid.get(gid) or {}).get("attributes", {}).get("defs")
+        for v in (_page_values(defs) if defs is not None else ()):
+            drop.add(_page_id(v))
+    drop.discard(None)
+
+    def kept(m):
+        return not (isinstance(m, dict) and m.get("id") in drop)
+    if isinstance(models, dict):
+        return {k: m for k, m in models.items() if kept(m)}
+    return [m for m in items if kept(m)]
+
+
 def render_models(renderer):
     """``renderer.render()`` for its models alone: every model is built and
     finished as for the page, but Bokeh's serialisation of the page

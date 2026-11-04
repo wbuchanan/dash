@@ -85,6 +85,7 @@ _ROW_TYPES = ["scatter", "line", "tsline", "connected", "area", "bar",
 # ---------------------------------------------------------------------------
 
 from conftest import memo_build, render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _run(code, args, cb_obj=None):
@@ -316,7 +317,7 @@ class TestTheArrowheadsFollowTheShafts:
         [fig] = r.figures.values()
         [head] = [m for m in fig.references() if isinstance(m, CustomJS)
                   and m.name == "dash_arrow_head"]
-        [seg] = [g for g in fig.renderers
+        [seg] = [g for g in drawn_renderers(fig)
                  if type(g.glyph).__name__ == "Segment"]
         assert head.args["src"] is seg.data_source
         assert head in seg.data_source.js_property_callbacks["change:data"]
@@ -368,7 +369,7 @@ class TestTheArrowHeadHelper:
         # WP-31 C1: one head glyph over one (empty) head source, filled in
         # the browser; no Arrow annotation.
         assert not [m for m in fig.center if isinstance(m, Arrow)]
-        assert len([r for r in fig.renderers
+        assert len([r for r in drawn_renderers(fig)
                     if "dash-arrowhead" in (r.tags or [])]) == 1
 
 
@@ -392,7 +393,7 @@ class TestTheLineFollowsTheMoveAsTwowayDraws:
         r = _render(spec)
         _move(r, _MOVES[0][2])
         [fig] = r.figures.values()
-        [line] = [g for g in fig.renderers if isinstance(g.glyph, Line)]
+        [line] = [g for g in drawn_renderers(fig) if isinstance(g.glyph, Line)]
         xs = [float(x) for x in line.data_source.data["weight"]]
         want = ([1800.0, 2010.0, 2650.0, 3100.0, 3350.0] if ptype == "tsline"
                 else [3350.0, 1800.0, 3100.0, 2010.0, 2650.0])
@@ -412,7 +413,7 @@ class TestAJitteredScatterFollowsAMove:
                                **qual)], {"filter": _MOVES[2][1]})
         r = _render(spec)
         [fig] = r.figures.values()
-        [sc] = [g for g in fig.renderers
+        [sc] = [g for g in drawn_renderers(fig)
                 if type(g.glyph).__name__ == "Scatter"]
         # No view: a view's flags would go stale on a shortened copy.
         assert not isinstance(getattr(sc.view, "filter", None),
@@ -461,7 +462,7 @@ class TestNoCopyIsDrawnThroughAView:
         r = _render(spec)
         graph = {id(s) for s in r.sources.values()}
         for fig in r.figures.values():
-            for g in fig.renderers:
+            for g in drawn_renderers(fig):
                 flt = getattr(getattr(g, "view", None), "filter", None)
                 if isinstance(flt, BooleanFilter):
                     assert id(g.data_source) in graph, (
@@ -486,7 +487,7 @@ class TestTheCollectedCopies:
                            plot_for("histogram")]))
         [(name, copies)] = r.derived_source_registry.items()
         assert name == "g1"
-        [line] = [g for g in r.figures["g1"].renderers
+        [line] = [g for g in drawn_renderers(r.figures["g1"])
                   if isinstance(g.glyph, Line)
                   and "weight" in g.data_source.data]
         assert len(copies) == 1 and copies[0] is line.data_source
@@ -544,7 +545,7 @@ class TestTheSpacingTag:
         assert not hasattr(dr.GlyphMapper, "_tag_spacing")
         for ptype in ("bar", "rbar"):
             r = _render(_spec([plot_for(ptype)], {"filter": _MOVES[0][1]}))
-            for g in r.figures["g1"].renderers:
+            for g in drawn_renderers(r.figures["g1"]):
                 assert not hasattr(g.data_source, "_dash_spacing"), ptype
 
     @pytest.mark.parametrize("ptype,attr", [("bar", "width"),
@@ -558,7 +559,7 @@ class TestTheSpacingTag:
         """
         spec = _spec([plot_for(ptype)], {"filter": _MOVES[0][1]})
         r = _render(spec)
-        [bar] = [g for g in r.figures["g1"].renderers
+        [bar] = [g for g in drawn_renderers(r.figures["g1"])
                  if type(g.glyph).__name__ == "VBar"]
         assert bar.glyph.width == pytest.approx(1.0)
         _move(r, _MOVES[0][2])
@@ -581,7 +582,7 @@ class TestTheCopiesAgainstHostileInput:
                        "options": {}}], {"filter": _MOVES[0][1]})
         r = _render(spec, df)
         _move(r, _MOVES[0][2])
-        [line] = [g for g in r.figures["g1"].renderers
+        [line] = [g for g in drawn_renderers(r.figures["g1"])
                   if isinstance(g.glyph, Line)]
         xs = [float(x) for x in line.data_source.data[name]]
         # Flipped (WP-29 P0.1): the Foreign cars in the data's order, as
@@ -637,7 +638,7 @@ class TestALinesOwnQualifier:
             warnings.simplefilter("always")
             r = _render(_spec([plot]))
         [fig] = r.figures.values()
-        return ([g for g in fig.renderers if isinstance(g.glyph, Line)],
+        return ([g for g in drawn_renderers(fig) if isinstance(g.glyph, Line)],
                 caught)
 
     @pytest.mark.parametrize("ptype", ["line", "tsline", "connected"])
@@ -707,7 +708,7 @@ class TestAScatterWithAMissingValue:
         k = _kpi(update="brush", stat="mean", var="price")
         r = _render(self._spec([k]), _DF_MISSING)
         [fig] = r.figures.values()
-        [sc] = [g for g in fig.renderers
+        [sc] = [g for g in drawn_renderers(fig)
                 if type(g.glyph).__name__ == "Scatter"]
         src = sc.data_source
         cbs = [c for c in src.selected.js_property_callbacks.get(
@@ -738,7 +739,7 @@ class TestALinkedScatterWithAMissingValue:
 
     @staticmethod
     def _scatter(r, name):
-        [sc] = [g for g in r.figures[name].renderers
+        [sc] = [g for g in drawn_renderers(r.figures[name])
                 if type(g.glyph).__name__ == "Scatter"]
         return sc
 
@@ -1020,7 +1021,7 @@ class TestALinkedJitteredScatter:
                               "xvar": "weight", "options": dict(self._J)}
                              for _ in range(30)])
         shared = r._dash_linked_source
-        scs = [g for g in r.figures["g1"].renderers
+        scs = [g for g in drawn_renderers(r.figures["g1"])
                if type(g.glyph).__name__ == "Scatter"]
         assert len(scs) == 30
         assert all(s.data_source is shared for s in scs)
@@ -1056,7 +1057,7 @@ class TestALinkedJitteredScatterServed:
     def _scatters(doc):
         from bokeh.models import GlyphRenderer
         out = {}
-        for m in doc.select({"type": GlyphRenderer}):
+        for m in drawn_renderers(doc.select({"type": GlyphRenderer})):
             if type(m.glyph).__name__ != "Scatter":
                 continue
             out["g2" if m.glyph.y == "price" else "g1"] = m

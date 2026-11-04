@@ -72,6 +72,7 @@ _ALL = len(_DF)
 # ---------------------------------------------------------------------------
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _graph(name, if_expr="", **go):
@@ -178,7 +179,7 @@ def _run_callback(args, code):
 
 
 def _renderer_source(fig):
-    [r] = [r for r in fig.renderers if isinstance(r, GlyphRenderer)]
+    [r] = [r for r in drawn_renderers(fig) if isinstance(r, GlyphRenderer)]
     assert not isinstance(getattr(r.view, "filter", None), BooleanFilter), (
         "these cases draw no view; count the view's rows before using one")
     return r.data_source

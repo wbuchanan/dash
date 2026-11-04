@@ -45,6 +45,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 MODES = ("saved", "served")
 _FIXTURE = os.path.join(_HERE, "fixtures", "legend_geometry_truth.json")
@@ -208,26 +209,38 @@ class TestDefaultGeometry:
                 lg.spacing) == (50, 13, 8, 19)
 
     def test_a_marker_key_takes_twoways_key_size(self, mode):
-        """A legend of marker keys takes twoway's key size, symxsize() by
-        symysize() (default_geometry: key_xsize 13, key_ysize 3.4722), as
-        every other legend does.  Flipped (WP-32, D39 D-31.a): the key box
-        grew to 2.5 times the marker so that Bokeh, which draws a legend
-        marker at 0.4 of the box, drew it at the plot's size; the
-        maintainer ruled the key size twoway's always."""
+        """A legend of marker keys is as wide as twoway's marker key, its
+        marker (default_geometry: key_marks r 26.35, 1.83 units, though
+        key_xsize is 13), and symysize() tall (key_ysize 3.4722).
+        Flipped (WP-32, D39 D-31.a): the key box grew to 2.5 times the
+        marker so that Bokeh, which draws a legend marker at 0.4 of the
+        box, drew it at the plot's size; the maintainer ruled the key size
+        twoway's always.  Flipped (WP-43 LT-21): twoway draws a
+        marker-only key as wide as its marker; the marker is painted at
+        its size (_dash_key_painter)."""
         rec = TRUTH["default_geometry"]
         _fig, lg, _ = _fig_legend(mode, TWO)
+        mark = max(m["r"] for m in rec["key_marks"])
         assert (lg.glyph_width, lg.glyph_height) == (
-            _px(rec["key_xsize"]), _px(rec["key_ysize"])) == (50, 13)
+            _px(2 * mark / _SVG_PER_UNIT), _px(rec["key_ysize"])) == (7, 13)
 
     def test_a_large_marker_does_not_grow_the_key(self, mode):
-        """msize(huge) leaves the key box at twoway's size (D-31.a)."""
-        _fig, lg, _ = _fig_legend(mode, [_sc(msize="huge"),
-                                         _sc("price", msize="huge")])
-        assert (lg.glyph_width, lg.glyph_height) == (50, 13)
+        """msize(huge) leaves the key box at twoway's size (D-31.a).
+        Flipped (WP-43 LT-21): twoway draws a marker-only key as wide as
+        its marker, and the box is at least as tall as the marker: the
+        marker's drawn width, size plus outline (_dash_key_painter)."""
+        fig, lg, _ = _fig_legend(mode, [_sc(msize="huge"),
+                                        _sc("price", msize="huge")])
+        g = drawn_renderers(fig)[0].glyph
+        w = int(round(g.size + g.line_width))
+        assert (lg.glyph_width, lg.glyph_height) == (w, max(13, w)) \
+            == (20, 20)
 
     def test_forcesize_forces_the_key_box(self, mode):
+        # Flipped (WP-43 LT-21): twoway draws a marker-only key as wide as
+        # its marker (test_a_marker_key_takes_twoways_key_size).
         _fig, lg, _ = _fig_legend(mode, TWO, "forcesize symysize(2)")
-        assert (lg.glyph_width, lg.glyph_height) == (50, 8)
+        assert (lg.glyph_width, lg.glyph_height) == (7, 8)
 
 
 @pytest.mark.parametrize("mode", MODES)

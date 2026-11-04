@@ -5082,11 +5082,13 @@ plot region, as {cmd:twoway} draws them.
 The legend is laid out as {cmd:twoway} lays it out.  Its keys are the
 scheme's size -- under {cmd:s2color} a line key 13 units long and
 {cmd:medsmall} high, its text a {cmd:vsmall} gap after it, the rows a
-{cmd:tiny} gap apart, where a unit is 2.88 points.  A marker key takes the
-same box, {cmd:symxsize()} by {cmd:symysize()}: the box does not grow with
-the marker, and the browser draws a key's marker at 0.4 of the box's
-smaller side, where {cmd:twoway} draws it at the marker's own size and
-its key only as wide as the marker.  {cmd:symxsize()}, {cmd:symysize()},
+{cmd:tiny} gap apart, where a unit is 2.88 points.  A marker key is
+drawn at the plot's marker size and angle, and a legend whose keys are
+all markers is only as wide as its widest marker, as in {cmd:twoway};
+beside a line key a marker key takes the line key's box,
+{cmd:symxsize()} by {cmd:symysize()}, where {cmd:twoway} draws it only
+as wide as its marker, and a weighted marker layer's key is drawn at
+0.4 of the box's smaller side.  {cmd:symxsize()}, {cmd:symysize()},
 {cmd:keygap()} and {cmd:rowgap()} change them, {cmd:forcesize} draws the
 same box, and an unknown size is
 {cmd:twoway}'s {cmd:medium}, with a note.  The keys fill a grid of

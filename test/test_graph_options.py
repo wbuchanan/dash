@@ -30,6 +30,7 @@ from dash_render import _dash_range_reversed
 # ================================================================
 
 from conftest import render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _make_graph_spec(name: str, ptype: str = "scatter",
@@ -614,9 +615,13 @@ class TestLegendLabels:
         items = fig.legend[0].items
         assert [self._item_label(i) for i in items] == [
             "Weight (lbs.)", "Data"]
-        first_layer = [x for x in fig.renderers
+        first_layer = [x for x in drawn_renderers(fig)
                        if type(x.glyph).__name__ == "Scatter"][0]
-        assert list(items[1].renderers) == [first_layer]
+        # Flipped (WP-43 LT-21): a painted marker key holds its layer's
+        # legend-only key proxy, which names the layer.
+        [key] = list(items[1].renderers)
+        assert key._dash_key_for is first_layer
+        assert first_layer._dash_key_proxy is key
 
     def test_legend_label_override_with_position(self):
         """P6-14: label() and a placement can coexist -- position(12), the

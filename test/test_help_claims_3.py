@@ -52,6 +52,7 @@ _FIGURE = tfe._FIGURE
 
 
 from conftest import figure_in, render_models  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 
 def _graphs(n, **go):
@@ -685,9 +686,9 @@ class TestTabTitles:
 def _draws_from_group(fig_scatter, fig_other):
     """Which of *fig_other*'s glyph renderers draw from the source
     *fig_scatter*'s scatter draws -- the link group's."""
-    group = {id(r.data_source) for r in fig_scatter.renderers
+    group = {id(r.data_source) for r in drawn_renderers(fig_scatter)
              if isinstance(r, GlyphRenderer)}
-    return [id(r.data_source) in group for r in fig_other.renderers
+    return [id(r.data_source) in group for r in drawn_renderers(fig_other)
             if isinstance(r, GlyphRenderer)]
 
 

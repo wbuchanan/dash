@@ -126,7 +126,7 @@ class TestSecondaryAxisSetup:
         ]
         fig = self._get_fig(plots)
         # At least one renderer should have y_range_name == "y2"
-        y2_renderers = [r for r in fig.renderers
+        y2_renderers = [r for r in drawn_renderers(fig)
                         if getattr(r, "y_range_name", None) == "y2"]
         assert len(y2_renderers) >= 1
 
@@ -137,7 +137,7 @@ class TestSecondaryAxisSetup:
             {"type": "line",    "yvar": "y2", "xvar": "x", "options": {"yaxis": "2"}},
         ]
         fig = self._get_fig(plots)
-        primary_renderers = [r for r in fig.renderers
+        primary_renderers = [r for r in drawn_renderers(fig)
                              if getattr(r, "y_range_name", None) != "y2"]
         assert len(primary_renderers) >= 1
 
@@ -247,14 +247,14 @@ class TestMultiLayerSecondaryAxis:
             {"type": "scatter", "yvar": "y3", "xvar": "x", "options": {"yaxis": "2"}},
         ]
         fig = self._get_fig(plots)
-        y2_renderers = [r for r in fig.renderers
+        y2_renderers = [r for r in drawn_renderers(fig)
                         if getattr(r, "y_range_name", None) == "y2"]
         assert len(y2_renderers) >= 2
         # Layer by layer, not by count: ">= 2" held just as well with the
         # primary layer moved to y2 too (three).  One renderer per layer
         # here, measured 24sep2026: the y1 scatter stays on the default
         # range, the y2 line and the y3 scatter are on y2.
-        placed = sorted((r.glyph.y, r.y_range_name) for r in fig.renderers)
+        placed = sorted((r.glyph.y, r.y_range_name) for r in drawn_renderers(fig))
         assert placed == [("y1", "default"), ("y2", "y2"), ("y3", "y2")], (
             placed
         )
@@ -319,6 +319,7 @@ class TestSecondaryAxisSecurity:
 
 import importlib.util as _ilu
 import itertools as _it
+from conftest import drawn_renderers  # noqa: E402
 
 _LONE_SEQ = _it.count()
 _LONE_MODES = ("saved", "served")
@@ -359,7 +360,7 @@ def _axes(side):
 
 def _layers(fig):
     from bokeh.models import GlyphRenderer
-    return [r for r in fig.renderers if isinstance(r, GlyphRenderer)]
+    return [r for r in drawn_renderers(fig) if isinstance(r, GlyphRenderer)]
 
 
 _LONE = [{"type": "scatter", "yvar": "y2", "xvar": "x",

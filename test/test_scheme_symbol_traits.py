@@ -28,6 +28,7 @@ import test_mode_parity as tp  # noqa: E402
 from test_scheme_resolution import MODES, _draw  # noqa: E402
 from test_scheme_review_fixes import _user_scheme  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 
 _FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures",
                         "scheme_layer_truth.json")
@@ -41,7 +42,7 @@ T = dr.OptionTranslator
 
 def _markers(plots, scheme, mode):
     d = _draw(tp._spec(plots, {"scheme": scheme}), mode)
-    return [r.glyph for r in d.figures[0].renderers
+    return [r.glyph for r in drawn_renderers(d.figures[0])
             if isinstance(r, GlyphRenderer) and not dr._dash_is_swatch(r)
             and type(r.glyph).__name__ == "Scatter"]
 

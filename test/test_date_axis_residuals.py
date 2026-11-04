@@ -51,6 +51,7 @@ sys.path.insert(0, _HERE)
 import dash_render as dr  # noqa: E402
 import colour_bins as cb  # noqa: E402
 from conftest import exec_app  # noqa: E402
+from conftest import drawn_renderers  # noqa: E402
 from test_date_range import (_ATTACH, _saved, _spec, _filter,  # noqa: E402
                              _write)
 from test_display_format_sites import js_texts  # noqa: E402
@@ -478,7 +479,7 @@ class TestFallbackTooltipsUseDisplayFormats:
         root, _w, obj = _build(tmp_path, mode, [_hist()], _KEY,
                                filters=[_filter("range", "lo")])
         before = _tool(root)
-        quads = [r for f in cb._figures(root) for r in f.renderers
+        quads = [r for f in cb._figures(root) for r in drawn_renderers(f)
                  if "left" in r.data_source.data]
         if mode == "saved":
             s = JsSession(obj.filter_callbacks)
@@ -534,7 +535,7 @@ class TestHistogramTooltipNamesItsMeasure:
     def test_an_emptied_histogram_is_tagged_too(self, tmp_path, mode):
         plot = dict(_hist(), if_expr="lo > 99")
         root, _w, _o = _build(tmp_path, mode, [plot], _KEY)
-        quads = [r for f in cb._figures(root) for r in f.renderers
+        quads = [r for f in cb._figures(root) for r in drawn_renderers(f)
                  if "top" in r.data_source.data]
         assert quads and all("dash_hist_density" in (r.tags or [])
                              for r in quads)
@@ -1029,7 +1030,7 @@ def tb_panels(doc):
 
 
 def _da_layer(fig, glyph_type, k=0):
-    return [r for r in fig.renderers
+    return [r for r in drawn_renderers(fig)
             if type(r.glyph).__name__ == glyph_type
             and not dr._dash_is_swatch(r)][k]
 
@@ -1426,12 +1427,12 @@ class TestOffDateLiterals:
         fig, w, _o = _da_fig(tmp_path, mode, [
             _L("line", "close", "date"), _si((1300, 1e9)),
             _si((1300, 1e300)), _si((1300, 15400))])
-        sc = [r for r in fig.renderers if type(r.glyph).__name__ == "Scatter"]
+        sc = [r for r in drawn_renderers(fig) if type(r.glyph).__name__ == "Scatter"]
         assert [len(r.data_source.data["x"]) for r in sc] == [0, 0, 1]
         note = ("dash: scatteri: 1 point(s) past the dates a browser can "
                 "draw (years -271821 to 275760) not drawn.")
         assert [x for x in w if "past the dates" in x] == [note], w
-        for r in fig.renderers:
+        for r in drawn_renderers(fig):
             json.dumps({k: list(map(float, v)) if k in ("x", "y") else None
                         for k, v in r.data_source.data.items()},
                        allow_nan=False)
@@ -1629,7 +1630,7 @@ class TestASecondDateAxis:
         for move in (False, True):
             fig, _w, _o = _da_fig(tmp_path, mode, self._Y2 + [
                 _L("lfit", "d2", "date", yaxis="2")], move=move)
-            fit = [r for r in fig.renderers
+            fit = [r for r in drawn_renderers(fig)
                    if type(r.glyph).__name__ == "Line"
                    and r.y_range_name == "y2"][-1]
             y = _da_units(fit, "y")

@@ -1013,6 +1013,7 @@ and now matches Stata.
 
 ### Fixed in WP-43
 
+- A legend's marker keys are drawn at the plot's marker size and msangle(), and a legend of markers only is as wide as its widest marker, as twoway draws them; the browser drew every marker at 0.4 of a symxsize()-wide key box and at no angle (a marker key beside a line key keeps the line key's box, a weighted layer's key Bokeh's) (WP-43, LT-21)
 - A turned (horizontal) kdensity or function with no recast() is keyed x, its grid's name, as twoway keys it; dash keyed it by its own name (WP-43, RH-13)
 - legend(textfirst) puts each key text before its key and legend(stacked) puts it under its key (both, above it), as twoway draws them; they were named (marker key sizes, symplacement() and the legend's note() and caption() are still open) (WP-43, LT-21)
 - margin(l=20), margin(1 2 3 4) and margin(l+5) are read on title(), subtitle(), note(), caption(), the edge titles and text(), and legend(region(margin())) keeps each of its four sides, as twoway draws them; the forms were noted and the region margin was its largest side (bmargin() per side is still open) (WP-43, LT-10)
