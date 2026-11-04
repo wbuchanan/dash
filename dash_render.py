@@ -41856,6 +41856,64 @@ def _dash_legend_title_block(legend, head, tail, colour, scheme, *,
     return css
 
 
+def _dash_legend_hole_sheet(legend, tracks, total, axis):
+    """Place *legend*'s items in the tracks *tracks* (1-based, one per
+    item, in item order) of a CSS grid of *total* tracks along *axis*
+    (``"row"`` for one column, ``"column"`` for one row), with the
+    Legend's own stylesheet tagged ``dash_legend_holes`` (WP-43 LT-17,
+    ruling D69).  A track no item takes is empty: the grid lays its gap
+    -- the legend's ``spacing`` -- once more there, which is twoway's
+    hole.  Only integers reach the CSS.  Records the tracks on the
+    legend (``_dash_hole_tracks``) for by()'s cell; returns the CSS."""
+    from bokeh.models import InlineStyleSheet
+    axis = "column" if axis == "column" else "row"
+    total = max(1, int(total))
+    css = ".bk-grid{grid-template-%ss:repeat(%d,max-content);}" % (
+        axis, total) + "".join(
+        ".bk-item:nth-child(%d){grid-%s:%d;}" % (i + 1, axis,
+                                                  max(1, min(int(t), total)))
+        for i, t in enumerate(tracks))
+    legend.stylesheets = [ss for ss in legend.stylesheets
+                          if "dash_legend_holes" not in (
+                              getattr(ss, "tags", None) or [])] + [
+        InlineStyleSheet(css=css, tags=["dash_legend_holes"])]
+    legend._dash_hole_tracks = (list(tracks), total, axis)
+    return css
+
+
+def _dash_legend_holes(legend):
+    """A hole in a one-column or one-row legend drawn as twoway draws it
+    (WP-43 LT-17): one row gap (one column gap) at its place, not a key's
+    row.  twoway's legend_g (PlaceKeyTextAdjRow) advances the row for a
+    hole, so holes(k) cols(1) makes the box one legend_row_gap taller and
+    holes(2) rows(1) one legend_col_gap wider, before the first key, between
+    keys or after the last (legend_place_truth.json holes_1col_<k>,
+    holes_1col_1key, holes_1row); in a grid of rows and columns the hole is
+    a full cell and stays an empty item (holes_2col).  The hole items
+    (tagged ``dash_legend_hole``) leave the legend and each key keeps its
+    place in a grid of one track per place (_dash_legend_hole_sheet), so
+    the keys stay the original LegendItems -- the stale cue and a click
+    reach them -- and the gap is the legend's own spacing, which scale()
+    and the width scale carry.  Returns True when it drew holes."""
+    items = list(getattr(legend, "items", None) or ())
+    holes = [i for i, it in enumerate(items)
+             if "dash_legend_hole" in (getattr(it, "tags", None) or [])]
+    if not holes:
+        return False
+    ncols = legend.ncols if isinstance(legend.ncols, int) else 0
+    nrows = legend.nrows if isinstance(legend.nrows, int) else 0
+    if ncols == 1:
+        axis = "row"
+    elif nrows == 1 and ncols > 1:
+        axis = "column"
+    else:
+        return False
+    keep = [i for i in range(len(items)) if i not in holes]
+    legend.items = [items[i] for i in keep]
+    _dash_legend_hole_sheet(legend, [i + 1 for i in keep], len(items), axis)
+    return True
+
+
 def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                        default_level=None, chrome=None, seen=None, key=""):
     """Stata's keys, Stata's drawing rule, and every legend() sub-option.
@@ -42043,7 +42101,9 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
             # legend_g counts holes among the n keys); a position past the
             # end is ignored, as twoway ignores holes(9) on three keys
             # (WP-31 D4, legend_geometry_truth.json holes, holes_big).
-            # Each hole is a LegendItem with no renderers (S39 reads them).
+            # Each hole is a LegendItem with no renderers (S39 reads them),
+            # tagged ``dash_legend_hole``; in a one-column or one-row grid
+            # step 6 makes it a gap (_dash_legend_holes, WP-43 LT-17).
             _holes = _dash_legend_arg(_calls, ("holes",))
             if _holes:
                 try:
@@ -42057,7 +42117,8 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                                       and v > 0}):
                         if _p <= len(seq) + 1:
                             seq.insert(_p - 1, LegendItem(
-                                label={"value": ""}, renderers=[]))
+                                label={"value": ""}, renderers=[],
+                                tags=["dash_legend_hole"]))
             legend.items = seq
 
     # 3. The scheme's chrome on EVERY legend, before the user's options so
@@ -42257,6 +42318,9 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         # the row gap.
         if legend.nrows == 1 and _gc > 1 and _n > 1:
             legend.spacing = _geom["colgap"]
+        # A hole in one column (one row) is one row gap (column gap), as
+        # twoway's legend_g lays it out (WP-43 LT-17).
+        _dash_legend_holes(legend)
     elif legend is not None and colfirst:
         legend.orientation = "vertical"
     # WP-42 CV-5: rows() and cols() leave a colour key, which twoway
@@ -60731,11 +60795,12 @@ def _dash_by_legend_cell(scheme, name, side, legend, items, tag,
     from bokeh.models import Legend, LegendItem
     vertical = side in ("left", "right")
     cell = _dash_by_cell(scheme, name, (1, None) if vertical else (None, 1))
-    new_items = []
+    new_items, kept = [], []
     for i, it in enumerate(items):
         clones = _dash_by_clone_renderers(it.renderers, "%s%d" % (tag, i))
         if not clones:
             continue
+        kept.append(i)
         cell.renderers += clones
         new_items.append(LegendItem(
             label=it.label,
@@ -60762,6 +60827,13 @@ def _dash_by_legend_cell(scheme, name, side, legend, items, tag,
     setattr(leg, _DASH_GRAPH_TEXT_DONE, True)
     for it in new_items:
         setattr(it, _DASH_GRAPH_TEXT_DONE, True)
+    # WP-43 LT-17: a one-column or one-row legend's holes are its tracks;
+    # the cell keeps them for the items it keeps.
+    _ht = getattr(legend, "_dash_hole_tracks", None) \
+        if legend is not None else None
+    if _ht and len(_ht[0]) == len(items):
+        _dash_legend_hole_sheet(leg, [_ht[0][i] for i in kept], _ht[1],
+                                _ht[2])
     facing = {"right": "left", "left": "right", "above": "below",
               "below": "above"}[side]
     cell.add_layout(leg, facing)
@@ -75146,6 +75218,7 @@ class ServerAppBuilder:
                          "_dash_compass_dir",
                          "_dash_legend_margin_px", "_dash_legend_box",
                          "_dash_legend_title_block",
+                         "_dash_legend_hole_sheet", "_dash_legend_holes",
                          "_dash_apply_legend",
                          # Axis titles, Stata's tick grammar, second axes.
                          "_parse_axis_angle", "_stata_date_kind",

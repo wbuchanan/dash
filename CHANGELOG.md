@@ -1009,6 +1009,7 @@ and now matches Stata.
 
 ### Fixed in WP-43
 
+- A legend(holes()) hole in a one-column or one-row legend is one row (column) gap at its place, as twoway draws it; it was a blank key row (WP-43, LT-17)
 - legend(ring(0) bplacement()) and legend(position(0) bplacement()) put the legend at the plot region's compass point bplacement() names (was the clock's inside place), and bplacement() reads every compass spelling twoway reads (nor, NE, top, a clock number); a name twoway does not know is noted and drawn east, as twoway draws it (WP-43, LT-4)
 - legend(title()) is centred over the keys, and its and legend(subtitle())'s position(), justification(), box, box colours, lwidth(), lpattern() and margin() are drawn as twoway draws them; a subtitle under a title is drawn in its own style (was the title's), and the title sub-options dash does not draw are named (were dropped in silence) (WP-43, LT-15)
 - legend(title()) and legend(subtitle()) are drawn in the scheme's legend-title and legend-subtitle styles, larger than the keys, as twoway draws them (WP-43, LT-1)

@@ -474,7 +474,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-14 Tracked:** Open (WP-43 section 43-05).
 - **LT-15 Tracked:** Closed in WP-43, BUGS.md "legend title()/subtitle() sub-options (position(), box ...) are dropped silently; subtitle size()/color() are ignored", commit 3c3b781.
 - **LT-16 Tracked:** Open (WP-43 section 43-05).
-- **LT-17 Tracked:** Open (WP-43 section 43-02).
+- **LT-17 Tracked:** Closed in WP-43, BUGS.md "legend(holes()) with cols(1) inserts a full blank row", commit pending.
 - **LT-18 Tracked:** Open (WP-43 section 43-05).
 - **LT-19 Tracked:** Open (WP-43 section 43-05).
 - **LT-20 Tracked:** Documented in WP-43, BUGS.md "text() draws no width(), height(), linegap(), bexpand, bmargin(), lstyle(), lpattern(), lalign(); a `=exp' global is drawn literally", commit 065aace.
