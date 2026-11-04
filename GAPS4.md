@@ -461,14 +461,14 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-22 Tracked:** Closed in WP-42, BUGS.md "contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line", commit 514098a.
 - **LT-1 Tracked:** Closed in WP-43, BUGS.md "legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles", commit 0af5bd3.
 - **LT-4 Tracked:** Closed in WP-43, BUGS.md "legend(ring(0) bplacement()) ignores bplacement; bplacement abbreviations (nor, nea, t, top) are not read", commit 0e6c5ab.
-- **LT-2 Tracked:** Closed in WP-43, BUGS.md "legend(nobox) removes the region box; in twoway nobox is the key-text textbox option and changes nothing", commit pending.
-- **LT-3 Tracked:** Closed in WP-43, BUGS.md "Key-text textbox options are not drawn: box (silent), bcolor(), fcolor(), justification(), alignment(), margin(), linegap(), tstyle()", commit pending.
+- **LT-2 Tracked:** Closed in WP-43, BUGS.md "legend(nobox) removes the region box; in twoway nobox is the key-text textbox option and changes nothing", commit 678d7c9.
+- **LT-3 Tracked:** Closed in WP-43, BUGS.md "Key-text textbox options are not drawn: box (silent), bcolor(), fcolor(), justification(), alignment(), margin(), linegap(), tstyle()", commit 4a9a371.
 - **LT-5 Tracked:** Closed in WP-43, BUGS.md "legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ", commit 0d12aaa.
-- **LT-6 Tracked:** Partly closed in WP-43 (section 43-03, commit pending): style(column), style() notes, width(), height(), xoffset(), yoffset(), showindex and region(style() lstyle() lalign()) are drawn; open: style(zyx2) (BUGS.md "legend(style(zyx2)) is named; twoway lays the keys in one column at the scheme's zyx2 gaps and key size").
+- **LT-6 Tracked:** Partly closed in WP-43 (section 43-03, commit 627dc81): style(column), style() notes, width(), height(), xoffset(), yoffset(), showindex and region(style() lstyle() lalign()) are drawn; open: style(zyx2) (BUGS.md "legend(style(zyx2)) is named; twoway lays the keys in one column at the scheme's zyx2 gaps and key size").
 - **LT-7 Tracked:** Open (WP-43 section 43-03).
 - **LT-8 Tracked:** Closed in WP-43, BUGS.md "A title box under stcolor is filled #d9e6eb (the added-text fill), not textbox white with a 6.48 line", commit edc071a.
 - **LT-9 Tracked:** Closed in WP-43, BUGS.md "A fractional ring() (7.5, 4.5) or ring(100) is dropped silently", commit d7aaa44.
-- **LT-10 Tracked:** Partly closed in WP-43 (section 43-03, commit pending): every marginstyle form on title-family boxes, text() and legend(region(margin())), four sides kept; open: bmargin() per side (BUGS.md "legend(bmargin()) and a title's bmargin() keep only the largest side; twoway reserves each side").
+- **LT-10 Tracked:** Partly closed in WP-43 (section 43-03, commit 9f6dfe9): every marginstyle form on title-family boxes, text() and legend(region(margin())), four sides kept; open: bmargin() per side (BUGS.md "legend(bmargin()) and a title's bmargin() keep only the largest side; twoway reserves each side").
 - **LT-11 Tracked:** Closed in WP-43, BUGS.md "text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn", commit 884ebaa.
 - **LT-13 Tracked:** Closed in WP-43, BUGS.md "legend(t1title() ... b2title()) is accepted and named where twoway refuses r(198)", commit 900153e.
 - **LT-14 Tracked:** Closed in WP-43, BUGS.md "title(..., ring(x)) is accepted silently where twoway prints notes and refuses r(198)", commit 12a9e8e.
