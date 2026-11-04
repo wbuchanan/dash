@@ -793,6 +793,106 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w43_run' {
 }
 * ==== end S02 ====
 
+// S03 helpers (WP-43 43-03).  _q4303_reg <dir> <dash command...>: register
+// one graph and read the series legend both modes draw -- its region
+// box's line and fill colours and padding, and the CSS of its key-text
+// stylesheet (tag dash_legend_keytext, "none" without one) -- into
+// q4303_<s|v> ("<line> <fill> <padding> <css>"), and the count of notes
+// naming a legend() sub-option into q4303_n<s|v>; _q4303_same <svg>
+// <svg>: 1 when two twoway SVGs draw the same rects and texts, into
+// q4303_same.  Built on S02's _q4302_models.
+python:
+def _q4303_read(sp, dp, app):
+    import dash_render as dr
+    from sfi import Macro
+    from bokeh.models import Legend, Plot
+    for (models, msgs), sfx in zip(_q4302_models(sp, dp, app), ("s", "v")):
+        out = "none"
+        for p in models:
+            if not isinstance(p, Plot):
+                continue
+            for side in ("center", "above", "below", "left", "right"):
+                for lg in getattr(p, side):
+                    if (isinstance(lg, Legend) and str(lg.name or "")
+                            != dr._COLORVAR_LEGEND_NAME and out == "none"):
+                        css = "".join(ss.css for ss in lg.stylesheets
+                                      if "dash_legend_keytext"
+                                      in (ss.tags or []))
+                        pad = lg.padding
+                        if isinstance(pad, (tuple, list)):
+                            pad = ",".join(str(v) for v in pad)
+                        out = "%s %s %s %s" % (
+                            lg.border_line_color, lg.background_fill_color,
+                            pad, css or "none")
+        Macro.setGlobal("q4303_" + sfx, out)
+        Macro.setGlobal("q4303_n" + sfx, str(sum(
+            1 for m in msgs if "legend(" in m)))
+
+
+def _q4303_same(a, b):
+    from sfi import Macro
+    from svg_truth import svg_document, svg_rects
+    same = (svg_rects(a) == svg_rects(b)
+            and svg_document(a)["texts"] == svg_document(b)["texts"])
+    Macro.setGlobal("q4303_same", "1" if same else "0")
+end
+
+capture program drop _q4303_reg
+program define _q4303_reg
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4303_m; _q4303_m._q4303_read("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
+* ==== S03 LT-2: legend(nobox) is the key text's textbox option ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w43_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03d "`w43_work'/s03a"
+    capture mkdir "`q03d'"
+    capture graph drop _all
+    sysuse auto, clear
+    local three (scatter mpg weight) (scatter price weight) (scatter turn weight)
+
+    // ------------------------------------------------------------
+    // Q4303-1: legend(nobox) -- live twoway's SVG of nobox is its SVG of
+    // the default (under s2color and stcolor), and dash's legend under
+    // nobox keeps the default's region line, fill and padding, saved and
+    // served, with no note.
+    // ------------------------------------------------------------
+    foreach s in s2color stcolor {
+        quietly twoway `three', scheme(`s') name(q03a, replace)
+        capture erase "`q03d'/q03a.svg"
+        cert_svg_export, name(q03a) file("`q03d'/q03a.svg")
+        quietly twoway `three', scheme(`s') legend(nobox) name(q03b, replace)
+        capture erase "`q03d'/q03b.svg"
+        cert_svg_export, name(q03b) file("`q03d'/q03b.svg")
+        python: import __main__ as _q4303_m; _q4303_m._q4303_same("`q03d'/q03a.svg", "`q03d'/q03b.svg")
+        _w43_expect Q4303-1 "(${q4303_same} == 1)" `"`s': twoway's legend(nobox) differs from its default"'
+        _q4303_reg "`q03d'" `three', scheme(`s') name(q03e)
+        local ds "${q4303_s}"
+        local dv "${q4303_v}"
+        _q4303_reg "`q03d'" `three', scheme(`s') legend(nobox) name(q03e)
+        _w43_expect Q4303-1 `"("${q4303_s}" == "`ds'")"' `"`s' saved: nobox ${q4303_s}; default `ds'"'
+        _w43_expect Q4303-1 `"("${q4303_v}" == "`dv'")"' `"`s' served: nobox ${q4303_v}; default `dv'"'
+        _w43_expect Q4303-1 "(${q4303_ns} == 0 & ${q4303_nv} == 0)" `"`s': legend(nobox) printed a note"'
+    }
+    _w43_done Q4303-1 "legend(nobox) draws the default legend, as twoway's does, saved and served"
+
+    foreach f in q03a.svg q03b.svg s.json d.json a.py {
+        capture erase "`q03d'/`f'"
+    }
+    capture rmdir "`q03d'"
+    macro drop q4303_s q4303_v q4303_ns q4303_nv q4303_same
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // S05 helpers (WP-43 43-05).  _q4305_docs: the figures a registered
 // graph draws, saved and served (spec and data from _dash_serve_spec);
 // _q4305_model: the model drawing a title-family key's text;

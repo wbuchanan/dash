@@ -2911,6 +2911,11 @@ CORPUS = [
            plot_for("scatter", {"pstyle": "p1"}, yvar="price")],
           go={"legend": "all"}),
 
+    # WP-43 LT-2/LT-3/LT-6/LT-7/LT-10 (section 43-03): legend box
+    _case("legend(nobox) (WP-43 LT-2)",
+          [_sc(), plot_for("scatter", yvar="price")],
+          go={"legend": "nobox"}),
+
     # WP-31 D5/E11 (section 32): sizing
     _case("scale(1.5) (WP-31 D5)", [plot_for("scatter")],
           go={"scale": "1.5"}),

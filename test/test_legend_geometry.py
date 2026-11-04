@@ -383,10 +383,14 @@ class TestBoxAndText:
         assert lg.border_line_width == pytest.approx(
             T.line_px(T.resolve_size("thick", "line", 0.0)))
 
+    # Flipped (WP-43 LT-2): twoway's nobox is the key text's textbox and
+    # leaves the region box (legend_geometry_truth.json nobox ==
+    # default_geometry; legend_box_truth.json nobox == ctl).
     def test_nobox(self, mode):
+        _fig, ref, _ = _fig_legend(mode, TWO)
         _fig, lg, _ = _fig_legend(mode, TWO, "nobox")
-        assert lg.border_line_color is None
-        assert lg.background_fill_color is None
+        assert lg.border_line_color == ref.border_line_color
+        assert lg.background_fill_color == ref.background_fill_color
 
     def test_region_lcolor_none(self, mode):
         _fig, lg, _ = _fig_legend(mode, TWO, "region(lcolor(none))")

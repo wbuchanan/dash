@@ -5014,8 +5014,8 @@ the plot specification).
 {synopt:{cmdab:leg:end(symxsize() symysize() keygap() rowgap())}}the key's
     width and height, the gap between a key and its text, the gap between
     rows{p_end}
-{synopt:{cmdab:leg:end(region() nobox bmargin() bplacement())}}the box's
-    outline, fill and inner margin; no box; the space around it; its place
+{synopt:{cmdab:leg:end(region() bmargin() bplacement())}}the box's
+    outline, fill and inner margin; the space around it; its place
     along its side{p_end}
 {synopt:{cmdab:leg:end(title() color() textwidth())}}a title above the keys;
     the key text's colour; its least width{p_end}
@@ -5094,7 +5094,7 @@ keys fill it row by row, or column by column with {cmd:colfirst}.
 {cmd:holes(2)} leaves the second place blank and a hole past the last
 key is ignored; in a one-column or one-row legend a hole is a row's or a
 column's gap, as {cmd:twoway} draws it.
-{cmd:region(lcolor() fcolor() lwidth() lpattern() margin())} draws the box, {cmd:nobox} removes it, {cmd:bmargin()} is the
+{cmd:region(lcolor() fcolor() lwidth() lpattern() margin())} draws the box; {cmd:nobox} and {cmd:box} act on the key texts, as in {cmd:twoway} ({cmd:region()} draws the box); {cmd:bmargin()} is the
 space around it, {cmd:bplacement()} its place along its side, or,
 inside the plot region ({cmd:ring(0)} or {cmd:position(0)}), the plot
 region's compass point it names; every spelling {cmd:twoway} reads for a

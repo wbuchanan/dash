@@ -41548,7 +41548,7 @@ def _dash_legend_margin_px(arg):
 def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
                      seen=None, key=""):
     """legend()'s box and text sub-options on the series *legend* (WP-31
-    D4): region() -> the border and fill, nobox -> neither, bmargin() ->
+    D4): region() -> the border and fill, bmargin() ->
     Bokeh's ``margin``, region(margin()) -> ``padding``, color() -> the
     key text's colour, textwidth() -> ``label_width``, title() and
     subtitle() -> the legend's title in the scheme's leg_title and
@@ -41713,9 +41713,10 @@ def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
                                  seen=seen, key=key, ref=(
                                      T.size_ref_of(fig) if fig is not None
                                      else None))
-    if "nobox" in words and "box" not in words:
-        legend.border_line_color = None
-        legend.background_fill_color = None
+    # nobox and box are the key texts' textbox options (WP-43 LT-2):
+    # twoway's legend(nobox) draws the default region box
+    # (legend_box_truth.json nobox == ctl); only the scheme and region()
+    # draw that box.
 
 
 #: legend(title()) and legend(subtitle()) sub-options dash draws (WP-43
