@@ -2,8 +2,8 @@
  "_meta": {
   "base": "twoway (scatter mpg weight) (scatter price weight) (scatter turn weight)",
   "born_date": "14 Oct 2026",
-  "dash_commit": "65905f5dba2d22470f45bde17d52dcecd88e6659",
-  "extracted": " 4 Nov 2026 05:48:44",
+  "dash_commit": "48461cf7bdc18f244b0d02f9d8157d0b93c6b1f6",
+  "extracted": " 4 Nov 2026 07:00:15",
   "scheme": "s2color",
   "source": "scripts/extract_legend_place_truth.do",
   "spellings": [
@@ -2954,6 +2954,2148 @@
   ],
   "spelling": "12"
  },
+ "by_bp_c": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2571.98
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2571.98
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2630.14,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2443.64
+   }
+  ],
+  "rows": 0
+ },
+ "by_bp_e": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2571.98
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2571.98
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2630.14,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2443.64
+   }
+  ],
+  "rows": 0
+ },
+ "by_bp_n": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2571.98
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2571.98
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2630.14,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2443.64
+   }
+  ],
+  "rows": 0
+ },
+ "by_bp_ne": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2571.98
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2571.98
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2630.14,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2443.64
+   }
+  ],
+  "rows": 0
+ },
+ "by_bp_nw": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2571.98
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2571.98
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2630.14,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2443.64
+   }
+  ],
+  "rows": 0
+ },
+ "by_bp_s": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2571.98
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2571.98
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2630.14,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2443.64
+   }
+  ],
+  "rows": 0
+ },
+ "by_bp_se": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2571.98
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2571.98
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2630.14,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2443.64
+   }
+  ],
+  "rows": 0
+ },
+ "by_bp_sw": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2571.98
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2571.98
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2630.14,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2443.64
+   }
+  ],
+  "rows": 0
+ },
+ "by_bp_w": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2571.98
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2571.98
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2630.14,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2443.64
+   }
+  ],
+  "rows": 0
+ },
+ "by_default": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2571.98
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2571.98
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2630.14,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2443.64
+   }
+  ],
+  "rows": 0
+ },
+ "by_g_r0": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2571.98
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2571.98
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2630.14,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2443.64
+   }
+  ],
+  "rows": 0
+ },
+ "by_g_r0_bp_bogus": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2571.98
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2571.98
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [
+   "(note:  named style bogus not found in class compass2dir, default attributes used)",
+   "(note:  named style bogus not found in class compass2dir, default attributes used)"
+  ],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2630.14,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2443.64
+   }
+  ],
+  "rows": 0
+ },
+ "by_g_r0_bp_nw": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2571.98
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2571.98
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2630.14,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2443.64
+   }
+  ],
+  "rows": 0
+ },
+ "by_pos0": {
+  "box_alignment": "center",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 1367.73
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 1367.73
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2377.06,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2377.06,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2377.06,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 1425.8899999999999,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 1239.52
+   }
+  ],
+  "rows": 0
+ },
+ "by_pos0_bp_nw": {
+  "box_alignment": "center",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 1367.73
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 1367.73
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2377.06,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2377.06,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2377.06,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 1425.8899999999999,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 1239.52
+   }
+  ],
+  "rows": 0
+ },
+ "by_pos3_bp_n": {
+  "box_alignment": "east",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 2651.22,
+    "y": 1367.73
+   },
+   {
+    "text": "Price",
+    "x": 3547.17,
+    "y": 1367.73
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2377.06,
+   "left": 288.34,
+   "right": 1327.1,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2377.06,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 1327.1,
+    "top": 258.27
+   },
+   {
+    "bottom": 2377.06,
+    "fill": "#ffffff",
+    "left": 1396.15,
+    "right": 2434.91,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 1327.1,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 1396.15,
+    "right": 2434.91,
+    "top": 135.39
+   },
+   {
+    "bottom": 1425.8899999999999,
+    "fill": "#ffffff",
+    "left": 2503.96,
+    "right": 3824.5,
+    "top": 1239.52
+   }
+  ],
+  "rows": 0
+ },
+ "by_r0": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2471.99
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2471.99
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2530.15,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2343.65
+   }
+  ],
+  "rows": 0
+ },
+ "by_r0_bp_bogus": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2471.99
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2471.99
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2530.15,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2343.65
+   }
+  ],
+  "rows": 0
+ },
+ "by_r0_bp_c": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2471.99
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2471.99
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2530.15,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2343.65
+   }
+  ],
+  "rows": 0
+ },
+ "by_r0_bp_e": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2471.99
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2471.99
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2530.15,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2343.65
+   }
+  ],
+  "rows": 0
+ },
+ "by_r0_bp_n": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2471.99
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2471.99
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2530.15,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2343.65
+   }
+  ],
+  "rows": 0
+ },
+ "by_r0_bp_ne": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2471.99
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2471.99
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2530.15,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2343.65
+   }
+  ],
+  "rows": 0
+ },
+ "by_r0_bp_nea": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2471.99
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2471.99
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2530.15,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2343.65
+   }
+  ],
+  "rows": 0
+ },
+ "by_r0_bp_nw": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2471.99
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2471.99
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2530.15,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2343.65
+   }
+  ],
+  "rows": 0
+ },
+ "by_r0_bp_s": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2471.99
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2471.99
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2530.15,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2343.65
+   }
+  ],
+  "rows": 0
+ },
+ "by_r0_bp_se": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2471.99
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2471.99
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2530.15,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2343.65
+   }
+  ],
+  "rows": 0
+ },
+ "by_r0_bp_sw": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2471.99
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2471.99
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2530.15,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2343.65
+   }
+  ],
+  "rows": 0
+ },
+ "by_r0_bp_w": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2471.99
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2471.99
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2530.15,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2343.65
+   }
+  ],
+  "rows": 0
+ },
+ "by_r0_pos3_bp_nw": {
+  "box_alignment": "east",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 2651.22,
+    "y": 1367.73
+   },
+   {
+    "text": "Price",
+    "x": 3547.17,
+    "y": 1367.73
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2377.06,
+   "left": 288.34,
+   "right": 1327.1,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2377.06,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 1327.1,
+    "top": 258.27
+   },
+   {
+    "bottom": 2377.06,
+    "fill": "#ffffff",
+    "left": 1396.15,
+    "right": 2434.91,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 1327.1,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 1396.15,
+    "right": 2434.91,
+    "top": 135.39
+   },
+   {
+    "bottom": 1425.8899999999999,
+    "fill": "#ffffff",
+    "left": 2503.96,
+    "right": 3824.5,
+    "top": 1239.52
+   }
+  ],
+  "rows": 0
+ },
+ "by_scale": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1245.3,
+    "y": 2468.33
+   },
+   {
+    "text": "Price",
+    "x": 2489.36,
+    "y": 2468.33
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 126.72,
+    "y": 2717.24
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 1810.03,
+   "left": 364.82,
+   "right": 2060.07,
+   "top": 319.66
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 1810.03,
+    "fill": "#ffffff",
+    "left": 364.82,
+    "right": 2060.07,
+    "top": 319.66
+   },
+   {
+    "bottom": 1810.03,
+    "fill": "#ffffff",
+    "left": 2129.24,
+    "right": 3824.49,
+    "top": 319.66
+   },
+   {
+    "bottom": 319.65999999999997,
+    "fill": "#d9e6eb",
+    "left": 364.82,
+    "right": 2060.07,
+    "top": 135.39
+   },
+   {
+    "bottom": 319.65999999999997,
+    "fill": "#d9e6eb",
+    "left": 2129.24,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2555.52,
+    "fill": "#ffffff",
+    "left": 1054.47,
+    "right": 2905.4,
+    "top": 2275.96
+   }
+  ],
+  "rows": 0
+ },
+ "by_scale_0": {
+  "box_alignment": "south",
+  "cols": 2,
+  "drawn": 1,
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2571.98
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2571.98
+   },
+   {
+    "text": "Graphs by Car origin",
+    "x": 118.06,
+    "y": 2737.89
+   }
+  ],
+  "keys": 2,
+  "log": [],
+  "plot": {
+   "bottom": 2121.63,
+   "left": 288.34,
+   "right": 2021.83,
+   "top": 258.27
+  },
+  "rc": 0,
+  "regions": [
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 258.27
+   },
+   {
+    "bottom": 2121.63,
+    "fill": "#ffffff",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 258.27
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 288.34,
+    "right": 2021.83,
+    "top": 135.39
+   },
+   {
+    "bottom": 258.28,
+    "fill": "#d9e6eb",
+    "left": 2091.0,
+    "right": 3824.49,
+    "top": 135.39
+   },
+   {
+    "bottom": 2630.14,
+    "fill": "#ffffff",
+    "left": 1319.67,
+    "right": 2640.21,
+    "top": 2443.64
+   }
+  ],
+  "rows": 0
+ },
  "draw_1": {
   "box": {
    "bottom": 2744.6099999999997,
@@ -3036,6 +5178,566 @@
   "plot": {
    "bottom": 2233.63,
    "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "rows": 0
+ },
+ "gaps_1row_scale": {
+  "box": {
+   "bottom": 2727.41,
+   "left": 556.88,
+   "right": 3688.0,
+   "top": 2447.73
+  },
+  "box_alignment": "south",
+  "box_rel": {
+   "bottom": 1.4121,
+   "left": 0.0493,
+   "right": 0.9508,
+   "top": 1.2617
+  },
+  "cols": 2,
+  "drawn": 1,
+  "key_marks": [
+   {
+    "cx": 654.64,
+    "cy": 2587.57
+   },
+   {
+    "cx": 654.64,
+    "cy": 2587.57
+   },
+   {
+    "cx": 1898.7,
+    "cy": 2587.57
+   },
+   {
+    "cx": 1898.7,
+    "cy": 2587.57
+   },
+   {
+    "cx": 2515.96,
+    "cy": 2587.57
+   },
+   {
+    "cx": 2515.96,
+    "cy": 2587.57
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 747.7,
+    "y": 2640.1
+   },
+   {
+    "text": "Price",
+    "x": 1991.76,
+    "y": 2640.1
+   },
+   {
+    "text": "Turn circle (ft.)",
+    "x": 2608.9,
+    "y": 2640.1
+   }
+  ],
+  "keys": 3,
+  "log": [],
+  "plot": {
+   "bottom": 1960.8799999999999,
+   "left": 385.73,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "rows": 1
+ },
+ "gaps_2col_scale": {
+  "box": {
+   "bottom": 2727.42,
+   "left": 1178.84,
+   "right": 3065.8999999999996,
+   "top": 2257.77
+  },
+  "box_alignment": "south",
+  "box_rel": {
+   "bottom": 1.5727,
+   "left": 0.2283,
+   "right": 0.7717,
+   "top": 1.2915
+  },
+  "cols": 2,
+  "drawn": 1,
+  "key_marks": [
+   {
+    "cx": 1276.73,
+    "cy": 2397.61
+   },
+   {
+    "cx": 1276.73,
+    "cy": 2397.61
+   },
+   {
+    "cx": 2556.92,
+    "cy": 2397.61
+   },
+   {
+    "cx": 2556.92,
+    "cy": 2397.61
+   },
+   {
+    "cx": 1276.73,
+    "cy": 2587.57
+   },
+   {
+    "cx": 1276.73,
+    "cy": 2587.57
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1369.67,
+    "y": 2450.13
+   },
+   {
+    "text": "Price",
+    "x": 2649.98,
+    "y": 2450.13
+   },
+   {
+    "text": "Turn circle (ft.)",
+    "x": 1369.67,
+    "y": 2640.1
+   }
+  ],
+  "keys": 3,
+  "log": [],
+  "plot": {
+   "bottom": 1770.9199999999998,
+   "left": 385.73,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "rows": 0
+ },
+ "gaps_colgap": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "left": 864.15,
+   "right": 3285.69,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_rel": {
+   "bottom": 1.2396,
+   "left": 0.1607,
+   "right": 0.8393,
+   "top": 1.1522
+  },
+  "cols": 2,
+  "drawn": 1,
+  "key_marks": [
+   {
+    "cx": 929.36,
+    "cy": 2651.43
+   },
+   {
+    "cx": 929.36,
+    "cy": 2651.43
+   },
+   {
+    "cx": 1915.77,
+    "cy": 2651.43
+   },
+   {
+    "cx": 1915.77,
+    "cy": 2651.43
+   },
+   {
+    "cx": 2484.28,
+    "cy": 2651.43
+   },
+   {
+    "cx": 2484.28,
+    "cy": 2651.43
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1011.41,
+    "y": 2686.46
+   },
+   {
+    "text": "Price",
+    "x": 1997.82,
+    "y": 2686.46
+   },
+   {
+    "text": "Turn circle (ft.)",
+    "x": 2566.33,
+    "y": 2686.46
+   }
+  ],
+  "keys": 3,
+  "log": [],
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "rows": 1
+ },
+ "gaps_colgap_scale": {
+  "box": {
+   "bottom": 2727.41,
+   "left": 466.54,
+   "right": 3778.34,
+   "top": 2447.73
+  },
+  "box_alignment": "south",
+  "box_rel": {
+   "bottom": 1.4121,
+   "left": 0.0233,
+   "right": 0.9768,
+   "top": 1.2617
+  },
+  "cols": 2,
+  "drawn": 1,
+  "key_marks": [
+   {
+    "cx": 564.3,
+    "cy": 2587.57
+   },
+   {
+    "cx": 564.3,
+    "cy": 2587.57
+   },
+   {
+    "cx": 1898.7,
+    "cy": 2587.57
+   },
+   {
+    "cx": 1898.7,
+    "cy": 2587.57
+   },
+   {
+    "cx": 2606.3,
+    "cy": 2587.57
+   },
+   {
+    "cx": 2606.3,
+    "cy": 2587.57
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 657.24,
+    "y": 2640.1
+   },
+   {
+    "text": "Price",
+    "x": 1991.76,
+    "y": 2640.1
+   },
+   {
+    "text": "Turn circle (ft.)",
+    "x": 2699.36,
+    "y": 2640.1
+   }
+  ],
+  "keys": 3,
+  "log": [],
+  "plot": {
+   "bottom": 1960.8799999999999,
+   "left": 385.73,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "rows": 1
+ },
+ "gaps_keygap": {
+  "box": {
+   "bottom": 2744.61,
+   "left": 1614.07,
+   "right": 2535.76,
+   "top": 2278.31
+  },
+  "box_alignment": "south",
+  "box_rel": {
+   "bottom": 1.4269,
+   "left": 0.3708,
+   "right": 0.6292,
+   "top": 1.1752
+  },
+  "cols": 1,
+  "drawn": 1,
+  "key_marks": [
+   {
+    "cx": 1679.29,
+    "cy": 2371.5
+   },
+   {
+    "cx": 1679.29,
+    "cy": 2371.5
+   },
+   {
+    "cx": 1679.29,
+    "cy": 2511.46
+   },
+   {
+    "cx": 1679.29,
+    "cy": 2511.46
+   },
+   {
+    "cx": 1679.29,
+    "cy": 2651.43
+   },
+   {
+    "cx": 1679.29,
+    "cy": 2651.43
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1816.4,
+    "y": 2406.52
+   },
+   {
+    "text": "Price",
+    "x": 1816.4,
+    "y": 2546.49
+   },
+   {
+    "text": "Turn circle (ft.)",
+    "x": 1816.4,
+    "y": 2686.46
+   }
+  ],
+  "keys": 3,
+  "log": [],
+  "plot": {
+   "bottom": 1953.6999999999998,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "rows": 0
+ },
+ "gaps_keygap_scale": {
+  "box": {
+   "bottom": 2727.4100000000003,
+   "left": 1459.88,
+   "right": 2785.0,
+   "top": 2067.8
+  },
+  "box_alignment": "south",
+  "box_rel": {
+   "bottom": 1.7746,
+   "left": 0.3093,
+   "right": 0.6908,
+   "top": 1.3289
+  },
+  "cols": 1,
+  "drawn": 1,
+  "key_marks": [
+   {
+    "cx": 1557.64,
+    "cy": 2207.52
+   },
+   {
+    "cx": 1557.64,
+    "cy": 2207.52
+   },
+   {
+    "cx": 1557.64,
+    "cy": 2397.61
+   },
+   {
+    "cx": 1557.64,
+    "cy": 2397.61
+   },
+   {
+    "cx": 1557.64,
+    "cy": 2587.57
+   },
+   {
+    "cx": 1557.64,
+    "cy": 2587.57
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1705.89,
+    "y": 2260.05
+   },
+   {
+    "text": "Price",
+    "x": 1705.89,
+    "y": 2450.13
+   },
+   {
+    "text": "Turn circle (ft.)",
+    "x": 1705.89,
+    "y": 2640.1
+   }
+  ],
+  "keys": 3,
+  "log": [],
+  "plot": {
+   "bottom": 1580.9599999999998,
+   "left": 385.73,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "rows": 0
+ },
+ "gaps_rowgap": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "left": 1641.67,
+   "right": 2508.17,
+   "top": 2185.49
+  },
+  "box_alignment": "south",
+  "box_rel": {
+   "bottom": 1.5021,
+   "left": 0.3786,
+   "right": 0.6214,
+   "top": 1.1844
+  },
+  "cols": 1,
+  "drawn": 1,
+  "key_marks": [
+   {
+    "cx": 1706.88,
+    "cy": 2278.68
+   },
+   {
+    "cx": 1706.88,
+    "cy": 2278.68
+   },
+   {
+    "cx": 1706.88,
+    "cy": 2465.05
+   },
+   {
+    "cx": 1706.88,
+    "cy": 2465.05
+   },
+   {
+    "cx": 1706.88,
+    "cy": 2651.43
+   },
+   {
+    "cx": 1706.88,
+    "cy": 2651.43
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1788.81,
+    "y": 2313.71
+   },
+   {
+    "text": "Price",
+    "x": 1788.81,
+    "y": 2500.08
+   },
+   {
+    "text": "Turn circle (ft.)",
+    "x": 1788.81,
+    "y": 2686.46
+   }
+  ],
+  "keys": 3,
+  "log": [],
+  "plot": {
+   "bottom": 1860.8899999999999,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "rows": 0
+ },
+ "gaps_rowgap_scale": {
+  "box": {
+   "bottom": 2727.41,
+   "left": 1487.48,
+   "right": 2757.4,
+   "top": 1974.99
+  },
+  "box_alignment": "south",
+  "box_rel": {
+   "bottom": 1.8933,
+   "left": 0.3172,
+   "right": 0.6828,
+   "top": 1.3509
+  },
+  "cols": 1,
+  "drawn": 1,
+  "key_marks": [
+   {
+    "cx": 1585.36,
+    "cy": 2114.71
+   },
+   {
+    "cx": 1585.36,
+    "cy": 2114.71
+   },
+   {
+    "cx": 1585.36,
+    "cy": 2351.2
+   },
+   {
+    "cx": 1585.36,
+    "cy": 2351.2
+   },
+   {
+    "cx": 1585.36,
+    "cy": 2587.57
+   },
+   {
+    "cx": 1585.36,
+    "cy": 2587.57
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1678.3,
+    "y": 2167.23
+   },
+   {
+    "text": "Price",
+    "x": 1678.3,
+    "y": 2403.73
+   },
+   {
+    "text": "Turn circle (ft.)",
+    "x": 1678.3,
+    "y": 2640.1
+   }
+  ],
+  "keys": 3,
+  "log": [],
+  "plot": {
+   "bottom": 1488.1399999999999,
+   "left": 385.73,
    "right": 3859.02,
    "top": 100.86
   },

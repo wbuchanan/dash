@@ -4,7 +4,10 @@
 *! number), how much room a hole takes in a one-column, one-row and
 *! two-column legend (with scale(1.5) too), and what legend(all), draw and
 *! nodraw do to the keys and to whether a legend is drawn -- from twoway's
-*! own class values and SVG export.  twoway only: the output is the same
+*! own class values and SVG export.  Fix pass (04nov2026): which legend
+*! gaps scale() grows (gaps_*: the column gap, rowgap(), colgap(), keygap()
+*! and a two-column grid under scale(1.5)), and where by()'s legend sits
+*! under bplacement() (by_*: inside by(), and the graph's own legend()).  twoway only: the output is the same
 *! before and after dash changes.
 *!
 *! Output: test/fixtures/legend_place_truth.json
@@ -126,6 +129,36 @@ _lp_run holes_1row `"`three' legend(holes(2) rows(1))"'
 _lp_run holes_2col_0 `"`three' legend(cols(2))"'
 _lp_run holes_2col `"`three' legend(holes(2) cols(2))"'
 
+* Fix pass: the gaps under scale(1.5).
+_lp_run gaps_1row_scale `"`three' legend(rows(1)) scale(1.5)"'
+_lp_run gaps_2col_scale `"`three' legend(cols(2)) scale(1.5)"'
+_lp_run gaps_rowgap `"`three' legend(cols(1) rowgap(3))"'
+_lp_run gaps_rowgap_scale `"`three' legend(cols(1) rowgap(3)) scale(1.5)"'
+_lp_run gaps_colgap `"`three' legend(rows(1) colgap(8))"'
+_lp_run gaps_colgap_scale `"`three' legend(rows(1) colgap(8)) scale(1.5)"'
+_lp_run gaps_keygap `"`three' legend(cols(1) keygap(4))"'
+_lp_run gaps_keygap_scale `"`three' legend(cols(1) keygap(4)) scale(1.5)"'
+
+* Fix pass: by()'s legend and bplacement().
+local tb "twoway (scatter mpg weight) (scatter price weight),"
+_lp_run by_default `"`tb' by(foreign)"'
+_lp_run by_r0 `"`tb' by(foreign, legend(ring(0)))"'
+foreach x in n ne e se s sw w nw c {
+    _lp_run by_r0_bp_`x' `"`tb' by(foreign, legend(ring(0) bplacement(`x')))"'
+    _lp_run by_bp_`x' `"`tb' by(foreign, legend(bplacement(`x')))"'
+}
+_lp_run by_g_r0 `"`tb' by(foreign) legend(ring(0))"'
+_lp_run by_g_r0_bp_nw `"`tb' by(foreign) legend(ring(0) bplacement(nw))"'
+_lp_run by_g_r0_bp_bogus `"`tb' by(foreign) legend(ring(0) bplacement(bogus))"'
+_lp_run by_pos0 `"`tb' by(foreign, legend(pos(0)))"'
+_lp_run by_pos0_bp_nw `"`tb' by(foreign, legend(pos(0) bplacement(nw)))"'
+_lp_run by_r0_bp_nea `"`tb' by(foreign, legend(ring(0) bplacement(nea)))"'
+_lp_run by_r0_bp_bogus `"`tb' by(foreign, legend(ring(0) bplacement(bogus)))"'
+_lp_run by_r0_pos3_bp_nw `"`tb' by(foreign, legend(ring(0) pos(3) bplacement(nw)))"'
+_lp_run by_scale_0 `"`tb' by(foreign, legend(cols(1)))"'
+_lp_run by_scale `"`tb' by(foreign, legend(cols(1)) scale(1.5))"'
+_lp_run by_pos3_bp_n `"`tb' by(foreign, legend(pos(3) bplacement(n)))"'
+
 * LT-5: all, draw, nodraw.
 _lp_run all_p1_0 `"`p1'"'
 _lp_run all_p1 `"`p1' legend(all)"'
@@ -189,6 +222,11 @@ def record(key):
     keys = [{"text": t["text"], "x": t["x"], "y": t["y"]}
             for t in doc["texts"] if not t["anchor"]]
     rec["key_texts"] = keys
+    if key.startswith("by_"):
+        # by(): every solid region (the panels' plot regions among them).
+        rec["regions"] = [{k: r[k] for k in ("left", "top", "right",
+                                             "bottom", "fill")}
+                          for r in doc["regions"]]
     # The legend box: the smallest filled rect, other than the canvas and
     # the plot region, holding every key text's anchor point.
     box = None
@@ -232,7 +270,15 @@ keys = (["r0_default", "r0_pos1", "r0_pos1_bp_sw", "pos0", "pos0_bp_nw"]
            "holes_1col_scale", "holes_1row_0", "holes_1row", "holes_2col_0",
            "holes_2col"]
         + ["all_p1_0", "all_p1", "draw_1", "nodraw_2", "on_nodraw",
-           "nodraw_on", "off_draw", "draw_off", "all_nodraw"])
+           "nodraw_on", "off_draw", "draw_off", "all_nodraw"]
+        + ["gaps_1row_scale", "gaps_2col_scale", "gaps_rowgap",
+           "gaps_rowgap_scale", "gaps_colgap", "gaps_colgap_scale",
+           "gaps_keygap", "gaps_keygap_scale"]
+        + ["by_default", "by_r0", "by_g_r0", "by_g_r0_bp_nw",
+           "by_g_r0_bp_bogus", "by_pos0",
+           "by_pos0_bp_nw", "by_r0_bp_nea", "by_r0_bp_bogus",
+           "by_r0_pos3_bp_nw", "by_pos3_bp_n", "by_scale_0", "by_scale"]
+        + ["by_r0_bp_" + x for x in compass] + ["by_bp_" + x for x in compass])
 out = {k: record(k) for k in keys}
 
 

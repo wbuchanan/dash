@@ -28597,7 +28597,8 @@ def _dash_apply_scale(fig, factor, keep=None):
     title, tick labels, marker radius and strokes 1.5 x).  A post-pass over
     the finished figure, so every renderer path is covered; idempotent
     (``fig._dash_scaled``); ``fig._dash_scale`` records the factor.  Gaps
-    between boxes are not scaled.  *factor* None or 1 does nothing.
+    between boxes are not scaled, nor are the legend's key, row and column
+    gaps.  *factor* None or 1 does nothing.
     *keep* is a set of model ids left alone (WP-41 BY-2: a by() legend
     cell's keys also hold the panels' own renderers, scaled with their
     panels)."""
@@ -28647,10 +28648,15 @@ def _dash_apply_scale(fig, factor, keep=None):
             num(m, "border_line_width", "x_offset", "y_offset")
             whole(m, "padding", "standoff", "offset")
         elif isinstance(m, Legend):
+            # The key gap (label_standoff) and the row or column gap
+            # (spacing, which a hole's track gap is too) stay: twoway's
+            # scale() grows the keys, their texts and the box margin, not
+            # the gaps, given or not (legend_place_truth.json
+            # holes_1col_scale_0, gaps_*, by_scale: 40 SVG px row gap,
+            # 140 column gap and 60 key gap at scale(1.5)).
             css(m, "label_text_font_size", "title_text_font_size")
-            whole(m, "glyph_width", "glyph_height", "label_standoff",
-                  "spacing", "padding", "margin", "label_width",
-                  "label_height")
+            whole(m, "glyph_width", "glyph_height", "padding", "margin",
+                  "label_width", "label_height")
             num(m, "border_line_width")
         elif isinstance(m, ColorBar):
             css(m, "major_label_text_font_size", "title_text_font_size")
@@ -41893,8 +41899,9 @@ def _dash_legend_holes(legend):
     (tagged ``dash_legend_hole``) leave the legend and each key keeps its
     place in a grid of one track per place (_dash_legend_hole_sheet), so
     the keys stay the original LegendItems -- the stale cue and a click
-    reach them -- and the gap is the legend's own spacing, which scale()
-    and the width scale carry.  Returns True when it drew holes."""
+    reach them -- and the gap is the legend's own spacing, which the width
+    scale carries and scale() leaves, as twoway's does (holes_1col_scale).
+    Returns True when it drew holes."""
     items = list(getattr(legend, "items", None) or ())
     holes = [i for i, it in enumerate(items)
              if "dash_legend_hole" in (getattr(it, "tags", None) or [])]

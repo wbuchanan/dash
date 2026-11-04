@@ -189,7 +189,7 @@ class TestInsideBplacement:
 # (140); in a grid of rows and columns a hole is a full cell.  dash draws
 # the gap as an empty track of the legend's own CSS grid (the Legend's
 # ``dash_legend_holes`` stylesheet, ruling D69): the grid's gap -- the
-# legend's spacing, which scale() and the width scale carry -- is laid
+# legend's spacing, which the width scale carries and scale() leaves -- is laid
 # once more there, and the keys stay the original LegendItems.
 # ---------------------------------------------------------------------------
 
@@ -302,8 +302,8 @@ class TestHolesOneColumn:
 
     def test_scale(self, mode):
         """scale(1.5): the same tracks; the gap is the legend's own
-        spacing, which scale() carries (twoway: the hole is one row gap
-        at either scale, holes_1col_scale)."""
+        spacing, which scale() leaves (twoway: the hole is one row gap
+        of 40 SVG px at either scale, holes_1col_scale)."""
         _f, lg, _ = G._fig_legend(mode, G.THREE, "holes(1) cols(1)",
                                   go={"scale": "1.5"})
         _f, lg0, _ = G._fig_legend(mode, G.THREE, "holes(1) cols(1)")
@@ -389,3 +389,150 @@ class TestAllDrawNodraw:
         _f, lg, _ = G._fig_legend(mode, _P1, "all")
         assert [G._text(i) for i in lg.items] == [
             G._text(i) for i in G._fig_legend(mode, G.TWO, "")[1].items]
+
+
+# ---------------------------------------------------------------------------
+# Fix pass (04nov2026): scale() leaves the legend's gaps as they are.
+# twoway's scale(1.5) grows the keys, their texts and the box's margin, but
+# the row gap, the column gap and the key gap stay at their size, given or
+# not (legend_place_truth.json holes_1col_0/holes_1col_scale_0: pitch
+# 139.97 = 100 key + 40 gap, 190.08 = 150 + 40; gaps_rowgap(_scale),
+# gaps_colgap(_scale), gaps_keygap(_scale), gaps_1row_scale,
+# gaps_2col_scale).  dash scaled the Legend's spacing and label_standoff
+# with scale() (5 -> 8 px), so a hole's gap grew too.  The width scale
+# (D66) is a different factor and still carries every gap.
+# ---------------------------------------------------------------------------
+
+_KEYGAP_SVG = 2.0833 * 28.8      # s2color legend_key_gap, SVG px
+
+
+def _pitch(key, axis="y", i=0):
+    t = TRUTH[key]["key_texts"]
+    return t[i + 1][axis] - t[i][axis]
+
+
+def _text_to_mark(key):
+    rec = TRUTH[key]
+    return rec["key_texts"][0]["x"] - rec["key_marks"][0]["cx"]
+
+
+class TestGapsUnderScaleTruth:
+
+    @pytest.mark.parametrize("base,scaled", [
+        ("holes_1col_0", "holes_1col_scale_0"),
+        ("gaps_rowgap", "gaps_rowgap_scale")])
+    def test_the_row_gap_stays(self, base, scaled):
+        """The row pitch grows by the key's growth alone (100 -> 150)."""
+        for i in (0, 1):
+            d = _pitch(scaled, i=i) - _pitch(base, i=i)
+            assert abs(d - 50.0) < 1.0, (base, i, d)
+
+    def test_rowgap_given_stays(self):
+        d1 = _pitch("gaps_rowgap") - _pitch("holes_1col_0")
+        d15 = _pitch("gaps_rowgap_scale") - _pitch("holes_1col_scale_0")
+        assert abs(d1 - (3 - 1.3888) * 28.8) < 1.0
+        assert abs(d15 - d1) < 1.0
+
+    def test_the_key_gap_stays(self):
+        """Key mark to text: the half key grows (22 -> 33), the gap not,
+        default or keygap(4)."""
+        g1 = _text_to_mark("gaps_keygap") - _text_to_mark("holes_1col_0")
+        g15 = (_text_to_mark("gaps_keygap_scale")
+               - _text_to_mark("holes_1col_scale_0"))
+        assert abs(g1 - (4 * 28.8 - _KEYGAP_SVG)) < 1.0
+        assert abs(g15 - g1) < 1.0
+        grow = _text_to_mark("holes_1col_scale_0") - _text_to_mark(
+            "holes_1col_0")
+        assert grow < 15, grow   # 11.0: half a key, not half a key + gap
+
+    def test_the_column_gap_stays(self):
+        """One row: colgap(8) adds the same 90.4 at both scales, and the
+        default column gap solves to 140 at scale(1.5) too."""
+        for base, given in (("holes_1row_0", "gaps_colgap"),
+                            ("gaps_1row_scale", "gaps_colgap_scale")):
+            d = _pitch(given, "x") - _pitch(base, "x")
+            assert abs(d - (8 - 4.8611) * 28.8) < 1.0, (base, d)
+        p1, p15 = _pitch("holes_1row_0", "x"), _pitch("gaps_1row_scale", "x")
+        # p = key + keygap + text + colgap; key and text grow 1.5 x.
+        cg = (1.5 * (p1 - _KEYGAP_SVG) - p15 + _KEYGAP_SVG) / 0.5
+        assert abs(cg - _COL_GAP_SVG) < 1.5, cg
+
+    def test_by_scale(self):
+        """by(, scale(1.5)): the column gap stays as under scale() (the
+        same key pitch, 896.1 -> 1244.1, as gaps_1row_scale)."""
+        def pitch(k):
+            t = [x for x in TRUTH[k]["key_texts"]
+                 if not x["text"].startswith("Graphs by")]
+            return t[1]["x"] - t[0]["x"]
+        assert abs(pitch("by_scale_0") - _pitch("holes_1row_0", "x")) < 1.0
+        assert abs(pitch("by_scale") - _pitch("gaps_1row_scale", "x")) < 1.0
+
+    def test_the_margin_grows(self):
+        """The box margin (Legend.padding) scales: mark to box edge is
+        half a key plus the margin, 65.2 -> 97.9."""
+        def edge(k):
+            rec = TRUTH[k]
+            return rec["key_marks"][0]["cx"] - rec["box"]["left"]
+        m1 = edge("holes_1col_0") - 22.0
+        m15 = edge("holes_1col_scale_0") - 33.0
+        assert abs(m15 / m1 - 1.5) < 0.02, (m1, m15)
+
+
+#: legend() -> the Legend props scale() leaves (the gaps) for that legend.
+_GAP_PROBES = {
+    "cols(1)": ("spacing", "label_standoff"),
+    "rows(1)": ("spacing", "label_standoff"),
+    "cols(2)": ("spacing", "label_standoff"),
+    "cols(1) rowgap(3)": ("spacing",),
+    "rows(1) colgap(8)": ("spacing",),
+    "cols(1) keygap(4)": ("label_standoff",),
+}
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestGapsUnderScale:
+
+    @pytest.mark.parametrize("opt", sorted(_GAP_PROBES))
+    def test_gaps_stay(self, mode, opt):
+        """scale(1.5): the gaps as without scale(); the keys and the
+        margin grow (twoway, TestGapsUnderScaleTruth)."""
+        _f, lg, _ = G._fig_legend(mode, G.THREE, opt, go={"scale": "1.5"})
+        _f, lg0, _ = G._fig_legend(mode, G.THREE, opt)
+        for prop in _GAP_PROBES[opt]:
+            assert getattr(lg, prop) == getattr(lg0, prop), (opt, prop)
+        assert lg.glyph_height == round(lg0.glyph_height * 1.5)
+        assert lg.padding == round(lg0.padding * 1.5)
+
+    def test_hole_gap_stays(self, mode):
+        """holes(1) cols(1) scale(1.5): the hole's track gap is the
+        unscaled row gap, as twoway's 40 SVG px (holes_1col_scale)."""
+        _f, lg, _ = G._fig_legend(mode, G.THREE, "holes(1) cols(1)",
+                                  go={"scale": "1.5"})
+        assert lg.spacing == G._px(
+            dr.SchemeParser("s2color").legend_row_gap)
+        assert _hole_sheet(lg) is not None
+
+    def test_by_cell(self, mode):
+        """by(, scale(1.5))'s overall legend: its gaps unscaled, its keys
+        grown (twoway: TestGapsUnderScaleTruth.test_by_scale)."""
+        from bokeh.models import Legend
+        import test_mode_parity as tp
+
+        def cell(by):
+            spec = tp._spec(G.THREE, {"scheme": "s2color"},
+                            {"by": by, "legend": "cols(1)"})
+            if mode == "saved":
+                r, _ = tp._standalone(spec)
+                models = r._last_layout_root.references()
+            else:
+                doc, _ = tp._served(spec)
+                models = [m for root in doc.roots
+                          for m in root.references()]
+            got = [m for m in models if isinstance(m, Legend)
+                   and str(m.name or "").endswith("_key")]
+            assert len(got) == 1, got
+            return got[0]
+        lg, lg0 = cell("foreign, scale(1.5)"), cell("foreign")
+        assert (lg.spacing, lg.label_standoff) == (
+            lg0.spacing, lg0.label_standoff)
+        assert lg.glyph_height == round(lg0.glyph_height * 1.5)
