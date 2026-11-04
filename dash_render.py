@@ -58430,13 +58430,19 @@ _DASH_TEXTBOX_HONOURED = frozenset({"size", "color", "prefix", "suffix",
 #: (WP-31 D3; :func:`_dash_textbox_position`, :func:`_dash_textbox_style`).
 #: span places a box above or below the plot on the whole graph
 #: (:func:`_dash_textbox_span`, WP-32); bexpand is taken; box colours
-#: without box draw nothing, as in twoway.  orientation(), width(), height(), angle(), lstyle() and the
-#: bl* family stay named: a Bokeh Title has no angle and no fixed box.
+#: without box draw nothing, as in twoway.  WP-43 LT-18: orientation(),
+#: width() and height() (a Label in the box's panel,
+#: :func:`_dash_textbox_label`), lstyle()/blstyle(), the bl* family,
+#: lalign()/blalign() and style() (tstyle()) are drawn; angle() is taken
+#: (twoway draws nothing different without box; with box, see
+#: :func:`_dash_textbox_style`).
 _DASH_TEXTBOX_BOX_HONOURED = frozenset({
     "position", "ring", "span", "nospan", "justification", "alignment",
     "margin", "linegap", "box", "nobox", "bcolor", "bfcolor", "fcolor",
     "lcolor", "lwidth", "lpattern", "bmargin", "bexpand", "nobexpand",
-    "tstyle", "placement"})
+    "tstyle", "placement", "orientation", "width", "height", "angle",
+    "lstyle", "blstyle", "blcolor", "blwidth", "blpattern", "blalign",
+    "lalign", "style"})
 
 
 def _dash_textbox(raw, option, seen=None, key="", placed=True, extra=()):
@@ -58472,6 +58478,10 @@ def _dash_textbox(raw, option, seen=None, key="", placed=True, extra=()):
             if not t.strip(", "):
                 continue
             nm = _textbox_canon(t.split("(", 1)[0].strip())
+            # style() is tstyle() on a title-family box (WP-43 LT-18;
+            # title_box_truth.json t_style draws as t_tstyle), in full.
+            if nm is None and t.split("(", 1)[0].strip() == "style":
+                nm = "style"
             if nm == "axis":
                 arg = t[t.find("(") + 1:t.rfind(")")].strip() \
                     if "(" in t else ""
@@ -58538,7 +58548,9 @@ def _dash_figure_title(fig, graph_opts, seen=None, key="", scheme=None):
     if scheme is None:
         scheme = getattr(fig, "_dash_scheme", None)
     t = fig.title
-    if "position" in _t_opts or "ring" in _t_opts:
+    # A turned or fixed box leaves Bokeh's title slot too (WP-43 LT-18).
+    if "position" in _t_opts or "ring" in _t_opts or \
+            _dash_textbox_needs_label(_t_opts):
         place = _dash_textbox_position(
             _t_opts, scheme.text_clock["title"] if scheme is not None else 12,
             scheme.text_ring["title"] if scheme is not None else 7,
@@ -58872,7 +58884,8 @@ def _dash_textbox_style(model, opts, fig, scheme, option, *, base_size=None,
     o = opts or {}
     ref = T.size_ref_of(fig)
     colours = getattr(fig, "_dash_scheme_colours", None)
-    name = o.get("tstyle")
+    # style() is tstyle() when tstyle() is absent (WP-43 LT-18).
+    name = o.get("tstyle") or o.get("style")
     if name:
         st = (scheme.textbox_style(str(name)) if scheme is not None
               else None)
@@ -58919,7 +58932,7 @@ def _dash_textbox_style(model, opts, fig, scheme, option, *, base_size=None,
                                           colours=colours)
             return None
         fill = col("fcolor", "bfcolor", "bcolor")
-        line = col("lcolor", "bcolor")
+        line = col("lcolor", "blcolor", "bcolor")
         # WP-43 LT-8: the box's own text box style's fill and line
         # (textboxstyle-heading.style and kin: `set fillcolor scheme
         # textbox', `set linestyle scheme textbox'); the subtitle's style
@@ -58932,22 +58945,40 @@ def _dash_textbox_style(model, opts, fig, scheme, option, *, base_size=None,
                      else scheme.textbox_fill_color)
             dline = scheme.textbox_line_color
             lw = scheme.textbox_line_width
+        # WP-43 LT-18: lstyle()/blstyle() is the frame's base line
+        # (linestyle p1: #1A476F at medium, t_lstyle, t_blstyle); lcolor(),
+        # lwidth() and their bl* twins win (t_lstyle_lcolor).
+        lsty = o.get("lstyle") or o.get("blstyle")
+        bundle = (scheme.style_bundle("line", str(lsty))
+                  if lsty and scheme is not None else None) or {}
         model.background_fill_color = fill or model.background_fill_color \
             or dfill
-        model.border_line_color = line or dline
-        if o.get("lwidth"):
+        model.border_line_color = line or bundle.get("line") or dline
+        if bundle.get("line_width") is not None:
+            lw = bundle["line_width"]
+        wname = "lwidth" if o.get("lwidth") else "blwidth"
+        if o.get(wname):
             try:
-                lw = T.translate_lwidth(o["lwidth"], None, ref)
+                lw = T.translate_lwidth(o[wname], None, ref)
             except ValueError:
-                _dash_style_note(f"{option}(lwidth)", o["lwidth"],
+                _dash_style_note(f"{option}({wname})", o[wname],
                                  "line width")
         model.border_line_width = lw
-        if o.get("lpattern"):
+        # A dashed or dotted frame is drawn with no stroke at all
+        # (t_blpattern, t_blpattern_dot, t_lpattern: stroke-opacity 0);
+        # a solid one is drawn (t_blpattern_solid).
+        pname = "lpattern" if o.get("lpattern") else "blpattern"
+        if o.get(pname):
             try:
-                model.border_line_dash = T.translate_lpattern(o["lpattern"])
+                dash = T.translate_lpattern(o[pname])
             except ValueError:
-                _dash_style_note(f"{option}(lpattern)", o["lpattern"],
+                dash = None
+                _dash_style_note(f"{option}({pname})", o[pname],
                                  "line pattern")
+            if dash:
+                model.border_line_alpha = 0.0
+        elif bundle.get("line_dash"):
+            model.border_line_alpha = 0.0
 
     def sides_px(sub):
         sides = SchemeParser.margin_sides(
@@ -58972,6 +59003,13 @@ def _dash_textbox_style(model, opts, fig, scheme, option, *, base_size=None,
         if p is not None:
             model.padding = {"left": p[0], "right": p[1], "bottom": p[2],
                              "top": p[3]}
+    # lalign()/blalign() outside moves the frame out by half its width
+    # (t_lalign, t_blalign); inside is the default (t_lalign_in).  BokehJS
+    # strokes the frame on the box's edge, so the padding grows by it.
+    if "box" in o and "nobox" not in o and "outside" in (
+            o.get("lalign"), o.get("blalign")):
+        model.padding = _dash_added_text_edge(
+            model.padding, round(float(model.border_line_width or 0) / 2))
     if o.get("bmargin") and not is_label:
         p = sides_px("bmargin")
         if p is not None:
@@ -59049,6 +59087,120 @@ def _dash_textbox_insert(fig, side, model, ring, tag=True):
     setattr(fig, side, panel)
 
 
+#: A title-family box at 2, 3 or 4 o'clock is drawn right of the plot
+#: region and one at 8, 9 or 10 left of it, level, its top, centre or
+#: bottom on the plot region's (WP-43 LT-18; title_box_truth.json
+#: t_pos<k>): clock -> (panel, frame symbol).
+_DASH_TEXTBOX_SIDE_CLOCK = {2: ("right", "top"), 3: ("right", "center"),
+                            4: ("right", "bottom"), 8: ("left", "bottom"),
+                            9: ("left", "center"), 10: ("left", "top")}
+
+
+def _dash_textbox_angle(opts):
+    """The counter-clockwise angle (radians) orientation() turns a
+    title-family box by (WP-43 LT-18): vertical reads upward, as twoway's
+    rotate(-90) (t_or_vertical), rvertical downward, rhorizontal upside
+    down; 0.0 for horizontal, none or a word twoway does not read."""
+    v = str((opts or {}).get("orientation") or "").strip()
+    return float(_DASH_ADDED_TEXT_ORIENT.get(v, 0.0) or 0.0)
+
+
+def _dash_textbox_turned_anchor(angle, v, h):
+    """The Label anchor that puts the (*v*, *h*) point of a box turned by
+    *angle* (a multiple of a right angle) on the Label's point: the turned
+    box's bottom centre is the unturned box's left centre at 90 degrees
+    (WP-43 LT-18).  *v* is top, center or bottom, *h* left, center or
+    right."""
+    dx = {"left": -1, "center": 0, "right": 1}.get(h, 0)
+    dy = {"bottom": -1, "center": 0, "top": 1}.get(v, 0)
+    c, s = int(round(math.cos(angle))), int(round(math.sin(angle)))
+    ux, uy = c * dx + s * dy, -s * dx + c * dy
+    hh = {-1: "left", 0: "center", 1: "right"}[ux]
+    vv = {-1: "bottom", 0: "center", 1: "top"}[uy]
+    return "center" if (vv, hh) == ("center", "center") else f"{vv}_{hh}"
+
+
+def _dash_textbox_label(fig, key, text, opts, scheme, place, *,
+                        base_size=None, base_color=None, fill=None):
+    """Draw a title-family box twoway turns, fixes or puts beside the plot
+    as a ``Label`` in its side panel (WP-43 LT-18); returns the Label.
+
+    A Label in a side panel gets that panel's slot: BokehJS sizes the slot
+    to the Label's box turned by its angle and draws it unclipped
+    (measured in Chrome under Bokeh 3.8 and 3.9, 04nov2026), so
+    orientation() turns the text and its box together, as twoway does
+    (t_or_vertical: the box 174 x 127 where t_box's is 127 x 174).  Above
+    or below the plot the Label sits at the frame's left, centre or right
+    (the box's align), its turned box's bottom on the slot's floor
+    (screen y 0 is the slot's bottom); right or left of it (clocks 2-4,
+    8-10, :data:`_DASH_TEXTBOX_SIDE_CLOCK`) at the slot's inner edge,
+    level with the frame's top, centre or bottom.  width() and height()
+    fix the box through :func:`_dash_text_box_fit` -- the size plus the
+    box's margins, as twoway draws width(50) (t_width, t_height).
+    Inserted by ring (:func:`_dash_textbox_insert`); tagged as
+    :func:`_dash_textbox_draw` tags its models.  The text is raw: the
+    canvas-text pass finishes it.
+    """
+    from bokeh.models import Label, Node
+    T = OptionTranslator
+    o = opts or {}
+    angle = _dash_textbox_angle(o)
+    side_clock = None if place.get("edge_row") else \
+        _DASH_TEXTBOX_SIDE_CLOCK.get(place.get("clock"))
+    if side_clock is not None:
+        side, v = side_clock
+        h = "left"
+        x, y = 0, Node(target="frame", symbol=v)
+    else:
+        side, v = place["side"], "bottom"
+        h = place["align"] if place["align"] in ("left", "center",
+                                                  "right") else "center"
+        x, y = Node(target="frame", symbol=h), 0
+    m = Label(x=x, y=y, x_units="screen", y_units="screen", text=text,
+              angle=angle, background_fill_color=fill,
+              tags=["dash_textbox", key, _dash_ring_tag(place["ring"])])
+    _dash_textbox_style(m, o, fig, scheme, key, base_size=base_size,
+                        base_color=base_color)
+    m.anchor = _dash_textbox_turned_anchor(angle, v, h)
+    ref = T.size_ref_of(fig)
+    fixed = {}
+    for name in ("width", "height"):
+        if o.get(name):
+            try:
+                fixed[name] = float(T.resolve_size(
+                    str(o[name]), "gap", 0.0, ref)) * T.PX_PER_PT
+            except (ValueError, TypeError):
+                _dash_style_note(f"{key}({name})", o[name], "size")
+    if fixed:
+        pad = m.padding if isinstance(m.padding, dict) else dict.fromkeys(
+            ("left", "right", "top", "bottom"), int(m.padding or 0))
+        w = fixed.get("width")
+        hgt = fixed.get("height")
+        valign = {"top": "top", "bottom": "bottom", "baseline": "bottom"
+                  }.get(str(o.get("alignment", "")), "middle")
+        _dash_text_box_fit(
+            fig, m,
+            None if w is None else w + pad.get("left", 0)
+            + pad.get("right", 0),
+            None if hgt is None else hgt + pad.get("top", 0)
+            + pad.get("bottom", 0), valign)
+    _dash_textbox_insert(fig, side, m, place["ring"])
+    return m
+
+
+def _dash_textbox_needs_label(opts, place=None):
+    """True when a title-family box outside the plot region is drawn as a
+    side-panel Label (:func:`_dash_textbox_label`, WP-43 LT-18): it is
+    turned (orientation()), fixed (width(), height()) or at a side clock
+    (2-4, 8-10) -- but not a by() chrome cell's ring(0) box, a row of the
+    edge side at its clock's horizontal (``edge_row``, WP-41 BY-1)."""
+    o = opts or {}
+    return bool(_dash_textbox_angle(o) or o.get("width") or o.get("height")
+                or (place is not None and place.get("mode") == "side"
+                    and not place.get("edge_row")
+                    and place.get("clock") in _DASH_TEXTBOX_SIDE_CLOCK))
+
+
 def _dash_textbox_draw(fig, key, text, opts, scheme, place, *,
                        base_size=None, base_color=None, fill=None):
     """Build, style and place one textbox (WP-31 D3); returns the model.
@@ -59071,6 +59223,11 @@ def _dash_textbox_draw(fig, key, text, opts, scheme, place, *,
         _dash_textbox_style(m, opts, fig, scheme, key, base_size=base_size,
                             base_color=base_color)
         fig.center = [m] + list(fig.center)
+    elif _dash_textbox_needs_label(opts, place):
+        # Turned, fixed or beside the plot (WP-43 LT-18).
+        m = _dash_textbox_label(fig, key, text, opts, scheme, place,
+                                base_size=base_size, base_color=base_color,
+                                fill=fill)
     else:
         m = Title(text=text, align=place["align"], text_font_style="normal",
                   background_fill_color=fill, tags=tags)
@@ -59350,7 +59507,7 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
         if ring0 and place["mode"] == "inside":
             # WP-41 BY-1: a row of the edge side, nearest the panels.
             place = dict(place, mode="side", side=side, align=align,
-                         ring=1)
+                         ring=1, edge_row=True)
         # note()'s box is filled where the scheme's `textboxstyle note'
         # draws one (economist's reverse_big: emidblue).
         fill = (scheme.note_box_fill_color
@@ -74880,7 +75037,7 @@ class ServerAppBuilder:
                       "_DASH_ORDER_WORD_RE", "_DASH_ORDER_BLANK_RE",
                       "_DASH_TEXTBOX_HONOURED", "_DASH_TEXTBOX_BOX_HONOURED",
                       "_DASH_RING_WORDS", "_DASH_RING_NUMBER_RE",
-                      "_DASH_TEXTBOX_PLACEMENT",
+                      "_DASH_TEXTBOX_PLACEMENT", "_DASH_TEXTBOX_SIDE_CLOCK",
                       "_DASH_GRAPH_MARGIN_JS",
                       "_DASH_SPAN_JS", "_DASH_SPAN_KEYS",
                       "_DASH_LEGEND_TITLE_DRAWN", "_DASH_LEGEND_TITLE_SILENT",
@@ -75662,6 +75819,8 @@ class ServerAppBuilder:
                          "_dash_ring_value", "_dash_legend_ring",
                          "_dash_ring_tag", "_dash_ring_of_tag",
                          "_dash_textbox_place_align",
+                         "_dash_textbox_angle", "_dash_textbox_turned_anchor",
+                         "_dash_textbox_label", "_dash_textbox_needs_label",
                          "_dash_textbox_margin_rel",
                          "_dash_textbox_style",
                          "_dash_textbox_insert", "_dash_textbox_draw",

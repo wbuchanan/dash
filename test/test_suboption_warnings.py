@@ -97,8 +97,10 @@ SUBOPTIONS = [
     # Flipped (WP-31 D3): this row named bc(red); that was wrong because
     # bcolor() is drawn now (with box, as twoway draws it), so the row
     # names orient(), which a Title still cannot draw.
-    ("title c and bc", {"title": "T, c(red) bc(red) orient(vertical)"},
-     None, "title", ["orient(vertical)"], ["c", "bc"]),
+    # Flipped (WP-43 LT-18): orientation() is drawn now (a turned Label);
+    # the row names astextbox, which dash does not draw.
+    ("title c and bc", {"title": "T, c(red) bc(red) astextbox"},
+     None, "title", ["astextbox"], ["c", "bc"]),
     ("xtitle orient", {"xtitle": "Weight, orient(vertical)"}, None,
      "xtitle", ["orient(vertical)"], []),
     ("ytitle axis 3", {"ytitle": "M, axis(3)"}, None, "ytitle",

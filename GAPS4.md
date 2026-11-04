@@ -475,7 +475,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-15 Tracked:** Closed in WP-43, BUGS.md "legend title()/subtitle() sub-options (position(), box ...) are dropped silently; subtitle size()/color() are ignored", commit 3c3b781.
 - **LT-16 Tracked:** Closed in WP-43, BUGS.md "title/subtitle/note/caption placement() at ring(0) is drawn as a Label anchor (n lifts the box out of the plot) and long names, clocks and synonyms are ignored", commit 6dc1209.
 - **LT-17 Tracked:** Closed in WP-43, BUGS.md "legend(holes()) with cols(1) inserts a full blank row", commit 5fc359a.
-- **LT-18 Tracked:** Open (WP-43 section 43-05).
+- **LT-18 Tracked:** Partly closed in WP-43 (section 43-05, commit pending): orientation(), width(), height(), lstyle(), blstyle(), the bl* family, lalign(), blalign(), style() and the 2-4 and 8-10 o'clock boxes are drawn, and angle() without box; open: angle() with box (BUGS.md "title(..., angle() box) turns twoway's text inside its level box; dash keeps the title level").
 - **LT-19 Tracked:** Open (WP-43 section 43-05).
 - **LT-20 Tracked:** Documented in WP-43, BUGS.md "text() draws no width(), height(), linegap(), bexpand, bmargin(), lstyle(), lpattern(), lalign(); a `=exp' global is drawn literally", commit 065aace.
 - **LT-21 Tracked:** Open (WP-43 section 43-04).

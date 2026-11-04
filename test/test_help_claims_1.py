@@ -907,12 +907,14 @@ def test_a_textbox_suboption_dash_lacks_is_named(option):
     """title(), subtitle(), note() and caption() are in the help's list of
     options whose unimplemented sub-options are named; the textbox options
     had no test of their own."""
+    # Flipped (WP-43 LT-18): orientation() is drawn on these four now;
+    # astextbox is a textbox sub-option dash still lacks.
     spec = tp._spec([plot_for("scatter")],
-                    graph_options={option: "T, orientation(vertical)"})
+                    graph_options={option: "T, astextbox"})
     std_w, srv_w = _warned(spec)
     for where, ws in (("saved", std_w), ("served", srv_w)):
         hits = [w for w in ws if f"dash: {option}() sub-option(s) not "
-                f"implemented and ignored: orientation(vertical)" in w]
+                f"implemented and ignored: astextbox" in w]
         assert len(hits) == 1, (where, ws)
 
 

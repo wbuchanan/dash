@@ -427,3 +427,387 @@ class TestPlacementInside:
     def test_outside_north_unchanged(self, mode):
         f, _c = _fig(mode, {"title": '"TT", placement(n)'})
         assert _model(f, "title").align == "center"
+
+
+# ============================================================
+# LT-18: orientation(), width(), height(), the frame styles, style()
+# and the side clocks
+# ============================================================
+def _lw0():
+    return dr.SchemeParser.resolve_or_fallback("s2color", "x") \
+        .textbox_line_width
+
+
+def _stroke(case):
+    """(colour, width, opacity) of the stroked rect of *case*'s T box."""
+    row = TRUTH[case]
+    for r in row["rects"]:
+        st = dict(kv.split(":", 1) for kv in r["style"].split(";") if kv)
+        if st.get("fill") == "none" and r["w"] < 1000:
+            return (st.get("stroke", "").lower(),
+                    float(st.get("stroke-width", 0)),
+                    float(st.get("stroke-opacity", 1)))
+    raise AssertionError(case)
+
+
+def _tbox(case, text="T"):
+    """The filled rect of *case* holding *text*'s anchor (its box)."""
+    row = TRUTH[case]
+    t = [x for x in row["texts"] if x["text"] == text][0]
+    return [r for r in row["rects"] if "fill:none" not in r["style"]
+            and r["x"] - 1 <= t["x"] <= r["x"] + r["w"] + 1
+            and r["y"] - 1 <= t["y"] <= r["y"] + r["h"] + 1
+            and r["w"] < row["viewbox"][2] / 2][0]
+
+
+def _pad(m):
+    p = m.padding
+    if isinstance(p, dict):
+        return [p.get(k, 0) for k in ("left", "right", "top", "bottom")]
+    return [int(p or 0)] * 4
+
+
+_LT18_CASES = ["t_angle", "t_angle_box", "t_blalign", "t_blcolor",
+               "t_blpattern", "t_blpattern_solid", "t_blpattern_dot",
+               "t_lpattern", "t_blstyle", "t_lstyle_lcolor", "t_blwidth",
+               "t_height", "t_lalign", "t_lalign_in", "t_lstyle",
+               "t_or_rhorizontal", "t_or_rvertical", "t_or_scale",
+               "t_or_vertical", "t_or_vertical_nobox", "t_or_vertical_sub",
+               "t_pos2", "t_pos3", "t_pos4", "t_pos8", "t_pos9", "t_pos10",
+               "t_pos3_vertical", "t_style", "t_tstyle", "t_width"]
+
+#: orientation() -> the probe and the counter-clockwise angle twoway's
+#: SVG rotation shows (rotate(-90) reads upward: +90 degrees).
+_ORIENT = {"vertical": "t_or_vertical", "rvertical": "t_or_rvertical",
+           "rhorizontal": "t_or_rhorizontal"}
+
+
+class TestTitleSubopts:
+
+    @pytest.mark.parametrize("case", _LT18_CASES)
+    def test_fixture(self, case):
+        assert TRUTH[case]["rc"] == 0 and TRUTH[case]["lines"] == [], case
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("orient", sorted(_ORIENT))
+    def test_orientation(self, mode, orient):
+        """The text and its box turn by the angle twoway's SVG shows, in
+        the title's band above the plot: a Label in the panel, at the
+        frame's centre, its turned box's bottom on the band's floor."""
+        import math
+        case = _ORIENT[orient]
+        rot = [t for t in TRUTH[case]["texts"] if t["text"] == "T"][0][
+            "rotate"]
+        f, caught = _fig(mode, {"title": '"T", orientation(%s) box'
+                                % orient})
+        [(side, _i, m)] = _box(f, "title")
+        assert (side, type(m).__name__) == ("above", "Label")
+        want = math.radians(-rot) % (2 * math.pi)
+        assert m.angle % (2 * math.pi) == pytest.approx(want)
+        assert (m.x.target, m.x.symbol) == ("frame", "center")
+        assert (m.y, m.x_units, m.y_units) == (0, "screen", "screen")
+        assert m.anchor == {"vertical": "center_left",
+                            "rvertical": "center_right",
+                            "rhorizontal": "top_center"}[orient]
+        assert str(m.background_fill_color).lower() == "#d9e6eb"
+        assert not [w for w in caught if "title()" in w], caught
+
+    def test_turned_box_as_measured(self):
+        """vertical and rvertical turn the box (174 x 127 for 127 x 174);
+        rhorizontal keeps it."""
+        b, v, r, h = (_tbox(c) for c in ("t_box", "t_or_vertical",
+                                         "t_or_rvertical",
+                                         "t_or_rhorizontal"))
+        assert (v["w"], v["h"]) == pytest.approx((b["h"], b["w"]), abs=0.2)
+        assert (r["w"], r["h"]) == pytest.approx((b["h"], b["w"]), abs=0.2)
+        assert (h["w"], h["h"]) == pytest.approx((b["w"], b["h"]), abs=0.2)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_orientation_without_box(self, mode):
+        f, caught = _fig(mode, {"title": '"T", orientation(vertical)'})
+        [(_s, _i, m)] = _box(f, "title")
+        assert type(m).__name__ == "Label" and m.background_fill_color is None
+        assert not [w for w in caught if "title()" in w], caught
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_orientation_on_subtitle(self, mode):
+        assert [t for t in TRUTH["t_or_vertical_sub"]["texts"]
+                if t["text"] == "S"][0]["rotate"] == -90.0
+        f, caught = _fig(mode, {"title": '"T"',
+                                "subtitle": '"S", orientation(vertical) box'})
+        [(side, _i, m)] = _box(f, "subtitle")
+        assert (side, type(m).__name__) == ("above", "Label")
+        assert m.angle == pytest.approx(__import__("math").pi / 2)
+        assert not [w for w in caught if "subtitle()" in w], caught
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_style_is_tstyle(self, mode):
+        """style(subheading) draws exactly as tstyle(subheading)."""
+        assert TRUTH["t_style"]["texts"] == TRUTH["t_tstyle"]["texts"]
+        a, ca = _fig(mode, {"title": '"T", style(subheading)'})
+        b, _cb = _fig(mode, {"title": '"T", tstyle(subheading)'})
+        ma, mb = _model(a, "title"), _model(b, "title")
+        assert (ma.text_font_size, ma.text_color) == \
+            (mb.text_font_size, mb.text_color)
+        assert ma.text_font_size != _fig(mode, {"title": '"T"'})[0] \
+            .title.text_font_size
+        assert not [w for w in ca if "title()" in w], ca
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("case,sub", [
+        ("t_lstyle", "lstyle(p1)"), ("t_blstyle", "blstyle(p1)"),
+        ("t_blcolor", "blcolor(red)"), ("t_blwidth", "blwidth(vthick)"),
+        ("t_lstyle_lcolor", "lstyle(p1) lcolor(red)"),
+        ("t_blpattern_solid", "blpattern(solid)")])
+    def test_frame_line(self, mode, case, sub):
+        """The frame's colour and width as measured, explicit options over
+        the line style's; a solid pattern is drawn."""
+        colour, width, opacity = _stroke(case)
+        _c0, width0, _o0 = _stroke("t_box")
+        f, caught = _fig(mode, {"title": '"T", %s box' % sub})
+        m = _model(f, "title")
+        assert str(m.border_line_color).lower() == colour
+        assert m.border_line_width == pytest.approx(
+            _lw0() * width / width0)
+        assert opacity == 1.0 and m.border_line_alpha == 1.0
+        assert not [w for w in caught if "title()" in w], caught
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("case,sub", [
+        ("t_blpattern", "blpattern(dash)"), ("t_blpattern_dot",
+                                             "blpattern(dot)"),
+        ("t_lpattern", "lpattern(dash)")])
+    def test_patterned_frame_not_drawn(self, mode, case, sub):
+        """twoway draws a dashed or dotted title frame with no stroke
+        (stroke-opacity 0): only the fill shows."""
+        assert _stroke(case)[2] == 0.0
+        f, caught = _fig(mode, {"title": '"T", %s box' % sub})
+        m = _model(f, "title")
+        assert m.border_line_alpha == 0.0
+        assert str(m.background_fill_color).lower() == "#d9e6eb"
+        assert not [w for w in caught if "title()" in w], caught
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("sub", ["lalign(outside)", "blalign(outside)",
+                                     "lalign(inside)"])
+    def test_line_alignment(self, mode, sub):
+        """outside moves the line out by half its width (t_lalign,
+        t_blalign: the stroked rect 2.88 units outside the fill, its width
+        5.76); inside is the default (t_lalign_in)."""
+        case = {"lalign(outside)": "t_lalign", "blalign(outside)":
+                "t_blalign", "lalign(inside)": "t_lalign_in"}[sub]
+        s0 = [r for r in TRUTH["t_box"]["rects"] if "fill:none" in
+              r["style"] and r["w"] < 1000][0]
+        s1 = [r for r in TRUTH[case]["rects"] if "fill:none" in
+              r["style"] and r["w"] < 1000][0]
+        shift = (s0["x"] - s1["x"]) / _stroke("t_box")[1]
+        assert shift == pytest.approx(0.0 if "inside" in sub else 1.0,
+                                      abs=0.01)
+        for lw in ("", " lwidth(vthick)"):
+            base = _model(_fig(mode, {"title": '"T", box%s' % lw})[0],
+                          "title")
+            f, caught = _fig(mode, {"title": '"T", %s box%s' % (sub, lw)})
+            m = _model(f, "title")
+            got = [a - b for a, b in zip(_pad(m), _pad(base))]
+            want = 0 if "inside" in sub else int(round(
+                base.border_line_width / 2))
+            assert got == [want] * 4, (sub, lw, got)
+            assert not [w for w in caught if "title()" in w], caught
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("sub,case,slot", [
+        ("width(50)", "t_width", "w"), ("height(20)", "t_height", "h")])
+    def test_fixed_box(self, mode, sub, case, slot):
+        """width() and height() fix the box -- the size plus the box's
+        margins, centred where the box was -- through the fixed-box fit
+        43-06 made for text(), in em of the font."""
+        b = _tbox(case)
+        size = [t for t in TRUTH[case]["texts"] if t["text"] == "T"][0][
+            "size"]
+        want_em = b["w" if slot == "w" else "h"] / size
+        f, caught = _fig(mode, {"title": '"T", %s box' % sub})
+        [(side, _i, m)] = _box(f, "title")
+        assert (side, type(m).__name__) == ("above", "Label")
+        cbs = [c for cs in f.js_property_callbacks.values() for c in cs
+               if getattr(c, "code", None) == dr._DASH_TEXT_BOX_JS]
+        assert cbs
+        [item] = [it for it in cbs[0].args["items"] if it[0] is m]
+        assert item[1][slot] == pytest.approx(want_em, rel=0.03)
+        assert item[1]["h" if slot == "w" else "w"] is None
+        assert not [w for w in caught if "title()" in w], caught
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_angle_without_box_changes_nothing(self, mode):
+        assert TRUTH["t_angle"]["texts"] == TRUTH["t_ctrl"]["texts"]
+        f, caught = _fig(mode, {"title": '"T", angle(45)'})
+        assert f.title is not None and f.title.text == "T"
+        assert not [w for w in caught if "title()" in w], caught
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_angle_with_box_stays_level(self, mode):
+        """angle(45) with box: twoway turns the text -45 degrees inside
+        its unturned box (t_angle_box); a Bokeh Label turns its box with
+        its text, so the title stays level and nothing is named (BUGS.md
+        "title(..., angle() box) turns twoway's text inside its box ...",
+        open for a ruling)."""
+        t = [x for x in TRUTH["t_angle_box"]["texts"] if x["text"] == "T"][0]
+        assert t["rotate"] == -45.0
+        assert _tbox("t_angle_box")["w"] == _tbox("t_box")["w"]
+        f, caught = _fig(mode, {"title": '"T", angle(45) box'})
+        assert f.title is not None and f.title.text == "T"
+        assert not [w for w in caught if "title()" in w], caught
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("k", [2, 3, 4, 8, 9, 10])
+    def test_side_clock(self, mode, k):
+        """A box at 2, 3 or 4 o'clock is drawn right of the plot region,
+        8, 9 or 10 left of it, level, its top, centre or bottom on the
+        plot region's (t_pos<k>)."""
+        case = "t_pos%d" % k
+        p = _plot_rect(case)
+        b = _tbox(case)
+        right = k in (2, 3, 4)
+        assert (b["x"] >= p["x"] + p["w"] - 0.5) if right else \
+            (b["x"] + b["w"] <= p["x"] + 0.5)
+        v = {2: "top", 10: "top", 3: "center", 9: "center", 4: "bottom",
+             8: "bottom"}[k]
+        edge = {"top": (b["y"], p["y"]),
+                "center": (b["y"] + b["h"] / 2, p["y"] + p["h"] / 2),
+                "bottom": (b["y"] + b["h"], p["y"] + p["h"])}[v]
+        assert edge[0] == pytest.approx(edge[1], abs=0.5)
+        f, caught = _fig(mode, {"title": '"T", position(%d) box' % k})
+        [(side, _i, m)] = _box(f, "title")
+        assert (side, type(m).__name__) == \
+            ("right" if right else "left", "Label")
+        assert (m.y.target, m.y.symbol) == ("frame", v)
+        assert (m.x, m.angle) == (0, 0)
+        assert m.anchor == ("center_left" if v == "center"
+                            else "%s_left" % v)
+        assert not [w for w in caught if "title()" in w], caught
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_side_clock_turned(self, mode):
+        """position(3) orientation(vertical): the turned box right of the
+        plot region, centred on it (t_pos3_vertical)."""
+        b, p = _tbox("t_pos3_vertical"), _plot_rect("t_pos3_vertical")
+        assert b["y"] + b["h"] / 2 == pytest.approx(p["y"] + p["h"] / 2,
+                                                    abs=0.5)
+        f, _c = _fig(mode, {"title": '"T", position(3) orientation(vertical)'
+                                     ' box'})
+        [(side, _i, m)] = _box(f, "title")
+        assert side == "right" and m.anchor == "top_center"
+        assert m.angle == pytest.approx(__import__("math").pi / 2)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_scale(self, mode):
+        """scale(1.5): the turned box's text and line 1.5 times
+        (t_or_scale: the box 1.5 times t_or_vertical's)."""
+        a, b = _tbox("t_or_vertical"), _tbox("t_or_scale")
+        assert (b["w"] / a["w"], b["h"] / a["h"]) == pytest.approx(
+            (1.5, 1.5), abs=0.01)
+        f0, _c = _fig(mode, {"title": '"T", orientation(vertical) box'})
+        f, _c = _fig(mode, {"title": '"T", orientation(vertical) box',
+                            "scale": "1.5"})
+        [(_s, _i, m0)] = _box(f0, "title")
+        [(_s, _i, m)] = _box(f, "title")
+        assert dr.OptionTranslator.css_to_pt(m.text_font_size) == \
+            pytest.approx(1.5 * dr.OptionTranslator.css_to_pt(
+                m0.text_font_size))
+        assert m.border_line_width == pytest.approx(
+            1.5 * m0.border_line_width)
+        assert m.angle == m0.angle
+
+
+#: In Chrome: each figure's picture as its save tool exports it, the
+#: bounding boxes of its yellow (the box's fill), red (the text) and blue
+#: (the frame) pixels, and its frame; CSP violations collected.
+_CHROME_JS = r"""
+<script>
+const V = [];
+addEventListener('securitypolicyviolation', e => V.push(e.violatedDirective));
+window.addEventListener('load', () => setTimeout(() => {
+  const out = {V, plots: []};
+  const seen = new Set();
+  const visit = (v) => {
+    if (v == null || seen.has(v)) return;
+    seen.add(v);
+    if (v.frame && v.export) {
+      const c = v.export("png", false).canvas;
+      const W = c.width, H = c.height;
+      const d = c.getContext('2d').getImageData(0, 0, W, H).data;
+      const box = (f) => { let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+          const i = (y * W + x) * 4;
+          if (f(d[i], d[i + 1], d[i + 2], d[i + 3])) {
+            if (x < x0) x0 = x; if (y < y0) y0 = y;
+            if (x > x1) x1 = x; if (y > y1) y1 = y; } }
+        return x1 < 0 ? null : [x0, y0, x1 - x0 + 1, y1 - y0 + 1]; };
+      const b = v.frame.bbox;
+      out.plots.push({
+        yellow: box((r, g, b2, a) => r > 230 && g > 230 && b2 < 60 && a > 200),
+        red: box((r, g, b2, a) => r > 200 && g < 80 && b2 < 80 && a > 200),
+        frame: [b.left, b.top, b.width, b.height]});
+    }
+    for (const c of (v.child_views || [])) visit(c);
+  };
+  for (const v of Object.values(Bokeh.index)) visit(v);
+  parent.postMessage('DASHPROBE' + JSON.stringify(
+    Object.assign(out, {W: innerWidth})), '*');
+}, 3000));
+</script>
+"""
+
+
+def _chrome(mode, go):
+    import responsive_probe
+    if responsive_probe.find_chrome() is None:
+        pytest.skip("headless Chrome is not installed (set DASH_CHROME)")
+    spec = tp._spec([tp._sc()], {"scheme": "s2color"}, go)
+    if mode == "saved":
+        page = tp._standalone_page(spec)[2]
+    else:
+        from bokeh.embed import file_html
+        from bokeh.resources import INLINE
+        page = file_html(tp._served(spec)[0], INLINE, "served")
+    mp = pytest.MonkeyPatch()
+    mp.setattr(responsive_probe, "PROBE_JS", _CHROME_JS)
+    try:
+        got = responsive_probe.measure_many(page, (1000,))[1000]
+    finally:
+        mp.undo()
+    assert got["V"] == []
+    assert len(got["plots"]) == 1, got
+    return got["plots"][0]
+
+
+_LOUD = "fcolor(yellow) lcolor(blue) color(red)"
+
+
+@pytest.mark.release
+@pytest.mark.parametrize("mode", MODES)
+class TestTitleSuboptsInChrome:
+
+    def test_turned_title(self, mode):
+        """orientation(vertical): the box above the frame, centred on it,
+        turned (wider than tall, as t_or_vertical's 174 x 127), the text
+        inside it taller than wide."""
+        a = _chrome(mode, {"title": '"Tgxyz", box %s' % _LOUD})
+        p = _chrome(mode, {"title": '"Tgxyz", orientation(vertical) box %s'
+                                    % _LOUD})
+        y, r, fr = p["yellow"], p["red"], p["frame"]
+        assert y is not None and r is not None
+        assert y[1] + y[3] <= fr[1] + 1
+        assert y[0] + y[2] / 2 == pytest.approx(fr[0] + fr[2] / 2, abs=2)
+        ya = a["yellow"]
+        assert (y[2], y[3]) == pytest.approx((ya[3], ya[2]), abs=2)
+        assert r[3] > r[2]
+        assert y[0] <= r[0] and r[0] + r[2] <= y[0] + y[2]
+
+    def test_side_clock(self, mode):
+        """position(3): the box right of the frame, level with its
+        centre (t_pos3); the text level (wider than tall)."""
+        p = _chrome(mode, {"title": '"Tgx", position(3) box %s' % _LOUD})
+        y, r, fr = p["yellow"], p["red"], p["frame"]
+        assert y[0] >= fr[0] + fr[2]
+        assert y[1] + y[3] / 2 == pytest.approx(fr[1] + fr[3] / 2, abs=2)
+        assert r[2] > r[3]

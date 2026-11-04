@@ -2927,7 +2927,6 @@ GAPS4_OPEN = {
     'LT-6': 'Legend layout sub-options named: style(), width(), height(), xoffset(), yoffset(), showindex, region(style()/lstyle()/lalign())',
     'LT-7': 'bexpand on legend() and on title/subtitle/note/caption is taken silently where twoway widens the box',
     'LT-10': 'Numeric marginstyle forms (# # # #, l=#, l+#) are refused for textbox margins; legend region margin collapses four sides to the largest',
-    'LT-18': 'Title box sub-options named: orientation(), width(), height(), angle(), lstyle(), bl*, lalign(), style(); clocks 2-4/8-10 drawn above or below (style() and lalign() missing from the help list)',
     'LT-19': 'Edge titles draw no box, justification(), margin() or tstyle()',
     'LT-21': "Legend keys: marker at 0.4 of the box, not the marker's size; textfirst, stacked, symplacement() and the legend's own note()/caption() not drawn; at 384 px an economist 3-column legend clips its labels (undocumented)",
     'PIC-11': 'Legend key shapes of rcap, rcapsym, pccapsym, dropline, pcarrow, pcbarrow and rarea are wrong',

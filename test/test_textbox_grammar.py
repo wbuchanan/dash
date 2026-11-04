@@ -243,7 +243,10 @@ class TestAbbreviationsAreSubOptions:
 _UNHONOURED_ABBREVS = (
     ("justification", "j"), ("alignment", "al"), ("margin", "m"),
     ("orientation", "orient"), ("position", "pos"), ("bcolor", "bc"),
-    ("fcolor", "fc"), ("lstyle", "ls"), ("lpattern", "lp"),
+    # Flipped: ("lstyle", "ls") -- ls is no spelling of lstyle (Stata's
+    # minimum is lst, _TEXTBOX_SUBOPTS); with lstyle() drawn on the four
+    # main boxes (WP-43 LT-18) the too-short ls was named there.
+    ("fcolor", "fc"), ("lstyle", "lst"), ("lpattern", "lp"),
     ("lwidth", "lw"), ("lcolor", "lc"), ("lalign", "la"),
     ("bmargin", "bm"), ("bexpand", "bex"), ("placement", "place"),
     ("tstyle", "tsty"),
@@ -310,13 +313,21 @@ class TestForeignWordsAreNamed:
                if "title() sub-option" in str(w.message)}
         assert len(hits) == 1 and "colour(red)" in next(iter(hits))
 
+        # Flipped: style() is tstyle() on title() (WP-43 LT-18;
+        # title_box_truth.json t_style draws exactly as t_tstyle), so it
+        # is drawn, not named; style(x) draws T at the body size, as
+        # t_style_refused below measures.
         with warnings.catch_warnings(record=True) as rec2:
             warnings.simplefilter("always")
             text2, _opts2 = dr._dash_textbox('"T", style(x)', "title")
-        assert text2 == "T"
+        assert text2 == "T" and _opts2.get("style") == "x"
         hits2 = {str(w.message) for w in rec2
                 if "title() sub-option" in str(w.message)}
-        assert len(hits2) == 1 and "style(x)" in next(iter(hits2))
+        assert not hits2
+        with warnings.catch_warnings(record=True) as rec3:
+            warnings.simplefilter("always")
+            dr._dash_textbox('"T", style(x)', "xtitle")
+        assert [w for w in rec3 if "style(x)" in str(w.message)]
 
         # Measured 25sep2026: twoway refuses title("T", colour(red)),
         # r(198), but ACCEPTS title("T", style(x)) at rc 0 -- style() is

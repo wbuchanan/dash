@@ -181,6 +181,17 @@ class TestPlacement:
         f, caught = _fig(mode, {"title": '"T", position(%d)' % k})
         side, _i, m = _one(f, "title")
         want = dr._dash_textbox_place(k, "center")
+        # Flipped: twoway draws a box at 2-4 o'clock right of the plot and
+        # at 8-10 left of it, level (WP-43 LT-18, title_box_truth.json
+        # t_pos<k>): a Label in that side panel, by the frame's top,
+        # centre or bottom.
+        if k in dr._DASH_TEXTBOX_SIDE_CLOCK:
+            pside, sym = dr._DASH_TEXTBOX_SIDE_CLOCK[k]
+            assert type(m).__name__ == "Label" and m.text == "T"
+            assert (side, m.y.symbol) == (pside, sym)
+            assert _ring_tag(m) == ["ring=7"] and f.title is None
+            assert not _named(caught, "position")
+            return
         assert isinstance(m, Title) and m.text == "T"
         assert (side, m.align) == want
         assert _ring_tag(m) == ["ring=7"]
@@ -426,14 +437,16 @@ class TestTstyle:
 # ============================================================
 class TestStillNamed:
 
+    # Flipped: twoway draws them (WP-43 LT-18): the note is a Label in
+    # the panel below, turned or fixed, and nothing is named.
     @pytest.mark.parametrize("mode", MODES)
     @pytest.mark.parametrize("sub", ["orientation(vertical)", "width(20)",
                                      "height(5)"])
     def test_named_once(self, mode, sub):
         f, caught = _fig(mode, {"note": '"N", %s' % sub})
-        assert [m for m in f.below if isinstance(m, Title)
+        assert [m for m in f.below if type(m).__name__ == "Label"
                 and m.text == "N"]
-        assert len(_named(caught, sub)) == 1, caught
+        assert len(_named(caught, sub)) == 0, caught
 
 
 # ============================================================

@@ -5935,14 +5935,15 @@ them, in both render modes, and nothing is printed for them:
 {cmd:alignment()}, {cmd:margin()}, {cmd:linegap()}, {cmd:box},
 {cmd:nobox}, {cmd:bcolor()}, {cmd:fcolor()}, {cmd:bfcolor()},
 {cmd:lcolor()}, {cmd:lwidth()}, {cmd:lpattern()}, {cmd:bmargin()},
-{cmd:bexpand}, {cmd:tstyle()} and {cmd:placement()}.
+{cmd:bexpand}, {cmd:tstyle()}, {cmd:placement()}, {cmd:orientation()},
+{cmd:width()}, {cmd:height()}, {cmd:angle()}, {cmd:lstyle()},
+{cmd:blstyle()}, {cmd:blcolor()}, {cmd:blwidth()}, {cmd:blpattern()},
+{cmd:lalign()}, {cmd:blalign()} and {cmd:style()}.
 {cmd:position(}{it:#}{cmd:)} is the clock: 11, 12 and 1 above the plot
-region, 5, 6 and 7 below it, at the left, centre or right.
-{cmd:twoway} draws a box at 2, 3 or 4 o'clock to the right of the plot
-and one at 8, 9 or 10 o'clock to its left; {cmd:dash} draws it on the
-nearer horizontal side, at the right or left -- {cmd:title("T",}
-{cmd:position(3))} is below the plot at the right -- because a title in
-a side panel is turned on its side.  {cmd:ring()} orders the boxes on
+region, 5, 6 and 7 below it, at the left, centre or right; a box at 2,
+3 or 4 o'clock is drawn to the right of the plot and one at 8, 9 or 10
+to its left, level with the plot region's top, centre or bottom, as
+{cmd:twoway} draws it.  {cmd:ring()} orders the boxes on
 one side, a larger ring further out: the title is ring 7, the subtitle
 6, the caption 5, the note 4 (the scheme's {cmd:gridringstyle}
 {it:box}{cmd:_ring}), the legend 3 and the edge titles 1 and 2.  A ring
@@ -5979,17 +5980,29 @@ places a box above or below the plot on the whole graph instead of the
 plot region, as {cmd:twoway} draws it -- centred on the graph region's
 width, or against its left or right edge by the gap the box keeps from
 the plot region without {cmd:span} -- in the saved page and the served app and
-after a resize; a box {cmd:twoway} draws beside the plot (2-4 or 8-10
-o'clock, which {cmd:dash} draws above or below it) keeps its place.  On
+after a resize; a box beside the plot (2-4 or 8-10 o'clock) keeps its
+place.  On
 a {cmd:by()} graph, {cmd:by()}'s own spanned {cmd:title()}, {cmd:note()}
 and {cmd:caption()} are placed on the whole {cmd:by()} graph, and a
 spanned {cmd:title()} or {cmd:note()} given outside {cmd:by()}, which is
 drawn on every panel, on that panel (from just left of its y labels to
 the scheme's {cmd:by()} panel margin past its plot region on the right), as
-{cmd:twoway} draws them.  {cmd:bexpand} is taken.  {cmd:orientation()}, {cmd:width()},
-{cmd:height()}, {cmd:angle()}, {cmd:lstyle()} and the {cmd:bl}...
-sub-options are named in the note: a title box has no angle and no fixed
-size.  On a {cmd:by()} graph a panel's label row takes {cmd:position()},
+{cmd:twoway} draws them.  {cmd:bexpand} is taken.  {cmd:orientation()}
+turns the text and its box together ({cmd:vertical} reads upward,
+{cmd:rvertical} downward, {cmd:rhorizontal} upside down), and
+{cmd:width()} and {cmd:height()} fix the box -- the size plus the box's
+margins, the text placed in it by {cmd:justification()} and
+{cmd:alignment()} -- as {cmd:twoway} draws them.  {cmd:lstyle()} and
+{cmd:blstyle()} are the frame's line style, {cmd:lcolor()},
+{cmd:lwidth()} and their {cmd:blcolor()} and {cmd:blwidth()} twins
+winning; a dashed or dotted {cmd:lpattern()} or {cmd:blpattern()} draws
+no frame line, as in {cmd:twoway}; {cmd:lalign(outside)} and
+{cmd:blalign(outside)} move the line out by half its width
+({cmd:inside}, the default, keeps it inside the box's edge);
+{cmd:style()} is {cmd:tstyle()}.  {cmd:angle()} changes nothing without
+{cmd:box}, as in {cmd:twoway}; with {cmd:box} {cmd:twoway} turns the
+text inside its level box, which {cmd:dash} cannot draw, and the text
+stays level (an open entry in BUGS.md).  On a {cmd:by()} graph a panel's label row takes {cmd:position()},
 {cmd:ring()}, the box colours and {cmd:box}/{cmd:nobox}, as {cmd:twoway}
 places and fills it (see Faceting with {cmd:by()}), and draws
 {cmd:justification()}, {cmd:nobexpand}, {cmd:lwidth()}, {cmd:lpattern()},

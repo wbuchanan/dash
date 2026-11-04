@@ -1977,11 +1977,13 @@ CORPUS = [
     # Flipped (WP-31 D3): these two entries named span and box; that was
     # wrong because span and box are drawn now, so they carry the
     # sub-options a Title still cannot draw, orientation() and width().
+    # Flipped (WP-43 LT-18): orientation() and width() are drawn on the
+    # title-family boxes; astextbox is the word still named.
     _case("note, caption and subtitle with sub-options", [_sc()], None,
           {"note": "N, size(large)", "caption": "C, color(red)",
-           "subtitle": "S, size(small) span orientation(vertical)"}),
+           "subtitle": "S, size(small) span astextbox"}),
     _case("graph title with sub-options", [_sc()], None,
-          {"title": "T, size(large) color(red) box width(20)"}),
+          {"title": "T, size(large) color(red) box astextbox"}),
     _case("legend with an unimplemented sub-option",
           [_sc(), plot_for("lfit")], None,
           # Flipped (WP-31 D4): span and holes(1) are drawn (span taken
@@ -2850,6 +2852,10 @@ CORPUS = [
     _case('title("T", ring(0) placement(sw)) (WP-43 LT-16)', [_sc()],
           go={"title": '"T", ring(0) placement(sw)',
               "note": '"N", placement(e)'}),
+    _case('title("T", position(3) box) (WP-43 LT-18)', [_sc()],
+          go={"title": '"T", position(3) box',
+              "subtitle": '"S", orientation(vertical) width(20) box',
+              "note": '"N", lstyle(p1) lalign(outside) box'}),
 
     # WP-31 D4/C13 (section 31): legend geometry
     _case("legend(pos(1) symxsize(5) keygap(1)) (WP-31 D4)",
@@ -3295,9 +3301,9 @@ _MUST_WARN = {
         "dash: scatteri clock position(s) 3.5 are not a whole number",
     "note, caption and subtitle with sub-options":
         "dash: subtitle() sub-option(s) not implemented and ignored: "
-        "orientation(vertical)",
+        "astextbox",
     "graph title with sub-options":
-        "dash: title() sub-option(s) not implemented and ignored: width(20)",
+        "dash: title() sub-option(s) not implemented and ignored: astextbox",
     # Flipped: WP-31 D4b draws colgap(); stacked is still named.
     "legend with an unimplemented sub-option":
         "dash: legend() sub-option(s) not implemented and ignored: "

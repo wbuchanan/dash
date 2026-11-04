@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "14 Oct 2026",
-  "dash_commit": "13aabc028800659da857d6abaccb308695fc2ca0",
-  "extracted": " 4 Nov 2026 08:35:28",
+  "dash_commit": "39accea66b14f3504971ae803c7b15d0b92e398c",
+  "extracted": " 4 Nov 2026 09:18:34",
   "source": "scripts/extract_title_box_truth.do",
   "stata_version": "19.5",
   "units": "SVG user units of graph export, as(svg)"
@@ -8011,6 +8011,282 @@
    2880.0
   ]
  },
+ "t_blpattern_dot": {
+  "command": "twoway scatter mpg weight, title(\"T\", blpattern(dot) box)",
+  "lines": [],
+  "rc": 0,
+  "rects": [
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3;stroke:none",
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3",
+    "w": 3959.88,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2874.24,
+    "style": "fill:none;stroke:#EAF2F3;stroke-width:5.76",
+    "w": 3954.12,
+    "x": 2.88,
+    "y": 2.88
+   },
+   {
+    "h": 2213.83,
+    "style": "fill:#FFFFFF",
+    "w": 3468.22,
+    "x": 390.8,
+    "y": 275.35
+   },
+   {
+    "h": 2208.07,
+    "style": "fill:none;stroke:#FFFFFF;stroke-width:5.76",
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 278.23
+   },
+   {
+    "h": 174.49,
+    "style": "fill:#D9E6EB",
+    "w": 127.22,
+    "x": 2061.3,
+    "y": 100.86
+   },
+   {
+    "h": 168.73,
+    "style": "fill:none;stroke:#EAF2F3;stroke-opacity:0.00;stroke-width:5.76",
+    "w": 121.46,
+    "x": 2064.18,
+    "y": 103.74
+   }
+  ],
+  "scheme": "s2color",
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "size": 99.99,
+    "style": "font-family:'Helvetica';font-size:99.99px;fill:#000000",
+    "text": "Mileage (mpg)",
+    "x": 190.71,
+    "y": 1382.33
+   },
+   {
+    "anchor": "middle",
+    "rotate": 0.0,
+    "size": 99.99,
+    "style": "font-family:'Helvetica';font-size:99.99px;fill:#000000",
+    "text": "Weight (lbs.)",
+    "x": 2124.91,
+    "y": 2729.16
+   },
+   {
+    "anchor": "middle",
+    "rotate": 0.0,
+    "size": 139.96,
+    "style": "font-family:'Helvetica';font-size:139.96px;fill:#1E2D53",
+    "text": "T",
+    "x": 2124.91,
+    "y": 215.98
+   }
+  ],
+  "viewbox": [
+   0.0,
+   0.0,
+   3960.0,
+   2880.0
+  ]
+ },
+ "t_blpattern_solid": {
+  "command": "twoway scatter mpg weight, title(\"T\", blpattern(solid) box)",
+  "lines": [],
+  "rc": 0,
+  "rects": [
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3;stroke:none",
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3",
+    "w": 3959.88,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2874.24,
+    "style": "fill:none;stroke:#EAF2F3;stroke-width:5.76",
+    "w": 3954.12,
+    "x": 2.88,
+    "y": 2.88
+   },
+   {
+    "h": 2213.83,
+    "style": "fill:#FFFFFF",
+    "w": 3468.22,
+    "x": 390.8,
+    "y": 275.35
+   },
+   {
+    "h": 2208.07,
+    "style": "fill:none;stroke:#FFFFFF;stroke-width:5.76",
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 278.23
+   },
+   {
+    "h": 174.49,
+    "style": "fill:#D9E6EB",
+    "w": 127.22,
+    "x": 2061.3,
+    "y": 100.86
+   },
+   {
+    "h": 168.73,
+    "style": "fill:none;stroke:#000000;stroke-width:5.76",
+    "w": 121.46,
+    "x": 2064.18,
+    "y": 103.74
+   }
+  ],
+  "scheme": "s2color",
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "size": 99.99,
+    "style": "font-family:'Helvetica';font-size:99.99px;fill:#000000",
+    "text": "Mileage (mpg)",
+    "x": 190.71,
+    "y": 1382.33
+   },
+   {
+    "anchor": "middle",
+    "rotate": 0.0,
+    "size": 99.99,
+    "style": "font-family:'Helvetica';font-size:99.99px;fill:#000000",
+    "text": "Weight (lbs.)",
+    "x": 2124.91,
+    "y": 2729.16
+   },
+   {
+    "anchor": "middle",
+    "rotate": 0.0,
+    "size": 139.96,
+    "style": "font-family:'Helvetica';font-size:139.96px;fill:#1E2D53",
+    "text": "T",
+    "x": 2124.91,
+    "y": 215.98
+   }
+  ],
+  "viewbox": [
+   0.0,
+   0.0,
+   3960.0,
+   2880.0
+  ]
+ },
+ "t_blstyle": {
+  "command": "twoway scatter mpg weight, title(\"T\", blstyle(p1) box)",
+  "lines": [],
+  "rc": 0,
+  "rects": [
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3;stroke:none",
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3",
+    "w": 3959.88,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2874.24,
+    "style": "fill:none;stroke:#EAF2F3;stroke-width:5.76",
+    "w": 3954.12,
+    "x": 2.88,
+    "y": 2.88
+   },
+   {
+    "h": 2213.83,
+    "style": "fill:#FFFFFF",
+    "w": 3468.22,
+    "x": 390.8,
+    "y": 275.35
+   },
+   {
+    "h": 2208.07,
+    "style": "fill:none;stroke:#FFFFFF;stroke-width:5.76",
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 278.23
+   },
+   {
+    "h": 174.49,
+    "style": "fill:#D9E6EB",
+    "w": 127.22,
+    "x": 2061.3,
+    "y": 100.86
+   },
+   {
+    "h": 165.85,
+    "style": "fill:none;stroke:#1A476F;stroke-width:8.64",
+    "w": 118.58,
+    "x": 2065.62,
+    "y": 105.18
+   }
+  ],
+  "scheme": "s2color",
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "size": 99.99,
+    "style": "font-family:'Helvetica';font-size:99.99px;fill:#000000",
+    "text": "Mileage (mpg)",
+    "x": 190.71,
+    "y": 1382.33
+   },
+   {
+    "anchor": "middle",
+    "rotate": 0.0,
+    "size": 99.99,
+    "style": "font-family:'Helvetica';font-size:99.99px;fill:#000000",
+    "text": "Weight (lbs.)",
+    "x": 2124.91,
+    "y": 2729.16
+   },
+   {
+    "anchor": "middle",
+    "rotate": 0.0,
+    "size": 139.96,
+    "style": "font-family:'Helvetica';font-size:139.96px;fill:#1E2D53",
+    "text": "T",
+    "x": 2124.91,
+    "y": 215.98
+   }
+  ],
+  "viewbox": [
+   0.0,
+   0.0,
+   3960.0,
+   2880.0
+  ]
+ },
  "t_blwidth": {
   "command": "twoway scatter mpg weight, title(\"T\", blwidth(vthick) box)",
   "lines": [],
@@ -8549,6 +8825,98 @@
    2880.0
   ]
  },
+ "t_lpattern": {
+  "command": "twoway scatter mpg weight, title(\"T\", lpattern(dash) box)",
+  "lines": [],
+  "rc": 0,
+  "rects": [
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3;stroke:none",
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3",
+    "w": 3959.88,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2874.24,
+    "style": "fill:none;stroke:#EAF2F3;stroke-width:5.76",
+    "w": 3954.12,
+    "x": 2.88,
+    "y": 2.88
+   },
+   {
+    "h": 2213.83,
+    "style": "fill:#FFFFFF",
+    "w": 3468.22,
+    "x": 390.8,
+    "y": 275.35
+   },
+   {
+    "h": 2208.07,
+    "style": "fill:none;stroke:#FFFFFF;stroke-width:5.76",
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 278.23
+   },
+   {
+    "h": 174.49,
+    "style": "fill:#D9E6EB",
+    "w": 127.22,
+    "x": 2061.3,
+    "y": 100.86
+   },
+   {
+    "h": 168.73,
+    "style": "fill:none;stroke:#EAF2F3;stroke-opacity:0.00;stroke-width:5.76",
+    "w": 121.46,
+    "x": 2064.18,
+    "y": 103.74
+   }
+  ],
+  "scheme": "s2color",
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "size": 99.99,
+    "style": "font-family:'Helvetica';font-size:99.99px;fill:#000000",
+    "text": "Mileage (mpg)",
+    "x": 190.71,
+    "y": 1382.33
+   },
+   {
+    "anchor": "middle",
+    "rotate": 0.0,
+    "size": 99.99,
+    "style": "font-family:'Helvetica';font-size:99.99px;fill:#000000",
+    "text": "Weight (lbs.)",
+    "x": 2124.91,
+    "y": 2729.16
+   },
+   {
+    "anchor": "middle",
+    "rotate": 0.0,
+    "size": 139.96,
+    "style": "font-family:'Helvetica';font-size:139.96px;fill:#1E2D53",
+    "text": "T",
+    "x": 2124.91,
+    "y": 215.98
+   }
+  ],
+  "viewbox": [
+   0.0,
+   0.0,
+   3960.0,
+   2880.0
+  ]
+ },
  "t_lstyle": {
   "command": "twoway scatter mpg weight, title(\"T\", lstyle(p1) box)",
   "lines": [],
@@ -8599,6 +8967,98 @@
    {
     "h": 165.85,
     "style": "fill:none;stroke:#1A476F;stroke-width:8.64",
+    "w": 118.58,
+    "x": 2065.62,
+    "y": 105.18
+   }
+  ],
+  "scheme": "s2color",
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "size": 99.99,
+    "style": "font-family:'Helvetica';font-size:99.99px;fill:#000000",
+    "text": "Mileage (mpg)",
+    "x": 190.71,
+    "y": 1382.33
+   },
+   {
+    "anchor": "middle",
+    "rotate": 0.0,
+    "size": 99.99,
+    "style": "font-family:'Helvetica';font-size:99.99px;fill:#000000",
+    "text": "Weight (lbs.)",
+    "x": 2124.91,
+    "y": 2729.16
+   },
+   {
+    "anchor": "middle",
+    "rotate": 0.0,
+    "size": 139.96,
+    "style": "font-family:'Helvetica';font-size:139.96px;fill:#1E2D53",
+    "text": "T",
+    "x": 2124.91,
+    "y": 215.98
+   }
+  ],
+  "viewbox": [
+   0.0,
+   0.0,
+   3960.0,
+   2880.0
+  ]
+ },
+ "t_lstyle_lcolor": {
+  "command": "twoway scatter mpg weight, title(\"T\", lstyle(p1) lcolor(red) box)",
+  "lines": [],
+  "rc": 0,
+  "rects": [
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3;stroke:none",
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3",
+    "w": 3959.88,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2874.24,
+    "style": "fill:none;stroke:#EAF2F3;stroke-width:5.76",
+    "w": 3954.12,
+    "x": 2.88,
+    "y": 2.88
+   },
+   {
+    "h": 2213.83,
+    "style": "fill:#FFFFFF",
+    "w": 3468.22,
+    "x": 390.8,
+    "y": 275.35
+   },
+   {
+    "h": 2208.07,
+    "style": "fill:none;stroke:#FFFFFF;stroke-width:5.76",
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 278.23
+   },
+   {
+    "h": 174.49,
+    "style": "fill:#D9E6EB",
+    "w": 127.22,
+    "x": 2061.3,
+    "y": 100.86
+   },
+   {
+    "h": 165.85,
+    "style": "fill:none;stroke:#FF0000;stroke-width:8.64",
     "w": 118.58,
     "x": 2065.62,
     "y": 105.18
@@ -9087,6 +9547,98 @@
    2880.0
   ]
  },
+ "t_or_vertical_sub": {
+  "command": "twoway scatter mpg weight, subtitle(\"S\", orientation(vertical) box)",
+  "lines": [],
+  "rc": 0,
+  "rects": [
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3;stroke:none",
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3",
+    "w": 3959.88,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2874.24,
+    "style": "fill:none;stroke:#EAF2F3;stroke-width:5.76",
+    "w": 3954.12,
+    "x": 2.88,
+    "y": 2.88
+   },
+   {
+    "h": 2278.8,
+    "style": "fill:#FFFFFF",
+    "w": 3468.22,
+    "x": 390.8,
+    "y": 210.38
+   },
+   {
+    "h": 2273.04,
+    "style": "fill:none;stroke:#FFFFFF;stroke-width:5.76",
+    "w": 3462.46,
+    "x": 393.68,
+    "y": 213.26
+   },
+   {
+    "h": 109.52,
+    "style": "fill:#D9E6EB",
+    "w": 144.54,
+    "x": 2052.64,
+    "y": 100.86
+   },
+   {
+    "h": 103.76,
+    "style": "fill:none;stroke:#000000;stroke-width:5.76",
+    "w": 138.78,
+    "x": 2055.52,
+    "y": 103.74
+   }
+  ],
+  "scheme": "s2color",
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "size": 99.99,
+    "style": "font-family:'Helvetica';font-size:99.99px;fill:#000000",
+    "text": "Mileage (mpg)",
+    "x": 190.71,
+    "y": 1349.78
+   },
+   {
+    "anchor": "middle",
+    "rotate": 0.0,
+    "size": 99.99,
+    "style": "font-family:'Helvetica';font-size:99.99px;fill:#000000",
+    "text": "Weight (lbs.)",
+    "x": 2124.91,
+    "y": 2729.16
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "size": 110.01,
+    "style": "font-family:'Helvetica';font-size:110.01px;fill:#000000",
+    "text": "S",
+    "x": 2146.91,
+    "y": 155.56
+   }
+  ],
+  "viewbox": [
+   0.0,
+   0.0,
+   3960.0,
+   2880.0
+  ]
+ },
  "t_pos10": {
   "command": "twoway scatter mpg weight, title(\"T\", position(10) box)",
   "lines": [],
@@ -9354,6 +9906,98 @@
     "text": "T",
     "x": 3795.54,
     "y": 1322.95
+   }
+  ],
+  "viewbox": [
+   0.0,
+   0.0,
+   3960.0,
+   2880.0
+  ]
+ },
+ "t_pos3_vertical": {
+  "command": "twoway scatter mpg weight, title(\"T\", position(3) orientation(vertical) box)",
+  "lines": [],
+  "rc": 0,
+  "rects": [
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3;stroke:none",
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2880.0,
+    "style": "fill:#EAF2F3",
+    "w": 3959.88,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "h": 2874.24,
+    "style": "fill:none;stroke:#EAF2F3;stroke-width:5.76",
+    "w": 3954.12,
+    "x": 2.88,
+    "y": 2.88
+   },
+   {
+    "h": 2388.33,
+    "style": "fill:#FFFFFF",
+    "w": 3293.73,
+    "x": 390.8,
+    "y": 100.86
+   },
+   {
+    "h": 2382.57,
+    "style": "fill:none;stroke:#FFFFFF;stroke-width:5.76",
+    "w": 3287.97,
+    "x": 393.68,
+    "y": 103.74
+   },
+   {
+    "h": 127.1,
+    "style": "fill:#D9E6EB",
+    "w": 174.49,
+    "x": 3684.53,
+    "y": 1231.47
+   },
+   {
+    "h": 121.34,
+    "style": "fill:none;stroke:#000000;stroke-width:5.76",
+    "w": 168.73,
+    "x": 3687.41,
+    "y": 1234.35
+   }
+  ],
+  "scheme": "s2color",
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "size": 99.99,
+    "style": "font-family:'Helvetica';font-size:99.99px;fill:#000000",
+    "text": "Mileage (mpg)",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": 0.0,
+    "size": 99.99,
+    "style": "font-family:'Helvetica';font-size:99.99px;fill:#000000",
+    "text": "Weight (lbs.)",
+    "x": 2037.67,
+    "y": 2729.16
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "size": 139.96,
+    "style": "font-family:'Helvetica';font-size:139.96px;fill:#1E2D53",
+    "text": "T",
+    "x": 3799.77,
+    "y": 1294.96
    }
   ],
   "viewbox": [
