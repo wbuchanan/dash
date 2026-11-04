@@ -42616,7 +42616,13 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         n_keys = len(legend.items) if legend is not None else 0
     show = not (turned_off or (n_keys < 2 and not forced_on))
     if legend is not None and show:
-        _dash_key_painter(fig, legend)
+        _ptypes = {}
+        for _pl, _rs in plot_renderers or ():
+            _o = (_pl or {}).get("options") or {}
+            _t = str(_o.get("recast") or (_pl or {}).get("type") or "")
+            for _r in _rs or ():
+                _ptypes[id(_r)] = _t
+        _dash_key_painter(fig, legend, _ptypes)
 
     # 4. Placement (WP-31 D4): twoway's clock table and ring.  The clock is
     #    position(), else the scheme's `clockdir legend_position'; the ring
@@ -65821,7 +65827,11 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
 #: renderer whose view is empty; the proxy shares the layer's filter, and
 #: this keeps that rule for the layer's view whatever filter copy the
 #: proxy's holds).  Only numbers, fixed names and model references dash
-#: wrote reach its args; it writes no text.
+#: wrote reach its args; it writes no text.  WP-43 PIC-11: with *shape*
+#: (``cap``, ``shaft``, ``ends``, ``head`` or ``rect``), *ends*, *legend*
+#: (the key box's size, read at paint time), *mark* (the end marker's
+#: glyph) and *barb*, it draws the key shapes of ``_DASH_KEY_SHAPES``
+#: across the key box instead; a marker key passes none of them.
 _DASH_KEY_PAINT_JS = """
 const {ctx, i, visuals} = cb_data;
 const view = real != null ? real.view : null;
@@ -65829,39 +65839,118 @@ const kept = view != null && view.indices != null ? view.indices.count : 0;
 if (!(kept > 0)) return;
 const num = (v) => (typeof v === "number" ? v
   : (v != null && typeof v.value === "number" ? v.value : NaN));
+const ok = (v) => isFinite(v) && v >= 0 && v < 10000;
 const s = num(cb_obj.size);
-if (!(isFinite(s) && s > 0 && s < 10000)) return;
+if (!(ok(s) && s > 0)) return;
 const r = s / 2;
+// PIC-11's shapes; a marker key passes none of these args.
+const SH = typeof shape === "string" ? shape : "marker";
+const EN = typeof ends === "number" ? ends : 0;
+const BB = typeof barb === "number" && ok(barb) ? barb : 0;
+const LG = typeof legend === "undefined" ? null : legend;
+const MK = typeof mark !== "undefined" && mark != null ? mark
+  : (SH === "ends" ? cb_obj : null);
+const lwv = num(cb_obj.line_width);
+const lw = ok(lwv) ? lwv : 0;
+// The key box's half width and half height, read at paint time: scale()
+// and the width scale multiply the legend's glyph_width and glyph_height.
+let hw = 0, hh = 0;
+if (SH !== "marker" && LG != null) {
+  const gw = num(LG.glyph_width), gh = num(LG.glyph_height);
+  if (ok(gw)) hw = gw / 2;
+  if (ok(gh)) hh = gh / 2;
+}
+if (SH !== "marker" && !(hw > 0)) return;
+// The end markers' outer half size: the ends move in by it, so a marker
+// centred on an end is drawn whole inside the key box.
+let inset = 0;
+if (MK != null) {
+  const ms = num(MK.size), ml = num(MK.line_width);
+  if (ok(ms)) inset = Math.min(hw, ms / 2 + (ok(ml) ? ml / 2 : 0));
+}
 const paint = (fill) => {
   if (fill) { visuals.fill.apply(ctx, i); visuals.hatch.apply(ctx, i); }
   visuals.line.apply(ctx, i);
 };
+const marker = (cx) => {
+  ctx.save();
+  ctx.translate(cx, 0);
+  if (angle) ctx.rotate(-angle);
+  ctx.beginPath();
+  if (mk === "square") {
+    ctx.rect(-r, -r, 2 * r, 2 * r); paint(true);
+  } else if (mk === "triangle") {
+    const h = r * Math.sqrt(3), a = h / 3;
+    ctx.moveTo(-r, a); ctx.lineTo(r, a); ctx.lineTo(0, a - h);
+    ctx.closePath(); paint(true);
+  } else if (mk === "diamond") {
+    ctx.moveTo(0, r); ctx.lineTo(r / 1.5, 0); ctx.lineTo(0, -r);
+    ctx.lineTo(-r / 1.5, 0); ctx.closePath(); paint(true);
+  } else if (mk === "plus") {
+    const a = 3 * r / 8;
+    const xs = [a, a, r, r, a, a, -a, -a, -r, -r, -a, -a];
+    const ys = [r, a, a, -a, -a, -r, -r, -a, -a, a, a, r];
+    for (let j = 0; j < 12; j++) ctx.lineTo(xs[j], ys[j]);
+    ctx.closePath(); paint(true);
+  } else if (mk === "x") {
+    const d = r * Math.SQRT1_2;
+    ctx.moveTo(-d, -d); ctx.lineTo(d, d);
+    ctx.moveTo(-d, d); ctx.lineTo(d, -d); paint(false);
+  } else if (mk === "dash") {
+    ctx.moveTo(-r, 0); ctx.lineTo(r, 0); paint(false);
+  } else {
+    ctx.arc(0, 0, r, 0, 2 * Math.PI, false); paint(true);
+  }
+  ctx.restore();
+};
+const left = EN === 2 ? -hw + inset : -hw;
+const right = EN >= 1 ? hw - inset : hw;
 ctx.save();
-if (angle) ctx.rotate(-angle);
-ctx.beginPath();
-if (mk === "square") {
-  ctx.rect(-r, -r, 2 * r, 2 * r); paint(true);
-} else if (mk === "triangle") {
-  const h = r * Math.sqrt(3), a = h / 3;
-  ctx.moveTo(-r, a); ctx.lineTo(r, a); ctx.lineTo(0, a - h);
-  ctx.closePath(); paint(true);
-} else if (mk === "diamond") {
-  ctx.moveTo(0, r); ctx.lineTo(r / 1.5, 0); ctx.lineTo(0, -r);
-  ctx.lineTo(-r / 1.5, 0); ctx.closePath(); paint(true);
-} else if (mk === "plus") {
-  const a = 3 * r / 8;
-  const xs = [a, a, r, r, a, a, -a, -a, -r, -r, -a, -a];
-  const ys = [r, a, a, -a, -a, -r, -r, -a, -a, a, a, r];
-  for (let j = 0; j < 12; j++) ctx.lineTo(xs[j], ys[j]);
-  ctx.closePath(); paint(true);
-} else if (mk === "x") {
-  const d = r * Math.SQRT1_2;
-  ctx.moveTo(-d, -d); ctx.lineTo(d, d);
-  ctx.moveTo(-d, d); ctx.lineTo(d, -d); paint(false);
-} else if (mk === "dash") {
-  ctx.moveTo(-r, 0); ctx.lineTo(r, 0); paint(false);
-} else {
-  ctx.arc(0, 0, r, 0, 2 * Math.PI, false); paint(true);
+if (SH === "marker") {
+  marker(0);
+} else if (SH === "ends") {
+  // rcapsym's and pccapsym's markers (ends 2), dropline's (ends 1).
+  if (EN === 2) marker(left);
+  marker(right);
+} else if (SH === "shaft") {
+  ctx.beginPath(); ctx.moveTo(left, 0); ctx.lineTo(right, 0); paint(false);
+} else if (SH === "cap") {
+  // rcap: the line across the box and a cap of the cap's size at each end.
+  const e = Math.max(0, hw - lw / 2);
+  ctx.beginPath();
+  ctx.moveTo(-hw, 0); ctx.lineTo(hw, 0);
+  ctx.moveTo(-e, -r); ctx.lineTo(-e, r);
+  ctx.moveTo(e, -r); ctx.lineTo(e, r); paint(false);
+} else if (SH === "head") {
+  // pcarrow: the line across the box and its head at the right end,
+  // pcbarrow's at both: two barbs of the head's length at its half-angle
+  // back from the tip (filled to barbsize()'s depth when given).
+  const e = Math.max(0, hw - lw / 2);
+  ctx.beginPath(); ctx.moveTo(-hw, 0); ctx.lineTo(hw, 0); paint(false);
+  const bx = s * Math.cos(angle), by = s * Math.sin(angle);
+  const tips = EN === 2 ? [-e, e] : [e];
+  for (let j = 0; j < tips.length; j++) {
+    const t = tips[j], d = t < 0 ? 1 : -1;
+    ctx.beginPath();
+    if (BB > 0) {
+      const bb = BB * Math.cos(angle);
+      ctx.moveTo(t, 0); ctx.lineTo(t + d * bx, -by);
+      ctx.lineTo(t + d * bb, 0); ctx.lineTo(t + d * bx, by);
+      ctx.closePath(); paint(true);
+    } else {
+      ctx.moveTo(t + d * bx, -by); ctx.lineTo(t, 0);
+      ctx.lineTo(t + d * bx, by); paint(false);
+    }
+  }
+} else if (SH === "rect") {
+  // rarea: a filled rect the key box's size, its outline inside its edge.
+  ctx.beginPath(); ctx.rect(-hw, -hh, 2 * hw, 2 * hh);
+  visuals.fill.apply(ctx, i); visuals.hatch.apply(ctx, i);
+  if (lw > 0 && 2 * hw > lw && 2 * hh > lw) {
+    const e = lw / 2;
+    ctx.beginPath(); ctx.rect(-hw + e, -hh + e, 2 * hw - lw, 2 * hh - lw);
+    visuals.line.apply(ctx, i);
+  }
 }
 ctx.restore();
 """
@@ -65891,7 +65980,180 @@ def _dash_spec_value(v):
     return v
 
 
-def _dash_key_painter(fig, legend):
+#: The plot types whose keys the key painter draws in twoway's shapes
+#: (WP-43 PIC-11, legend_keys_truth.json sh_*): rcap a line across the key
+#: box with a cap of the cap's size at each end; rcapsym and pccapsym a
+#: line with its marker on each end, dropline on the right end; pcarrow a
+#: line with its head at the right end, pcbarrow at both; rarea a filled
+#: rect the key box's size outlined inside its edge.
+_DASH_KEY_SHAPES = frozenset({
+    "rcap", "rcapsym", "pccapsym", "dropline", "pcarrow", "pcbarrow",
+    "rarea"})
+
+#: The line, fill and hatch props a key proxy's Scatter takes.
+_DASH_KEY_PROPS = ("fill_color", "fill_alpha", "line_color", "line_alpha",
+                   "line_width", "line_dash", "hatch_pattern", "hatch_color",
+                   "hatch_alpha")
+
+
+def _dash_key_props(glyph, keys=_DASH_KEY_PROPS):
+    """The constant props of *glyph* among *keys* (``_dash_spec_value``);
+    a field or a transform is left out."""
+    props = {}
+    for k in keys:
+        if glyph is None or k not in glyph.properties():
+            continue
+        v = _dash_spec_value(getattr(glyph, k, None))
+        if v is not None:
+            props[k] = v
+    return props
+
+
+def _dash_key_proxy(fig, real, glyph, links=()):
+    """*real*'s key proxy in 42-02's form (WP-43 LT-21, D-43-04.c) drawing
+    *glyph*: 42-02's colorvar proxy with its glyph swapped, else a new
+    legend-only ``GlyphRenderer`` on *real*'s own source and view filter,
+    named ``__dash_keyproxy``, tagged ``["dash_key_proxy", <real's
+    name>]``, its ``visible`` linked to *real*'s and to each of *links*
+    (the layer's other renderers its key stands for)."""
+    from bokeh.models import CDSView, GlyphRenderer
+    proxy = getattr(real, "_dash_key_proxy", None)
+    if proxy is not None:
+        proxy.glyph = glyph
+    else:
+        flt = getattr(getattr(real, "view", None), "filter", None)
+        view = CDSView(filter=flt) if flt is not None else CDSView()
+        proxy = GlyphRenderer(
+            data_source=real.data_source, glyph=glyph, view=view,
+            name=_DASH_RP + "_keyproxy",
+            x_range_name=real.x_range_name,
+            y_range_name=real.y_range_name,
+            tags=["dash_key_proxy", str(real.name or "")])
+        fig.renderers = list(fig.renderers) + [proxy]
+        proxy.js_link("visible", real, "visible")
+        proxy._dash_key_for = real
+        real._dash_key_proxy = proxy
+    for other in links:
+        if other is not real:
+            proxy.js_link("visible", other, "visible")
+    proxy._dash_key_painted = True
+    return proxy
+
+
+def _dash_key_shape(fig, legend, ptype, rends):
+    """The key proxies of a *ptype* layer's item (WP-43 PIC-11), whose
+    renderers are *rends*, in twoway's shape (``_DASH_KEY_SHAPES``), else
+    None (a layer drawn in another way: an empty layer, a recast, a
+    field-sized marker).  Each proxy's ``Scatter`` paints with
+    :data:`_DASH_KEY_PAINT_JS`, given its ``shape``, ``ends`` and the
+    ``legend`` (the key box's size at paint time); its line and fill are
+    the layer's part it draws."""
+    from bokeh.core.properties import value
+    from bokeh.models import CustomJS, Scatter
+    tags = lambda r: list(getattr(r, "tags", None) or ())  # noqa: E731
+    kind = lambda r: type(getattr(r, "glyph", None)).__name__  # noqa: E731
+    lines = [r for r in rends if kind(r) == "Segment"]
+    caps = [r for r in rends if kind(r) == "Scatter" and "dash_cap" in tags(r)]
+    marks = [r for r in rends if kind(r) == "Scatter"
+             and "dash_cap" not in tags(r)]
+    heads = [r for r in rends if "dash-arrowhead" in tags(r)]
+    areas = [r for r in rends if kind(r) in ("VArea", "HArea")]
+    outs = [r for r in rends if "dash_rarea_outline" in tags(r)]
+
+    def size_of(r):
+        v = _dash_spec_value(r.glyph.size)
+        if isinstance(v, (int, float)) and not isinstance(v, bool) \
+                and math.isfinite(v) and 0 < v < 10000:
+            return float(v)
+        return None
+
+    def angle_of(r):
+        if str(getattr(r.glyph, "angle_units", "rad")) != "rad":
+            return None
+        v = _dash_spec_value(r.glyph.angle)
+        return float(v) if isinstance(v, (int, float)) and \
+            not isinstance(v, bool) and math.isfinite(float(v)) else None
+
+    def paint(real, props, size, links, **args):
+        if "fill_color" not in props:
+            # A line-only shape fills nothing.
+            props = dict(props, fill_alpha=0.0)
+        cb = CustomJS(code=_DASH_KEY_PAINT_JS, args=dict(
+            {"real": real, "mk": "circle", "angle": 0.0}, **args))
+        glyph = Scatter(x=value(float("nan")), y=value(float("nan")),
+                        size=float(size), marker="@dash_key",
+                        defs={"@dash_key": cb}, **props)
+        return _dash_key_proxy(fig, real, glyph, links)
+
+    line_keys = ("line_color", "line_alpha", "line_width", "line_dash")
+    if ptype == "rcap" and lines and caps and size_of(caps[0]):
+        return [paint(lines[0], _dash_key_props(lines[0].glyph, line_keys),
+                      size_of(caps[0]), rends, shape="cap", ends=2,
+                      legend=legend)]
+    if ptype in ("rcapsym", "pccapsym", "dropline") and lines and marks:
+        m = marks[0]
+        sz, ang = size_of(m), angle_of(m)
+        mk = _dash_spec_value(m.glyph.marker)
+        if sz is None or ang is None or mk not in _DASH_KEY_PAINT_MARKERS:
+            return None
+        ends = 1 if ptype == "dropline" else 2
+        mprops = _dash_key_props(m.glyph)
+        mglyph_props = dict(mprops)
+        ends_proxy = paint(m, mglyph_props, sz, marks[1:], shape="ends",
+                           ends=ends, legend=legend, mk=str(mk),
+                           angle=float(ang))
+        shaft = paint(lines[0], _dash_key_props(lines[0].glyph, line_keys),
+                      sz, [], shape="shaft", ends=ends, legend=legend,
+                      mark=ends_proxy.glyph)
+        return [shaft, ends_proxy]
+    if ptype in ("pcarrow", "pcbarrow") and lines and heads:
+        cfg = None
+        src = lines[0].data_source
+        for cb in (getattr(src, "js_property_callbacks", None) or {}).get(
+                "change:data", []):
+            a = getattr(cb, "args", None) or {}
+            if a.get("hr") is heads[0]:
+                cfg = a
+        if cfg is None:
+            return None
+        hp = None
+        hcol = src.data.get(cfg.get("hpx")) if cfg.get("hpx") in \
+            src.data else None
+        for v in (list(hcol) if hcol is not None else []):
+            try:
+                v = float(v)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(v) and 0 < v < 10000:
+                hp = v
+                break
+        try:
+            ang, barb = float(cfg.get("ang")), float(cfg.get("barb"))
+        except (TypeError, ValueError):
+            return None
+        if hp is None or not (math.isfinite(ang) and math.isfinite(barb)):
+            return None
+        props = _dash_key_props(lines[0].glyph, line_keys)
+        if barb > 0:
+            props.update(_dash_key_props(heads[0].glyph, (
+                "fill_color", "fill_alpha")))
+        return [paint(lines[0], props, hp, rends, shape="head",
+                      ends=2 if ptype == "pcbarrow" else 1, legend=legend,
+                      angle=ang, barb=barb)]
+    if ptype == "rarea" and areas:
+        props = _dash_key_props(areas[0].glyph, (
+            "fill_color", "fill_alpha", "hatch_pattern", "hatch_color",
+            "hatch_alpha"))
+        if outs:
+            props.update(_dash_key_props(outs[0].glyph, line_keys))
+        else:
+            props["line_width"] = 0.0
+        return [paint(areas[0], props, 1.0, rends, shape="rect",
+                      legend=legend)]
+    return None
+
+
+def _dash_key_painter(fig, legend, ptypes=None):
     """Paint *legend*'s marker keys at the marker's size and angle (WP-43
     LT-21, D-43-04.c, ruling D69): each renderer of an item whose glyph is
     a ``Scatter`` of one constant size, marker and angle is keyed by a key
@@ -65904,9 +66166,13 @@ def _dash_key_painter(fig, legend):
     layer has two.  A legend whose keys are all painted markers is as wide
     as its widest marker (legend_keys_truth.json mk_*, mk_symx: twoway's
     marker key is its marker's width, whatever symxsize() says), and every
-    key box at least as tall as it.  Returns the number of keys painted."""
+    key box at least as tall as it.  WP-43 PIC-11: an item whose layer's
+    plot type (*ptypes*, ``{id(renderer): type}``) is one of
+    ``_DASH_KEY_SHAPES`` is keyed in twoway's shape by
+    :func:`_dash_key_shape`, in the legend's symxsize() box.  Returns the
+    number of keys painted."""
     from bokeh.core.properties import value
-    from bokeh.models import CDSView, CustomJS, GlyphRenderer, Scatter
+    from bokeh.models import CustomJS, Scatter
     painted, widths, marker_only, seen = 0, [], True, set()
     for it in list(getattr(legend, "items", None) or ()):
         rends = list(it.renderers or ())
@@ -65914,6 +66180,15 @@ def _dash_key_painter(fig, legend):
         if not rends or id(it) in seen:
             continue
         seen.add(id(it))
+        reals = [getattr(r, "_dash_key_for", None) or r for r in rends]
+        kinds = {(ptypes or {}).get(id(x)) for x in reals}
+        if len(kinds) == 1 and next(iter(kinds)) in _DASH_KEY_SHAPES:
+            shaped = _dash_key_shape(fig, legend, next(iter(kinds)), reals)
+            if shaped:
+                it.renderers = shaped
+                painted += len(shaped)
+                marker_only = False
+                continue
         out, item_markers = [], True
         for r in rends:
             real = getattr(r, "_dash_key_for", None) or r
@@ -65945,38 +66220,15 @@ def _dash_key_painter(fig, legend):
                 out.append(r)
                 item_markers = False
                 continue
-            props = {}
-            for k in ("fill_color", "fill_alpha", "line_color", "line_alpha",
-                      "line_width", "line_dash", "hatch_pattern",
-                      "hatch_color", "hatch_alpha"):
-                v = _dash_spec_value(getattr(g, k, None))
-                if v is None:
-                    continue
-                props[k] = v
+            props = _dash_key_props(g)
             cb = CustomJS(code=_DASH_KEY_PAINT_JS, args={
                 "real": real, "mk": str(mk), "angle": float(ang)})
             glyph = Scatter(x=value(float("nan")), y=value(float("nan")),
                             size=float(size), marker="@dash_key",
                             defs={"@dash_key": cb}, **props)
-            if getattr(r, "_dash_key_for", None) is not None:
-                # 42-02's colorvar proxy: its glyph swapped, its colours
-                # (the series colour 42-02 chose) kept.
-                r.glyph = glyph
-                proxy = r
-            else:
-                flt = getattr(getattr(real, "view", None), "filter", None)
-                view = CDSView(filter=flt) if flt is not None else CDSView()
-                proxy = GlyphRenderer(
-                    data_source=real.data_source, glyph=glyph, view=view,
-                    name=_DASH_RP + "_keyproxy",
-                    x_range_name=real.x_range_name,
-                    y_range_name=real.y_range_name,
-                    tags=["dash_key_proxy", str(real.name or "")])
-                fig.renderers = list(fig.renderers) + [proxy]
-                proxy.js_link("visible", real, "visible")
-                proxy._dash_key_for = real
-                real._dash_key_proxy = proxy
-            proxy._dash_key_painted = True
+            # 42-02's colorvar proxy keeps its colours (the series colour
+            # 42-02 chose: props read from it), its glyph swapped.
+            proxy = _dash_key_proxy(fig, real, glyph)
             lw = props.get("line_width", 0.0)
             widths.append(float(size) + (float(lw) if isinstance(
                 lw, (int, float)) and math.isfinite(lw) else 0.0))
@@ -75660,6 +75912,8 @@ class ServerAppBuilder:
                       "_DASH_KEY_VIEW_TYPE",
                       # WP-43 LT-21: the key painter.
                       "_DASH_KEY_PAINT_JS", "_DASH_KEY_PAINT_MARKERS",
+                      # WP-43 PIC-11: twoway's key shapes.
+                      "_DASH_KEY_SHAPES", "_DASH_KEY_PROPS",
                       "_DASH_HIST_YTITLES",
                       "_DASH_OPT_VAR_KEYS", "_DASH_PLOT_VAR_KEYS",
                       "_DASH_SWATCH_PREFIX",
@@ -76128,6 +76382,8 @@ class ServerAppBuilder:
                          # Stata's legend keying rules.
                          "_dash_legend_key", "_dash_key_style_id",
                          "_dash_key_painter", "_dash_spec_value",
+                         "_dash_key_shape", "_dash_key_proxy",
+                         "_dash_key_props",
                          "_dash_legend_entries",
                          "_dash_layer_series", "_dash_function_yname",
                          # twoway's label-or-name rule (WP-29 P0.3).

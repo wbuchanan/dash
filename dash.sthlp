@@ -5088,7 +5088,11 @@ all markers is only as wide as its widest marker, as in {cmd:twoway};
 beside a line key a marker key takes the line key's box,
 {cmd:symxsize()} by {cmd:symysize()}, where {cmd:twoway} draws it only
 as wide as its marker, and a weighted marker layer's key is drawn at
-0.4 of the box's smaller side.  {cmd:symxsize()}, {cmd:symysize()},
+0.4 of the box's smaller side.  The keys of {cmd:rcap}, {cmd:rcapsym},
+{cmd:pccapsym}, {cmd:dropline}, {cmd:pcarrow}, {cmd:pcbarrow} and
+{cmd:rarea} are {cmd:twoway}'s shapes, except that an end marker is drawn
+inside the key, a marker's radius in from its end, where {cmd:twoway}
+centres it on the end.  {cmd:symxsize()}, {cmd:symysize()},
 {cmd:keygap()} and {cmd:rowgap()} change them, {cmd:forcesize} draws the
 same box, and an unknown size is
 {cmd:twoway}'s {cmd:medium}, with a note.  The keys fill a grid of

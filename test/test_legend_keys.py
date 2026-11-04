@@ -10,6 +10,7 @@ stylesheet (``_dash_legend_key_order``, ruling D69), which only a browser
 lays out: test_legend_keys_browser.py measures it in Chrome.
 """
 import json
+import math
 import os
 import sys
 
@@ -21,7 +22,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 import test_by_axes_keys as bk  # noqa: E402
-from conftest import is_key_proxy  # noqa: E402
+from conftest import drawn_renderers, is_key_proxy  # noqa: E402
 
 MODES = ("saved", "served")
 
@@ -647,3 +648,262 @@ class TestThePainterScript:
         import js_runner
         js_runner.node()
         assert _paint(3, -1) == [] and _paint(3, 1e9) == []
+
+
+# ---------------------------------------------------------------------------
+# PIC-11: the keys of rcap, rcapsym, pccapsym, dropline, pcarrow, pcbarrow
+# and rarea in twoway's shapes
+# ---------------------------------------------------------------------------
+
+#: twoway's SVG units per legend unit and dash's px per unit (s2color, a
+#: 2880-unit-high graph; legend_geometry_truth.json's own constants).
+_SVG_PER_UNIT = 28.8
+_PX_PER_UNIT = 2.88 * 4.0 / 3.0
+
+
+def _shape_plot(t, **o):
+    """*t*'s plot over the auto columns this file's pages carry."""
+    from test_server_layer_defects import plot_for
+    p = plot_for(t, dict(o))
+    return {k: (v.replace("price", "headroom").replace("foreign", "headroom")
+                if isinstance(v, str) else v) for k, v in p.items()}
+
+
+def _twoway_shape(case):
+    """twoway's first key of fixture *case*, below its plot region: the
+    key's lines ``[(x1, y1, x2, y2), ...]``, circles ``[(cx, cy, r)]`` and
+    rects ``[(x, y, w, h, style)]`` in SVG units."""
+    row = _TRUTH[case]
+    pb = row["plot"]["bottom"] + 150
+    lines, circles, rects = [], [], []
+    for e in row["els"]:
+        a = e["a"]
+        if e["tag"] == "line" and float(a["y1"]) > pb:
+            lines.append(tuple(float(a[k]) for k in ("x1", "y1", "x2",
+                                                      "y2")))
+        elif e["tag"] == "circle" and float(a["cy"]) > pb \
+                and "fill:none" not in a.get("style", ""):
+            circles.append((float(a["cx"]), float(a["cy"]), float(a["r"])))
+        elif e["tag"] == "rect" and float(a["y"]) > pb \
+                and float(a["height"]) < 150:
+            rects.append((float(a["x"]), float(a["y"]), float(a["width"]),
+                          float(a["height"]), a.get("style", "")))
+    x0 = min([min(l[0], l[2]) for l in lines] + [r[0] for r in rects])
+    x1 = x0 + 400
+    return ([l for l in lines if l[0] <= x1 and l[2] <= x1],
+            [c for c in circles if c[0] <= x1],
+            [r for r in rects if r[0] <= x1])
+
+
+def _shape_args(it):
+    return [(p.glyph.defs["@dash_key"].args.get("shape"),
+             p.glyph.defs["@dash_key"].args.get("ends"))
+            for p in it.renderers]
+
+
+_SHAPES = {
+    "rcap": [("cap", 2)],
+    "rcapsym": [("shaft", 2), ("ends", 2)],
+    "pccapsym": [("shaft", 2), ("ends", 2)],
+    "dropline": [("shaft", 1), ("ends", 1)],
+    "pcarrow": [("head", 1)],
+    "pcbarrow": [("head", 2)],
+    "rarea": [(("rect"), None)],
+}
+
+
+class TestKeyShapes:
+    """Each of the seven plot types is keyed in twoway's shape (PIC-11,
+    legend_keys_truth.json sh_*) by key proxies in 42-02's form, the key
+    box symxsize() long as twoway's line keys are."""
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("ptype", sorted(_SHAPES))
+    def test_shape(self, mode, ptype):
+        [fig] = _figs(mode, [_shape_plot(ptype), _sc()])
+        [lg] = [l for l in fig.legend if l.items]
+        it = lg.items[0]
+        assert it.renderers and all(is_key_proxy(p) for p in it.renderers)
+        assert _shape_args(it) == _SHAPES[ptype]
+        layer = [r for r in drawn_renderers(fig)
+                 if not is_key_proxy(r)][:6]
+        for p in it.renderers:
+            assert p._dash_key_for in layer
+            assert p._dash_key_for._dash_key_proxy is p
+            assert p.data_source is p._dash_key_for.data_source
+            assert p.js_property_callbacks.get("change:visible")
+        # twoway's line keys are symxsize() long (sh_*: 374.47 of 2880
+        # units, 13 units); the marker key beside them keeps that box.
+        lines, _c, rects = _twoway_shape("sh_" + ptype)
+        span = max([abs(l[2] - l[0]) for l in lines]
+                   + [r[2] for r in rects])
+        assert lg.glyph_width == int(round(span / _SVG_PER_UNIT
+                                           * _PX_PER_UNIT)) == 50
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_rcap_caps_are_the_cap_size(self, mode):
+        """rcap's caps are its cap marker's size: 44.05 units high at
+        s2color (sh_rcap), drawn 5.87 px."""
+        [fig] = _figs(mode, [_shape_plot("rcap"), _sc()])
+        [p] = [l for l in fig.legend if l.items][0].items[0].renderers
+        lines, _c, _r = _twoway_shape("sh_rcap")
+        caps = [abs(l[3] - l[1]) for l in lines if l[0] == l[2]]
+        assert len(caps) == 2
+        want = caps[0] / _SVG_PER_UNIT * _PX_PER_UNIT
+        assert p.glyph.size == pytest.approx(want, abs=0.05)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_ends_carry_the_marker(self, mode):
+        """rcapsym's, pccapsym's and dropline's ends are the layer's marker
+        (sh_rcapsym: a circle r 26.35 centred on each end of the line;
+        sh_dropline on its right end), at the marker's size."""
+        for t in ("rcapsym", "dropline"):
+            [fig] = _figs(mode, [_shape_plot(t), _sc()])
+            shaft, ends = [l for l in fig.legend
+                           if l.items][0].items[0].renderers
+            _l, circles, _r = _twoway_shape("sh_" + t)
+            assert len(circles) == (2 if t == "rcapsym" else 1)
+            want = 2 * circles[0][2] / _SVG_PER_UNIT * _PX_PER_UNIT
+            g = ends.glyph
+            assert g.size + g.line_width == pytest.approx(want, abs=0.1)
+            args = shaft.glyph.defs["@dash_key"].args
+            assert args["mark"] is g
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_arrow_head(self, mode):
+        """pcarrow's head: two barbs back from the tip, 38.61 x 21.03
+        units (sh_pcarrow): 43.97 units long at 28.6 degrees."""
+        [fig] = _figs(mode, [_shape_plot("pcarrow"), _sc()])
+        [p] = [l for l in fig.legend if l.items][0].items[0].renderers
+        lines, _c, _r = _twoway_shape("sh_pcarrow")
+        barbs = [l for l in lines if l[1] != l[3]]
+        assert len(barbs) == 2
+        dx, dy = abs(barbs[0][2] - barbs[0][0]), abs(barbs[0][3]
+                                                     - barbs[0][1])
+        args = p.glyph.defs["@dash_key"].args
+        assert args["angle"] == pytest.approx(math.atan2(dy, dx), abs=0.01)
+        assert p.glyph.size == pytest.approx(
+            math.hypot(dx, dy) / _SVG_PER_UNIT * _PX_PER_UNIT, abs=0.1)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_rarea_rect(self, mode):
+        """rarea's key: a rect the key box's size (sh_rarea: 374.47 x
+        99.99 units) in the area's fill, outlined inside its edge in the
+        outline's colour and width."""
+        [fig] = _figs(mode, [_shape_plot("rarea"), _sc()])
+        [lg] = [l for l in fig.legend if l.items]
+        [p] = lg.items[0].renderers
+        _l, _c, rects = _twoway_shape("sh_rarea")
+        fill = [r for r in rects if "fill:none" not in r[4]][0]
+        line = [r for r in rects if "fill:none" in r[4]][0]
+        assert lg.glyph_height == int(round(fill[3] / _SVG_PER_UNIT
+                                            * _PX_PER_UNIT))
+        g = p.glyph
+        assert g.fill_color.lower() == fill[4].split("fill:")[1][:7].lower()
+        assert g.line_color.lower() == line[4].split("stroke:")[1][:7].lower()
+        # The outline inside the edge: inset by half its width.
+        assert line[0] - fill[0] == pytest.approx(
+            float(line[4].split("stroke-width:")[1]) / 2, abs=0.01)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_by_matches_every_panel(self, mode):
+        """by()'s legend cell holds the painted shape's clones and every
+        panel's proxies of it (42-02's _dash_key_for branch of
+        _dash_by_panel_matches); each proxy's visible is linked to every
+        renderer of its layer, so a click hides the series everywhere."""
+        from bokeh.models import Legend
+        figs = _figs(mode, [_shape_plot("rcapsym"), _sc()],
+                     go={"by": "foreign"})
+        cells = list({id(lg): lg for f in figs
+                      for lg in f.select({"type": Legend})
+                      if str(lg.name or "") == "dash_by_legend_key"}
+                     .values())
+        assert len(cells) == 1
+        item = cells[0].items[0]
+        prox = [r for r in item.renderers if is_key_proxy(r)]
+        panels = [f for f in figs if _proxies(f)]
+        assert len(panels) == 2
+        assert len(prox) == 4          # shaft and ends, in both panels
+        assert {id(p) for p in prox} == {id(p) for f in panels
+                                         for p in _proxies(f)
+                                         if p in prox}
+        for p in prox:
+            n = len(p.js_property_callbacks.get("change:visible", []))
+            assert n >= (1 if p.glyph.defs["@dash_key"].args["shape"]
+                         == "shaft" else 2), p
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_one_proxy_per_renderer(self, mode):
+        """A shape item's renderers each keep one proxy, a repeated key
+        (order(1 2 1)) included."""
+        [fig] = _figs(mode, [_shape_plot("rcapsym"), _sc()],
+                      go={"legend": "order(1 2 1)"})
+        prox = _proxies(fig)
+        assert len(prox) == len({id(p._dash_key_for) for p in prox}) == 3
+        [lg] = [l for l in fig.legend if l.items]
+        assert lg.items[0].renderers == lg.items[2].renderers
+
+
+def _paint_shape(shape, ends, count=3, size=6.0, gw=50, gh=13, barb=0.0):
+    """The ctx calls _DASH_KEY_PAINT_JS makes under node for *shape*."""
+    import js_runner
+    src = """
+const calls = [];
+const ctx = new Proxy({}, {get: (t, k) => (...a) => {
+  calls.push([k, a.map((v) => Math.round(v * 100) / 100)]); }});
+const visuals = {fill: {apply: () => calls.push(["fill"])},
+                 hatch: {apply: () => {}},
+                 line: {apply: () => calls.push(["line"])}};
+const run = new Function("real", "mk", "angle", "shape", "ends", "legend",
+                         "mark", "barb", "cb_obj", "cb_data", %s);
+run({view: {indices: {count: %d}}}, "circle", 0.5, %s, %s,
+    {glyph_width: %s, glyph_height: %s}, {size: 6, line_width: 1},
+    %s, {size: {value: %s}, line_width: {value: 1}},
+    {ctx, i: 0, visuals});
+process.stdout.write(JSON.stringify(calls));
+""" % (json.dumps(dr._DASH_KEY_PAINT_JS), count, json.dumps(shape),
+       json.dumps(ends), gw, gh, json.dumps(barb), json.dumps(size))
+    return js_runner.run_js(src)
+
+
+class TestTheShapeScript:
+    """The painter draws each shape from its args and the legend's key
+    box, and nothing while its layer's view keeps no row."""
+
+    def test_cap(self):
+        import js_runner
+        js_runner.node()
+        calls = _paint_shape("cap", 2)
+        moves = [c[1] for c in calls if c[0] in ("moveTo", "lineTo")]
+        # The line across the box, then a cap of the size at each end.
+        assert moves[:2] == [[-25, 0], [25, 0]]
+        assert [-24.5, -3] in moves and [24.5, 3] in moves
+
+    def test_ends_and_shaft(self):
+        import js_runner
+        js_runner.node()
+        two = [c for c in _paint_shape("ends", 2) if c[0] == "translate"]
+        one = [c for c in _paint_shape("ends", 1) if c[0] == "translate"]
+        # Each marker centred on an end moved in by its outer half size.
+        assert two == [["translate", [-21.5, 0]], ["translate", [21.5, 0]]]
+        assert one == [["translate", [21.5, 0]]]
+        shaft = [c[1] for c in _paint_shape("shaft", 1)
+                 if c[0] in ("moveTo", "lineTo")]
+        assert shaft == [[-25, 0], [21.5, 0]]
+
+    def test_head_and_rect(self):
+        import js_runner
+        js_runner.node()
+        head = [c[1] for c in _paint_shape("head", 2)
+                if c[0] in ("moveTo", "lineTo")]
+        assert [-24.5, 0] in head and [24.5, 0] in head
+        rect = [c for c in _paint_shape("rect", 0) if c[0] == "rect"]
+        assert rect[0][1] == [-25, -6.5, 50, 13]
+        assert rect[1][1] == [-24.5, -6, 49, 12]
+
+    @pytest.mark.parametrize("shape", ["cap", "ends", "shaft", "head",
+                                       "rect"])
+    def test_empty_view_draws_nothing(self, shape):
+        import js_runner
+        js_runner.node()
+        assert _paint_shape(shape, 2, count=0) == []

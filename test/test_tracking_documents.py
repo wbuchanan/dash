@@ -2923,7 +2923,6 @@ class TestTheCountsAreTrue:
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
     'LT-7': 'bexpand on legend() and on title/subtitle/note/caption is taken silently where twoway widens the box',
-    'PIC-11': 'Legend key shapes of rcap, rcapsym, pccapsym, dropline, pcarrow, pcbarrow and rarea are wrong',
     'ST-14': 'Partial SMCL markup ({bf:}, {it:}, {sup:} on letters, fonts) in titles, labels and keys is drawn in one plain style',
     'AX-13': 'Axis title textbox sub-options other than size/color are named: orientation() (Bokeh axis_label_orientation never set), justification(), placement(), box, margin() ...',
     'AX-5': 'custom on xlabel()/ylabel() is ignored: its styles reach every label and the grid; custom with no list is accepted (twoway r(198))',

@@ -248,3 +248,115 @@ def test_emptied_layer_draws_no_key():
     assert before[0] > 50 and before[1] > 50, got
     assert after[0] <= 0.05 * before[0], got
     assert after[1] >= 0.9 * before[1], got
+
+
+def _shp(t, **o):
+    """*t*'s plot over the columns the probe pages carry."""
+    from test_server_layer_defects import plot_for
+    p = plot_for(t, dict(o))
+    return {k: (v.replace("price", "headroom").replace("foreign", "headroom")
+                if isinstance(v, str) else v) for k, v in p.items()}
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestKeyShapesInChrome:
+
+    def test_shapes(self, mode):
+        """Each key's ink in its canvas: rcap a line the box's width with
+        caps of the cap size (twoway sh_rcap: 44.05 of 99.99-unit text,
+        0.44 text sizes); rcapsym and dropline as tall as the marker
+        (0.527); pcarrow its barbs (2 x 21.03 units and its 8.64 stroke, 0.507); rarea the box
+        filled (sh_rarea: 99.99 units high, 1.0).  No CSP violation."""
+        types = ["rcap", "rcapsym", "dropline", "pcarrow", "rarea"]
+        legs, viol = _legends(mode, [([_shp(t), _sc()], "") for t in types])
+        assert viol == []
+        want = {"rcap": 0.44, "rcapsym": 0.527, "dropline": 0.527,
+                "pcarrow": 0.507, "rarea": 1.0}
+        for t, leg in zip(types, legs):
+            it = leg["items"][0]
+            ink, cv, fs = it["ink"], it["canvas"], it["fs"]
+            assert ink is not None, (t, it)
+            cw = cv[2] - cv[0]
+            # Every shape spans the key box (a marker at an end drawn
+            # whole inside it).
+            assert ink[2] - ink[0] >= 0.9 * cw, (t, it)
+            h = (ink[3] - ink[1]) / fs
+            assert abs(h - want[t]) < 0.1, (t, h, it)
+        # dropline's marker is on the right end: the ink is tallest there.
+        drop = legs[2]["items"][0]
+        assert drop["ink"][2] >= drop["canvas"][2] - drop["canvas"][0] - 1.5
+
+    def test_emptied_rcap_draws_no_key(self, mode):
+        """A move that leaves an rcap layer no row blanks its painted key;
+        the other layer's key stays."""
+        if mode == "served":
+            pytest.skip("the served redraw is test_legend_keys.py's "
+                        "TestTheShapeScript::test_empty_view_draws_nothing")
+        lay = dict(_shp("rcap"), if_expr="foreign == 1")
+        spec = bk._spec([bk._graph("g0", [lay, _sc("headroom")], {},
+                                   title=False)], scheme="s2color",
+                        filt="foreign")
+        got = kb._measure("saved", spec,
+                          _MOVE_JS.replace("TARGET", json.dumps("Domestic")))
+        got = got[1400]
+        [before], [after] = got["before"], got["after"]
+        assert before[0] > 30 and before[1] > 30, got
+        assert after[0] <= 0.05 * before[0], got
+        assert after[1] >= 0.9 * before[1], got
+
+
+#: After a click on the first key of by()'s legend cell: each panel's
+#: renderers, [glyph type, visible, is a key proxy].
+_BY_CLICK_JS = r"""
+<script>
+const ERR = [];
+addEventListener('error', e => ERR.push(String(e.message)));
+function views() {
+  const out = [];
+  const visit = (v) => { if (!v) return; out.push(v);
+    if (v.renderer_views) for (const [m, rv] of v.renderer_views) out.push(rv);
+    for (const c of (v.child_views || [])) visit(c); };
+  for (const v of Object.values(Bokeh.index)) visit(v);
+  return out;
+}
+const panels = () => views().filter(v => v.model && v.model.type === 'Figure'
+    && !String(v.model.name || '').startsWith('dash_by_'))
+  .map(v => v.model.renderers.filter(r => r.type === 'GlyphRenderer')
+    .map(r => [r.glyph.type, r.visible, (r.tags || []).includes('dash_key_proxy')]));
+addEventListener('load', () => setTimeout(() => { try {
+  const lv = views().find(v => v.model && v.model.type === 'Legend'
+    && v.model.name === 'dash_by_legend_key');
+  const res = {found: !!lv, ERR, before: panels()};
+  const en = lv ? (lv.entries || [])[0] : null;
+  if (en && en.el) {
+    for (const t of ['pointerdown', 'pointerup'])
+      en.el.dispatchEvent(new PointerEvent(t, {bubbles: true}));
+    en.el.click();
+  }
+  setTimeout(() => { res.after = panels();
+    parent.postMessage('DASHPROBE' + JSON.stringify(Object.assign({W: innerWidth}, res)), '*'); }, 500);
+  } catch (e) { parent.postMessage('DASHPROBE' + JSON.stringify({W: innerWidth, exc: String(e)}), '*'); }
+}, 3000));
+</script>
+"""
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+def test_by_click_hides_a_shaped_series(mode):
+    """by(foreign): a click on the rcapsym key of by()'s legend cell hides
+    its line and both end markers in both panels and leaves the scatter
+    (WP-31 D10 through the painted shape's proxies)."""
+    spec = bk._spec([bk._graph("g0", [_shp("rcapsym"), _sc()],
+                               {"by": "foreign"}, title=False)],
+                    scheme="s2color")
+    got = kb._measure(mode, spec, _BY_CLICK_JS)[1400]
+    assert got.get("found") and got["ERR"] == [], got
+    assert len(got["after"]) == 2, got
+    for before, after in zip(got["before"], got["after"]):
+        drawn = [(g, v) for g, v, p in after if not p]
+        assert all(v for g, v, p in before if not p), got
+        # The rcapsym layer (a Segment and two Scatters) hidden, the
+        # scatter layer kept.
+        assert [g for g, v in drawn if not v] == ["Segment", "Scatter",
+                                                  "Scatter"], got
+        assert [g for g, v in drawn if v] == ["Scatter"], got

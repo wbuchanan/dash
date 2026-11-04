@@ -1423,6 +1423,150 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w43_run' {
 }
 * ==== end S04 ====
 
+// S04 PIC-11 helpers (WP-43 43-04).  _q4304_shape <s> <d> <a>: the
+// shape of the first series key dash draws, saved and served
+// (_q4302_models), from its key proxies' painter args ("cap",
+// "shaft+ends<n>", "head<n>", "rect", else "none") into q4304_hs and
+// q4304_hv.  _q4304_twshape <svg>: the shape of twoway's first key from its
+// SVG -- the lines, filled circles and filled rects inside the legend's
+// frame at its first key -- into q4304_th.
+python:
+def _q4304_shape(sp, dp, app):
+    import dash_render as dr
+    from sfi import Macro
+    from bokeh.models import Legend, Plot
+    for (models, msgs), sfx in zip(_q4302_models(sp, dp, app), ("s", "v")):
+        got = "none"
+        for p in models:
+            if not isinstance(p, Plot) or got != "none":
+                continue
+            for side in ("center", "above", "below", "left", "right"):
+                for lg in getattr(p, side):
+                    if not isinstance(lg, Legend) or not lg.items or str(lg.name or "") == dr._COLORVAR_LEGEND_NAME:
+                        continue
+                    parts = []
+                    for r in lg.items[0].renderers:
+                        defs = getattr(getattr(r, "glyph", None), "defs", None) or {}
+                        cb = defs.get("@dash_key")
+                        if cb is None:
+                            parts = []
+                            break
+                        parts.append((cb.args.get("shape"), cb.args.get("ends")))
+                    if parts == [("cap", 2)]:
+                        got = "cap"
+                    elif len(parts) == 2 and parts[0][0] == "shaft" and parts[1][0] == "ends":
+                        got = "shaft+ends%d" % parts[1][1]
+                    elif len(parts) == 1 and parts[0][0] == "head":
+                        got = "head%d" % parts[0][1]
+                    elif len(parts) == 1 and parts[0][0] == "rect":
+                        got = "rect"
+        Macro.setGlobal("q4304_h" + sfx, got)
+
+
+def _q4304_twshape(path):
+    import re
+    from sfi import Macro
+    with open(path, encoding="utf-8") as fh:
+        src = fh.read()
+    att = lambda s: dict(re.findall(r'([a-zA-Z0-9_:-]+)="([^"]*)"', s))
+    vb = [float(v) for v in re.search(r'viewBox="([-0-9. ]+)"', src).group(1).split()]
+    frames = [att(a) for a in re.findall(r"<rect\b([^>]*)/?>", src)]
+    frames = [a for a in frames if "stroke:" in a.get("style", "") and float(a.get("width", 0)) * float(a.get("height", 0)) < vb[2] * vb[3] / 4]
+    got = "none"
+    if frames:
+        f = max(frames, key=lambda a: float(a["width"]) * float(a["height"]))
+        fx, fy, fw, fh = (float(f[k]) for k in ("x", "y", "width", "height"))
+        inside = lambda x, y: fx <= x <= fx + fw and fy <= y <= fy + fh
+        lines, circles, rects = [], [], []
+        for a in re.findall(r"<line\b([^>]*)/?>", src):
+            a = att(a)
+            x1, y1, x2, y2 = (float(a[k]) for k in ("x1", "y1", "x2", "y2"))
+            if inside(x1, y1) and inside(x2, y2):
+                lines.append((x1, y1, x2, y2))
+        for a in re.findall(r"<circle\b([^>]*)/?>", src):
+            a = att(a)
+            if "fill:none" not in a.get("style", "") and inside(float(a["cx"]), float(a["cy"])):
+                circles.append(float(a["cx"]))
+        for a in re.findall(r"<rect\b([^>]*)/?>", src):
+            a = att(a)
+            if "fill:none" not in a.get("style", "") and inside(float(a["x"]), float(a["y"])) and float(a["height"]) < fh * 0.9:
+                rects.append(float(a["x"]))
+        xs = [min(l[0], l[2]) for l in lines] + rects + circles
+        if xs:
+            x0 = min(xs) - fh / 3
+            x1 = x0 + 3 * fh
+            first = lambda v: x0 <= v <= x1
+            ln = [l for l in lines if first(l[0]) and first(l[2])]
+            h = sum(1 for l in ln if l[1] == l[3] and l[0] != l[2])
+            v = sum(1 for l in ln if l[0] == l[2] and l[1] != l[3])
+            s = sum(1 for l in ln if l[0] != l[2] and l[1] != l[3])
+            c = sum(1 for x in circles if first(x))
+            if any(first(x) for x in rects):
+                got = "rect"
+            elif h == 1 and v == 2:
+                got = "cap"
+            elif h == 1 and s:
+                got = "head%d" % (s // 2)
+            elif h == 1 and c:
+                got = "shaft+ends%d" % c
+    Macro.setGlobal("q4304_th", got)
+end
+
+capture program drop _q4304_sreg
+program define _q4304_sreg
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4304_m; _q4304_m._q4304_shape("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
+* ==== S04 PIC-11: keys in twoway's shapes ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w43_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    local q04d "`w43_work'/s04d"
+    capture mkdir "`q04d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4304-3: the keys of rcap, rcapsym, pccapsym, dropline, pcarrow,
+    // pcbarrow and rarea -- live twoway's first key's shape from its SVG
+    // beside the shape dash paints, saved and served.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "rcap mpg turn weight" "rcapsym mpg turn weight" "pccapsym mpg weight turn length" "dropline mpg weight" "pcarrow mpg weight turn length" "pcbarrow mpg weight turn length" "rarea mpg turn weight" {
+        local ++k
+        local cmd "(`c' in 1/5) (scatter mpg weight in 1/5), scheme(s2color)"
+        capture noisily twoway `cmd' name(q04p, replace)
+        _w43_expect Q4304-3 "(_rc == 0)" "twoway `c' rc `=_rc'"
+        capture erase "`q04d'/q04p`k'.svg"
+        cert_svg_export, name(q04p) file("`q04d'/q04p`k'.svg")
+        python: import __main__ as _q4304_m; _q4304_m._q4304_twshape("`q04d'/q04p`k'.svg")
+        _w43_expect Q4304-3 `"("${q4304_th}" != "none")"' "twoway `c': no key shape read"
+        _q4304_sreg "`q04d'" `cmd' name(q04e)
+        foreach m in s v {
+            _w43_expect Q4304-3 `"("${q4304_h`m'}" == "${q4304_th}")"' `"`c' `m': dash ${q4304_h`m'} twoway ${q4304_th}"'
+        }
+    }
+    _w43_done Q4304-3 "rcap, rcapsym, pccapsym, dropline, pcarrow, pcbarrow and rarea keyed in twoway's shapes, saved and served"
+
+    forvalues j = 1/`k' {
+        capture erase "`q04d'/q04p`j'.svg"
+    }
+    foreach f in s.json d.json a.py {
+        capture erase "`q04d'/`f'"
+    }
+    capture rmdir "`q04d'"
+    macro drop q4304_hs q4304_hv q4304_th
+    capture graph drop _all
+    dash clear
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 * ==== S04 MS-10: keys merge by view type and pstyle ====
 local only : env WP43_ONLY
 if inlist("`only'", "", "S04") & `: list posof "S04" in w43_run' {

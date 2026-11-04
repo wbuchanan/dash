@@ -479,7 +479,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-19 Tracked:** Closed in WP-43, BUGS.md "Edge titles draw no box, justification(), margin() or tstyle()", commit 0dae9a3.
 - **LT-20 Tracked:** Documented in WP-43, BUGS.md "text() draws no width(), height(), linegap(), bexpand, bmargin(), lstyle(), lpattern(), lalign(); a `=exp' global is drawn literally", commit 065aace.
 - **LT-21 Tracked:** Partly closed in WP-43 (section 43-04, commit pending): textfirst and stacked drawn (dd55143), marker keys at the marker's size, angle and width; open: symplacement(), the legend's note() and caption(), a marker key beside a line key, a weighted layer's key and the economist overflow (BUGS.md "Legend keys: symplacement() and the legend's note()/caption() are not drawn, a marker key beside a line key is as wide as the line key, a weighted marker layer's key is Bokeh's, and the economist 3-column legend's overflow is not measured").
-- **PIC-11 Tracked:** Open (WP-43 section 43-04).
+- **PIC-11 Tracked:** Closed in WP-43, BUGS.md "Legend key shapes of rcap, rcapsym, pccapsym, dropline, pcarrow, pcbarrow and rarea are wrong", commit pending.
 - **MS-10 Tracked:** Closed in WP-43, BUGS.md "Keys are merged when two different pstyles look alike (s1mono line v6/v14, v12/v15)", commit fdaa0f1.
 - **ST-14 Tracked:** Open (WP-43 section 43-07).
 - **LT-24 Tracked:** Closed in WP-43, BUGS.md "title() whose text is an apostrophe and 90s inside double quotes is drawn where twoway gives r(100)", commit 40e9946.

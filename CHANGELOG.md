@@ -1013,6 +1013,7 @@ and now matches Stata.
 
 ### Fixed in WP-43
 
+- The legend keys of rcap, rcapsym, pccapsym, dropline, pcarrow, pcbarrow and rarea are twoway's shapes: a capped line, a line with its marker on each end (dropline's on the right), a line with its arrowhead, a filled outlined rect; each layer's glyphs drew their own pictures over one another (WP-43, PIC-11)
 - A legend's marker keys are drawn at the plot's marker size and msangle(), and a legend of markers only is as wide as its widest marker, as twoway draws them; the browser drew every marker at 0.4 of a symxsize()-wide key box and at no angle (a marker key beside a line key keeps the line key's box, a weighted layer's key Bokeh's) (WP-43, LT-21)
 - A turned (horizontal) kdensity or function with no recast() is keyed x, its grid's name, as twoway keys it; dash keyed it by its own name (WP-43, RH-13)
 - legend(textfirst) puts each key text before its key and legend(stacked) puts it under its key (both, above it), as twoway draws them; they were named (marker key sizes, symplacement() and the legend's note() and caption() are still open) (WP-43, LT-21)

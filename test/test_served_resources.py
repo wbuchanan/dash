@@ -693,7 +693,10 @@ _SAVED_DIGEST = (
     # item and scaled by the post-pass; with the painter stubbed out the
     # tree gives the old digest (masked model diff: nothing else
     # differs); the same under both Pythons.
-    "73854c60cee2e71d42e8a8eee8af9f872118260d6d188e17ae30645b502f955a")
+    # 73854c60... -> d0f8d8ce...: WP-43 PIC-11, the painter's code gains
+    # twoway's key shapes (code only: LT-21's _DASH_KEY_PAINT_JS gives the
+    # old digest on the new tree); the same under both Pythons.
+    "d0f8d8ceec25d2b0a280ad210a830adb1edd673c233386c54c37541c2bd5d941")
 
 
 # ===========================================================================
