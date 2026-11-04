@@ -1,8 +1,8 @@
 {
  "_meta": {
-  "born_date": "12 Aug 2026",
-  "dash_commit": "83ed6b7514770396885c95c4b1051452b8b7c2e9",
-  "extracted": "15 Oct 2026 08:57:57",
+  "born_date": "14 Oct 2026",
+  "dash_commit": "7628757fba7da5792bf77deacc1e70adb9204502",
+  "extracted": " 4 Nov 2026 03:07:50",
   "globals": {
    "u30e": "`=1+1'!",
    "u30f": "F",
@@ -14,9 +14,10 @@
  },
  "eval_expr": {
   "at_lines": [
-   "`=1+1'!"
+   "2!"
   ],
   "command": "scatter mpg weight, text(30 2000 \"$u30e\")",
+  "expnote": false,
   "rc": 0
  },
  "eval_pwd": {
@@ -24,6 +25,7 @@
    "`c(pwd)'"
   ],
   "command": "scatter mpg weight, text(30 2000 \"$u30p\")",
+  "expnote": true,
   "rc": 0
  },
  "global_braces": {
@@ -31,6 +33,7 @@
    "hello!"
   ],
   "command": "scatter mpg weight, text(30 2000 \"${u30x}!\")",
+  "expnote": false,
   "rc": 0
  },
  "global_dollars": {
@@ -38,6 +41,7 @@
    "$$"
   ],
   "command": "scatter mpg weight, text(30 2000 \"$$u30f$$\")",
+  "expnote": false,
   "rc": 0
  },
  "global_plain": {
@@ -45,6 +49,7 @@
    "hello"
   ],
   "command": "scatter mpg weight, text(30 2000 \"$u30x\")",
+  "expnote": false,
   "rc": 0
  },
  "two_lines": {
@@ -53,6 +58,7 @@
    "xF"
   ],
   "command": "scatter mpg weight, text(30 2000 \"$u30x\" \"x$u30f\")",
+  "expnote": false,
   "rc": 0
  },
  "unset": {
@@ -60,6 +66,7 @@
    "a b"
   ],
   "command": "scatter mpg weight, text(30 2000 \"a$u30nosuch b\")",
+  "expnote": false,
   "rc": 0
  }
 }

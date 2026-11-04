@@ -14,7 +14,8 @@
 *!
 *! Each probe escapes its dollar signs and runs through macval(), so the
 *! do-file's own macro expansion leaves `$u30x' for dash to read; each row
-*! records the command dash ran.  The git commit is read from a file `shell' wrote,
+*! records the command dash ran and, as expnote, whether dash printed its
+*! note that a global's =exp or macro reference is drawn as written.  The git commit is read from a file `shell' wrote,
 *! never with shell=True.
 
 clear all
@@ -68,8 +69,11 @@ program define _ag_reg
     args key
     capture dash clear
     mata: st_local("cmd", st_global("AG_C_`key'"))
+    capture log close agl
+    log using "${AG_WORK}/ag_`key'.log", text replace name(agl)
     capture noisily dash `macval(cmd)' name(u30g)
     global AG_R_`key' = _rc
+    log close agl
     mata: st_global("AG_J_`key'", st_global("dash_json_u30g"))
     capture dash clear
 end
@@ -106,6 +110,11 @@ for k in keys:
             "added_text") or g.get("added_text") or []
         lines = at[0]["at_lines"] if at else None
     rec["at_lines"] = lines
+    # WP-43 LT-20: whether dash printed its note that a global's =exp or
+    # macro reference is drawn as written.
+    with open(os.path.join(G("AG_WORK"), "ag_" + k + ".log"),
+              encoding="utf-8", errors="replace") as fh:
+        rec["expnote"] = "=exp or macro reference" in fh.read()
     out[k] = rec
 try:
     with open(os.path.join(G("AG_WORK"), "git_head.txt")) as fh:

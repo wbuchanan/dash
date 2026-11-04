@@ -59283,7 +59283,9 @@ def _dash_added_text(fig, graph_opts, scheme=None, seen=None, key="",
         # drawn only with box): lstyle()'s colour, width and pattern, then
         # lcolor(), lwidth() and lpattern() over them in either order (x_lst_lc,
         # x_lc_lst); lalign(outside) moves the box's edge out by half the
-        # line, inside in by half (Bokeh strokes the box centred on it).
+        # line, inside in by half (Bokeh strokes the box centred on it);
+        # with no lalign() twoway strokes the frame inside (x_box, x_lw:
+        # the stroke clipped to the box), as lalign(inside).
         bundle = o["lstyle"] or {}
         lcol = o["line"] or bundle.get("line") or \
             scheme.text_option_line_color
@@ -59292,11 +59294,13 @@ def _dash_added_text(fig, graph_opts, scheme=None, seen=None, key="",
         ldash = o["dash"] if o["dash"] is not None else \
             (bundle.get("line_dash") or [])
         edge = 0.0
-        if boxed and o["lalign"] in ("outside", "inside"):
-            edge = (0.5 if o["lalign"] == "outside" else -0.5) \
-                * float(lw or 0.0)
+        lal = o["lalign"] or "inside"
+        if boxed and lal in ("outside", "inside"):
+            edge = (0.5 if lal == "outside" else -0.5) * float(lw or 0.0)
             if o["width_px"] is None and o["height_px"] is None:
                 pad = _dash_added_text_edge(pad, edge)
+        # The line step is the size, plus linegap()'s gap (x_ctl, x_lg).
+        kw["text_line_height"] = 1.0
         if o["gap_pt"] is not None:
             try:
                 kw["text_line_height"] = round(1.0 + o["gap_pt"] / float(

@@ -11122,8 +11122,9 @@ def _u42_texts(sp, dp, app):
 def _u42_gcheck(fx, kind):
     """u42_gbad: the options whose drawn text (its first line) differs
     from twoway's for this kind of global.  Z<i>: marks the i-th option of
-    the fixture's order; an =exp global is drawn as written; an option
-    twoway refuses with the kind (rc 198) was left out of the command."""
+    the fixture's order; an =exp global is evaluated as twoway evaluates
+    it (WP-43 LT-20, P4-7); an option twoway refuses with the kind (rc
+    198) was left out of the command."""
     import json
     import __main__
     from sfi import Macro
@@ -11132,9 +11133,10 @@ def _u42_gcheck(fx, kind):
     for i, c in enumerate([c for c in d["cases"] if c["kind"] == kind]):
         if c["rc"]:
             continue
+        # Flipped: the eval kind drawn as written was wrong because twoway
+        # evaluates a graph text option's =exp global and dash does too
+        # (WP-43 LT-20, P4-7).
         want = c["drawn"][0]
-        if kind == "eval":
-            want = "a " + d["globals"]["eval"] + " b"
         pre = "Z%d:" % (i + 1)
         for mode, texts in zip(("s", "v"), __main__._u42_drawn):
             got = sorted({t[len(pre):].split("\n")[0] for t in texts

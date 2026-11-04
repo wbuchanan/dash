@@ -1010,8 +1010,10 @@ class TestTheParsersFoundSomething:
         # (WP-40 40-02).
         # old -> new: 469 -> 470, sil:SD-13 the sub-point Long text. (WP-40
         # 40-02).
-        assert len(defs) == 470, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 470 "
+        # old -> new: 470 -> 471, the Differences sub-point A global's =exp
+        # outside the listed functions (WP-43 LT-20).
+        assert len(defs) == 471, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 471 "
             f"measured 30oct2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
@@ -1581,4 +1583,7 @@ class TestInternalLinksResolve:
         # links Resource limits and the Fixed limits sentence links Added
         # text (WP-40 40-02).
         # 51 -> 52 targets: dash##added_text is linked for the first time.
-        assert len(refs) == 181 and len(set(refs)) == 52
+        # old -> new: 181 -> 183 links: the Differences sub-point A global's
+        # =exp outside the listed functions and Text in graphs' global
+        # sentence link Added text (WP-43 LT-20).
+        assert len(refs) == 183 and len(set(refs)) == 52

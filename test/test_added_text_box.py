@@ -168,7 +168,10 @@ class TestFixedBox:
         assert o["h"] == pytest.approx(
             8 * min(TRUTH["_meta"]["viewbox"]) / 100.0 / size, abs=tol)
         assert len(o["pad"]) == 4 and o["valign"] == "middle"
-        assert o["edge"] == 0
+        # The default frame is stroked inside the box (x_box): half the
+        # line in on every side.
+        assert o["edge"] == pytest.approx(
+            -0.5 * float(lab.border_line_width) / _size_px(lab), abs=1e-5)
         assert lab.y_offset == 0
 
     @pytest.mark.parametrize("mode", MODES)
@@ -305,3 +308,126 @@ class TestSilent:
         for nm in ("width", "height", "linegap", "lstyle", "lpattern",
                    "lalign", "blstyle", "blpattern", "blalign", "nobexpand"):
             assert nm not in noted, nm
+
+
+class TestLineStepAndFrame:
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_line_step_is_the_size(self, mode):
+        """With no linegap() twoway steps the lines by exactly their size
+        (x_ctl: 1171.41 - 1058.86 = 112.55 at size 112.56)."""
+        t = P["x_ctl"]["texts"]
+        assert (t[1]["y_px"] - t[0]["y_px"]) / t[0]["size"] == \
+            pytest.approx(1.0, abs=0.001)
+        (lab,) = _block("", "box", mode)
+        assert lab.text_line_height == 1.0
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_default_frame_is_inside(self, mode):
+        """twoway strokes a text box's frame inside its edge unless
+        lalign() says otherwise (x_box, x_lw: the stroke clipped to the
+        box; x_la_i the same), so the default is lalign(inside)'s."""
+        for p in ("x_lw", "x_la_i", "x_la_o"):
+            b = P[p]["boxes"][0]
+            assert (b["left"], b["right"]) == (
+                P["x_box"]["boxes"][0]["left"],
+                P["x_box"]["boxes"][0]["right"]), p
+        (dflt,) = _block("", "box lwidth(thick) margin(large)", mode)
+        (ins,) = _block("", "box lwidth(thick) margin(large) lalign(inside)",
+                        mode)
+        (cen,) = _block("", "box lwidth(thick) margin(large) lalign(center)",
+                        mode)
+        assert dflt.padding == ins.padding
+        half = 0.5 * float(cen.border_line_width)
+        for k in ("left", "right", "top", "bottom"):
+            assert dflt.padding[k] == max(0, round(cen.padding[k] - half)), k
+
+
+# ---------------------------------------------------------------------------
+# LT-20: a global's =exp, the safe evaluator (P4-6, P4-7)
+# ---------------------------------------------------------------------------
+
+_EVAL_FUNCS = ("_dash_at_exp", "_dash_at_exp_runs", "_dash_at_xp",
+               "_dash_at_xf", "_dash_at_xws")
+
+
+def _mata_body(name):
+    src = _read("dash_parse.mata")
+    m = re.search(r"^[a-z ]+\b%s\(" % re.escape(name), src, re.M)
+    assert m, name
+    return src[m.start():src.index("\n}\n", m.start()) + 2]
+
+
+class TestEvaluatorIsSafe:
+
+    def test_no_stata_file_or_macro_access(self):
+        """The evaluator computes every value in Mata: no call reaches
+        Stata, a macro, a scalar, a file, an external or a pointer."""
+        bad = ("stata(", "_stata(", "st_", "fopen(", "fileexists(",
+               "unlink(", "findfile(", "cat(", "valofexternal(",
+               "findexternal(", "crexternal(", "fput(", "fwrite(",
+               "fget(", "fread(", "chdir(", "mkdir(", "rmdir(", "dir(",
+               "callf(", "(*", "&(", "pwd(")
+        for nm in _EVAL_FUNCS:
+            body = _mata_body(nm)
+            hits = [b for b in bad if b in body]
+            assert not hits, (nm, hits)
+
+    def test_optional_ev_defaults(self):
+        """_dash_at_globals and _dash_gt_qadded take an optional ev whose
+        first statement defaults it, so a one-argument call is the
+        as-text route."""
+        for nm in ("_dash_at_globals", "_dash_gt_qadded"):
+            body = _mata_body(nm)
+            head = body[:body.index("{")]
+            assert "| real scalar ev" in head, nm
+            stmts = [ln.strip() for ln in body[body.index("{") + 1:]
+                     .splitlines() if ln.strip()
+                     and not ln.strip().startswith(("//", "string ",
+                                                    "real "))]
+            assert stmts[0] == "if (args() < 2) ev = 0", (nm, stmts[0])
+
+    def test_every_reader_passes_ev(self):
+        """text(), ttext(), the graph text options and axes 3-9 read their
+        globals through the evaluator (ev 1)."""
+        mata = _read("dash_parse.mata")
+        ado = _read("dash.ado")
+        assert 'g = _dash_at_globals(line + "", 1)' in mata
+        assert "_dash_gt_qadded(substr(raw, a, z - a), 1)" in mata
+        assert "_dash_gt_ccl(_dash_at_globals(v, 1))" in mata
+        assert '_dash_at_globals(st_local("gv"), 1)' in ado
+        assert '_dash_gt_qadded(st_local("gv"), 1)' in ado
+
+
+def _whitelist():
+    body = _mata_body("_dash_at_exp")
+    a = body.index("wl = (")
+    names = re.findall(r'"([a-z0-9]+)"', body[a:body.index(")", a + 6)])
+    assert len(names) == len(set(names)), names
+    return set(names)
+
+
+class TestHelp:
+
+    def _added(self):
+        src = _read("dash.sthlp")
+        return src[src.index("{marker added_text}"):
+                   src.index("{marker differences}")]
+
+    def test_whitelist_sentence(self):
+        para = self._added()
+        a = para.index("and the functions")
+        seg = para[a:para.index("; an {it:exp}", a)]
+        names = re.findall(r"\{cmd:([a-z0-9]+)\(\)\}", seg)
+        assert len(names) == len(set(names)), names
+        assert set(names) == _whitelist()
+
+    def test_differences_line(self):
+        src = _read("dash.sthlp")
+        diff = src[src.index("{marker differences}"):
+                   src.index("{marker subcommands}")]
+        line = [ln for ln in diff.splitlines()
+                if "{ul:A global's =exp outside the listed functions is "
+                   "drawn as written.}" in ln]
+        assert len(line) == 1
+        assert "{help dash##added_text" in line[0]

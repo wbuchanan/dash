@@ -566,6 +566,364 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w43_run' {
 }
 * ==== end S06 ====
 
+// S06 LT-20 evaluator helpers.  _q4306_ev: the at_lines dash registered
+// for graph <name> against the fixture's probe <pid> (x_eval_*: the text
+// twoway drew; x_eval_out_*: the global's value as written), a miss
+// appended to global q4306_bad; _q4306_notes: how many times a log holds
+// the =exp note, into global q4306_n; _q4306_gt: Q4306-5's graph text.
+python:
+def _q4306_lines(js):
+    import json
+    stack = [json.loads(js)]
+    while stack:
+        o = stack.pop()
+        if isinstance(o, dict):
+            if "at_lines" in o:
+                return o["at_lines"]
+            stack.extend(o.values())
+        elif isinstance(o, list):
+            stack.extend(o)
+    return None
+
+
+def _q4306_ev(name, pid, rc):
+    import json
+    from sfi import Macro
+    with open("fixtures/added_text_box_truth.json", encoding="utf-8") as fh:
+        pr = json.load(fh)["probes"][pid]
+    if pid.startswith("x_eval_out_"):
+        want = "\x60" + pr["expr"] + "'"
+    else:
+        want = pr["drawn"]
+    got = None
+    if int(rc) == 0:
+        got = _q4306_lines(Macro.getGlobal("dash_json_" + name) or "null")
+    got = " ".join(got) if got is not None else "rc %s" % rc
+    if got != want:
+        bad = Macro.getGlobal("q4306_bad") or ""
+        Macro.setGlobal("q4306_bad", (bad + " [%s: %r, twoway %r]"
+                                      % (pid, got, want))[:1500])
+
+
+def _q4306_notes(log):
+    from sfi import Macro
+    with open(log, encoding="utf-8", errors="replace") as fh:
+        n = fh.read().count("=exp or macro reference in a graph's text")
+    Macro.setGlobal("q4306_n", str(n))
+
+
+def _q4306_gt(name):
+    import json
+    from sfi import Macro
+    with open("fixtures/global_text_truth.json", encoding="utf-8") as fh:
+        cases = json.load(fh)["cases"]
+    row = [c for c in cases if c["kind"] == "eval" and c["option"] == "ytitle"]
+    want = row[0]["drawn"][0] if row else "?"
+    # Titles are registered as typed, in their quotes.
+    titles, axn = [], []
+    stack = [json.loads(Macro.getGlobal("dash_json_" + name) or "null")]
+    while stack:
+        o = stack.pop()
+        if isinstance(o, dict):
+            if isinstance(o.get("title"), str):
+                titles.append(o["title"].strip('"'))
+            if isinstance(o.get("axisn"), dict):
+                axn.append(str((o["axisn"].get("y3") or {}).get("title", ""))
+                           .strip('"'))
+            stack.extend(o.values())
+        elif isinstance(o, list):
+            stack.extend(o)
+    bad = []
+    if axn != [want]:
+        bad.append("axis 3 title %r, twoway %r" % (axn, want))
+    if "a \x60=_N' b" not in titles:
+        bad.append("title not drawn as written: %r" % titles)
+    Macro.setGlobal("q4306_g", "; ".join(bad) or "ok")
+end
+
+capture mata: mata drop _q4306_hostile()
+mata:
+// _q4306_hostile() -- the number of hostile =exp texts _dash_at_exp does
+// not refuse as written (ok 0, the text returned), the first of them in
+// the local q4306_h1.
+real scalar _q4306_hostile()
+{
+    string colvector hs
+    string scalar    q, r
+    real scalar      i, ok, n
+
+    q = char(34)
+    hs = ("filewrite(" + q + "q4306" + q + "," + q + "y" + q + ")") \
+         ("fileread(" + q + "q4306" + q + ")") \ "_N" \ "_n" \ "mpg" \
+         "mpg[1]" \ "c(N)" \ "r(N)" \ "e(N)" \ "scalar(x)" \ "exec(1)" \
+         "stata(1)" \ ("st_global(" + q + "a" + q + ")") \
+         ("findfile(" + q + "a" + q + ")") \ "1+" \ "(1" \ "1)" \ "" \
+         " " \ (q + "abc") \ "1,2" \ (100 * "(" + "1" + 100 * ")") \
+         (100 * "-" + "1") \ (4001 * "1") \
+         ("max(" + 16 * "1," + "1)") \ "upper(1)" \ ("1+" + q + "a" + q) \
+         (q + "a" + q + "*2") \ ("substr(" + q + "a" + q + ",1)") \
+         ("string(1," + q + "%999.0f" + q + ")") \
+         ("string(1," + q + "%s" + q + ")") \ "abs()" \ "ABS(1)" \ "1;2" \
+         "1 2" \ "1==" \ ("!" + q + "a" + q) \
+         (char(96) + "x" + char(39)) \ (char(36) + "x") \ "1+.a" \
+         "strlen(1)" \ "min()" \ "abs(1,2)" \ "x(1)"
+    n = 0
+    st_local("q4306_h1", "")
+    for (i = 1; i <= rows(hs); i++) {
+        ok = 1
+        r = _dash_at_exp(hs[i], ok)
+        if (ok != 0 | r != hs[i]) {
+            n++
+            if (st_local("q4306_h1") == "") st_local("q4306_h1", substr(hs[i], 1, 60))
+        }
+    }
+    return(n)
+}
+end
+
+* ==== S06 LT-20: a global's =exp, the safe evaluator ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S06") & `: list posof "S06" in w43_run' {
+    display as text "S06 start " c(current_date) " " c(current_time)
+    local q6d "`w43_work'/s06c"
+    capture mkdir "`q6d'"
+    capture graph drop _all
+    sysuse auto, clear
+    global q4306_bad ""
+
+    // ------------------------------------------------------------
+    // Q4306-4: each global of the fixture's x_eval_* probes, set without
+    // expansion and named \$G in a text() line (two straight lines each,
+    // never in a loop: section 43-06 D-43-06.f), registers the text
+    // twoway drew, with no note; each x_eval_out_* is registered as
+    // written with the note once a graph; a filewrite() global writes no
+    // file; the one-argument _dash_at_globals() keeps the text; hostile
+    // texts are refused as written.
+    // ------------------------------------------------------------
+    dash clear
+    capture log close q4306
+    log using "`q6d'/eval.log", text replace name(q4306)
+    global G = char(96) + "=1+1" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e1)
+    python: _q4306_ev("q4306e1", "x_eval_1", "`=_rc'")
+    global G = char(96) + "=1/3" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e2)
+    python: _q4306_ev("q4306e2", "x_eval_2", "`=_rc'")
+    global G = char(96) + "=2/3*3" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e3)
+    python: _q4306_ev("q4306e3", "x_eval_3", "`=_rc'")
+    global G = char(96) + "=10^20" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e4)
+    python: _q4306_ev("q4306e4", "x_eval_4", "`=_rc'")
+    global G = char(96) + "=-1.5" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e5)
+    python: _q4306_ev("q4306e5", "x_eval_5", "`=_rc'")
+    global G = char(96) + "=1/0" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e6)
+    python: _q4306_ev("q4306e6", "x_eval_6", "`=_rc'")
+    global G = char(96) + "=1e-7" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e7)
+    python: _q4306_ev("q4306e7", "x_eval_7", "`=_rc'")
+    global G = char(96) + "=123456789" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e8)
+    python: _q4306_ev("q4306e8", "x_eval_8", "`=_rc'")
+    global G = char(96) + "=.1+.2" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e9)
+    python: _q4306_ev("q4306e9", "x_eval_9", "`=_rc'")
+    global G = char(96) + "=-2^2" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e10)
+    python: _q4306_ev("q4306e10", "x_eval_10", "`=_rc'")
+    global G = char(96) + "=2^3^2" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e11)
+    python: _q4306_ev("q4306e11", "x_eval_11", "`=_rc'")
+    global G = char(96) + "=2*3+4" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e12)
+    python: _q4306_ev("q4306e12", "x_eval_12", "`=_rc'")
+    global G = char(96) + "=2+3*4" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e13)
+    python: _q4306_ev("q4306e13", "x_eval_13", "`=_rc'")
+    global G = char(96) + "=(2+3)*4" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e14)
+    python: _q4306_ev("q4306e14", "x_eval_14", "`=_rc'")
+    global G = char(96) + "=!0" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e15)
+    python: _q4306_ev("q4306e15", "x_eval_15", "`=_rc'")
+    global G = char(96) + "=!1+1" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e16)
+    python: _q4306_ev("q4306e16", "x_eval_16", "`=_rc'")
+    global G = char(96) + "=1<2&2<1|1" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e17)
+    python: _q4306_ev("q4306e17", "x_eval_17", "`=_rc'")
+    global G = char(96) + "=.>5" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e18)
+    python: _q4306_ev("q4306e18", "x_eval_18", "`=_rc'")
+    global G = char(96) + "=1==1" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e19)
+    python: _q4306_ev("q4306e19", "x_eval_19", "`=_rc'")
+    global G = char(96) + "=abs(-3)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e20)
+    python: _q4306_ev("q4306e20", "x_eval_20", "`=_rc'")
+    global G = char(96) + "=round(2.567,.01)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e21)
+    python: _q4306_ev("q4306e21", "x_eval_21", "`=_rc'")
+    global G = char(96) + "=round(2.5)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e22)
+    python: _q4306_ev("q4306e22", "x_eval_22", "`=_rc'")
+    global G = char(96) + "=mod(7,3)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e23)
+    python: _q4306_ev("q4306e23", "x_eval_23", "`=_rc'")
+    global G = char(96) + "=min(3,.,1)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e24)
+    python: _q4306_ev("q4306e24", "x_eval_24", "`=_rc'")
+    global G = char(96) + "=max(1,2)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e25)
+    python: _q4306_ev("q4306e25", "x_eval_25", "`=_rc'")
+    global G = char(96) + "=sqrt(2)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e26)
+    python: _q4306_ev("q4306e26", "x_eval_26", "`=_rc'")
+    global G = char(96) + "=ln(1)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e27)
+    python: _q4306_ev("q4306e27", "x_eval_27", "`=_rc'")
+    global G = char(96) + "=log10(1000)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e28)
+    python: _q4306_ev("q4306e28", "x_eval_28", "`=_rc'")
+    global G = char(96) + "=int(-2.5)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e29)
+    python: _q4306_ev("q4306e29", "x_eval_29", "`=_rc'")
+    global G = char(96) + "=ceil(1.2)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e30)
+    python: _q4306_ev("q4306e30", "x_eval_30", "`=_rc'")
+    global G = char(96) + "=floor(-1.2)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e31)
+    python: _q4306_ev("q4306e31", "x_eval_31", "`=_rc'")
+    global G = char(96) + "=exp(1)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e32)
+    python: _q4306_ev("q4306e32", "x_eval_32", "`=_rc'")
+    global G = char(96) + "=sign(-4)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e33)
+    python: _q4306_ev("q4306e33", "x_eval_33", "`=_rc'")
+    global G = char(96) + "=string(1/3)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e34)
+    python: _q4306_ev("q4306e34", "x_eval_34", "`=_rc'")
+    global G = char(96) + `"=string(1/3,"%5.2f")"' + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e35)
+    python: _q4306_ev("q4306e35", "x_eval_35", "`=_rc'")
+    global G = char(96) + "=strofreal(2)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e36)
+    python: _q4306_ev("q4306e36", "x_eval_36", "`=_rc'")
+    global G = char(96) + `"=real("3")+1"' + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e37)
+    python: _q4306_ev("q4306e37", "x_eval_37", "`=_rc'")
+    global G = char(96) + `"=strlen("abc")"' + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e38)
+    python: _q4306_ev("q4306e38", "x_eval_38", "`=_rc'")
+    global G = char(96) + `"=ustrlen("ab")"' + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e39)
+    python: _q4306_ev("q4306e39", "x_eval_39", "`=_rc'")
+    global G = char(96) + `"=substr("abcdef",2,3)"' + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e40)
+    python: _q4306_ev("q4306e40", "x_eval_40", "`=_rc'")
+    global G = char(96) + `"=usubstr("abc",1,1)"' + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e41)
+    python: _q4306_ev("q4306e41", "x_eval_41", "`=_rc'")
+    global G = char(96) + `"=upper("ab")"' + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e42)
+    python: _q4306_ev("q4306e42", "x_eval_42", "`=_rc'")
+    global G = char(96) + `"=strupper("ab")"' + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e43)
+    python: _q4306_ev("q4306e43", "x_eval_43", "`=_rc'")
+    global G = char(96) + `"=lower("AB")"' + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e44)
+    python: _q4306_ev("q4306e44", "x_eval_44", "`=_rc'")
+    global G = char(96) + `"=strlower("AB")"' + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e45)
+    python: _q4306_ev("q4306e45", "x_eval_45", "`=_rc'")
+    global G = char(96) + `"=trim("  a ")"' + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e46)
+    python: _q4306_ev("q4306e46", "x_eval_46", "`=_rc'")
+    global G = char(96) + `"=strtrim(" a ")"' + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e47)
+    python: _q4306_ev("q4306e47", "x_eval_47", "`=_rc'")
+    global G = char(96) + `"="a"+"b""' + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306e48)
+    python: _q4306_ev("q4306e48", "x_eval_48", "`=_rc'")
+    log close q4306
+    python: _q4306_notes("`q6d'/eval.log")
+    _w43_expect Q4306-4 "(${q4306_n} == 0)" "the evaluated globals printed the note ${q4306_n} times"
+    dash clear
+    log using "`q6d'/out.log", text replace name(q4306)
+    global G = char(96) + "=_N" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306o1)
+    python: _q4306_ev("q4306o1", "x_eval_out_1", "`=_rc'")
+    global G = char(96) + "=mpg[1]" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306o2)
+    python: _q4306_ev("q4306o2", "x_eval_out_2", "`=_rc'")
+    global G = char(96) + "=c(N)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306o3)
+    python: _q4306_ev("q4306o3", "x_eval_out_3", "`=_rc'")
+    global G = char(96) + "c(N)" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306o4)
+    python: _q4306_ev("q4306o4", "x_eval_out_4", "`=_rc'")
+    log close q4306
+    python: _q4306_notes("`q6d'/out.log")
+    _w43_expect Q4306-4 "(${q4306_n} == 4)" "the kept globals printed the note ${q4306_n} times, not once a graph"
+    _w43_expect Q4306-4 `"("${q4306_bad}" == "")"' "${q4306_bad}"
+    // Nothing from a text runs: filewrite() is not listed, so its global
+    // is kept as written and no file is written.  Kept as written, its
+    // quotes split the line, which dash refuses as twoway's quote rule
+    // does (WP-31 D13b: "invalid point", r(198)).
+    local sent "`q6d'/q4306_ran"
+    capture erase "`sent'"
+    global G = char(96) + "=filewrite(" + char(34) + "`sent'" + char(34) + "," + char(34) + "x" + char(34) + ")" + char(39)
+    capture noisily dash scatter mpg weight, text(30 3000 "\$G") name(q4306w)
+    _w43_expect Q4306-4 "(_rc == 198)" "the filewrite() global: rc `=_rc', not the quote refusal"
+    capture confirm file "`sent'"
+    _w43_expect Q4306-4 "(_rc == 601)" "a filewrite() global wrote `sent'"
+    // The one-argument call is the as-text route (ev left unset).
+    global G = char(96) + "=1+1" + char(39)
+    mata: st_local("q1", strofreal(_dash_at_globals("a \$G b") == "a " + char(96) + "=1+1" + char(39) + " b"))
+    _w43_expect Q4306-4 "(`q1' == 1)" "the one-argument _dash_at_globals() did not keep the text"
+    mata: st_local("q4306_h", strofreal(_q4306_hostile()))
+    _w43_expect Q4306-4 "(`q4306_h' == 0)" "`q4306_h' hostile texts not refused as written, first: `macval(q4306_h1)'"
+    _w43_done Q4306-4 "a global's =exp evaluated as twoway draws it (48 probes), the rest drawn as written with one note a graph; nothing run"
+    macro drop G
+
+    // ------------------------------------------------------------
+    // Q4306-5 (P4-7): the graph text options read globals through the
+    // same evaluator: axis 3's title (the _dash_axisn_json route) is
+    // global_text_truth.json's eval ytitle drawn text, a title holding
+    // `=_N' is drawn as written, and the note is printed once for the
+    // graph.
+    // ------------------------------------------------------------
+    dash clear
+    global ZTG_eval = char(96) + "=1+1" + char(39)
+    global ZTG_out = char(96) + "=_N" + char(39)
+    log using "`q6d'/gt.log", text replace name(q4306)
+    capture noisily dash (scatter mpg weight) (scatter price weight, yaxis(3)), ytitle("a \$ZTG_eval b", axis(3)) title("a \$ZTG_out b") name(q4306g)
+    local rc = _rc
+    log close q4306
+    _w43_expect Q4306-5 "(`rc' == 0)" "rc `rc'"
+    if `rc' == 0 {
+        python: _q4306_gt("q4306g")
+        _w43_expect Q4306-5 `"("${q4306_g}" == "ok")"' "${q4306_g}"
+    }
+    python: _q4306_notes("`q6d'/gt.log")
+    _w43_expect Q4306-5 "(${q4306_n} == 1)" "the note printed ${q4306_n} times for the graph"
+    _w43_done Q4306-5 "the graph text options' globals evaluated by the same evaluator; the note once a graph"
+    macro drop ZTG_eval ZTG_out
+
+    local q6f : dir "`q6d'" files "*"
+    foreach f of local q6f {
+        capture erase "`q6d'/`f'"
+    }
+    capture rmdir "`q6d'"
+    capture graph drop _all
+    dash clear
+    macro drop q4306_*
+    display as text "S06 end " c(current_date) " " c(current_time)
+}
+* ==== end S06 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

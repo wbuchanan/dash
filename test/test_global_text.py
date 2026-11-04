@@ -79,7 +79,9 @@ class TestTheRegistration:
         {ccl} (twoway expands macros when it reads the option and SMCL when
         it draws), and refuses an expansion past 4,000 characters."""
         ado = _read("dash.ado")
-        at = ado.index('_dash_at_globals(st_local("gv"))')
+        # Flipped: the one-argument call was the as-text route; every
+        # graph text option now passes ev = 1 (WP-43 LT-20, P4-7).
+        at = ado.index('_dash_at_globals(st_local("gv"), 1)')
         assert at < ado.index('_dash_gt_ccl(st_local("_gtg"))')
         assert "(): expanded text is too long" in ado[at:at + 800]
 

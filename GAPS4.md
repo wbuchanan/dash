@@ -477,7 +477,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-17 Tracked:** Open (WP-43 section 43-02).
 - **LT-18 Tracked:** Open (WP-43 section 43-05).
 - **LT-19 Tracked:** Open (WP-43 section 43-05).
-- **LT-20 Tracked:** Open (WP-43 section 43-06).
+- **LT-20 Tracked:** Documented in WP-43, BUGS.md "text() draws no width(), height(), linegap(), bexpand, bmargin(), lstyle(), lpattern(), lalign(); a `=exp' global is drawn literally", commit pending.
 - **LT-21 Tracked:** Open (WP-43 section 43-04).
 - **PIC-11 Tracked:** Open (WP-43 section 43-04).
 - **MS-10 Tracked:** Open (WP-43 section 43-04).

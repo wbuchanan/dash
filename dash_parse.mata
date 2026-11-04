@@ -447,17 +447,21 @@
 *!       reads it: points through _dash_at_isnum, lines unquoted by
 *!       _dash_at_unq, into the caller's _at_* locals (WP-30 P1.10).
 *!
-*!   _dash_at_globals(s)
+*!   _dash_at_globals(s [, ev])
 *!       s with each $name, ${name} and $$name replaced by the global's
-*!       value, by text, never evaluated (WP-31 D13); dash.ado applies it
-*!       to the graph's text options (D13b) and _dash_at_parse to each
-*!       text() line.
+*!       value (WP-31 D13); with ev 1 its =exp runs evaluated by the safe
+*!       evaluator (WP-43 LT-20, P4-6, P4-7; helpers _dash_at_exp_runs,
+*!       _dash_at_exp, _dash_at_xp, _dash_at_xf, _dash_at_xws): numbers,
+*!       strings, operators and the whitelisted functions computed in
+*!       Mata, never by Stata; anything else kept as written.  dash.ado
+*!       applies it to the graph's text options (D13b) and _dash_at_parse
+*!       to each text() line, both with ev 1.
 *!
 *!   _dash_at_isnum(tok)
 *!       1 when tok is a number as twoway's numlist reads it (WP-30
 *!       P1.10); dash.ado's text() quote check reads points through it.
 *!
-*!   _dash_gt_qadded(s)
+*!   _dash_gt_qadded(s [, ev])
 *!   _dash_gt_qtexts(raw)
 *!       The option text before its options (helper _dash_gt_qleft); its
 *!       globals expanded when they add a double quote, which dash.ado
@@ -10958,10 +10962,11 @@ string scalar _dash_axisn_json()
             }
             if (!seen) continue
             // A global in an axis title or label is its value, as twoway
-            // reads a graph text option again (WP-31 D13b), by text.
+            // reads a graph text option again (WP-31 D13b), its =exp runs
+            // evaluated by the safe evaluator (WP-43 LT-20, P4-7).
             // Then {ccl name} is c(name) (WP-31 E9, smcl_more_truth.json
             // axis3.ytitle, axis3.ylabel).
-            if (anyof(("title", "label", "mlabel"), families[j])) v = _dash_gt_ccl(_dash_at_globals(v))
+            if (anyof(("title", "label", "mlabel"), families[j])) v = _dash_gt_ccl(_dash_at_globals(v, 1))
             // mlabel is written "mlab" (WP-31 D1b): a key "mlabel" is a
             // marker-label variable to _dash_extract_vars.
             fams = fams + (fams == "" ? "" : ",") + char(34) +
@@ -13263,7 +13268,7 @@ real scalar _dash_at_parse(string scalar raw, real scalar datesok)
                     // A copy: _dash_at_globals rewrites its argument in
                     // place, so passing line itself made the two equal and
                     // the bound never held (WP-31 D13b).
-                    g = _dash_at_globals(line + "")
+                    g = _dash_at_globals(line + "", 1)
                     if (g != line & strlen(g) > 4000) {
                         st_local("_at_k", "0")
                         st_local("_at_n", "0")
@@ -13441,15 +13446,19 @@ void _dash_edge_span(string scalar pre)
 // "$$", the inner $u30f naming F and $F empty).  Read right to left, so a
 // $ just before a replaced value takes its name from that value, as
 // Stata's nested $$ does; each $ of s is read once, so it ends.  A $
-// followed by anything else is kept.  The value is text: a global holding
-// `=1+1' is drawn as written, where twoway evaluates it (global_eval) --
-// user text is never evaluated.  Stops once the text passes 4,000 bytes;
-// the caller refuses that.
-string scalar _dash_at_globals(string scalar s)
+// followed by anything else is kept.  With ev 1 each value's =exp runs
+// are evaluated by the safe evaluator first (_dash_at_exp_runs; WP-43
+// LT-20, P4-6, P4-7: twoway draws a global holding `=1+1' as 2,
+// global_eval), and a run it keeps as written -- an =exp it refuses, a
+// macro reference -- sets the caller's local _at_expnote to 1; nothing
+// from the text is run.  With ev 0 or omitted the value is text.  Stops
+// once the text passes 4,000 bytes; the caller refuses that.
+string scalar _dash_at_globals(string scalar s, | real scalar ev)
 {
-    string scalar rest, nm
-    real scalar   i, L
+    string scalar rest, nm, v
+    real scalar   i, L, nt
 
+    if (args() < 2) ev = 0
     for (i = strlen(s); i >= 1; i--) {
         if (substr(s, i, 1) != "$") continue
         rest = substr(s, i + 1, .)
@@ -13464,10 +13473,428 @@ string scalar _dash_at_globals(string scalar s)
             L = strlen(nm)
         }
         if (nm == "" | strlen(nm) > 32) continue
-        s = substr(s, 1, i - 1) + st_global(nm) + substr(rest, L + 1, .)
+        v = st_global(nm)
+        if (ev == 1) {
+            nt = 0
+            v = _dash_at_exp_runs(v, nt)
+            if (nt == 1) st_local("_at_expnote", "1")
+        }
+        s = substr(s, 1, i - 1) + v + substr(rest, L + 1, .)
         if (strlen(s) > 4000) return(s)
     }
     return(s)
+}
+
+// _dash_at_exp_runs(v, nt) -- v, a global's value, with each run that
+// starts `= and ends at the first ' outside a "..." inside it replaced by
+// its value when the safe evaluator reads it (_dash_at_exp), as twoway
+// evaluates a graph text's =exp global (WP-43 LT-20, P4-6, P4-7;
+// added_text_box_truth.json x_eval_*).  Every other run -- an =exp the
+// evaluator refuses, a macro reference `name' or `c(name)' -- is kept as
+// written and sets nt to 1.  Nothing is run or read: the value is text.
+string scalar _dash_at_exp_runs(string scalar v, real scalar nt)
+{
+    string scalar out, r, c
+    real scalar   i, j, k, n, inq, ok
+
+    out = ""
+    n = strlen(v)
+    i = 1
+    while (i <= n) {
+        k = strpos(substr(v, i, .), char(96))
+        if (!k) {
+            out = out + substr(v, i, .)
+            break
+        }
+        out = out + substr(v, i, k - 1)
+        i = i + k - 1
+        inq = 0
+        j = 0
+        for (k = i + 1; k <= n; k++) {
+            c = substr(v, k, 1)
+            if (c == char(34)) inq = !inq
+            else if (c == char(39) & !inq) {
+                j = k
+                break
+            }
+        }
+        if (!j) {
+            out = out + substr(v, i, .)
+            break
+        }
+        if (substr(v, i + 1, 1) == "=") {
+            ok = 0
+            r = _dash_at_exp(substr(v, i + 2, j - i - 2), ok)
+            if (ok) {
+                out = out + r
+                i = j + 1
+                continue
+            }
+        }
+        nt = 1
+        out = out + substr(v, i, j - i + 1)
+        i = j + 1
+    }
+    return(out)
+}
+
+// _dash_at_exp(e, ok) -- the text twoway draws for `=e' when e is made
+// only of numbers, strings in double quotes, ., the operators
+// + - * / ^ == != ~= > < >= <= & | ! ~, parentheses and the functions
+// of wl, with ok 1; else e itself with ok 0 (WP-43 LT-20, P4-6).  A
+// recursive-descent reading (_dash_at_xp, _dash_at_xf, _dash_at_xws) in
+// Stata's order of evaluation as twoway draws it (x_eval_*: -2^2 is -4,
+// 2^3^2 is 64, !1+1 is 1), Stata's missing rules holding.  Every value is
+// computed here: nothing reaches Stata, a macro, a result, a variable or
+// a file.  A number is drawn %18.0g, trimmed (x_eval_2 .3333333333333333,
+// x_eval_4 1.00000000000e+20), a string as it is.  Bounds: e at most
+// 4,000 bytes, nesting at most 64, 16 arguments a call, a string at most
+// 4,000 bytes; past any, ok is 0.
+string scalar _dash_at_exp(string scalar e, real scalar ok)
+{
+    string rowvector wl
+    string scalar    s
+    real scalar      p, t, x
+
+    wl = ("abs", "ceil", "floor", "int", "exp", "ln", "log", "log10",
+          "sqrt", "sign", "round", "mod", "min", "max", "string",
+          "strofreal", "real", "strlen", "ustrlen", "substr", "usubstr",
+          "upper", "strupper", "lower", "strlower", "trim", "strtrim")
+    ok = 0
+    if (strlen(e) > 4000 | strpos(e, char(96)) | strpos(e, char(36)))
+        return(e)
+    ok = 1
+    p = 1
+    t = 0
+    x = .
+    s = ""
+    _dash_at_xp(e, p, 1, 0, ok, t, x, s, wl)
+    if (ok) {
+        _dash_at_xws(e, p)
+        if (p <= strlen(e)) ok = 0
+    }
+    if (ok & t == 1) s = strtrim(strofreal(x, "%18.0g"))
+    if (!ok | strlen(s) > 4000) {
+        ok = 0
+        return(e)
+    }
+    return(s)
+}
+
+// _dash_at_xws(e, p) -- p moved past the blanks of e at p.
+void _dash_at_xws(string scalar e, real scalar p)
+{
+    while (p <= strlen(e) & substr(e, p, 1) == " ") p++
+}
+
+// _dash_at_xp(e, p, lvl, d, ok, t, x, s, wl) -- _dash_at_exp's reader:
+// the expression of e at p at level lvl (1 |, 2 &, 3 the relations, 4 +
+// -, 5 * /, 6 unary -, 7 ^ left to right, 8 ! ~ and the atoms), its value
+// in t (1 a number x, 2 a string s), p moved past it; ok 0 on anything
+// else.  d counts the nesting.
+void _dash_at_xp(string scalar e, real scalar p, real scalar lvl,
+                 real scalar d, real scalar ok, real scalar t,
+                 real scalar x, string scalar s, string rowvector wl)
+{
+    string rowvector ops
+    string colvector as
+    real colvector   at, ax
+    string scalar    op, c, nm, s2
+    real scalar      k, q, n, t2, x2
+
+    if (!ok) return
+    if (d > 64) {
+        ok = 0
+        return
+    }
+    _dash_at_xws(e, p)
+    if (lvl <= 5) {
+        if (lvl == 1) ops = ("|")
+        else if (lvl == 2) ops = ("&")
+        else if (lvl == 3) ops = ("==", "!=", "~=", ">=", "<=", ">", "<")
+        else if (lvl == 4) ops = ("+", "-")
+        else ops = ("*", "/")
+        _dash_at_xp(e, p, lvl + 1, d, ok, t, x, s, wl)
+        while (ok) {
+            _dash_at_xws(e, p)
+            op = ""
+            for (k = 1; k <= cols(ops); k++) {
+                if (substr(e, p, strlen(ops[k])) == ops[k]) {
+                    op = ops[k]
+                    break
+                }
+            }
+            if (op == "") return
+            p = p + strlen(op)
+            t2 = 0
+            x2 = .
+            s2 = ""
+            _dash_at_xp(e, p, lvl + 1, d, ok, t2, x2, s2, wl)
+            if (!ok) return
+            if (lvl == 3) {
+                if (t != t2) {
+                    ok = 0
+                    return
+                }
+                if (t == 1) {
+                    if (op == "==") x = (x == x2)
+                    else if (op == "!=" | op == "~=") x = (x != x2)
+                    else if (op == ">=") x = (x >= x2)
+                    else if (op == "<=") x = (x <= x2)
+                    else if (op == ">") x = (x > x2)
+                    else x = (x < x2)
+                }
+                else {
+                    if (op == "==") x = (s == s2)
+                    else if (op == "!=" | op == "~=") x = (s != s2)
+                    else if (op == ">=") x = (s >= s2)
+                    else if (op == "<=") x = (s <= s2)
+                    else if (op == ">") x = (s > s2)
+                    else x = (s < s2)
+                }
+                t = 1
+                s = ""
+                continue
+            }
+            if (lvl == 4 & op == "+" & t == 2 & t2 == 2) {
+                if (strlen(s) + strlen(s2) > 4000) {
+                    ok = 0
+                    return
+                }
+                s = s + s2
+                continue
+            }
+            if (t != 1 | t2 != 1) {
+                ok = 0
+                return
+            }
+            if (op == "|") x = (x != 0 | x2 != 0)
+            else if (op == "&") x = (x != 0 & x2 != 0)
+            else if (op == "+") x = x + x2
+            else if (op == "-") x = x - x2
+            else if (op == "*") x = x * x2
+            else x = (x2 == 0 ? . : x / x2)
+        }
+        return
+    }
+    c = substr(e, p, 1)
+    if (lvl == 6) {
+        if (c != "-") {
+            _dash_at_xp(e, p, 7, d, ok, t, x, s, wl)
+            return
+        }
+        p++
+        _dash_at_xp(e, p, 6, d + 1, ok, t, x, s, wl)
+        if (ok & t != 1) ok = 0
+        if (ok) x = -x
+        return
+    }
+    if (lvl == 7) {
+        _dash_at_xp(e, p, 8, d, ok, t, x, s, wl)
+        while (ok) {
+            _dash_at_xws(e, p)
+            if (substr(e, p, 1) != "^") return
+            p++
+            _dash_at_xws(e, p)
+            t2 = 0
+            x2 = .
+            s2 = ""
+            _dash_at_xp(e, p, (substr(e, p, 1) == "-" ? 6 : 8), d + 1, ok,
+                        t2, x2, s2, wl)
+            if (!ok) return
+            if (t != 1 | t2 != 1) {
+                ok = 0
+                return
+            }
+            x = x ^ x2
+        }
+        return
+    }
+    if ((c == "!" | c == "~") & substr(e, p + 1, 1) != "=") {
+        p++
+        _dash_at_xp(e, p, 8, d + 1, ok, t, x, s, wl)
+        if (ok & t != 1) ok = 0
+        if (ok) x = (x == 0)
+        return
+    }
+    if (c == "(") {
+        p++
+        _dash_at_xp(e, p, 1, d + 1, ok, t, x, s, wl)
+        if (!ok) return
+        _dash_at_xws(e, p)
+        if (substr(e, p, 1) != ")") {
+            ok = 0
+            return
+        }
+        p++
+        return
+    }
+    if (c == char(34)) {
+        q = strpos(substr(e, p + 1, .), char(34))
+        if (!q) {
+            ok = 0
+            return
+        }
+        t = 2
+        s = substr(e, p + 1, q - 1)
+        p = p + q + 1
+        return
+    }
+    if (ustrregexm(substr(e, p, 64), "^([0-9]+([.][0-9]*)?([eE][+-]?[0-9]+)?|[.][0-9]+([eE][+-]?[0-9]+)?)")) {
+        nm = ustrregexs(1)
+        t = 1
+        x = strtoreal(nm)
+        p = p + strlen(nm)
+        return
+    }
+    if (c == ".") {
+        t = 1
+        x = .
+        p++
+        return
+    }
+    if (!ustrregexm(substr(e, p, 64), "^([a-z0-9_]+) *[(]")) {
+        ok = 0
+        return
+    }
+    nm = ustrregexs(1)
+    if (!anyof(wl, nm)) {
+        ok = 0
+        return
+    }
+    p = p + strlen(ustrregexs(0))
+    at = J(0, 1, .)
+    ax = J(0, 1, .)
+    as = J(0, 1, "")
+    _dash_at_xws(e, p)
+    if (substr(e, p, 1) == ")") p++
+    else {
+        n = 0
+        while (ok) {
+            if (n >= 16) {
+                ok = 0
+                return
+            }
+            t2 = 0
+            x2 = .
+            s2 = ""
+            _dash_at_xp(e, p, 1, d + 1, ok, t2, x2, s2, wl)
+            if (!ok) return
+            n++
+            at = at \ t2
+            ax = ax \ x2
+            as = as \ s2
+            _dash_at_xws(e, p)
+            c = substr(e, p, 1)
+            p++
+            if (c == ")") break
+            if (c != ",") {
+                ok = 0
+                return
+            }
+        }
+    }
+    _dash_at_xf(nm, at, ax, as, ok, t, x, s)
+}
+
+// _dash_at_xf(nm, at, ax, as, ok, t, x, s) -- the whitelisted function nm
+// of _dash_at_exp on the arguments' types at (1 number, 2 string), numbers
+// ax and strings as, computed with the Mata function of the same meaning;
+// its value in t, x, s; ok 0 for a wrong count or type.
+void _dash_at_xf(string scalar nm, real colvector at, real colvector ax,
+                 string colvector as, real scalar ok, real scalar t,
+                 real scalar x, string scalar s)
+{
+    real scalar n, i, v
+
+    n = rows(at)
+    t = 1
+    x = .
+    s = ""
+    if (anyof(("abs", "ceil", "floor", "int", "exp", "ln", "log", "log10",
+               "sqrt", "sign"), nm)) {
+        if (n != 1) ok = 0
+        else if (at[1] != 1) ok = 0
+        if (!ok) return
+        v = ax[1]
+        if (nm == "abs") x = abs(v)
+        else if (nm == "ceil") x = ceil(v)
+        else if (nm == "floor") x = floor(v)
+        else if (nm == "int") x = trunc(v)
+        else if (nm == "exp") x = exp(v)
+        else if (nm == "ln" | nm == "log") x = ln(v)
+        else if (nm == "log10") x = log10(v)
+        else if (nm == "sqrt") x = sqrt(v)
+        else x = sign(v)
+        return
+    }
+    if (nm == "round" | nm == "mod" | nm == "min" | nm == "max") {
+        if (n < 1 | any(at :!= 1)) ok = 0
+        else if (nm == "round" & n > 2) ok = 0
+        else if (nm == "mod" & n != 2) ok = 0
+        if (!ok) return
+        if (nm == "round") x = (n == 1 ? round(ax[1]) : round(ax[1], ax[2]))
+        else if (nm == "mod") x = mod(ax[1], ax[2])
+        else {
+            for (i = 1; i <= n; i++) {
+                if (ax[i] >= .) continue
+                if (x >= .) x = ax[i]
+                else if (nm == "min") x = (ax[i] < x ? ax[i] : x)
+                else x = (ax[i] > x ? ax[i] : x)
+            }
+        }
+        return
+    }
+    if (nm == "string" | nm == "strofreal") {
+        if (n == 1) {
+            if (at[1] == 1) {
+                t = 2
+                s = strtrim(strofreal(ax[1]))
+                return
+            }
+        }
+        else if (n == 2) {
+            if (at[1] == 1 & at[2] == 2 &
+                ustrregexm(as[2], "^%-?[1-9][0-9]?([.][0-9][0-9]?)?[fge]c?$")) {
+                t = 2
+                s = strtrim(strofreal(ax[1], as[2]))
+                return
+            }
+        }
+        ok = 0
+        return
+    }
+    if (n < 1) {
+        ok = 0
+        return
+    }
+    if (at[1] != 2) {
+        ok = 0
+        return
+    }
+    if (nm == "substr" | nm == "usubstr") {
+        if (n != 3) ok = 0
+        else if (at[2] != 1 | at[3] != 1) ok = 0
+        if (!ok) return
+        t = 2
+        s = (nm == "substr" ? substr(as[1], ax[2], ax[3])
+                            : usubstr(as[1], ax[2], ax[3]))
+        return
+    }
+    if (n != 1) {
+        ok = 0
+        return
+    }
+    if (nm == "real") x = strtoreal(as[1])
+    else if (nm == "strlen") x = strlen(as[1])
+    else if (nm == "ustrlen") x = ustrlen(as[1])
+    else {
+        t = 2
+        if (nm == "upper" | nm == "strupper") s = strupper(as[1])
+        else if (nm == "lower" | nm == "strlower") s = strlower(as[1])
+        else if (nm == "trim" | nm == "strtrim") s = strtrim(as[1])
+        else ok = 0
+    }
 }
 
 // _dash_gt_qleft(s) -- s up to its first comma outside "..." and
@@ -13520,14 +13947,16 @@ string scalar _dash_gt_qleft(string scalar s)
 // double quote; "" otherwise.  twoway reads a graph text option's whole
 // text again before its quotes (WP-31 D13b, global_text_truth.json), so
 // such a global splits the string; the caller refuses where twoway does.
-string scalar _dash_gt_qadded(string scalar s)
+// ev as _dash_at_globals takes it (WP-43 LT-20).
+string scalar _dash_gt_qadded(string scalar s, | real scalar ev)
 {
     string scalar l, e
 
+    if (args() < 2) ev = 0
     if (!strpos(s, "$")) return("")
     l = _dash_gt_qleft(s)
     // A copy: _dash_at_globals rewrites its argument in place.
-    e = _dash_at_globals(l + "")
+    e = _dash_at_globals(l + "", ev)
     if (sum(ascii(e) :== 34) > sum(ascii(l) :== 34)) return(e)
     return("")
 }
@@ -13549,7 +13978,7 @@ real scalar _dash_gt_qtexts(string scalar raw)
     for (k = 1; k < cols(ix); k++) {
         a = ix[k] + 1
         z = ix[k + 1]
-        e = _dash_gt_qadded(substr(raw, a, z - a))
+        e = _dash_gt_qadded(substr(raw, a, z - a), 1)
         if (e != "") {
             st_global("dash__q", e)
             return(1)

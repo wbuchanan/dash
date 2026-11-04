@@ -10702,6 +10702,10 @@ program define _dash_plot
     }
     local gopts_json "{"
     local gfirst = 1
+    // WP-43 LT-20: set to 1 by _dash_at_globals (ev 1) when a global's
+    // =exp or macro reference in one of the graph's texts is kept as
+    // written; named once for the graph after the axes 3-9 are read.
+    local _at_expnote 0
     local _gt_textkeys title subtitle note caption xtitle ytitle xlabel ylabel ///
         legend clegend plegend by ytitle2 xtitle2 ylabel2 xlabel2 xmlabel2 ///
         ymlabel2 xmlabel ymlabel tlabel tmlabel ttitle tlabel2 ttitle2 ///
@@ -10724,13 +10728,15 @@ program define _dash_plot
         // A $name or ${name} that reaches dash in a graph text option is
         // the global's value, as twoway reads the option's whole text
         // again before its quotes and sub-options (WP-31 D13b,
-        // global_text_truth.json): by text through _dash_at_globals, never
-        // evaluated, and refused past 4,000 characters as text() is.
+        // global_text_truth.json): through _dash_at_globals, each =exp run
+        // evaluated by the safe evaluator as twoway evaluates it (WP-43
+        // LT-20, P4-7) and the rest kept as written, with one note per
+        // graph, and refused past 4,000 characters as text() is.
         // Then {ccl name} is c(name), as twoway's graph text draws it
         // (WP-31 E9).  Both read here, by value, because the renderer
         // cannot read globals or c().
         if `: length local gv' & `: list gk in _gt_textkeys' {
-            mata: st_local("_gtg", _dash_at_globals(st_local("gv"))); ///
+            mata: st_local("_gtg", _dash_at_globals(st_local("gv"), 1)); ///
                 st_local("_gtl", strofreal(st_local("_gtg") != st_local("gv") & strlen(st_local("_gtg")) > 4000))
             if `_gtl' {
                 mata: _dash_say("err", st_local("gk"), "(): expanded text is too long", "")
@@ -10740,7 +10746,7 @@ program define _dash_plot
             // string, and twoway refuses the label specifier (WP-31 D13b,
             // measured: "invalid label specifier, :  3000 "a say "hi" b":").
             if `: list gk in _gt_labelkeys' {
-                mata: st_local("_gtq", _dash_gt_qadded(st_local("gv")))
+                mata: st_local("_gtq", _dash_gt_qadded(st_local("gv"), 1))
                 if `: length local _gtq' {
                     mata: _dash_say("err", "invalid label specifier, :  ", st_local("_gtq"), ":")
                     exit 198
@@ -10821,6 +10827,12 @@ program define _dash_plot
     // Axes 3-9 (WP-31 C10c): their title, label, tick, line and scale
     // options, as one "axisn" object; appended in Mata, never expanded.
     mata: st_local("_axn", _dash_axisn_json())
+    // WP-43 LT-20: a global's =exp or macro reference kept as written in
+    // any of the graph's texts (_dash_at_globals with ev 1 set
+    // _at_expnote), named once for the graph.
+    if "`_at_expnote'" == "1" {
+        mata: _dash_note("dash: a global's =exp or macro reference in a graph's text is drawn as written; dash evaluates numbers, strings, operators and the functions listed in help dash##added_text", "", "")
+    }
     if `: length local _axn' {
         mata: st_local("gopts_json", st_local("gopts_json") + (`gfirst' ? "" : ",") + char(34) + "axisn" + char(34) + ":" + st_local("_axn"))
         local gfirst = 0
@@ -11484,6 +11496,9 @@ program define _dash_added_text
     mata: _dash_at_records(st_local("_kind"))
     c_local _at_json `"`_at_json'"'
     c_local _at_total `_at_n'
+    // WP-43 LT-20: a global kept as written in a line (_dash_at_parse's
+    // _dash_at_globals) is named by the caller, once for the graph.
+    if "`_at_expnote'" == "1" c_local _at_expnote 1
 end
 
 // ----------------------------------------------------------------

@@ -867,8 +867,21 @@ named once in a note and not drawn.  A
 {cmd:dash} in a line -- written {cmd:\$name} in a do-file, or passed
 through {cmd:macval()} -- is replaced by the global's value when the graph
 is registered, as {cmd:twoway} expands it ({cmd:$$f$$} is read inside out,
-as Stata reads it), by text only: a global holding {cmd:`=1+1'} is drawn
-as written, where {cmd:twoway} evaluates it.  A line whose globals expand
+as Stata reads it), and a {cmd:`=}{it:exp}{cmd:'} in the global's value
+is evaluated, as {cmd:twoway} evaluates it, when {it:exp} is made only of
+numbers, strings in double quotes, {cmd:.}, the operators
+{cmd:+ - * / ^ == != ~= > < >= <= & | ! ~} and parentheses,
+and the functions {cmd:abs()}, {cmd:ceil()}, {cmd:floor()}, {cmd:int()},
+{cmd:exp()}, {cmd:ln()}, {cmd:log()}, {cmd:log10()}, {cmd:sqrt()},
+{cmd:sign()}, {cmd:round()}, {cmd:mod()}, {cmd:min()}, {cmd:max()},
+{cmd:string()}, {cmd:strofreal()}, {cmd:real()}, {cmd:strlen()},
+{cmd:ustrlen()}, {cmd:substr()}, {cmd:usubstr()}, {cmd:upper()},
+{cmd:strupper()}, {cmd:lower()}, {cmd:strlower()}, {cmd:trim()} and
+{cmd:strtrim()}; an {it:exp} that names a variable, a scalar,
+{cmd:_N}, {cmd:c()}, {cmd:r()}, {cmd:e()} or any other function, and a
+macro reference such as {cmd:`c(pwd)'}, is drawn as written with a
+note: {cmd:dash} never runs a command or reads a macro, a result or a
+file from a text.  A line whose globals expand
 past 4,000 characters is refused, {cmd:text(): expanded text is too long},
 {cmd:r(198)}.  Refused with {cmd:r(198)} in {cmd:twoway}'s words:
 a point that is not two numbers ({cmd:invalid point, BAD 30}), an axis
@@ -1609,6 +1622,8 @@ there, is an invalid point.  The literal is read as data and never run.
 {phang2}    {ul:fpfit's grid.}  Above 20,000 distinct x the fit is evaluated on 20,000 points, silently, where {cmd:twoway} predicts at every distinct x; see {help dash##limits:Resource limits}.
 
 {phang2}    {ul:Long text.}  A {cmd:text()} or text option whose globals expand past 4,000 characters is refused, {cmd:r(198)}, where {cmd:twoway} draws it; see {help dash##limits:Resource limits}.
+
+{phang2}    {ul:A global's =exp outside the listed functions is drawn as written.}  A {cmd:`=}{it:exp}{cmd:'} in a global's value in a graph's text is evaluated as {cmd:twoway} evaluates it when {it:exp} uses only the operators and functions listed there; one that names a variable, a scalar, a result or another function, and a macro reference, is drawn as written with a note; see {help dash##added_text:Added text}.
 
 
 {marker subcommands}
@@ -5775,9 +5790,10 @@ before its quotes are read (so a global holding a double quote splits
 the string, as in {cmd:twoway}, and in {cmd:text()}, {cmd:ttext()} or a
 tick label is refused in its words, {cmd:invalid point, }{it:...} or
 {cmd:invalid label specifier, :}{it:...}{cmd::}, {cmd:r(198)}) and its
-sub-options too; by text only: a
-global holding {cmd:`=1+1'} is drawn as written, where {cmd:twoway}
-evaluates it, and an option whose globals expand past 4,000 characters
+sub-options too; a {cmd:`=}{it:exp}{cmd:'} in the global's value is
+evaluated as in {cmd:text()}, as {cmd:twoway} evaluates it -- the
+operators and functions {help dash##added_text:Added text} lists;
+anything else is drawn as written with a note -- and an option whose globals expand past 4,000 characters
 is refused, {it:option}{cmd:(): expanded text is too long},
 {cmd:r(198)}.  A count above
 255 (above 999 for {cmd:{c -(}dup{c )-}}), which {cmd:twoway} does not

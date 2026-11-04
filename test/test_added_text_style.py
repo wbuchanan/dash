@@ -112,10 +112,18 @@ class TestGlobalsAreSubstitutedNotEvaluated:
     @pytest.mark.parametrize("case,glob", [("eval_expr", "u30e"),
                                            ("eval_pwd", "u30p")])
     def test_raw(self, case, glob):
-        """A global's value is drawn as written, never evaluated: twoway
-        draws 2! for ```=1+1'!`` (global_eval), dash the value itself."""
+        """twoway evaluates a global's =exp in a text() line and dash's
+        safe evaluator does too (WP-43 LT-20, P4-6): ```=1+1'!`` is 2!
+        (global_eval); a macro reference, ```c(pwd)'``, is drawn as
+        written, with the note."""
+        # Flipped: the raw =exp was wrong because twoway evaluates it
+        # (WP-43 LT-20).
         raw = DASH["_meta"]["globals"][glob]
         assert raw.startswith("\x60") and "'" in raw
-        assert DASH[case]["at_lines"] == [raw]
         if case == "eval_expr":
             assert TRUTH["global_eval"]["text"] == "2!"
+            assert DASH[case]["at_lines"] == ["2!"]
+            assert not DASH[case]["expnote"]
+        else:
+            assert DASH[case]["at_lines"] == [raw]
+            assert DASH[case]["expnote"]
