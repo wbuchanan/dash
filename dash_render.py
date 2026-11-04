@@ -41716,7 +41716,156 @@ def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
     # nobox and box are the key texts' textbox options (WP-43 LT-2):
     # twoway's legend(nobox) draws the default region box
     # (legend_box_truth.json nobox == ctl); only the scheme and region()
-    # draw that box.
+    # draw that box.  The key texts' own text box (WP-43 LT-3):
+    _dash_legend_key_text(legend, calls, words, scheme, _colour,
+                          ref=T.size_ref_of(fig) if fig is not None
+                          else None)
+
+
+#: alignment() of the key texts -> how far twoway moves each text, in its
+#: size, downward (legend_box_truth.json align_top, align_bottom: up
+#: 15.09 of a 99.99 text; align_baseline down 14.97; middle is the
+#: default).  With box the frame stays where it was (box_align_top).
+_DASH_LEGEND_KEY_ALIGN = {"top": -0.151, "bottom": -0.151,
+                          "baseline": 0.1497, "middle": 0.0}
+
+
+def _dash_legend_key_text(legend, calls, words, scheme, colour, *,
+                          ref=None):
+    """legend()'s key-text textbox options on the series *legend* (WP-43
+    LT-3, ruling D69): tstyle() natively (``label_text_font_size`` and
+    ``label_text_color`` from the scheme's text box style, size() and
+    color() winning), the rest through the Legend's own stylesheet tagged
+    ``dash_legend_keytext`` (Bokeh 3.8 and 3.9 draw each key text as a
+    ``.bk-label`` DOM element).  margin() pads each text (every
+    marginstyle form, ``_dash_margin_sides``), alignment() moves it by
+    twoway's measured share of its size, linegap() spreads its lines;
+    box frames it behind the text (``.bk-label::before``: the text's
+    extent, one text size per line high, the line inside), in the
+    scheme's text box fill and line or bcolor() (both), fcolor()/bfcolor()
+    (fill), lcolor() and lwidth(); a dashed or dotted lpattern() draws no
+    line, as twoway's.  Without box the colours draw nothing.
+    justification() is taken: twoway's key text box is its text's width,
+    so it moves nothing (just_right, just_center).  Every length is in em
+    of the key text, so scale() and the width scale carry it; only
+    numbers, fixed words and #rrggbb colours reach the CSS, never user
+    text.  Returns the CSS ('' for none)."""
+    from bokeh.models import InlineStyleSheet
+    T = OptionTranslator
+    o = {}
+    for name, arg, typed in calls:
+        if name in ("tstyle", "margin", "alignment", "linegap", "bcolor",
+                    "fcolor", "bfcolor", "lcolor", "lwidth", "lpattern",
+                    "justification"):
+            o[name] = (str(arg or "").strip(), typed)
+    sch = scheme if scheme is not None else \
+        SchemeParser.resolve_or_fallback("s2color", "legend()")
+    given = {n for n, _a, _t in calls}
+    if "tstyle" in o:
+        st = sch.textbox_style(o["tstyle"][0])
+        if st is None:
+            _dash_warn_once(
+                ("textboxstyle", o["tstyle"][0]),
+                "dash: named style %s not found in class textboxstyle, "
+                "default attributes used" % _dash_display(o["tstyle"][0]))
+        else:
+            if "size" not in given:
+                legend.label_text_font_size = st[0]
+            if "color" not in given:
+                legend.label_text_color = st[1]
+    base_pt = T.css_to_pt(legend.label_text_font_size) or 0.0
+    if base_pt <= 0:
+        return ""
+
+    def em(pt):
+        return "%.4gem" % (max(-500.0, min(500.0, float(pt))) / base_pt)
+    label, before = [], []
+    if "margin" in o:
+        sides, noted = _dash_margin_sides(o["margin"][0], [0.0] * 4, sch,
+                                          ref or 4.0)
+        if noted is not None:
+            _dash_style_note("legend(%s)" % o["margin"][1], noted, "margin")
+        if any(sides):
+            # [left, right, bottom, top] -> CSS top right bottom left
+            label.append("padding:%s %s %s %s" % tuple(
+                em(max(0.0, sides[i]) * T.PT_PER_RS) for i in (3, 1, 2, 0)))
+    if "linegap" in o:
+        try:
+            gap = T.resolve_size(o["linegap"][0], "gap", 0.0, ref)
+            label.append("line-height:%.4g" % (1.0 + max(
+                0.0, min(500.0, gap)) / base_pt))
+        except (ValueError, TypeError):
+            _dash_style_note("legend(%s)" % o["linegap"][1],
+                             o["linegap"][0], "size")
+    shift = 0.0
+    if "alignment" in o:
+        a = o["alignment"][0].lower()
+        if a in _DASH_LEGEND_KEY_ALIGN:
+            shift = _DASH_LEGEND_KEY_ALIGN[a]
+        else:
+            _dash_style_note("legend(%s)" % o["alignment"][1],
+                             o["alignment"][0], "alignment")
+    if shift:
+        label.append("top:%.4gem" % shift)
+    if "box" in words:
+        def col(*names):
+            for n in names:
+                if n in o:
+                    c = colour(o[n][0], "legend(%s)" % o[n][1])
+                    if c == "none":
+                        return "transparent"
+                    if c and _DASH_HEX_RE.fullmatch(str(c)):
+                        return str(c).lower()
+            return None
+        fill = col("fcolor", "bfcolor", "bcolor") or str(
+            getattr(sch, "textbox_fill_color", "#d9e6eb")).lower()
+        line = col("lcolor", "bcolor") or str(
+            getattr(sch, "textbox_line_color", "#000000")).lower()
+        if fill != "transparent" and not _DASH_HEX_RE.fullmatch(fill):
+            fill = "transparent"
+        if line != "transparent" and not _DASH_HEX_RE.fullmatch(line):
+            line = "transparent"
+        lw = float(getattr(sch, "textbox_line_width", 0.768))
+        if "lwidth" in o:
+            try:
+                lw = T.translate_lwidth(o["lwidth"][0], None, ref or 4.0)
+            except (ValueError, TypeError):
+                _dash_style_note("legend(%s)" % o["lwidth"][1],
+                                 o["lwidth"][0], "line width")
+        solid = True
+        if "lpattern" in o:
+            try:
+                pat = T.translate_lpattern(o["lpattern"][0])
+                solid = not pat
+            except (ValueError, TypeError):
+                _dash_style_note("legend(%s)" % o["lpattern"][1],
+                                 o["lpattern"][0], "line pattern")
+        # The frame is the text's lines one text size high each: the
+        # label's line boxes less their half-leading ((1lh - 1em) / 2 at
+        # each end), and its padding (margin()); it stays where the text
+        # was when alignment() moves the text.
+        edge = "calc((1lh - 1em) / 2%s)"
+        before += ['content:""', "position:absolute", "left:0", "right:0",
+                   "top:" + edge % (" + %.4gem" % -shift if shift else ""),
+                   "bottom:" + edge % (" + %.4gem" % shift if shift else ""),
+                   "z-index:-1", "background-color:%s" % fill]
+        if solid and line != "transparent" and lw > 0:
+            w = em(lw / T.PX_PER_PT)
+            before += ["outline:%s solid %s" % (w, line),
+                       "outline-offset:-%s" % w]
+        label += ["position:relative", "isolation:isolate"]
+    css = ""
+    if label:
+        css += ".bk-grid .bk-item .bk-label{%s;}" % ";".join(label)
+    if before:
+        css += " .bk-grid .bk-item .bk-label::before{%s;}" % ";".join(before)
+    css = css.strip()
+    legend.stylesheets = [ss for ss in legend.stylesheets
+                          if "dash_legend_keytext" not in (
+                              getattr(ss, "tags", None) or [])] + (
+        [InlineStyleSheet(css=css, tags=["dash_legend_keytext"])]
+        if css else [])
+    return css
 
 
 #: legend(title()) and legend(subtitle()) sub-options dash draws (WP-43
@@ -58401,7 +58550,10 @@ _DASH_LEGEND_SUBOPTS = frozenset({
     "textwidth", "forcesize", "noforcesize", "nobox", "box", "color",
     "bmargin", "bexpand", "nobexpand", "colgap", "subtitle",
     # WP-43 LT-5: drawn as twoway draws them.
-    "all", "draw", "nodraw"})
+    "all", "draw", "nodraw",
+    # WP-43 LT-3: the key texts' textbox options (_dash_legend_key_text).
+    "justification", "alignment", "margin", "linegap", "tstyle", "bcolor",
+    "fcolor", "bfcolor", "lcolor", "lwidth", "lpattern"})
 
 #: legend(label(# text)): the key's number, then its text, read by
 #: _textbox_lines.  The number is bounded so no label can make int() read
@@ -75036,6 +75188,7 @@ class ServerAppBuilder:
                       "_DASH_COMPASS_NAMES", "_DASH_COMPASS_CAPS",
                       "_DASH_COMPASS_CLOCK",
                       "_DASH_LEGEND_REGION_NAMES", "_DASH_KEY_STYLE_OPTS",
+                      "_DASH_LEGEND_KEY_ALIGN",
                       "_DASH_HIST_YTITLES",
                       "_DASH_OPT_VAR_KEYS", "_DASH_PLOT_VAR_KEYS",
                       "_DASH_SWATCH_PREFIX",
@@ -75586,6 +75739,7 @@ class ServerAppBuilder:
                          "_dash_legend_parts", "_dash_legend_arg",
                          "_dash_compass_dir",
                          "_dash_legend_margin_px", "_dash_legend_box",
+                         "_dash_legend_key_text",
                          "_dash_legend_title_block",
                          "_dash_legend_hole_sheet", "_dash_legend_holes",
                          "_dash_apply_legend",

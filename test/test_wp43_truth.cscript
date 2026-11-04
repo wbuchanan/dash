@@ -893,6 +893,136 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w43_run' {
 }
 * ==== end S03 ====
 
+// S03 LT-3 helper.  _q4303_kt <svg> <base svg> <dir>: twoway's key-text
+// frame, margin and move from an SVG of legend(<options>) against the
+// same graph's default -- the frame's fill and line (the rects round the
+// first key text), its left margin and the text's move down, both in
+// text sizes -- beside the key-text stylesheet of the graph registered
+// last in <dir> (s.json, d.json), saved and served: "ok" or what differs,
+// into q4303_k<s|v>.
+python:
+def _q4303_kt(svg, base, d):
+    import re
+    import dash_render as dr
+    from sfi import Macro
+    from bokeh.models import Legend, Plot
+    from svg_truth import svg_document, svg_rects
+    keys = [t for t in svg_document(svg)["texts"] if not t["anchor"]]
+    k0 = [t for t in svg_document(base)["texts"] if not t["anchor"]]
+    t, t0 = keys[0], k0[0]
+    size = float(t["size"])
+    hold = [r for r in svg_rects(svg) if r["w"] and r["w"] < 3000
+            and r["x"] - 30 <= t["x"] <= r["x"] + r["w"]
+            and r["y"] <= t["y"] <= r["y"] + r["h"] + 1
+            and not any(r["x"] <= k["x"] <= r["x"] + r["w"]
+                        and r["y"] <= k["y"] <= r["y"] + r["h"]
+                        for k in keys[1:])]
+    fill = [r for r in hold if r["fill"] not in (None, "none")]
+    line = [r for r in hold if r["fill"] in (None, "none")]
+    tw = {"fill": fill[0]["fill"] if fill else None,
+          "line": (line[0]["stroke"] if line and (line[0]["stroke_opacity"]
+                                                  is None or line[0]
+                                                  ["stroke_opacity"] > 0)
+                   else None) if fill else None,
+          "margin": round((t["x"] - fill[0]["x"]) / size, 3) if fill
+          else 0.0}
+    # The move: against the frame (its top is 0.85 of a size and the
+    # margin above the baseline), else against the default's baseline.
+    tw["move"] = round((t["y"] - fill[0]["y"]) / size - tw["margin"]
+                       - 0.85, 3) if fill else round((t["y"] - t0["y"])
+                                                     / size, 3)
+    for (models, _m), sfx in zip(_q4302_models(d + "/s.json", d + "/d.json",
+                                               d + "/a.py"), ("s", "v")):
+        css = ""
+        for p in models:
+            if isinstance(p, Plot):
+                for lg in p.select({"type": Legend}):
+                    if str(lg.name or "") != dr._COLORVAR_LEGEND_NAME:
+                        css = "".join(ss.css for ss in lg.stylesheets
+                                      if "dash_legend_keytext"
+                                      in (ss.tags or []))
+
+        def decl(rule, prop):
+            i = css.find(rule + "{")
+            if i < 0:
+                return None
+            body = css[i + len(rule) + 1:css.index("}", i)]
+            for x in body.split(";"):
+                if x.startswith(prop + ":"):
+                    return x.split(":", 1)[1]
+            return None
+        b = ".bk-label::before"
+        pad = decl(".bk-label", "padding")
+        top = decl(".bk-label", "top")
+        ol = decl(b, "outline")
+        got = {"fill": decl(b, "background-color"),
+               "line": ol.split()[-1] if ol else None,
+               "margin": round(float(pad.split()[3][:-2]), 3) if pad else 0.0,
+               "move": round(float(top[:-2]), 3) if top else 0.0}
+        bad = [k for k in tw if (abs(tw[k] - got[k]) > 0.01
+                                 if k in ("margin", "move")
+                                 else tw[k] != got[k])]
+        Macro.setGlobal("q4303_k" + sfx, "ok" if not bad else
+                        "dash %s, twoway %s" % (got, tw))
+end
+
+* ==== S03 LT-3: the key texts' textbox options ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w43_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03d "`w43_work'/s03b"
+    capture mkdir "`q03d'"
+    capture graph drop _all
+    sysuse auto, clear
+    local three (scatter mpg weight) (scatter price weight) (scatter turn weight)
+    quietly twoway `three', scheme(s2color) name(q03c, replace)
+    capture erase "`q03d'/q03c.svg"
+    cert_svg_export, name(q03c) file("`q03d'/q03c.svg")
+
+    // ------------------------------------------------------------
+    // Q4303-2: box, bcolor(), fcolor(), lcolor() and lpattern() -- live
+    // twoway's frame round the first key text (fill and line, none for
+    // a dashed line) beside the frame dash's key-text stylesheet draws,
+    // saved and served.
+    // Q4303-3: margin() and alignment() -- live twoway's left margin
+    // and the text's move in text sizes (in its frame, or against the
+    // default's baseline without box) beside dash's padding and move.
+    // ------------------------------------------------------------
+    local k 0
+    foreach id in Q4303-2 Q4303-3 {
+        if "`id'" == "Q4303-2" local opts `""box" "box bcolor(gs14)" "box fcolor(red)" "box lcolor(red) lpattern(dash)""'
+        else local opts `""box margin(large)" "box margin(small)" "box alignment(top)" "alignment(baseline)""'
+        foreach lo of local opts {
+            local ++k
+            quietly twoway `three', scheme(s2color) legend(`lo') name(q03k, replace)
+            capture erase "`q03d'/q03k`k'.svg"
+            cert_svg_export, name(q03k) file("`q03d'/q03k`k'.svg")
+            dash clear
+            quietly dash `three', scheme(s2color) legend(`lo') name(q03e)
+            _dash_serve_spec, specpath("`q03d'/s.json") datapath("`q03d'/d.json")
+            python: import __main__ as _q4303_m; _q4303_m._q4303_kt("`q03d'/q03k`k'.svg", "`q03d'/q03c.svg", "`q03d'")
+            foreach m in s v {
+                _w43_expect `id' `"("${q4303_k`m'}" == "ok")"' `"legend(`lo') `m': ${q4303_k`m'}"'
+            }
+        }
+        if "`id'" == "Q4303-2" _w43_done Q4303-2 "legend(box) and its colours frame the key texts as twoway's, saved and served"
+        else _w43_done Q4303-3 "legend(margin()) and alignment() pad and move the key texts as twoway's, saved and served"
+    }
+
+    forvalues j = 1/`k' {
+        capture erase "`q03d'/q03k`j'.svg"
+    }
+    foreach f in q03c.svg s.json d.json a.py {
+        capture erase "`q03d'/`f'"
+    }
+    capture rmdir "`q03d'"
+    macro drop q4303_ks q4303_kv
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // S05 helpers (WP-43 43-05).  _q4305_docs: the figures a registered
 // graph draws, saved and served (spec and data from _dash_serve_spec);
 // _q4305_model: the model drawing a title-family key's text;

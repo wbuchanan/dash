@@ -2915,6 +2915,10 @@ CORPUS = [
     _case("legend(nobox) (WP-43 LT-2)",
           [_sc(), plot_for("scatter", yvar="price")],
           go={"legend": "nobox"}),
+    _case("legend(box margin(small) bcolor(gs14) alignment(top)) "
+          "(WP-43 LT-3)",
+          [_sc(), plot_for("scatter", yvar="price")],
+          go={"legend": "box margin(small) bcolor(gs14) alignment(top)"}),
 
     # WP-31 D5/E11 (section 32): sizing
     _case("scale(1.5) (WP-31 D5)", [plot_for("scatter")],
@@ -4332,6 +4336,11 @@ MOVE_CORPUS = [
                [plot_for("scatter"), plot_for("lfit"),
                 plot_for("scatter", yvar="price")],
                go={"legend": "holes(1) cols(1)"}),
+    _move_case("legend(box margin(small)) with an lfit after a dropdown "
+               "move (WP-43 LT-3)", _MOVES[0],
+               [plot_for("scatter"), plot_for("lfit"),
+                plot_for("scatter", yvar="price")],
+               go={"legend": "box margin(small)"}),
 
     # WP-31 D5/E11 (section 32): sizing
     _move_case("scale(1.5) after a dropdown move (WP-31 D5)", _MOVES[0],

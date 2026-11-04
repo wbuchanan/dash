@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'LT-3': 'Key-text textbox options are not drawn: box (silent), bcolor(), fcolor(), justification(), alignment(), margin(), linegap(), tstyle()',
     'LT-6': 'Legend layout sub-options named: style(), width(), height(), xoffset(), yoffset(), showindex, region(style()/lstyle()/lalign())',
     'LT-7': 'bexpand on legend() and on title/subtitle/note/caption is taken silently where twoway widens the box',
     'LT-10': 'Numeric marginstyle forms (# # # #, l=#, l+#) are refused for textbox margins; legend region margin collapses four sides to the largest',

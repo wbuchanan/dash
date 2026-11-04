@@ -5127,7 +5127,17 @@ and after a resize; {cmd:nospan} undoes the scheme's
 order, as in {cmd:twoway}), and a legend inside the plot is placed as
 without it, as is a {cmd:by()} graph's under the scheme's
 {cmd:legend_span}; {cmd:by(}...{cmd:, legend(span))} places {cmd:by()}'s
-legend on the whole {cmd:by()} graph the same way.  {cmd:bexpand} and its
+legend on the whole {cmd:by()} graph the same way.  The key texts take
+{cmd:twoway}'s textbox options: {cmd:box} frames each, {cmd:bcolor()},
+{cmd:fcolor()}, {cmd:lcolor()}, {cmd:lwidth()} and {cmd:lpattern()}
+colour and line the frames (a dashed or dotted {cmd:lpattern()} draws no
+line, and without {cmd:box} they draw nothing), {cmd:margin()} pads each
+text, {cmd:alignment()} moves it in its frame, {cmd:linegap()} spreads
+its lines and {cmd:tstyle()} sizes and colours it ({cmd:size()} and
+{cmd:color()} winning), as in {cmd:twoway}; {cmd:justification()} is
+taken, as {cmd:twoway}'s key text box is its text's width.  The frames
+are the legend's stylesheet, which the toolbar's picture leaves out.
+{cmd:bexpand} and its
 {cmd:no} form are taken.  {cmd:textfirst}, {cmd:stacked},
 {cmd:symplacement()} and the legend's own {cmd:note()} and
 {cmd:caption()} are named in the note: a {cmd:dash} legend draws each key

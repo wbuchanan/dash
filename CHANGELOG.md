@@ -1012,6 +1012,7 @@ and now matches Stata.
 
 ### Fixed in WP-43
 
+- legend(box) frames each key text in the scheme's text box fill and line, bcolor(), fcolor(), lcolor(), lwidth() and lpattern() colour and line the frames, and margin(), alignment(), linegap() and tstyle() pad, move, spread and style the key texts, as twoway draws them; box was taken silently and the rest named (WP-43, LT-3)
 - Edge titles draw their box, justification(), margin(), tstyle() and placement(), and r1title() and r2title() read upward, by()'s own included, as twoway draws them; they took size() and color() only and the right ones read downward (WP-43, LT-19)
 - title(), subtitle(), note() and caption() draw orientation() (the text and its box turned), width() and height() (a fixed box), lstyle(), blstyle(), blcolor(), blwidth(), blpattern(), lalign(), blalign() and style() (as tstyle()), and a box at 2, 3 or 4 o'clock right of the plot and at 8, 9 or 10 left of it, level, as twoway draws them; they were named and ignored, and the side clocks drawn above or below; angle() with box keeps the text level (open in BUGS.md) (WP-43, LT-18)
 - title(), subtitle(), note() and caption() at ring(0) are drawn at the plot region's compass point placement() names, in every spelling twoway reads (nor, NE, top, a clock number), and placement(w) or placement(e) outside the plot region moves the box to the left or right of its band, as twoway draws them; placement(n) lifted the box out of the plot (WP-43, LT-16)

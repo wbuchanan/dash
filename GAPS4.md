@@ -462,7 +462,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-1 Tracked:** Closed in WP-43, BUGS.md "legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles", commit 0af5bd3.
 - **LT-4 Tracked:** Closed in WP-43, BUGS.md "legend(ring(0) bplacement()) ignores bplacement; bplacement abbreviations (nor, nea, t, top) are not read", commit 0e6c5ab.
 - **LT-2 Tracked:** Closed in WP-43, BUGS.md "legend(nobox) removes the region box; in twoway nobox is the key-text textbox option and changes nothing", commit pending.
-- **LT-3 Tracked:** Open (WP-43 section 43-03).
+- **LT-3 Tracked:** Closed in WP-43, BUGS.md "Key-text textbox options are not drawn: box (silent), bcolor(), fcolor(), justification(), alignment(), margin(), linegap(), tstyle()", commit pending.
 - **LT-5 Tracked:** Closed in WP-43, BUGS.md "legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ", commit 0d12aaa.
 - **LT-6 Tracked:** Open (WP-43 section 43-03).
 - **LT-7 Tracked:** Open (WP-43 section 43-03).
