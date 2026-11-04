@@ -807,7 +807,9 @@ class TestTheEmptyPlanIsInert:
                "an unknown named style",
                # WP-31 E10 adds section 44's style-file case.
                "pstyle(fpall) and lstyle(refline) from style files "
-               "(WP-31 E10)"}
+               "(WP-31 E10)",
+               # WP-43 LT-5 keys two pstyle(p1) scatters under legend(all).
+               "legend(all) two p1 scatters (WP-43 LT-5)"}
         holders = {ps.values[0] for ps in tp.CORPUS
                    for g in ps.values[1].get("graphs", [])
                    for p in g.get("plots", [])
