@@ -58966,7 +58966,14 @@ def _dash_added_text_opts(opts, seen=None, key="", scheme=None,
     if o.get("alignment") in _DASH_ADDED_TEXT_VSHIFT:
         out["valign"] = o["alignment"]
     elif o.get("alignment"):
-        _dash_style_note("text(alignment)", o["alignment"], "alignment")
+        # twoway names any other value, an abbreviation too, and draws it
+        # where bottom is drawn (added_text_box_truth.json al_t .. al_base;
+        # WP-43 LT-11).
+        _dash_warn_once(
+            ("vertical_text", str(o["alignment"])),
+            "dash: named style %s not found in class vertical_text, "
+            "default attributes used" % _dash_display(str(o["alignment"])))
+        out["valign"] = "bottom"
     out["px"] = _textbox_size(o, base_pt, ref_in, "text(size)")
     out["color"] = _textbox_color(o, None, base=base_color)
     if styled is not None:

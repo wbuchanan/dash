@@ -11377,7 +11377,7 @@ program define _dash_at_opts
     }
     local _nt ""
     foreach _n in width height astextbox noastextbox bexpand nobexpand ///
-        drawview ascircle angle alignment linegap bmargin lpattern ///
+        drawview ascircle angle linegap bmargin lpattern ///
         lstyle lalign blpattern blstyle blalign {
         if `: length local `_n'' local _nt `_nt' `_n'
     }

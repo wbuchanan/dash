@@ -13654,9 +13654,9 @@ void _dash_at_records(string scalar kind)
 
 // _dash_at_canon() -- the drawn sub-options of one copy, read from the
 // caller's (_dash_at_opts's) syntax locals by value, in full names:
-// size() color() tstyle() justification() orientation() box or nobox fcolor()
-// lcolor() lwidth() margin() placement(), bfcolor() blcolor() blwidth()
-// standing in for the plain ones when those are absent and bcolor() for
+// size() color() tstyle() justification() alignment() orientation() box or
+// nobox fcolor() lcolor() lwidth() margin() placement(), bfcolor()
+// blcolor() blwidth() standing in for the plain ones when those are absent and bcolor() for
 // both colours when neither is given; _dash_json_escape()d.  orientation()
 // and placement() are dash.ado's canonical names (_dash_at_orient,
 // _dash_at_place); a name twoway notes is left out.
@@ -13673,6 +13673,11 @@ string scalar _dash_at_canon()
     if (v != "") out = out + " tstyle(" + v + ")"
     v = st_local("justification")
     if (v != "") out = out + " justification(" + v + ")"
+    // alignment() as typed: twoway draws only the four full words as
+    // themselves (added_text_box_truth.json al_<x>); the renderer names
+    // any other value as twoway does and draws it as bottom.
+    v = st_local("alignment")
+    if (v != "") out = out + " alignment(" + v + ")"
     o = _dash_at_orient(st_local("orientation"))
     if (o != "") out = out + " orientation(" + o + ")"
     if (st_local("box") != "" & st_local("nobox") == "") out = out + " box"

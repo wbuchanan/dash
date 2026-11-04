@@ -1,0 +1,2564 @@
+{
+ "_meta": {
+  "al_equal": {
+   "base": null,
+   "baseline": "baseline",
+   "bot": null,
+   "bottom": "bottom",
+   "mid": null,
+   "middle": "middle",
+   "t": null,
+   "to": null,
+   "top": "top"
+  },
+  "born_date": "14 Oct 2026",
+  "dash_commit": "9e1e3945497947df51ae5d1ce19049b50c6f1dd6",
+  "data": "auto",
+  "extracted": " 4 Nov 2026",
+  "same_as_box": {
+   "x_bexpand": true,
+   "x_bmargin": true
+  },
+  "scheme": "stcolor",
+  "source": "scripts/extract_added_text_box_truth.do",
+  "stata_version": "19.5",
+  "viewbox": [
+   5400.0,
+   3240.0
+  ]
+ },
+ "probes": {
+  "al_base": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", alignment(base))",
+   "control": "ctl0",
+   "notes": [
+    "(note:  named style base not found in class vertical_text, default attributes used)"
+   ],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1041.76
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1154.32
+    }
+   ]
+  },
+  "al_baseline": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", alignment(baseline))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1075.61
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1188.17
+    }
+   ]
+  },
+  "al_bot": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", alignment(bot))",
+   "control": "ctl0",
+   "notes": [
+    "(note:  named style bot not found in class vertical_text, default attributes used)"
+   ],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1041.76
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1154.32
+    }
+   ]
+  },
+  "al_bottom": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", alignment(bottom))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1041.76
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1154.32
+    }
+   ]
+  },
+  "al_mid": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", alignment(mid))",
+   "control": "ctl0",
+   "notes": [
+    "(note:  named style mid not found in class vertical_text, default attributes used)"
+   ],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1041.76
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1154.32
+    }
+   ]
+  },
+  "al_middle": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", alignment(middle))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "al_t": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", alignment(t))",
+   "control": "ctl0",
+   "notes": [
+    "(note:  named style t not found in class vertical_text, default attributes used)"
+   ],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1041.76
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1154.32
+    }
+   ]
+  },
+  "al_to": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", alignment(to))",
+   "control": "ctl0",
+   "notes": [
+    "(note:  named style to not found in class vertical_text, default attributes used)"
+   ],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1041.76
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1154.32
+    }
+   ]
+  },
+  "al_top": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", alignment(top))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1041.93
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1154.49
+    }
+   ]
+  },
+  "ctl0": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight",
+   "control": "",
+   "notes": [],
+   "rc": 0,
+   "texts": []
+  },
+  "ctl0_scale": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, scale(1.5)",
+   "control": "",
+   "notes": [],
+   "rc": 0,
+   "texts": []
+  },
+  "x_bexpand": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box bexpand)",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_bla_o": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 51.84,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box lwidth(thick) blalign(outside))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_blp": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#ffffff",
+     "stroke_width": 12.96,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box blpattern(dash))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_blst": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#1a85ff",
+     "stroke_width": 19.44,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box blstyle(p1))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_bmargin": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box bmargin(large))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_box": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box)",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_box_scale": {
+   "boxes": [
+    {
+     "bottom": 1190.7,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2303.27,
+     "right": 2691.23,
+     "stroke": "#000000",
+     "stroke_width": 19.44,
+     "top": 853.2
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box) scale(1.5)",
+   "control": "ctl0_scale",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 168.75,
+     "text": "Peak",
+     "x_px": 2497.33,
+     "y_px": 996.68
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 168.75,
+     "text": "two",
+     "x_px": 2497.33,
+     "y_px": 1165.43
+    }
+   ]
+  },
+  "x_ctl": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\")",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_eval_1": {
+   "boxes": [],
+   "cmd": "global G = `1+1'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "2",
+   "expr": "1+1",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "2",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_10": {
+   "boxes": [],
+   "cmd": "global G = `-2^2'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "-4",
+   "expr": "-2^2",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "-4",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_11": {
+   "boxes": [],
+   "cmd": "global G = `2^3^2'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "64",
+   "expr": "2^3^2",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "64",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_12": {
+   "boxes": [],
+   "cmd": "global G = `2*3+4'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "10",
+   "expr": "2*3+4",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "end",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "10",
+     "x_px": 455.29,
+     "y_px": 2734.71
+    }
+   ]
+  },
+  "x_eval_13": {
+   "boxes": [],
+   "cmd": "global G = `2+3*4'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "14",
+   "expr": "2+3*4",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "14",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_14": {
+   "boxes": [],
+   "cmd": "global G = `(2+3)*4'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "20",
+   "expr": "(2+3)*4",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "end",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "20",
+     "x_px": 455.29,
+     "y_px": 1924.88
+    }
+   ]
+  },
+  "x_eval_15": {
+   "boxes": [],
+   "cmd": "global G = `!0'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "1",
+   "expr": "!0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "1",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_16": {
+   "boxes": [],
+   "cmd": "global G = `!1+1'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "1",
+   "expr": "!1+1",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "1",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_17": {
+   "boxes": [],
+   "cmd": "global G = `1<2&2<1|1'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "1",
+   "expr": "1<2&2<1|1",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "1",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_18": {
+   "boxes": [],
+   "cmd": "global G = `.>5'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "1",
+   "expr": ".>5",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "1",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_19": {
+   "boxes": [],
+   "cmd": "global G = `1==1'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "1",
+   "expr": "1==1",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "1",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_2": {
+   "boxes": [],
+   "cmd": "global G = `1/3'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": ".3333333333333333",
+   "expr": "1/3",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": ".3333333333333333",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_20": {
+   "boxes": [],
+   "cmd": "global G = `abs(-3)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "3",
+   "expr": "abs(-3)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "3",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_21": {
+   "boxes": [],
+   "cmd": "global G = `round(2.567,.01)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "2.57",
+   "expr": "round(2.567,.01)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "2.57",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_22": {
+   "boxes": [],
+   "cmd": "global G = `round(2.5)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "3",
+   "expr": "round(2.5)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "3",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_23": {
+   "boxes": [],
+   "cmd": "global G = `mod(7,3)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "1",
+   "expr": "mod(7,3)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "1",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_24": {
+   "boxes": [],
+   "cmd": "global G = `min(3,.,1)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "1",
+   "expr": "min(3,.,1)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "1",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_25": {
+   "boxes": [],
+   "cmd": "global G = `max(1,2)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "2",
+   "expr": "max(1,2)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "2",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_26": {
+   "boxes": [],
+   "cmd": "global G = `sqrt(2)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "1.414213562373095",
+   "expr": "sqrt(2)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "1.414213562373095",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_27": {
+   "boxes": [],
+   "cmd": "global G = `ln(1)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "0",
+   "expr": "ln(1)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "0",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_28": {
+   "boxes": [],
+   "cmd": "global G = `log10(1000)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "3",
+   "expr": "log10(1000)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "3",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_29": {
+   "boxes": [],
+   "cmd": "global G = `int(-2.5)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "-2",
+   "expr": "int(-2.5)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "-2",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_3": {
+   "boxes": [],
+   "cmd": "global G = `2/3*3'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "2",
+   "expr": "2/3*3",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "2",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_30": {
+   "boxes": [],
+   "cmd": "global G = `ceil(1.2)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "2",
+   "expr": "ceil(1.2)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "2",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_31": {
+   "boxes": [],
+   "cmd": "global G = `floor(-1.2)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "-2",
+   "expr": "floor(-1.2)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "-2",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_32": {
+   "boxes": [],
+   "cmd": "global G = `exp(1)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "2.718281828459045",
+   "expr": "exp(1)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "2.718281828459045",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_33": {
+   "boxes": [],
+   "cmd": "global G = `sign(-4)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "-1",
+   "expr": "sign(-4)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "-1",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_34": {
+   "boxes": [],
+   "cmd": "global G = `string(1/3)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": ".3333333",
+   "expr": "string(1/3)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": ".3333333",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_35": {
+   "boxes": [],
+   "cmd": "global G = `string(1/3,\"%5.2f\")'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "0.33",
+   "expr": "string(1/3,\"%5.2f\")",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "0.33",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_36": {
+   "boxes": [],
+   "cmd": "global G = `strofreal(2)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "2",
+   "expr": "strofreal(2)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "2",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_37": {
+   "boxes": [],
+   "cmd": "global G = `real(\"3\")+1'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "4",
+   "expr": "real(\"3\")+1",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "4",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_38": {
+   "boxes": [],
+   "cmd": "global G = `strlen(\"abc\")'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "3",
+   "expr": "strlen(\"abc\")",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "3",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_39": {
+   "boxes": [],
+   "cmd": "global G = `ustrlen(\"ab\")'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "2",
+   "expr": "ustrlen(\"ab\")",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "2",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_4": {
+   "boxes": [],
+   "cmd": "global G = `10^20'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "1.00000000000e+20",
+   "expr": "10^20",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "1.00000000000e+20",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_40": {
+   "boxes": [],
+   "cmd": "global G = `substr(\"abcdef\",2,3)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "bcd",
+   "expr": "substr(\"abcdef\",2,3)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "bcd",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_41": {
+   "boxes": [],
+   "cmd": "global G = `usubstr(\"abc\",1,1)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "a",
+   "expr": "usubstr(\"abc\",1,1)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "a",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_42": {
+   "boxes": [],
+   "cmd": "global G = `upper(\"ab\")'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "AB",
+   "expr": "upper(\"ab\")",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "AB",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_43": {
+   "boxes": [],
+   "cmd": "global G = `strupper(\"ab\")'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "AB",
+   "expr": "strupper(\"ab\")",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "AB",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_44": {
+   "boxes": [],
+   "cmd": "global G = `lower(\"AB\")'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "ab",
+   "expr": "lower(\"AB\")",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "ab",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_45": {
+   "boxes": [],
+   "cmd": "global G = `strlower(\"AB\")'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "ab",
+   "expr": "strlower(\"AB\")",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "ab",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_46": {
+   "boxes": [],
+   "cmd": "global G = `trim(\"  a \")'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "a",
+   "expr": "trim(\"  a \")",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "a",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_47": {
+   "boxes": [],
+   "cmd": "global G = `strtrim(\" a \")'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "a",
+   "expr": "strtrim(\" a \")",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "a",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_48": {
+   "boxes": [],
+   "cmd": "global G = `\"a\"+\"b\"'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "ab",
+   "expr": "\"a\"+\"b\"",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "ab",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_5": {
+   "boxes": [],
+   "cmd": "global G = `-1.5'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "-1.5",
+   "expr": "-1.5",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "-1.5",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_6": {
+   "boxes": [],
+   "cmd": "global G = `1/0'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": ".",
+   "expr": "1/0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": ".",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_7": {
+   "boxes": [],
+   "cmd": "global G = `1e-7'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "1.00000000000e-07",
+   "expr": "1e-7",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "1.00000000000e-07",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_8": {
+   "boxes": [],
+   "cmd": "global G = `123456789'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "123456789",
+   "expr": "123456789",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "123456789",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_9": {
+   "boxes": [],
+   "cmd": "global G = `.1+.2'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": ".3",
+   "expr": ".1+.2",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": ".3",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_out_1": {
+   "boxes": [],
+   "cmd": "global G = `=_N'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "74",
+   "expr": "=_N",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "74",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_out_2": {
+   "boxes": [],
+   "cmd": "global G = `=mpg[1]'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "22",
+   "expr": "=mpg[1]",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "22",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_out_3": {
+   "boxes": [],
+   "cmd": "global G = `=c(N)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "74",
+   "expr": "=c(N)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "74",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_eval_out_4": {
+   "boxes": [],
+   "cmd": "global G = `c(N)'; twoway scatter mpg weight, text(30 3000 \"$G\")",
+   "control": "ctl0",
+   "drawn": "74",
+   "expr": "c(N)",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "74",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ]
+  },
+  "x_h": {
+   "boxes": [
+    {
+     "bottom": 1399.61,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 751.61
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box height(20))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_h_base": {
+   "boxes": [
+    {
+     "bottom": 1723.61,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 427.61
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box height(40) alignment(baseline))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1611.06
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1723.61
+    }
+   ]
+  },
+  "x_h_bot": {
+   "boxes": [
+    {
+     "bottom": 1723.61,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 427.61
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box height(40) alignment(bottom))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1577.21
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1689.76
+    }
+   ]
+  },
+  "x_h_mid": {
+   "boxes": [
+    {
+     "bottom": 1723.61,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 427.61
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box height(40))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_h_small": {
+   "boxes": [
+    {
+     "bottom": 1108.01,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 1043.21
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box height(2))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_h_top": {
+   "boxes": [
+    {
+     "bottom": 1723.61,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 427.61
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box height(40) alignment(top))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 506.32
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 618.87
+    }
+   ]
+  },
+  "x_la_c": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 25.92,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box lwidth(thick) lalign(center))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_la_i": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 51.84,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box lwidth(thick) lalign(inside))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_la_o": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 51.84,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box lwidth(thick) lalign(outside))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_lc_lst": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#ff0000",
+     "stroke_width": 19.44,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box lcolor(red) lstyle(p1))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_lg": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", linegap(3))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1010.26
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1220.01
+    }
+   ]
+  },
+  "x_lg_box": {
+   "boxes": [
+    {
+     "bottom": 1236.77,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 914.63
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box linegap(3))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1010.26
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1220.01
+    }
+   ]
+  },
+  "x_lp": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#ffffff",
+     "stroke_width": 12.96,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box lpattern(dash))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_lst": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#1a85ff",
+     "stroke_width": 19.44,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box lstyle(p1))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_lst_bad": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box lstyle(bogus))",
+   "control": "ctl0",
+   "notes": [
+    "(note:  named style bogus not found in class linestyle, default attributes used)"
+   ],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_lst_lc": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#ff0000",
+     "stroke_width": 19.44,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box lstyle(p1) lcolor(red))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_lst_nobox": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", lstyle(p1))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_lw": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2233.41,
+     "right": 2492.1,
+     "stroke": "#000000",
+     "stroke_width": 51.84,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box lwidth(thick))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_w": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2038.67,
+     "right": 2686.67,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box width(20))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_w_scale": {
+   "boxes": [
+    {
+     "bottom": 1190.7,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2011.33,
+     "right": 2983.33,
+     "stroke": "#000000",
+     "stroke_width": 19.44,
+     "top": 853.2
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box width(20)) scale(1.5)",
+   "control": "ctl0_scale",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 168.75,
+     "text": "Peak",
+     "x_px": 2497.33,
+     "y_px": 996.68
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 168.75,
+     "text": "two",
+     "x_px": 2497.33,
+     "y_px": 1165.43
+    }
+   ]
+  },
+  "x_w_small": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2330.27,
+     "right": 2395.07,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box width(2))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_wh": {
+   "boxes": [
+    {
+     "bottom": 1399.61,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 2038.67,
+     "right": 2686.67,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 751.61
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box width(20) height(20))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_wj_c": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 1714.67,
+     "right": 3010.67,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box width(40))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_wj_l": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 1714.67,
+     "right": 3010.67,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box width(40) justification(left))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 1714.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 1714.67,
+     "y_px": 1171.41
+    }
+   ]
+  },
+  "x_wj_r": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "dasharray": null,
+     "fill": "#d9e6eb",
+     "left": 1714.67,
+     "right": 3010.67,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"Peak\" \"two\", box width(40) justification(right))",
+   "control": "ctl0",
+   "notes": [],
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "end",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Peak",
+     "x_px": 3010.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "end",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "two",
+     "x_px": 3010.67,
+     "y_px": 1171.41
+    }
+   ]
+  }
+ }
+}

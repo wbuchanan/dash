@@ -469,7 +469,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-8 Tracked:** Open (WP-43 section 43-05).
 - **LT-9 Tracked:** Open (WP-43 section 43-05).
 - **LT-10 Tracked:** Open (WP-43 section 43-03).
-- **LT-11 Tracked:** Open (WP-43 section 43-06).
+- **LT-11 Tracked:** Closed in WP-43, BUGS.md "text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn", commit pending.
 - **LT-13 Tracked:** Closed in WP-43, BUGS.md "legend(t1title() ... b2title()) is accepted and named where twoway refuses r(198)", commit pending.
 - **LT-14 Tracked:** Open (WP-43 section 43-05).
 - **LT-15 Tracked:** Open (WP-43 section 43-01).

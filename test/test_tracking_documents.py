@@ -2931,7 +2931,6 @@ GAPS4_OPEN = {
     'LT-8': 'A title box under stcolor is filled #d9e6eb (the added-text fill), not textbox white with a 6.48 line',
     'LT-9': 'A fractional ring() (7.5, 4.5) or ring(100) is dropped silently',
     'LT-10': 'Numeric marginstyle forms (# # # #, l=#, l+#) are refused for textbox margins; legend region margin collapses four sides to the largest',
-    'LT-11': 'text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn',
     'LT-14': 'title(..., ring(x)) is accepted silently where twoway prints notes and refuses r(198)',
     'LT-15': 'legend title()/subtitle() sub-options (position(), box ...) are dropped silently; subtitle size()/color() are ignored',
     'LT-16': 'title/subtitle/note/caption placement() at ring(0) is drawn as a Label anchor (n lifts the box out of the plot) and long names, clocks and synonyms are ignored',

@@ -5371,11 +5371,11 @@
   - Suggested fix: Route through _dash_margin_sides with per-side padding
   - Resolution: Not fixed because WP-43 section 43-03 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
 
-- [ ] Title: text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn
+- [x] Title: text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn
   - File Names and Line Numbers: dash.ado:9872-9876; _dash_at_canon (dash_parse.mata:11863-11904) drops it; dash.sthlp:767-770
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-11; confirmed; tracked: untracked. Registered as GAPS4 LT-11 (WP-43, section 43-06, Fix).
   - Suggested fix: Pass alignment through _dash_at_canon; add an end-to-end test
-  - Resolution: Not fixed because WP-43 section 43-06 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+  - Resolution: Fixed 04nov2026 (WP-43, LT-11). Measured first (test/fixtures/added_text_box_truth.json al_<x>, scripts/extract_added_text_box_truth.do): twoway draws alignment(top), (middle), (bottom) and (baseline) each as itself and names every other spelling, the abbreviations t, to, mid, bot and base too, "named style <x> not found in class vertical_text, default attributes used", drawing it where bottom is drawn. dash.ado's _dash_at_opts no longer names alignment() and _dash_at_canon writes it as typed, so the renderer's alignment shift (_DASH_ADDED_TEXT_VSHIFT) is reached through Stata for text() and ttext() in both modes; the renderer names any other value in twoway's words and draws it as bottom. Pinned by test/test_added_text_box.py::TestAlignmentRoute (both modes), test/test_wp43_truth.cscript Q4306-1. Closes GAPS4 LT-11 (WP-43, LT-11).
 
 - [x] Title: legend(t1title() ... b2title()) is accepted and named where twoway refuses r(198)
   - File Names and Line Numbers: dash_render.py:53560-53566; dash_parse.mata:9746-9751

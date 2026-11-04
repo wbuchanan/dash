@@ -295,6 +295,7 @@ HAND_WRITTEN = None
 #: exempt by directory.  A fixture whose _meta names a source must agree.
 GENERATORS = {
     "abbrev_truth.json": "scripts/extract_abbrev_truth.do",
+    "added_text_box_truth.json": "scripts/extract_added_text_box_truth.do",
     "added_text_globals.json": "scripts/extract_added_text_globals.do",
     "added_text_truth.json": "scripts/extract_added_text_truth.do",
     "alias_spelling_truth.json": "scripts/extract_alias_spelling_truth.do",
