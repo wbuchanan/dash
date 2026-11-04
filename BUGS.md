@@ -5382,6 +5382,24 @@
   - Suggested fix: section 43-03's D-43-03.e: the legend's margin the mean of the two sides across its panel with a CSS move for the difference (the dash_legend_layout sheet's translate), and a title's far side carried to the next box outward or the figure's border.
   - Resolution: Not fixed because the per-side reservation and its moves did not fit batch 43.4's time box. Graded S3 (WP-43): a few units of space round a legend or title box, on the sides bmargin() names.
 
+- [ ] Title: Legend key rows are 1.13 text sizes tall where twoway's are one, so a legend's keys sit about 7% further apart
+  - File Names and Line Numbers: dash_render.py _dash_apply_legend (glyph_height, label_height, spacing); Bokeh's legend label line box; test/fixtures/legend_place_truth.json holes_1col_0
+  - Description: Noticed in WP-43 section 43-03 (batch 43.4), measured 04nov2026 (s2color, three scatters, legend(cols(1))). twoway's key pitch is 139.97 SVG px of 3960: a 99.99 key row plus the 40 row gap (holes_1col_0, key marks at 2371.50, 2511.46, 2651.43), 49.5 px at 1400 px wide (a 35.4 px row and a 14.1 px gap). dash, in headless Chrome at 1400 px, saved and served alike, draws each key item 40 px tall with a 13 px row gap: a 53 px pitch, the row 1.13 times twoway's and the legend's box taller by about 3.5 px a key.
+  - Suggested fix: size the key row to the text size (label_height and the label's line-height 1), keeping the row gap at legend_row_gap.
+  - Resolution: Not fixed because it was found after WP-43's sections were planned; filed 04nov2026 from batch 43.4; section 43-04 (legend keys) may take it. Graded S3 (WP-43): a few px a key in the legend's height.
+
+- [ ] Title: legend(box) frames a key text narrower than Bokeh's least label width wider than the text; twoway frames the text
+  - File Names and Line Numbers: dash_render.py _dash_legend_key_text (the .bk-label::before frame), Legend.label_width (Bokeh's default 20 px, scaled from the 4-inch reference)
+  - Description: Noticed in WP-43 section 43-03 (LT-3), 04nov2026. twoway's legend(box) frame is the key text's own width plus its margin (legend_box_truth.json box). dash's frame fills the label element, which Bokeh lays at least label_width wide, so a key text shorter than that (a one- or two-letter label) gets a frame wider than its text; longer texts match within 0.01 px (headless Chrome, Bokeh 3.8 and 3.9).
+  - Suggested fix: size the frame to the text's inline box rather than the label element, or set label_width to 0 under box.
+  - Resolution: Not fixed because it was found while LT-3 closed and touches only very short key texts; filed 04nov2026 from batch 43.4. Graded S3 (WP-43): a wider frame round a key text of a letter or two.
+
+- [ ] Title: Under scale(2), twoway widens the plot column leftward for a legend wider than the plot; dash's plot region keeps its linear inset
+  - File Names and Line Numbers: test/scale_frame_known.py (B:bottom:linear, B:left:slope, SCALE_FRAME_TWOWAY_KNOWN B:left:linear, all "LT-6 (residual)"); dash_render.py _dash_apply_scale, _dash_apply_legend
+  - Description: Residual of GAPS4 LT-6 (WP-43), measured 21oct2026 by WP-33 section 33-11 (D43; Chrome, 528 px): for command B (scatter and lfit with title, subtitle, ytitle, xtitle and note) twoway's legend under scale(2) is wider than the plot, and twoway widens the plot column leftward, so its left inset is not linear in scale()'s factor (a 37 SVG-unit residual at 2; slope 31.50 against dash's 36.41 px a unit) and its bottom inset is (residual 0.01 against dash's 2.93 px). Batch 43.4's LT-6 drew style(), width(), height(), the offsets, showindex and region styles, none of which is this, so the rows were relabelled LT-6 (residual) and stay.
+  - Suggested fix: when the legend below the plot is wider than the plot region, widen the plot column to the legend's width as twoway does, under every scale().
+  - Resolution: Not fixed because it is not one of LT-6's sub-options and needs its own layout rule; filed 04nov2026 from batch 43.4. Graded S3 (WP-43): only a legend wider than its plot, at large scale() factors.
+
 
 - [x] Title: text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn
   - File Names and Line Numbers: dash.ado:9872-9876; _dash_at_canon (dash_parse.mata:11863-11904) drops it; dash.sthlp:767-770
