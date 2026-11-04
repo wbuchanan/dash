@@ -459,7 +459,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **sil:SD-4 Tracked:** Closed in WP-42, BUGS.md "The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read", commit d7dffa5.
 - **CV-17 Tracked:** Closed in WP-42, BUGS.md "colorlist() with quoted RGB colours is not applied under colorvar(): every marker is black and the key is a legend of ranges where twoway draws the listed colours with a colour bar", commit 642cb58.
 - **LT-22 Tracked:** Closed in WP-42, BUGS.md "contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line", commit 514098a.
-- **LT-1 Tracked:** Closed in WP-43, BUGS.md "legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles", commit pending.
+- **LT-1 Tracked:** Closed in WP-43, BUGS.md "legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles", commit 0af5bd3.
 - **LT-4 Tracked:** Open (WP-43 section 43-02).
 - **LT-2 Tracked:** Open (WP-43 section 43-03).
 - **LT-3 Tracked:** Open (WP-43 section 43-03).
@@ -469,15 +469,15 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-8 Tracked:** Open (WP-43 section 43-05).
 - **LT-9 Tracked:** Open (WP-43 section 43-05).
 - **LT-10 Tracked:** Open (WP-43 section 43-03).
-- **LT-11 Tracked:** Closed in WP-43, BUGS.md "text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn", commit pending.
-- **LT-13 Tracked:** Closed in WP-43, BUGS.md "legend(t1title() ... b2title()) is accepted and named where twoway refuses r(198)", commit pending.
+- **LT-11 Tracked:** Closed in WP-43, BUGS.md "text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn", commit 884ebaa.
+- **LT-13 Tracked:** Closed in WP-43, BUGS.md "legend(t1title() ... b2title()) is accepted and named where twoway refuses r(198)", commit 900153e.
 - **LT-14 Tracked:** Open (WP-43 section 43-05).
 - **LT-15 Tracked:** Open (WP-43 section 43-01).
 - **LT-16 Tracked:** Open (WP-43 section 43-05).
 - **LT-17 Tracked:** Open (WP-43 section 43-02).
 - **LT-18 Tracked:** Open (WP-43 section 43-05).
 - **LT-19 Tracked:** Open (WP-43 section 43-05).
-- **LT-20 Tracked:** Documented in WP-43, BUGS.md "text() draws no width(), height(), linegap(), bexpand, bmargin(), lstyle(), lpattern(), lalign(); a `=exp' global is drawn literally", commit pending.
+- **LT-20 Tracked:** Documented in WP-43, BUGS.md "text() draws no width(), height(), linegap(), bexpand, bmargin(), lstyle(), lpattern(), lalign(); a `=exp' global is drawn literally", commit 065aace.
 - **LT-21 Tracked:** Open (WP-43 section 43-04).
 - **PIC-11 Tracked:** Open (WP-43 section 43-04).
 - **MS-10 Tracked:** Open (WP-43 section 43-04).
