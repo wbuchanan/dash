@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'LT-4': 'legend(ring(0) bplacement()) ignores bplacement; bplacement abbreviations (nor, nea, t, top) are not read',
     'LT-2': 'legend(nobox) removes the region box; in twoway nobox is the key-text textbox option and changes nothing',
     'LT-3': 'Key-text textbox options are not drawn: box (silent), bcolor(), fcolor(), justification(), alignment(), margin(), linegap(), tstyle()',
     'LT-5': 'legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ',

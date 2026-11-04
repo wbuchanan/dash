@@ -403,6 +403,7 @@ FUNCTIONS = {
  '_dash_legend_box.<locals>._colour': 'test/test_legend_geometry.py::TestBoxAndText::test_region',
  '_dash_legend_box.<locals>._style': 'test/test_legend_title_style.py::TestTitleStyle::test_tstyle',
  '_dash_legend_text_box': 'test/test_legend_title_style.py::TestTitleStyle::test_scheme_style',
+ '_dash_compass_dir': 'test/test_legend_place.py::TestCompassReader::test_each_spelling',
  '_dash_legend_title_block': 'test/test_legend_title_style.py::TestSubtitleStyle::test_two_styles',
  '_dash_legend_title_block.<locals>.em': 'test/test_legend_title_style.py::TestTitleSubopts::test_box',
  '_dash_legend_title_block.<locals>.col': 'test/test_legend_title_style.py::TestTitleSubopts::test_box_options',

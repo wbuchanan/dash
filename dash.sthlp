@@ -5071,7 +5071,12 @@ keys fill it row by row, or column by column with {cmd:colfirst}.
 {cmd:holes(2)} leaves the second place blank and a hole past the last
 key is ignored.
 {cmd:region(lcolor() fcolor() lwidth() lpattern() margin())} draws the box, {cmd:nobox} removes it, {cmd:bmargin()} is the
-space around it, {cmd:bplacement()} its place along its side,
+space around it, {cmd:bplacement()} its place along its side, or,
+inside the plot region ({cmd:ring(0)} or {cmd:position(0)}), the plot
+region's compass point it names; every spelling {cmd:twoway} reads for a
+compass direction ({cmd:nor}, {cmd:NE}, {cmd:top}, a clock number) is
+read, and one it does not know is noted and drawn east, as in
+{cmd:twoway};
 {cmd:color()} the key text's colour, {cmd:textwidth()} its least width
 and {cmd:title()} a line above the keys, with the legend's own
 {cmd:subtitle()} a line under it, in the scheme's legend title and

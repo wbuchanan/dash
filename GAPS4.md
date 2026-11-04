@@ -460,7 +460,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **CV-17 Tracked:** Closed in WP-42, BUGS.md "colorlist() with quoted RGB colours is not applied under colorvar(): every marker is black and the key is a legend of ranges where twoway draws the listed colours with a colour bar", commit 642cb58.
 - **LT-22 Tracked:** Closed in WP-42, BUGS.md "contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line", commit 514098a.
 - **LT-1 Tracked:** Closed in WP-43, BUGS.md "legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles", commit 0af5bd3.
-- **LT-4 Tracked:** Open (WP-43 section 43-02).
+- **LT-4 Tracked:** Closed in WP-43, BUGS.md "legend(ring(0) bplacement()) ignores bplacement; bplacement abbreviations (nor, nea, t, top) are not read", commit pending.
 - **LT-2 Tracked:** Open (WP-43 section 43-03).
 - **LT-3 Tracked:** Open (WP-43 section 43-03).
 - **LT-5 Tracked:** Open (WP-43 section 43-02).

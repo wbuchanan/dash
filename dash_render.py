@@ -40568,6 +40568,55 @@ _DASH_BPLACEMENT_LOCATION = {
     "nw": "top_left", "nwest": "top_left",
     "c": "center", "center": "center",
 }
+
+#: compass2dir.class's names, each with its shortest abbreviation
+#: (syntax's capitals: North, NWest, Top ...), in its syntax order; top,
+#: bottom, left and right stand for north, south, west and east.
+_DASH_COMPASS_NAMES = (
+    ("north", "n", "north"), ("south", "s", "south"), ("east", "e", "east"),
+    ("west", "w", "west"), ("nwest", "nw", "nwest"),
+    ("neast", "ne", "neast"), ("swest", "sw", "swest"),
+    ("seast", "se", "seast"), ("center", "c", "center"),
+    ("top", "t", "north"), ("bottom", "b", "south"), ("left", "l", "west"),
+    ("right", "r", "east"))
+_DASH_COMPASS_CAPS = {"N": "north", "S": "south", "E": "east", "W": "west",
+                      "NE": "neast", "NW": "nwest", "SE": "seast",
+                      "SW": "swest", "T": "north", "B": "south",
+                      "R": "east", "L": "west"}
+_DASH_COMPASS_CLOCK = ("center", "neast", "neast", "east", "seast", "seast",
+                       "south", "swest", "swest", "west", "nwest", "nwest",
+                       "north")
+
+
+def _dash_compass_dir(text):
+    """The compass direction twoway reads *text* as, by its full name
+    (``north`` .. ``center``), or None (WP-43 LT-4): a port of
+    compass2dir.class ``_unabbrev``.  An abbreviation of a lower-case name
+    (``nor``, ``nea``, ``t``, ``rig``; never lower-cased, so ``NOR`` is
+    none); when no name matched and the text is two characters at most,
+    the capitals N S E W NE NW SE SW and T B R L, else a clock number
+    0-12 (``3`` east, ``12`` north; ``3.0`` is three characters, none).
+    twoway notes any other text and draws its default attributes, east
+    (legend_place_truth.json bp_in_*, bp_out_*)."""
+    t = str(text if text is not None else "").strip()
+    if not t or any(c.isspace() for c in t):
+        return None
+    for name, short, full in _DASH_COMPASS_NAMES:
+        if len(t) >= len(short) and name.startswith(t):
+            return full
+    if len(t) > 2:
+        return None
+    if t in _DASH_COMPASS_CAPS:
+        return _DASH_COMPASS_CAPS[t]
+    try:
+        v = float(t)
+    except ValueError:
+        return None
+    if math.isfinite(v) and v == int(v) and 0 <= v <= 12:
+        return _DASH_COMPASS_CLOCK[int(v)]
+    return None
+
+
 #: legend(top), legend(bottom), legend(left) and legend(right) are not
 #: twoway's: it refuses each, "option top not allowed", r(198) (measured
 #: 23sep2026), and so does dash.ado (_dash_check_legend).  They were read
@@ -42108,23 +42157,31 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                 else int(chrome.get("legend_ring", 3)))
     except (TypeError, ValueError):
         ring = 3
+    # bplacement() is read as twoway's compass2dir reads it (WP-43 LT-4:
+    # nor, NE, top, 3); a name it does not know is noted and drawn east,
+    # compass2dir's default attributes (legend_place_truth.json
+    # bp_out_*/bp_in_* NOR, 3.0, bogus).  Inside the plot region (ring(0)
+    # or position(0)) the box sits at the region's compass point it names
+    # (r0_bp_*, pos0_bp_nw, r0_pos1_bp_sw: bplacement() wins over the
+    # clock).
     _bp = _dash_legend_arg(_calls, ("bplacement",))
     _bploc = None
     if _bp:
-        _bploc = _DASH_BPLACEMENT_LOCATION.get(_bp.strip().lower())
+        _bploc = _DASH_BPLACEMENT_LOCATION.get(_dash_compass_dir(_bp) or "")
         if _bploc is None:
             _typed = next((t for n, _a, t in _calls if n == "bplacement"),
                           "bplacement")
             _dash_style_note("legend(%s)" % _typed, _bp, "compass direction",
                              "the default")
+            _bploc = _DASH_BPLACEMENT_LOCATION["east"]
     colfirst = ("nocolfirst" not in _words
                 and ("colfirst" in _words
                      or bool(chrome.get("legend_col_first"))))
     if legend is not None and (m_pos or m_ring or _sclock is not None):
         if m_pos and clock == 0:
-            _dash_move_legend(fig, legend, "center", "center")
+            _dash_move_legend(fig, legend, "center", _bploc or "center")
         elif ring == 0:
-            _dash_move_legend(fig, legend, "center",
+            _dash_move_legend(fig, legend, "center", _bploc or
                               _DASH_CLOCK_INSIDE.get(clock, "bottom_center"))
         else:
             side = _DASH_CLOCK_SIDE.get(clock, "below")
@@ -74536,6 +74593,9 @@ class ServerAppBuilder:
                       # The shared legend, axis, column and swatch tables.
                       "_DASH_CLOCK_SIDE", "_DASH_CLOCK_INSIDE",
                       "_DASH_CLOCK_PANEL_LOCATION", "_DASH_BPLACEMENT_LOCATION",
+                      # WP-43 LT-4: compass2dir's reader.
+                      "_DASH_COMPASS_NAMES", "_DASH_COMPASS_CAPS",
+                      "_DASH_COMPASS_CLOCK",
                       "_DASH_LEGEND_REGION_NAMES", "_DASH_KEY_STYLE_OPTS",
                       "_DASH_HIST_YTITLES",
                       "_DASH_OPT_VAR_KEYS", "_DASH_PLOT_VAR_KEYS",
@@ -75083,6 +75143,7 @@ class ServerAppBuilder:
                          "_dash_span_sides", "_dash_span_keep",
                          "_dash_scheme_chrome", "_dash_legend_text_box",
                          "_dash_legend_parts", "_dash_legend_arg",
+                         "_dash_compass_dir",
                          "_dash_legend_margin_px", "_dash_legend_box",
                          "_dash_legend_title_block",
                          "_dash_apply_legend",

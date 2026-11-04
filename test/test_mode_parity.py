@@ -2872,6 +2872,11 @@ CORPUS = [
           [_sc(), plot_for("scatter", yvar="price")],
           go={"legend": 'title("T", box) subtitle("S")', "scale": "1.5"}),
 
+    # WP-43 LT-4/LT-17/LT-5 (section 43-02): legend place, holes, all
+    _case("legend(ring(0) bplacement(nw)) (WP-43 LT-4)",
+          [_sc(), plot_for("scatter", yvar="price")],
+          go={"legend": "ring(0) bplacement(nw)"}),
+
     # WP-31 D5/E11 (section 32): sizing
     _case("scale(1.5) (WP-31 D5)", [plot_for("scatter")],
           go={"scale": "1.5"}),

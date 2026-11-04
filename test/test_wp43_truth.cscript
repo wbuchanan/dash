@@ -484,6 +484,161 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w43_run' {
 }
 * ==== end S01 ====
 
+// S02 helpers (WP-43 43-02).  _q4302_reg <dir> <dash command...>:
+// register one graph and read the series legend both modes draw -- its
+// panel and location, its key count, whether it is visible, and the
+// notes naming legend()'s bplacement -- into q4302_<s|v> ("<panel>
+// <location> <keys> <visible>") and q4302_n<s|v>; _q4302_tw <svg>:
+// twoway's legend box against its plot region from an SVG, as the
+// inside location it is ("top_left" .. "center"), into q4302_tw.
+python:
+import os as _q4302_os, sys as _q4302_sys
+for _q4302_p in (_q4302_os.path.abspath(".."),
+                 _q4302_os.path.abspath(_q4302_os.path.join("..", "scripts"))):
+    if _q4302_p not in _q4302_sys.path:
+        _q4302_sys.path.insert(0, _q4302_p)
+
+
+def _q4302_models(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings(record=True) as w1:
+        warnings.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_q4302_app")
+    with warnings.catch_warnings(record=True) as w2:
+        warnings.simplefilter("always")
+        exec(compile(src.replace(attach, "pass"), "dash_q4302_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    return ((list(r._last_layout_root.references()), [str(x.message) for x in w1]),
+            (list(doc.models), [str(x.message) for x in w2]))
+
+
+def _q4302_read(sp, dp, app, word):
+    import dash_render as dr
+    from sfi import Macro
+    from bokeh.models import Legend, Plot
+    for (models, msgs), sfx in zip(_q4302_models(sp, dp, app), ("s", "v")):
+        out = "none"
+        for p in models:
+            if not isinstance(p, Plot):
+                continue
+            for side in ("center", "above", "below", "left", "right"):
+                for lg in getattr(p, side):
+                    if (isinstance(lg, Legend) and str(lg.name or "")
+                            != dr._COLORVAR_LEGEND_NAME and out == "none"):
+                        out = "%s %s %d %d" % (side, lg.location,
+                                               len(lg.items), int(lg.visible))
+        Macro.setGlobal("q4302_" + sfx, out)
+        Macro.setGlobal("q4302_n" + sfx, str(sum(1 for m in msgs
+                                                 if word in m)))
+
+
+def _q4302_tw(path):
+    from sfi import Macro
+    from svg_truth import svg_document, svg_rects
+    d = svg_document(path)
+    pr = d["plotregion"]
+    keys = [t for t in d["texts"] if not t["anchor"]]
+    box = None
+    for r in svg_rects(path):
+        if r.get("fill") in (None, "none") or r["w"] is None or r["w"] > 3900:
+            continue
+        x0, y0 = r["x"], r["y"]
+        if abs(x0 - pr["left"]) < 1 and abs(y0 - pr["top"]) < 1:
+            continue
+        if keys and all(x0 <= k["x"] <= x0 + r["w"] and y0 <= k["y"] <= y0 + r["h"]
+                        for k in keys):
+            if box is None or r["w"] * r["h"] < box["w"] * box["h"]:
+                box = r
+    if box is None:
+        Macro.setGlobal("q4302_tw", "none")
+        return
+    pw, ph = pr["right"] - pr["left"], pr["bottom"] - pr["top"]
+    left, right = (box["x"] - pr["left"]) / pw, (box["x"] + box["w"] - pr["left"]) / pw
+    top, bottom = (box["y"] - pr["top"]) / ph, (box["y"] + box["h"] - pr["top"]) / ph
+    v = "top" if top < 0.05 else "bottom" if bottom > 0.95 else "center"
+    h = "left" if left < 0.05 else "right" if right > 0.95 else "center"
+    Macro.setGlobal("q4302_tw", "center" if (v, h) == ("center", "center")
+                    else v + "_" + h)
+end
+
+capture program drop _q4302_reg
+program define _q4302_reg
+    version 19
+    gettoken dir 0 : 0
+    gettoken word 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4302_m; _q4302_m._q4302_read("`dir'/s.json", "`dir'/d.json", "`dir'/a.py", "`word'")
+end
+
+* ==== S02 LT-4: ring(0) bplacement ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w43_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local q02d "`w43_work'/s02a"
+    capture mkdir "`q02d'"
+    capture graph drop _all
+    sysuse auto, clear
+    local three (scatter mpg weight) (scatter price weight) (scatter turn weight)
+
+    // ------------------------------------------------------------
+    // Q4302-1: legend(ring(0) bplacement(<x>)) and the compass spellings
+    // twoway reads (nor, NE, a clock number; an unknown name is noted
+    // and drawn east) -- live twoway's box against its plot region beside
+    // the inside location of dash's legend, saved and served, and a note
+    // from both exactly when twoway notes one.
+    // ------------------------------------------------------------
+    local k 0
+    foreach o in "ring(0) bplacement(nw)" "ring(0) bplacement(sw)" "ring(0) bplacement(ne)" "ring(0) bplacement(c)" "ring(0) pos(1) bplacement(sw)" "pos(0) bplacement(nw)" "ring(0) bplacement(nor)" "ring(0) bplacement(NE)" "ring(0) bplacement(3)" "ring(0) bplacement(bogus)" {
+        local ++k
+        capture log close q02l
+        quietly log using "`q02d'/tw`k'.log", text replace name(q02l)
+        twoway `three', scheme(s2color) legend(`o') name(q02t`k', replace)
+        quietly log close q02l
+        python: from sfi import Macro as _q4302_M; _q4302_M.setGlobal("q4302_twn", str(int("not found in class compass2dir" in open("`q02d'/tw`k'.log", encoding="utf-8", errors="replace").read())))
+        capture erase "`q02d'/q02t`k'.svg"
+        cert_svg_export, name(q02t`k') file("`q02d'/q02t`k'.svg")
+        python: import __main__ as _q4302_m; _q4302_m._q4302_tw("`q02d'/q02t`k'.svg")
+        local tw "${q4302_tw}"
+        _q4302_reg "`q02d'" bplacement `three', scheme(s2color) legend(`o') name(q02e)
+        foreach m in s v {
+            local got "${q4302_`m'}"
+            gettoken gp rest : got
+            gettoken gl rest : rest
+            _w43_expect Q4302-1 `"("`gp' `gl'" == "center `tw'")"' `"`o' `m': dash `got'; twoway `tw'"'
+            _w43_expect Q4302-1 "((${q4302_n`m'} > 0) == ${q4302_twn})" `"`o' `m': dash notes ${q4302_n`m'}; twoway noted ${q4302_twn}"'
+        }
+    }
+    _w43_done Q4302-1 "an inside legend sits at the compass point bplacement() names, every twoway spelling read, saved and served"
+
+    forvalues j = 1/`k' {
+        capture erase "`q02d'/q02t`j'.svg"
+        capture erase "`q02d'/tw`j'.log"
+    }
+    foreach f in s.json d.json a.py {
+        capture erase "`q02d'/`f'"
+    }
+    capture rmdir "`q02d'"
+    macro drop q4302_s q4302_v q4302_ns q4302_nv q4302_tw q4302_twn
+    capture graph drop _all
+    dash clear
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 // S06 helpers (WP-43 43-06).  _q4306_docs: the figures a registered
 // graph draws, saved and served (spec and data from _dash_serve_spec);
 // _q4306_al: the one added-text Label's y_offset against the shift
