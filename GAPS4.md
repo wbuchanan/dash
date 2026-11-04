@@ -460,10 +460,10 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **CV-17 Tracked:** Closed in WP-42, BUGS.md "colorlist() with quoted RGB colours is not applied under colorvar(): every marker is black and the key is a legend of ranges where twoway draws the listed colours with a colour bar", commit 642cb58.
 - **LT-22 Tracked:** Closed in WP-42, BUGS.md "contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line", commit 514098a.
 - **LT-1 Tracked:** Closed in WP-43, BUGS.md "legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles", commit 0af5bd3.
-- **LT-4 Tracked:** Closed in WP-43, BUGS.md "legend(ring(0) bplacement()) ignores bplacement; bplacement abbreviations (nor, nea, t, top) are not read", commit pending.
+- **LT-4 Tracked:** Closed in WP-43, BUGS.md "legend(ring(0) bplacement()) ignores bplacement; bplacement abbreviations (nor, nea, t, top) are not read", commit 0e6c5ab.
 - **LT-2 Tracked:** Open (WP-43 section 43-03).
 - **LT-3 Tracked:** Open (WP-43 section 43-03).
-- **LT-5 Tracked:** Closed in WP-43, BUGS.md "legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ", commit pending.
+- **LT-5 Tracked:** Closed in WP-43, BUGS.md "legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ", commit 0d12aaa.
 - **LT-6 Tracked:** Open (WP-43 section 43-03).
 - **LT-7 Tracked:** Open (WP-43 section 43-03).
 - **LT-8 Tracked:** Open (WP-43 section 43-05).
@@ -474,7 +474,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-14 Tracked:** Open (WP-43 section 43-05).
 - **LT-15 Tracked:** Closed in WP-43, BUGS.md "legend title()/subtitle() sub-options (position(), box ...) are dropped silently; subtitle size()/color() are ignored", commit 3c3b781.
 - **LT-16 Tracked:** Open (WP-43 section 43-05).
-- **LT-17 Tracked:** Closed in WP-43, BUGS.md "legend(holes()) with cols(1) inserts a full blank row", commit pending.
+- **LT-17 Tracked:** Closed in WP-43, BUGS.md "legend(holes()) with cols(1) inserts a full blank row", commit 5fc359a.
 - **LT-18 Tracked:** Open (WP-43 section 43-05).
 - **LT-19 Tracked:** Open (WP-43 section 43-05).
 - **LT-20 Tracked:** Documented in WP-43, BUGS.md "text() draws no width(), height(), linegap(), bexpand, bmargin(), lstyle(), lpattern(), lalign(); a `=exp' global is drawn literally", commit 065aace.
