@@ -482,7 +482,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **PIC-11 Tracked:** Open (WP-43 section 43-04).
 - **MS-10 Tracked:** Open (WP-43 section 43-04).
 - **ST-14 Tracked:** Open (WP-43 section 43-07).
-- **LT-24 Tracked:** Open (WP-43 section 43-05).
+- **LT-24 Tracked:** Closed in WP-43, BUGS.md "title() whose text is an apostrophe and 90s inside double quotes is drawn where twoway gives r(100)", commit pending.
 - **RH-13 Tracked:** Open (WP-43 section 43-04).
 - **AX-13 Tracked:** Open (WP-44 section 44-01).
 - **AX-5 Tracked:** Open (WP-44 section 44-02).

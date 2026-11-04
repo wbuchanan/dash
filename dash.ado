@@ -488,7 +488,7 @@ program define _dash_require_mata
         _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args _dash_scheme_dirs_json ///
         _dash_kpi_pctile _dash_json_escape _dash_dp_format _dash_path_badchar _dash_cmd_metachar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal _dash_tabs_refusal _dash_tabs_unwrap ///
-        _dash_legend_first_refusal _dash_bare_string_refusal ///
+        _dash_legend_first_refusal _dash_bare_string_refusal _dash_stray_quote_refusal ///
         _dash_axlabel_refusal ///
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
         _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
@@ -9643,6 +9643,19 @@ program define _dash_plot
     // with a Mata syntax error before anything was stored (measured
     // 24sep2026: r(3000) "'90s' found where almost anything else expected").
     mata: _dash_check_utf8(strtrim(st_local("0")))
+
+    // Option text holding a stray "' -- title("'90s"), outside compound
+    // quotes, inside an option's parentheses -- is refused as twoway
+    // refuses it, with its rc and words, before anything is stored (WP-43
+    // LT-24, maintainer ruling P4-5; test/fixtures/quote_truth.json).  dash
+    // drew it.  A "' in a qualifier and compound-quoted text are kept as
+    // typed.  Read by value; the answer is "<rc>|<first line>".
+    mata: st_local("_sqr", _dash_stray_quote_refusal(st_local("0")))
+    if `: length local _sqr' {
+        mata: _dash_say("err", "", substr(st_local("_sqr"), strpos(st_local("_sqr"), "|") + 1, .), "")
+        mata: st_local("_sqr", substr(st_local("_sqr"), 1, strpos(st_local("_sqr"), "|") - 1))
+        exit `_sqr'
+    }
 
     // A quoted string standing alone among the options is refused as
     // twoway refuses it, r(198), in its words (WP-31 D16b); the catch-all

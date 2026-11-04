@@ -558,6 +558,8 @@ COVERAGE = {
         "_dash_subreq_nested": ("test_option_validation.cscript:U39-05",),
         # WP-31 D16b: a bare quoted string among the options.
         "_dash_bare_string_refusal": ("test_option_validation.cscript:U39-07",),
+        # WP-43 LT-24: option text holding a stray quote-apostrophe.
+        "_dash_stray_quote_refusal": ("test_json_escaping.cscript:Q4305-12",),
         "_dash_layout_digits": ("test_option_validation.cscript:U39-01",),
         # WP-31 D6: the axis label forms twoway refuses.
         "_dash_axlabel_refusal": ("test_option_validation.cscript:U33-07",),

@@ -1651,8 +1651,16 @@ assert `p2018tw' == 109
 assert `p2018rc' == 109
 cert_file_has "`p2018lg'", needle("INJINJINJ")
 assert r(found) == 0
-cert_file_has "`p2018lg'", needle("dash: option jitter() has a value Stata cannot read, as twoway reads it: type mismatch.")
-assert r(found) == 1
+* Flipped: twoway refuses a stray "' in option text; the maintainer's
+* ruling P4-5 (20oct2026) replaces the 24sep2026 stored-as-typed rule for
+* option text (WP-43 LT-24).  dash's refusal is now twoway's own line,
+* "type mismatch" (dash's and twoway's: two lines), before the option is
+* read; it was "dash: option jitter() has a value Stata cannot read, as
+* twoway reads it: type mismatch."
+cert_file_has "`p2018lg'", needle("dash: option jitter() has a value")
+assert r(found) == 0
+cert_log_has "`p2018lg'", needle("type mismatch")
+assert r(count) == 2
 cert_file_has "`p2018lg'", needle("ignoring unsupported option(s)")
 assert r(found) == 0
 assert "${dash_graph_registry}" == ""

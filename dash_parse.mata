@@ -170,6 +170,10 @@
 *!       twoway's refusal of a quoted string standing alone among the
 *!       options, or "" (WP-31 D16b).
 *!
+*!   _dash_stray_quote_refusal(cmd)
+*!       twoway's refusal of option text holding a stray "', as
+*!       "<rc>|<first line>", or "" (WP-43 LT-24).
+*!
 *!   _dash_legend_first_refusal(text)
 *!       twoway's refusal of a legend() word before top/bottom/left/right,
 *!       or "" (WP-31 D16).
@@ -12498,6 +12502,148 @@ string scalar _dash_bare_string_refusal(string scalar cmd)
     if (mod(nbare, 2) == 0 | ing) return("invalid syntax")
     if (bars | (inp & (ngroups > 1 | gopts)) | qparen) return("parentheses do not balance")
     return("quotes unbalanced")
+}
+
+// _dash_stray_quote_refusal(cmd) -- twoway's refusal of option text
+// holding a stray "', as "<rc>|<first line>", or "" (WP-43 LT-24,
+// maintainer ruling P4-5).  A stray is a double quote followed by an
+// apostrophe -- the close of a compound quote -- met outside compound
+// quotes inside an option frame: a parenthesis that follows a name
+// [A-Za-z_][A-Za-z0-9_]* at a level in options (after a comma at that
+// level; || and the close of a group parenthesis leave them), or any
+// parenthesis inside one.  A stray outside every option frame -- in an
+// if or in qualifier, a weight -- is not read here: dash keeps it as
+// typed (P4-5).  twoway's answer, measured on the 57 probes of
+// test/fixtures/quote_truth.json: when the stray's " closes a plain
+// string, r(132) "too many ')' or ']'" with ) right after the
+// apostrophe, else r(198) "parentheses do not balance"; otherwise the
+// first character outside quotes after the apostrophe (read with the
+// same quote rules) decides -- a blank, tab, comma, =, { or } r(109)
+// "type mismatch", ( or [ r(132) "too few ')' or ']'", ) or ] r(132)
+// "too many ')' or ']'" -- and with none r(100) ") required", as for
+// title("'90s", size(large)), whose comma lies inside the string the
+// stray's apostrophe reopens.  The command is read by value.
+string scalar _dash_stray_quote_refusal(string scalar cmd)
+{
+    real scalar    n, i, j, b, c, nx, d, q, k, nopt, isname, at, closes, nxt
+    real colvector fopt, fgrp, finopt
+    string scalar  ch, SET_MISMATCH, SET_FEW, SET_MANY
+
+    // The characters after the stray that decide twoway's answer.
+    SET_MISMATCH = " " + char(9) + ",={}"
+    SET_FEW      = "(["
+    SET_MANY     = ")]"
+
+    n = strlen(cmd)
+    fopt   = J(n + 1, 1, 0)
+    fgrp   = J(n + 1, 1, 0)
+    finopt = J(n + 1, 1, 0)
+    k = 1
+    nopt = 0
+    d = 0
+    q = 0
+    at = 0
+    closes = 0
+    i = 1
+    while (i <= n) {
+        c = ascii(substr(cmd, i, 1))
+        nx = (i < n ? ascii(substr(cmd, i + 1, 1)) : -1)
+        if (d) {
+            if (c == 96 & nx == 34) {
+                d++
+                i = i + 2
+                continue
+            }
+            if (c == 34 & nx == 39) {
+                d--
+                i = i + 2
+                continue
+            }
+            i++
+            continue
+        }
+        if (q) {
+            if (c == 34) {
+                if (nx == 39 & nopt) {
+                    at = i
+                    closes = 1
+                    break
+                }
+                q = 0
+            }
+            i++
+            continue
+        }
+        if (c == 96 & nx == 34) {
+            d = 1
+            i = i + 2
+            continue
+        }
+        if (c == 34) {
+            if (nx == 39 & nopt) {
+                at = i
+                break
+            }
+            q = 1
+            i++
+            continue
+        }
+        if (c == 40) {
+            // A name right before the parenthesis: letters, digits and
+            // underscores, not starting with a digit.
+            j = i - 1
+            while (j >= 1) {
+                b = ascii(substr(cmd, j, 1))
+                if ((b >= 48 & b <= 57) | (b >= 65 & b <= 90) | (b >= 97 & b <= 122) | b == 95) j--
+                else break
+            }
+            isname = 0
+            if (j < i - 1) {
+                b = ascii(substr(cmd, j + 1, 1))
+                isname = !(b >= 48 & b <= 57)
+            }
+            k++
+            fopt[k] = (finopt[k - 1] & isname) | (nopt > 0)
+            fgrp[k] = !isname
+            finopt[k] = 0
+            nopt = nopt + fopt[k]
+        }
+        else if (c == 41) {
+            if (k > 1) {
+                nopt = nopt - fopt[k]
+                if (fgrp[k]) finopt[k - 1] = 0
+                k--
+            }
+        }
+        else if (c == 44) finopt[k] = 1
+        else if (c == 124 & nx == 124) {
+            finopt[k] = 0
+            i = i + 2
+            continue
+        }
+        i++
+    }
+    if (!at) return("")
+    if (closes) {
+        if (substr(cmd, at + 2, 1) == ")") return("132|too many ')' or ']'")
+        return("198|parentheses do not balance")
+    }
+    q = 0
+    d = 0
+    i = at + 2
+    while (i <= n) {
+        nxt = _dash_quote_step(cmd, n, i, q, d)
+        if (nxt) {
+            i = nxt
+            continue
+        }
+        ch = substr(cmd, i, 1)
+        if (strpos(SET_MISMATCH, ch)) return("109|type mismatch")
+        if (strpos(SET_FEW, ch)) return("132|too few ')' or ']'")
+        if (strpos(SET_MANY, ch)) return("132|too many ')' or ']'")
+        i++
+    }
+    return("100|) required")
 }
 
 // _dash_subreq_nested(toks, names) -- twoway's refusal of a word inside a

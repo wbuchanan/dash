@@ -59,7 +59,10 @@
 *! apostrophe ("'90s cars", "' or 1 or '") through the plot commands as
 *! typed -- titles, text options, a plot's and a graph's qualifier, the
 *! one-line form -- and JSE-47..49 are the rule-18 bypass, injection and
-*! exhaustion cases.  JSE-50..59: dash kpi, dash build and dash serve take
+*! exhaustion cases; since WP-43 LT-24 the plain forms in option text are
+*! refused as twoway refuses them (Q4305-12 runs every probe of
+*! test/fixtures/quote_truth.json; Q4305-13 the qualifier and compound
+*! forms kept as typed).  JSE-50..59: dash kpi, dash build and dash serve take
 *! the user's text as written -- a KPI's title and qualifier, a dashboard's
 *! title, update(), filterposition(), link(), filter() and saving() holding
 *! "' or macro characters -- with CLAUDE.md rule 18's bypass, injection and
@@ -1365,10 +1368,14 @@ display "JSE-41 PASS: dash build, server writes saving(~/x.py) under HOME"
 // if make == "' or 1 or '" r(109), if make != "'x" & foreign == 1 r(198)
 // -- and takes the compound ones, except  if make != `"'x"' & foreign == 1,
 // r(133).  After the plot groups it takes  if make != "'x" & foreign == 1
-// (rc 0) and refuses  if make == "' or 1 or '"  (r(109)).  dash stores
+// (rc 0) and refuses  if make == "' or 1 or '"  (r(109)).  dash stored
 // every one as typed, plain and compound (the maintainer's request), and
 // Stata's own count is the qualifier's oracle.  Each case asserts what the
 // registry holds and what the saved page draws, read from its document.
+// WP-43 LT-24 (maintainer ruling P4-5, 20oct2026): the plain forms in
+// option text are refused now as twoway refuses them, in its words, and
+// nothing is stored (test/fixtures/quote_truth.json; Q4305-12); the
+// qualifier and compound forms are kept as typed, as before (Q4305-13).
 qui sysuse auto, clear
 capture dash clear
 do "cert_helpers.do"
@@ -1582,32 +1589,52 @@ assert `jg_n0' == 0 & `jg_n22' == 22 & `jg_n22c' == 22
 // ----------------------------------------------------------------
 // JSE-42 -- the graph title, comma mode, || mode and the one-line form
 // ----------------------------------------------------------------
+* Flipped: twoway refuses a stray "' in option text; the maintainer's
+* ruling P4-5 (20oct2026) replaces the 24sep2026 stored-as-typed rule for
+* option text (WP-43 LT-24).  The plain title("'90s cars") is refused as
+* twoway refuses it, r(109) "type mismatch" -- in comma mode, after ||,
+* beside an option with a rule and on the one-line form -- and nothing is
+* stored or written; it was stored as typed and drawn.  The compound form
+* is stored as typed and drawn, as before.
 capture dash clear
+tempfile jg_p42
+local jg_l42 "`c(tmpdir)'dash_jse42.log"
+capture erase "`jg_p42'a.html"
+_jg_log_on "`jg_l42'"
 capture noisily dash scatter mpg weight, title("'90s cars") name(jg42a)
 local jg_r1 = _rc
-capture noisily dash scatter mpg weight, title(`"'90s cars"') name(jg42b)
-local jg_r2 = _rc
 capture noisily dash scatter mpg weight, title("'90s cars") || line mpg weight, name(jg42c)
 local jg_r3 = _rc
-capture noisily dash scatter mpg weight || line mpg weight, title(`"'90s cars"') name(jg42d)
-local jg_r4 = _rc
 // Beside an option with a rule, whose check snapshots and compares every
 // option of the segment (_dash_validate_opts).
 capture noisily dash scatter mpg weight, title("'90s cars") msize(small) name(jg42e)
 local jg_r7 = _rc
-mata: st_global("JG_WANT", _jg_pq(char(39) + "90s cars"))
-_jg_stored jg42a "graph_options title"
-local jg_s1 "`r(ok)'"
-_jg_stored jg42c "graph_options title"
-local jg_s3 "`r(ok)'"
-_jg_stored jg42e "graph_options title"
-local jg_s5 "`r(ok)'"
+capture noisily dash scatter mpg weight, title("'90s cars") saving("`jg_p42'a.html")
+local jg_r5 = _rc
+_jg_log_off
+cert_log_has "`jg_l42'", needle("type mismatch")
+local jg_m = r(count)
+capture erase "`jg_l42'"
+capture confirm file "`jg_p42'a.html"
+local jg_w = (_rc == 0)
+local jg_reg0 "${dash_graph_registry}"
+capture twoway scatter mpg weight, title("'90s cars") name(jg42a)
+local jg_t1 = _rc
+capture twoway scatter mpg weight, title("'90s cars") || line mpg weight, name(jg42c)
+local jg_t3 = _rc
+capture twoway scatter mpg weight, title("'90s cars") msize(small) name(jg42e)
+local jg_t7 = _rc
+capture graph drop _all
+capture noisily dash scatter mpg weight, title(`"'90s cars"') name(jg42b)
+local jg_r2 = _rc
+capture noisily dash scatter mpg weight || line mpg weight, title(`"'90s cars"') name(jg42d)
+local jg_r4 = _rc
 mata: st_global("JG_WANT", _jg_cq(char(39) + "90s cars"))
 _jg_stored jg42b "graph_options title"
 local jg_s2 "`r(ok)'"
 _jg_stored jg42d "graph_options title"
 local jg_s4 "`r(ok)'"
-tempfile jg_p42
+local jg_reg "${dash_graph_registry}"
 _jg_build "`jg_p42'.html"
 local jg_rb = r(rc)
 mata: st_global("JG_WANT", char(39) + "90s cars")
@@ -1616,16 +1643,7 @@ local jg_d = r(n)
 capture erase "`jg_p42'.html"
 // The one-line form: nothing is registered, the page is written.
 capture dash clear
-local jg_d1 = 0
 local jg_d2 = 0
-capture erase "`jg_p42'a.html"
-capture noisily dash scatter mpg weight, title("'90s cars") saving("`jg_p42'a.html")
-local jg_r5 = _rc
-if `jg_r5' == 0 {
-    global JG_PAGE "`jg_p42'a.html"
-    _jg_drawn Title
-    local jg_d1 = r(n)
-}
 capture erase "`jg_p42'b.html"
 capture noisily dash scatter mpg weight, title(`"'90s cars"') saving("`jg_p42'b.html")
 local jg_r6 = _rc
@@ -1634,41 +1652,59 @@ if `jg_r6' == 0 {
     _jg_drawn Title
     local jg_d2 = r(n)
 }
-capture erase "`jg_p42'a.html"
 capture erase "`jg_p42'b.html"
-display as text "  rc: `jg_r1' `jg_r2' `jg_r3' `jg_r4' `jg_r7'  stored: `jg_s1' `jg_s2' `jg_s3' `jg_s4' `jg_s5'  build: `jg_rb'  drawn: `jg_d' of 5"
-display as text "  one-line rc: `jg_r5' `jg_r6'  drawn: `jg_d1' `jg_d2'"
-assert `jg_r1' == 0 & `jg_r2' == 0 & `jg_r3' == 0 & `jg_r4' == 0 & `jg_r7' == 0
-assert "`jg_s1'`jg_s2'`jg_s3'`jg_s4'`jg_s5'" == "11111"
-assert `jg_rb' == 0 & "`jg_d'" == "5"
-assert `jg_r5' == 0 & `jg_r6' == 0
-assert "`jg_d1'`jg_d2'" == "11"
-display "JSE-42 PASS: a title holding quote-apostrophe is stored as typed and drawn -- comma, || and one-line, plain and compound"
+display as text "  plain rc: `jg_r1' `jg_r3' `jg_r7' `jg_r5' (twoway `jg_t1' `jg_t3' `jg_t7')  in twoway's words: `jg_m' of 4  registered: [`jg_reg0']  page written: `jg_w'"
+display as text "  compound rc: `jg_r2' `jg_r4' `jg_r6'  stored: `jg_s2' `jg_s4'  registry: [`jg_reg']  build: `jg_rb'  drawn: `jg_d' of 2, one-line `jg_d2'"
+assert `jg_r1' == 109 & `jg_r3' == 109 & `jg_r7' == 109 & `jg_r5' == 109
+assert `jg_t1' == 109 & `jg_t3' == 109 & `jg_t7' == 109
+assert `jg_m' == 4 & "`jg_reg0'" == "" & `jg_w' == 0
+assert `jg_r2' == 0 & `jg_r4' == 0 & `jg_r6' == 0
+assert "`jg_s2'`jg_s4'" == "11" & "`jg_reg'" == "jg42b jg42d"
+assert `jg_rb' == 0 & "`jg_d'" == "2" & "`jg_d2'" == "1"
+display "JSE-42 PASS: a plain title holding quote-apostrophe is refused as twoway refuses it -- comma, || and one-line -- and the compound one is stored as typed and drawn"
 capture dash clear
 
 // ----------------------------------------------------------------
 // JSE-43 -- the graph title in paren mode: in a plot group, after the
 // command's comma, and the maintainer's command with saving()
 // ----------------------------------------------------------------
+* Flipped: twoway refuses a stray "' in option text; the maintainer's
+* ruling P4-5 (20oct2026) replaces the 24sep2026 stored-as-typed rule for
+* option text (WP-43 LT-24).  The plain forms are refused, r(109) "type
+* mismatch", in a plot group, after the command's comma and with saving(),
+* and nothing is stored or written; they were stored and drawn.
+tempfile jg_p43
+local jg_l43 "`c(tmpdir)'dash_jse43.log"
+capture erase "`jg_p43'a.html"
+_jg_log_on "`jg_l43'"
 capture noisily dash (scatter mpg weight, title("'90s cars")) (line mpg weight), name(jg43a)
 local jg_r1 = _rc
-capture noisily dash (scatter mpg weight, title(`"'90s cars"')) (line mpg weight), name(jg43b)
-local jg_r2 = _rc
 capture noisily dash (scatter mpg weight) (line mpg weight), title("'90s cars") name(jg43c)
 local jg_r3 = _rc
+capture noisily dash (scatter mpg weight, title("'90s cars")) (line mpg weight), saving("`jg_p43'a.html")
+local jg_r5 = _rc
+_jg_log_off
+cert_log_has "`jg_l43'", needle("type mismatch")
+local jg_m = r(count)
+capture erase "`jg_l43'"
+capture confirm file "`jg_p43'a.html"
+local jg_w = (_rc == 0)
+local jg_reg0 "${dash_graph_registry}"
+capture twoway (scatter mpg weight, title("'90s cars")) (line mpg weight), name(jg43a)
+local jg_t1 = _rc
+capture twoway (scatter mpg weight) (line mpg weight), title("'90s cars") name(jg43c)
+local jg_t3 = _rc
+capture graph drop _all
+capture noisily dash (scatter mpg weight, title(`"'90s cars"')) (line mpg weight), name(jg43b)
+local jg_r2 = _rc
 capture noisily dash (scatter mpg weight) (line mpg weight), title(`"'90s cars"') name(jg43d)
 local jg_r4 = _rc
-mata: st_global("JG_WANT", _jg_pq(char(39) + "90s cars"))
-_jg_stored jg43a "graph_options title"
-local jg_s1 "`r(ok)'"
-_jg_stored jg43c "graph_options title"
-local jg_s3 "`r(ok)'"
 mata: st_global("JG_WANT", _jg_cq(char(39) + "90s cars"))
 _jg_stored jg43b "graph_options title"
 local jg_s2 "`r(ok)'"
 _jg_stored jg43d "graph_options title"
 local jg_s4 "`r(ok)'"
-tempfile jg_p43
+local jg_reg "${dash_graph_registry}"
 _jg_build "`jg_p43'.html"
 local jg_rb = r(rc)
 mata: st_global("JG_WANT", char(39) + "90s cars")
@@ -1676,16 +1712,7 @@ _jg_drawn Title
 local jg_d = r(n)
 capture erase "`jg_p43'.html"
 capture dash clear
-local jg_d1 = 0
 local jg_d2 = 0
-capture erase "`jg_p43'a.html"
-capture noisily dash (scatter mpg weight, title("'90s cars")) (line mpg weight), saving("`jg_p43'a.html")
-local jg_r5 = _rc
-if `jg_r5' == 0 {
-    global JG_PAGE "`jg_p43'a.html"
-    _jg_drawn Title
-    local jg_d1 = r(n)
-}
 capture erase "`jg_p43'b.html"
 capture noisily dash (scatter mpg weight, title(`"'90s cars"')) (line mpg weight), saving("`jg_p43'b.html")
 local jg_r6 = _rc
@@ -1694,16 +1721,16 @@ if `jg_r6' == 0 {
     _jg_drawn Title
     local jg_d2 = r(n)
 }
-capture erase "`jg_p43'a.html"
 capture erase "`jg_p43'b.html"
-display as text "  rc: `jg_r1' `jg_r2' `jg_r3' `jg_r4'  stored: `jg_s1' `jg_s2' `jg_s3' `jg_s4'  build: `jg_rb'  drawn: `jg_d' of 4"
-display as text "  one-line rc: `jg_r5' `jg_r6'  drawn: `jg_d1' `jg_d2'"
-assert `jg_r1' == 0 & `jg_r2' == 0 & `jg_r3' == 0 & `jg_r4' == 0
-assert "`jg_s1'`jg_s2'`jg_s3'`jg_s4'" == "1111"
-assert `jg_rb' == 0 & "`jg_d'" == "4"
-assert `jg_r5' == 0 & `jg_r6' == 0
-assert "`jg_d1'`jg_d2'" == "11"
-display "JSE-43 PASS: a title holding quote-apostrophe in paren mode is stored as typed and drawn, plain and compound"
+display as text "  plain rc: `jg_r1' `jg_r3' `jg_r5' (twoway `jg_t1' `jg_t3')  in twoway's words: `jg_m' of 3  registered: [`jg_reg0']  page written: `jg_w'"
+display as text "  compound rc: `jg_r2' `jg_r4' `jg_r6'  stored: `jg_s2' `jg_s4'  registry: [`jg_reg']  build: `jg_rb'  drawn: `jg_d' of 2, one-line `jg_d2'"
+assert `jg_r1' == 109 & `jg_r3' == 109 & `jg_r5' == 109
+assert `jg_t1' == 109 & `jg_t3' == 109
+assert `jg_m' == 3 & "`jg_reg0'" == "" & `jg_w' == 0
+assert `jg_r2' == 0 & `jg_r4' == 0 & `jg_r6' == 0
+assert "`jg_s2'`jg_s4'" == "11" & "`jg_reg'" == "jg43b jg43d"
+assert `jg_rb' == 0 & "`jg_d'" == "2" & "`jg_d2'" == "1"
+display "JSE-43 PASS: a plain title holding quote-apostrophe in paren mode is refused as twoway refuses it, and the compound one is stored as typed and drawn"
 capture dash clear
 
 // ----------------------------------------------------------------
@@ -1876,15 +1903,19 @@ quietly count if foreign == 0
 local jg_nd = r(N)
 quietly count if foreign == 1
 local jg_nf = r(N)
-capture noisily dash scatter mpg weight, subtitle("'90s sp") note(`"'90s nc"') caption("'90s cp") legend(label(1 "'90s lp")) name(jg46a)
+* Flipped: twoway refuses a stray "' in option text; the maintainer's
+* ruling P4-5 (20oct2026) replaces the 24sep2026 stored-as-typed rule for
+* option text (WP-43 LT-24).  The plain subtitle, note, caption, legend
+* label, by()'s title, xlabel(), text(), dlalign() and afcolor() texts
+* were stored and drawn; dash refuses them now as twoway refuses them and
+* stores nothing (JSE-46r below; Q4305-12 holds the fixture's probes).
+* Every text stored and drawn here is in compound quotes, and by()'s
+* compound title is jg46e's.
+capture noisily dash scatter mpg weight, subtitle(`"'90s sc"') note(`"'90s nc"') caption(`"'90s cc"') legend(label(1 `"'90s lc"')) name(jg46a)
 local jg_r1 = _rc
-capture noisily dash scatter mpg weight, subtitle(`"'90s sc"') note("'90s np") caption(`"'90s cc"') legend(label(1 `"'90s lc"')) name(jg46b)
-local jg_r2 = _rc
-capture noisily dash (scatter mpg weight) (line mpg weight), legend(label(1 "'90s lq")) name(jg46c)
+capture noisily dash (scatter mpg weight) (line mpg weight), legend(label(1 `"'90s lq"')) name(jg46c)
 local jg_r3 = _rc
-capture noisily dash scatter mpg weight, by(foreign, title("'90s by")) name(jg46d)
-local jg_r4 = _rc
-capture noisily dash scatter mpg weight, xaxis(2) xlabel(3000 "'3k", axis(2)) name(jg46f)
+capture noisily dash scatter mpg weight, xaxis(2) xlabel(3000 `"'3k"', axis(2)) name(jg46f)
 local jg_r6 = _rc
 local jg_l46 "`c(tmpdir)'dash_jse46.log"
 _jg_log_on "`jg_l46'"
@@ -1898,9 +1929,9 @@ _jg_log_on "`jg_l46'"
 * carries its text.  Flipped (WP-32): dlalign() is not named, as twoway
 * draws nothing different with it (BUGS.md "dash names options twoway
 * takes and draws nothing of, where twoway is silent").
-capture noisily dash scatter mpg weight, text(30 3000 "'90s tp") dlalign(1 "'x") afcolor("'90s fp") afintensity(1) name(jg46g)
+capture noisily dash scatter mpg weight, text(30 3000 `"'90s tp"') dlalign(1 `"'x"') afcolor(`"'90s fp"') afintensity(1) name(jg46g)
 local jg_r7 = _rc
-capture noisily dash (scatter mpg weight) (line mpg weight), text(30 3000 "'90s tq") name(jg46h)
+capture noisily dash (scatter mpg weight) (line mpg weight), text(30 3000 `"'90s tq"') name(jg46h)
 local jg_r8 = _rc
 _jg_log_off
 * Flipped (WP-30 P1.10): text() is drawn, so the note names at() foo()
@@ -1912,37 +1943,19 @@ cert_log_has "`jg_l46'", needle("text()")
 local jg_m2 = r(count)
 capture erase "`jg_l46'"
 local jg_ok ""
-foreach jg_o in "subtitle sp" "caption cp" {
+foreach jg_o in "subtitle sc" "note nc" "caption cc" {
     gettoken jg_k jg_v : jg_o
-    mata: st_global("JG_WANT", _jg_pq(char(39) + "90s" + st_local("jg_v")))
+    mata: st_global("JG_WANT", _jg_cq(char(39) + "90s" + st_local("jg_v")))
     _jg_stored jg46a "graph_options `jg_k'"
     local jg_ok "`jg_ok'`r(ok)'"
 }
-mata: st_global("JG_WANT", _jg_cq(char(39) + "90s nc"))
-_jg_stored jg46a "graph_options note"
-local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", "label(1 " + _jg_pq(char(39) + "90s lp") + ")")
+mata: st_global("JG_WANT", "label(1 " + _jg_cq(char(39) + "90s lc") + ")")
 _jg_stored jg46a "graph_options legend"
 local jg_ok "`jg_ok'`r(ok)'"
-foreach jg_o in "subtitle sc" "caption cc" {
-    gettoken jg_k jg_v : jg_o
-    mata: st_global("JG_WANT", _jg_cq(char(39) + "90s" + st_local("jg_v")))
-    _jg_stored jg46b "graph_options `jg_k'"
-    local jg_ok "`jg_ok'`r(ok)'"
-}
-mata: st_global("JG_WANT", _jg_pq(char(39) + "90s np"))
-_jg_stored jg46b "graph_options note"
-local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", "label(1 " + _jg_cq(char(39) + "90s lc") + ")")
-_jg_stored jg46b "graph_options legend"
-local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", "label(1 " + _jg_pq(char(39) + "90s lq") + ")")
+mata: st_global("JG_WANT", "label(1 " + _jg_cq(char(39) + "90s lq") + ")")
 _jg_stored jg46c "graph_options legend"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", "foreign, title(" + _jg_pq(char(39) + "90s by") + ")")
-_jg_stored jg46d "graph_options by"
-local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", "3000 " + _jg_pq(char(39) + "3k"))
+mata: st_global("JG_WANT", "3000 " + _jg_cq(char(39) + "3k"))
 _jg_stored jg46f "graph_options xlabel2"
 local jg_ok "`jg_ok'`r(ok)'"
 * Flipped (WP-30 P1.10): text() is stored as an added_text record whose
@@ -1950,7 +1963,7 @@ local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", char(39) + "90s tp")
 _jg_stored jg46g "graph_options added_text 0 at_lines 0"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", "1 " + _jg_pq(char(39) + "x"))
+mata: st_global("JG_WANT", "1 " + _jg_cq(char(39) + "x"))
 _jg_stored jg46g "plots 0 options dlalign"
 local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", char(39) + "90s tq")
@@ -1964,12 +1977,12 @@ local jg_dr ""
 * Flipped (WP-30 P1.2a): subtitle(), note() and caption() were Labels,
 * which was wrong because twoway places them by the scheme's clock; S15
 * draws them as side-panel Titles in both modes.
-foreach jg_v in sp sc np nc cp cc {
+foreach jg_v in sc nc cc {
     mata: st_global("JG_WANT", char(39) + "90s " + st_local("jg_v"))
     _jg_drawn Title
     local jg_dr "`jg_dr'`r(n)'"
 }
-foreach jg_v in lp lq lc {
+foreach jg_v in lq lc {
     mata: st_global("JG_WANT", char(39) + "90s " + st_local("jg_v"))
     _jg_drawn LegendItem
     local jg_dr "`jg_dr'`r(n)'"
@@ -1985,17 +1998,53 @@ _jg_build "`jg_p46'.html"
 local jg_rb2 = r(rc)
 local jg_rows2 "`r(rows)'"
 capture erase "`jg_p46'.html"
-display as text "  rc: `jg_r1' `jg_r2' `jg_r3' `jg_r4' `jg_r5' `jg_r6' `jg_r7' `jg_r8'  stored: `jg_ok'  build: `jg_rb' `jg_rb2'  drawn (sp sc np nc cp cc lp lq lc): `jg_dr'"
-display as text "  rows: [`jg_rows'] of Stata's `jg_nf' `jg_nd' and six of 74  named in the note: `jg_m1' `jg_m2'"
-display as text "  rows with by()'s compound title: [`jg_rows2']"
-assert `jg_r1' == 0 & `jg_r2' == 0 & `jg_r3' == 0 & `jg_r4' == 0
+display as text "  rc: `jg_r1' `jg_r3' `jg_r5' `jg_r6' `jg_r7' `jg_r8'  stored: `jg_ok'  build: `jg_rb' `jg_rb2'  drawn (sc nc cc lq lc): `jg_dr'"
+display as text "  rows: [`jg_rows'] of 74 five times  named in the note: `jg_m1' `jg_m2'"
+display as text "  rows with by()'s compound title: [`jg_rows2'] of Stata's `jg_nf' `jg_nd' and five of 74"
+assert `jg_r1' == 0 & `jg_r3' == 0
 assert `jg_r5' == 0 & `jg_r6' == 0 & `jg_r7' == 0 & `jg_r8' == 0
-assert "`jg_ok'" == "111111111111111"
+assert "`jg_ok'" == "1111111111"
 assert `jg_rb' == 0 & `jg_rb2' == 0
-assert "`jg_dr'" == "111111111"
-assert "`jg_rows'" == "`jg_nf' `jg_nd' 74 74 74 74 74 74"
-assert "`jg_rows2'" == "`jg_nf' `jg_nf' `jg_nd' `jg_nd' 74 74 74 74 74 74"
+assert "`jg_dr'" == "11111"
+assert "`jg_rows'" == "74 74 74 74 74"
+assert "`jg_rows2'" == "`jg_nf' `jg_nd' 74 74 74 74 74"
 assert `jg_m1' == 1 & `jg_m2' == 0
+// JSE-46r -- the plain forms Q4305-12 does not hold, refused as twoway
+// refuses them and nothing stored: a legend label after a paren command's
+// comma, an axis label whose sub-option's comma falls inside the string
+// the apostrophe reopens (r(100) ") required"), and the texts of an
+// option dash keeps silent (dlalign()) and one it names (afcolor()).
+capture dash clear
+local jg_l46r "`c(tmpdir)'dash_jse46r.log"
+_jg_log_on "`jg_l46r'"
+capture noisily dash (scatter mpg weight) (line mpg weight), legend(label(1 "'90s lq")) name(jg46r1)
+local jg_q1 = _rc
+capture noisily dash scatter mpg weight, xaxis(2) xlabel(3000 "'3k", axis(2)) name(jg46r2)
+local jg_q2 = _rc
+capture noisily dash scatter mpg weight, dlalign(1 "'x") name(jg46r3)
+local jg_q3 = _rc
+capture noisily dash scatter mpg weight, afcolor("'90s fp") name(jg46r4)
+local jg_q4 = _rc
+_jg_log_off
+cert_log_has "`jg_l46r'", needle("type mismatch")
+local jg_k1 = r(count)
+cert_log_has "`jg_l46r'", needle(") required")
+local jg_k2 = r(count)
+capture erase "`jg_l46r'"
+local jg_reg0 "${dash_graph_registry}"
+capture twoway (scatter mpg weight) (line mpg weight), legend(label(1 "'90s lq")) name(jg46r1)
+local jg_t1 = _rc
+capture twoway scatter mpg weight, xaxis(2) xlabel(3000 "'3k", axis(2)) name(jg46r2)
+local jg_t2 = _rc
+capture twoway scatter mpg weight, dlalign(1 "'x") name(jg46r3)
+local jg_t3 = _rc
+capture twoway scatter mpg weight, afcolor("'90s fp") name(jg46r4)
+local jg_t4 = _rc
+capture graph drop _all
+display as text "  JSE-46r rc: `jg_q1' `jg_q2' `jg_q3' `jg_q4' (twoway `jg_t1' `jg_t2' `jg_t3' `jg_t4')  type mismatch: `jg_k1'  ) required: `jg_k2'  registered: [`jg_reg0']"
+assert `jg_q1' == 109 & `jg_q2' == 100 & `jg_q3' == 100 & `jg_q4' == 109
+assert `jg_t1' == `jg_q1' & `jg_t2' == `jg_q2' & `jg_t3' == `jg_q3' & `jg_t4' == `jg_q4'
+assert `jg_k1' == 2 & `jg_k2' == 2 & "`jg_reg0'" == ""
 // The axis and side titles are declared as title() is, string asis, so the
 // quotes the user typed reach the spec.  Declared string, Stata stripped
 // them: ytitle("line 1" "line 2") was stored, and drawn, as one line, and
@@ -2010,7 +2059,12 @@ assert `jg_m1' == 1 & `jg_m2' == 0
 capture dash clear
 capture noisily dash scatter mpg weight, ytitle("line 1" "line 2") xtitle(`"a "b" c"') name(jg46i)
 local jg_t1 = _rc
-capture noisily dash scatter mpg weight, xtitle("'90s x") ytitle(`"'90s y"') t1title("'90s t1") b2title(`"'90s b2"') name(jg46j)
+* Flipped: twoway refuses a stray "' in option text; the maintainer's
+* ruling P4-5 (20oct2026) replaces the 24sep2026 stored-as-typed rule for
+* option text (WP-43 LT-24).  dash refuses the plain xtitle("'90s x") and
+* t1title("'90s t1") with twoway now (Q4305-12), so they are written in
+* compound quotes here; they were stored and drawn plain.
+capture noisily dash scatter mpg weight, xtitle(`"'90s x"') ytitle(`"'90s y"') t1title(`"'90s t1"') b2title(`"'90s b2"') name(jg46j)
 local jg_t2 = _rc
 capture noisily dash (scatter mpg weight) (line mpg weight, yaxis(2) xaxis(2)), ytitle("line 1" "line 2", axis(2)) xtitle(`"a "b" c"', axis(2)) name(jg46k)
 local jg_t3 = _rc
@@ -2025,13 +2079,13 @@ _jg_stored jg46i "graph_options xtitle"
 local jg_tk "`jg_tk'`r(ok)'"
 _jg_stored jg46k "graph_options xtitle2"
 local jg_tk "`jg_tk'`r(ok)'"
-mata: st_global("JG_WANT", _jg_pq(char(39) + "90s x"))
+mata: st_global("JG_WANT", _jg_cq(char(39) + "90s x"))
 _jg_stored jg46j "graph_options xtitle"
 local jg_tk "`jg_tk'`r(ok)'"
 mata: st_global("JG_WANT", _jg_cq(char(39) + "90s y"))
 _jg_stored jg46j "graph_options ytitle"
 local jg_tk "`jg_tk'`r(ok)'"
-mata: st_global("JG_WANT", _jg_pq(char(39) + "90s t1"))
+mata: st_global("JG_WANT", _jg_cq(char(39) + "90s t1"))
 _jg_stored jg46j "graph_options t1title"
 local jg_tk "`jg_tk'`r(ok)'"
 mata: st_global("JG_WANT", _jg_cq(char(39) + "90s b2"))
@@ -2058,7 +2112,7 @@ assert `jg_rb3' == 0
 // the count of LinearAxis models with that exact label goes from 1 to 2
 // (jg46i's left axis, and now jg46k's right one).
 assert "`jg_ta'" == "211"
-display "JSE-46 PASS: subtitle, note, caption, a legend label, by()'s title, text(), an unknown option and the axis and side titles are stored as typed, drawn or named"
+display "JSE-46 PASS: compound-quoted subtitle, note, caption, legend labels, by()'s title, text(), an unknown option and the axis and side titles are stored as typed, drawn or named; plain ones are refused as twoway refuses them"
 capture dash clear
 
 // jg46l (WP-28 B7): dash's right axis reads ytitle(..., axis(2)) the way twoway
@@ -2111,19 +2165,35 @@ quietly count if make == "', name(jgpwn) saving(`jg_pwn2') '"
 local jg_n47b = r(N)
 quietly count if make == "' name(jgpwn) '"
 local jg_n47c = r(N)
+* Flipped: twoway refuses a stray "' in option text; the maintainer's
+* ruling P4-5 (20oct2026) replaces the 24sep2026 stored-as-typed rule for
+* option text (WP-43 LT-24).  The title that closes its quote is refused
+* now as twoway refuses it, r(109) "type mismatch", registered and
+* one-line, and nothing is stored or written; it was stored as text.  The
+* qualifiers are kept as typed, as before.
+tempfile jg_p47
+local jg_l47a "`c(tmpdir)'dash_jse47a.log"
+capture erase "`jg_p47'o.html"
+_jg_log_on "`jg_l47a'"
 capture noisily dash scatter mpg weight, title("' name(jgpwn) saving(`jg_pwn1') '") name(jg47a)
 local jg_r1 = _rc
+capture noisily dash scatter mpg weight, title("' saving(`jg_pwn3') name(jgpwn) '") saving("`jg_p47'o.html")
+local jg_r4 = _rc
+_jg_log_off
+cert_log_has "`jg_l47a'", needle("type mismatch")
+local jg_m = r(count)
+capture erase "`jg_l47a'"
+local jg_reg0 "${dash_graph_registry}"
+capture confirm file "`jg_p47'o.html"
+local jg_wo = (_rc == 0)
+capture twoway scatter mpg weight, title("' name(jgpwn) saving(`jg_pwn1') '") name(jg47a)
+local jg_t1 = _rc
+capture graph drop _all
 capture noisily dash scatter mpg weight if make == "', name(jgpwn) saving(`jg_pwn2') '", name(jg47b)
 local jg_r2 = _rc
 capture noisily dash (scatter mpg weight) (line mpg weight) if make == "' name(jgpwn) '", name(jg47c)
 local jg_r3 = _rc
 local jg_ok ""
-mata: st_global("JG_WANT", _jg_pq(char(39) + " name(jgpwn) saving(" + st_local("jg_pwn1") + ") " + char(39)))
-_jg_stored jg47a "graph_options title"
-local jg_ok "`jg_ok'`r(ok)'"
-global JG_WANT "jg47a"
-_jg_stored jg47a "graph_options name"
-local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", "make == " + _jg_pq(char(39) + ", name(jgpwn) saving(" + st_local("jg_pwn2") + ") " + char(39)))
 _jg_stored jg47b "plots 0 if_expr"
 local jg_ok "`jg_ok'`r(ok)'"
@@ -2136,55 +2206,51 @@ local jg_ok "`jg_ok'`r(ok)'"
 global JG_WANT "jg47c"
 _jg_stored jg47c "graph_options name"
 local jg_ok "`jg_ok'`r(ok)'"
-// Neither graph options holds a saving() the text wrote.
-mata: st_local("jg_nosave", strofreal(!strpos(st_global("dash_json_jg47a"), char(34) + "saving" + char(34)) & !strpos(st_global("dash_json_jg47b"), char(34) + "saving" + char(34))))
+// The graph options hold no saving() the text wrote.
+mata: st_local("jg_nosave", strofreal(!strpos(st_global("dash_json_jg47b"), char(34) + "saving" + char(34))))
 local jg_reg "${dash_graph_registry}"
 local jg_pj `"${dash_json_jgpwn}"'
-tempfile jg_p47
 _jg_build "`jg_p47'.html"
 local jg_rb = r(rc)
 local jg_rows "`r(rows)'"
 capture erase "`jg_p47'.html"
-// The one-line form: the page is written where saving() says, and nowhere
-// the title says.
 capture dash clear
-capture erase "`jg_p47'o.html"
-local jg_d1 = 0
-capture noisily dash scatter mpg weight, title("' saving(`jg_pwn3') name(jgpwn) '") saving("`jg_p47'o.html")
-local jg_r4 = _rc
-if `jg_r4' == 0 {
-    global JG_PAGE "`jg_p47'o.html"
-    mata: st_global("JG_WANT", char(39) + " saving(" + st_local("jg_pwn3") + ") name(jgpwn) " + char(39))
-    _jg_drawn Title
-    local jg_d1 = r(n)
-}
-local jg_reg1 "${dash_graph_registry}"
-capture erase "`jg_p47'o.html"
 local jg_w ""
 foreach jg_f in "`jg_pwn1'" "`jg_pwn2'" "`jg_pwn3'" {
     capture confirm file "`jg_f'"
     local jg_w "`jg_w'`=(_rc == 0)'"
 }
-display as text "  rc: `jg_r1' `jg_r2' `jg_r3' `jg_r4'  stored: `jg_ok'  no saving: `jg_nosave'  registry: [`jg_reg'] then [`jg_reg1']"
-display as text "  build: `jg_rb'  rows: [`jg_rows'] of Stata's `jg_n47b' `jg_n47c' 74  one-line title drawn: `jg_d1'  files written at the texts' paths: `jg_w'"
-assert `jg_r1' == 0 & `jg_r2' == 0 & `jg_r3' == 0 & `jg_r4' == 0
-assert "`jg_ok'" == "111111"
+display as text "  title rc: `jg_r1' `jg_r4' (twoway `jg_t1')  in twoway's words: `jg_m' of 2  registered: [`jg_reg0']  one-line page written: `jg_wo'"
+display as text "  qualifier rc: `jg_r2' `jg_r3'  stored: `jg_ok'  no saving: `jg_nosave'  registry: [`jg_reg']"
+display as text "  build: `jg_rb'  rows: [`jg_rows'] of Stata's `jg_n47b' `jg_n47c'  files written at the texts' paths: `jg_w'"
+assert `jg_r1' == 109 & `jg_r4' == 109 & `jg_t1' == 109
+assert `jg_m' == 2 & "`jg_reg0'" == "" & `jg_wo' == 0
+assert `jg_r2' == 0 & `jg_r3' == 0
+assert "`jg_ok'" == "1111"
 assert `jg_nosave' == 1
-assert "`jg_reg'" == "jg47a jg47b jg47c" & `"`jg_pj'"' == "" & "`jg_reg1'" == ""
+assert "`jg_reg'" == "jg47b jg47c" & `"`jg_pj'"' == ""
 assert `jg_n47b' == 0 & `jg_n47c' == 0
-assert `jg_rb' == 0 & "`jg_rows'" == "`jg_n47b' `jg_n47c' 74"
-assert `jg_d1' == 1
+assert `jg_rb' == 0 & "`jg_rows'" == "`jg_n47b' `jg_n47c'"
 assert "`jg_w'" == "000"
 // The same quote in a value dash checks meets dash's check, never a raw
 // Stata error, and does not get past it: a weight expression is refused as
-// one dash cannot evaluate (twoway: r(132) "too few quotes"); a legend
-// direction word beside a quoted label is refused as twoway refuses the
-// word, in a segment and after a paren command's comma (twoway refuses the
-// plain label itself, r(100)); by() on a variable that does not exist is
-// twoway's r(111); a name holding a double quote is refused as a name; and
-// a function's expression holding one is refused r(198), as twoway refuses
-// it, and nothing is registered (measured 24sep2026; flipped by WP-29 P0.6
-// from "stored whole, rc 0": Stata's own generator now evaluates it).
+// one dash cannot evaluate (twoway: r(132) "too few quotes"); a name
+// holding a double quote is refused as a name; and a function's
+// expression holding one is refused r(198), as twoway refuses it, and
+// nothing is registered (measured 24sep2026; flipped by WP-29 P0.6 from
+// "stored whole, rc 0": Stata's own generator now evaluates it).
+* Flipped: twoway refuses a stray "' in option text; the maintainer's
+* ruling P4-5 (20oct2026) replaces the 24sep2026 stored-as-typed rule for
+* option text (WP-43 LT-24).  A legend label "'90s beside a direction
+* word, in a segment and after a paren command's comma, is refused as
+* twoway refuses it, r(100) ") required", before the word is read; it was
+* "option top not allowed" r(198).  by()'s title "'x on a variable that
+* does not exist is refused r(100) too, before anything is stored; it was
+* "by(): variable nosuch not found" r(111).  twoway reads by()'s
+* variables -- and every plot's type, variables and qualifier, name() and
+* the option names -- before the stray and says r(111) here (measured
+* 04nov2026); dash reads the stray first, a difference left open in WP-43
+* LT-24's hand-back.
 local jg_l47 "`c(tmpdir)'dash_jse47.log"
 _jg_log_on "`jg_l47'"
 capture noisily dash lfit mpg weight [aw=cond(make=="'x",1,2)], name(jg47w)
@@ -2207,24 +2273,30 @@ local jg_k1 = r(count)
 // it showed [aweight=cond(make==] (measured 24sep2026).
 cert_log_has "`jg_l47'", needle(`"x",1,2)] cannot be evaluated"')
 local jg_k1 = `jg_k1' + r(count)
-cert_log_has "`jg_l47'", needle("option top not allowed")
+cert_log_has "`jg_l47'", needle(") required")
 local jg_k2 = r(count)
-cert_log_has "`jg_l47'", needle("by(): variable nosuch not found")
-local jg_k3 = r(count)
 cert_log_has "`jg_l47'", needle("dash: invalid graph name")
 local jg_k4 = r(count)
 capture erase "`jg_l47'"
+capture twoway scatter mpg weight, legend(label(1 "'90s") top) name(jg47l)
+local jg_tw2 = _rc
+capture twoway (scatter mpg weight) (line mpg weight), legend(label(1 "'90s") top) name(jg47m)
+local jg_tw3 = _rc
+capture twoway scatter mpg weight, by(nosuch, title("'x")) name(jg47n)
+local jg_tw4 = _rc
+capture graph drop _all
 capture twoway function y = strlen("'x"), range(0 1) nodraw
 local jg_tw5 = _rc
 capture noisily dash function y = strlen("'x"), range(0 1) name(jg47f)
 local jg_q5 = _rc
 local jg_reg2 "${dash_graph_registry}"
-display as text "  refused: `jg_q1' `jg_q2' `jg_q3' `jg_q4' `jg_q7'  in dash's words: `jg_k1' `jg_k2' `jg_k3' `jg_k4'  function rc: `jg_q5' (twoway `jg_tw5')  registry: [`jg_reg2']"
-assert `jg_q1' == 198 & `jg_q2' == 198 & `jg_q3' == 198 & `jg_q4' == 111 & `jg_q7' == 198
-assert `jg_k1' == 2 & `jg_k2' == 2 & `jg_k3' == 1 & `jg_k4' == 1
+display as text "  refused: `jg_q1' `jg_q2' `jg_q3' `jg_q4' `jg_q7' (twoway `jg_tw2' `jg_tw3' `jg_tw4')  in dash's or twoway's words: `jg_k1' `jg_k2' `jg_k4'  function rc: `jg_q5' (twoway `jg_tw5')  registry: [`jg_reg2']"
+assert `jg_q1' == 198 & `jg_q2' == 100 & `jg_q3' == 100 & `jg_q4' == 100 & `jg_q7' == 198
+assert `jg_tw2' == 100 & `jg_tw3' == 100 & `jg_tw4' == 111
+assert `jg_k1' == 2 & `jg_k2' == 3 & `jg_k4' == 1
 assert `jg_q5' == 198 & `jg_tw5' == 198
 assert "`jg_reg2'" == ""
-display "JSE-47 PASS: a title, qualifier or value that closes its quote is text or meets dash's own check, and names and writes nothing"
+display "JSE-47 PASS: a title that closes its quote is refused as twoway refuses it, a qualifier that does is text, a value dash checks meets its check, and nothing is named or written"
 capture dash clear
 
 // ----------------------------------------------------------------
@@ -2249,16 +2321,47 @@ quietly count if make != "`jg_t'" & foreign == 1
 local jg_n48 = r(N)
 capture dash clear
 quietly dash scatter mpg weight, name(jg48k)
-capture noisily dash scatter mpg weight, title("`jg_t'") name(jg48a)
+* Flipped: twoway refuses a stray "' in option text; the maintainer's
+* ruling P4-5 (20oct2026) replaces the 24sep2026 stored-as-typed rule for
+* option text (WP-43 LT-24).  The plain title("<text>"), which opens with
+* "' and a blank, is refused as twoway refuses it, r(109) "type
+* mismatch" -- registered, after a paren command's comma and one-line --
+* and nothing is stored, written or run; it was stored and drawn.  The
+* title is written in compound quotes for the rest of the case; the
+* qualifier is kept as typed, as before.
+tempfile jg_p48
+local jg_l48 "`c(tmpdir)'dash_jse48.log"
+capture erase "`jg_p48'p.html"
+_jg_log_on "`jg_l48'"
+capture noisily dash scatter mpg weight, title("`jg_t'") name(jg48p)
+local jg_q1 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight), title("`jg_t'") name(jg48q)
+local jg_q2 = _rc
+capture noisily dash scatter mpg weight if make != "`jg_t'" & foreign == 1, title("`jg_t'") saving("`jg_p48'p.html")
+local jg_q3 = _rc
+_jg_log_off
+cert_log_has "`jg_l48'", needle("type mismatch")
+local jg_k = r(count)
+capture erase "`jg_l48'"
+capture confirm file "`jg_p48'p.html"
+local jg_wp = (_rc == 0)
+local jg_reg0 "${dash_graph_registry}"
+capture twoway scatter mpg weight, title("`jg_t'") name(jg48p)
+local jg_tw = _rc
+capture graph drop _all
+display as text "  plain title rc: `jg_q1' `jg_q2' `jg_q3' (twoway `jg_tw')  in twoway's words: `jg_k' of 3  registry: [`jg_reg0']  page written: `jg_wp'"
+assert `jg_q1' == 109 & `jg_q2' == 109 & `jg_q3' == 109 & `jg_tw' == 109
+assert `jg_k' == 3 & "`jg_reg0'" == "jg48k" & `jg_wp' == 0
+capture noisily dash scatter mpg weight, title(`"`jg_t'"') name(jg48a)
 local jg_r1 = _rc
 capture noisily dash scatter mpg weight if make != "`jg_t'" & foreign == 1, name(jg48b)
 local jg_r2 = _rc
-capture noisily dash (scatter mpg weight) (line mpg weight), title("`jg_t'") name(jg48c)
+capture noisily dash (scatter mpg weight) (line mpg weight), title(`"`jg_t'"') name(jg48c)
 local jg_r3 = _rc
 capture noisily dash (scatter mpg weight) (line mpg weight) if make != "`jg_t'" & foreign == 1, name(jg48d)
 local jg_r4 = _rc
 local jg_ok ""
-mata: st_global("JG_WANT", _jg_pq(st_local("jg_t")))
+mata: st_global("JG_WANT", _jg_cq(st_local("jg_t")))
 _jg_stored jg48a "graph_options title"
 local jg_ok "`jg_ok'`r(ok)'"
 _jg_stored jg48c "graph_options title"
@@ -2269,7 +2372,6 @@ local jg_ok "`jg_ok'`r(ok)'"
 _jg_stored jg48d "if_expr"
 local jg_ok "`jg_ok'`r(ok)'"
 local jg_reg "${dash_graph_registry}"
-tempfile jg_p48
 _jg_build "`jg_p48'.html"
 local jg_rb = r(rc)
 local jg_rows "`r(rows)'"
@@ -2287,7 +2389,7 @@ capture erase "`jg_p48'o.html"
 local jg_d1 = 0
 local jg_row1 ""
 local jg_mk1 = 1
-capture noisily dash scatter mpg weight if make != "`jg_t'" & foreign == 1, title("`jg_t'") saving("`jg_p48'o.html")
+capture noisily dash scatter mpg weight if make != "`jg_t'" & foreign == 1, title(`"`jg_t'"') saving("`jg_p48'o.html")
 local jg_r5 = _rc
 if `jg_r5' == 0 {
     global JG_PAGE "`jg_p48'o.html"
@@ -2311,7 +2413,7 @@ assert `jg_n48' == `jg_n22'
 assert "`jg_rows'" == "`jg_n48' `jg_n48' 74 74 74"
 assert "`jg_d'" == "2" & "`jg_d1'" == "1" & "`jg_row1'" == "`jg_n48'"
 assert `jg_mk' == 0 & `jg_mk1' == 0 & `jg_ran' == 0
-display "JSE-48 PASS: SMCL, markup, Python code, JSON punctuation and an =exp in a title or qualifier arrive as written and run nowhere"
+display "JSE-48 PASS: SMCL, markup, Python code, JSON punctuation and an =exp in a title or qualifier arrive as written and run nowhere; the plain title is refused as twoway refuses it"
 capture dash clear
 
 // ----------------------------------------------------------------
@@ -2320,14 +2422,37 @@ capture dash clear
 // apostrophes -- about 40,000 characters, every one of them a quote or an
 // apostrophe -- registered, stored whole and built in bounded time.
 // ----------------------------------------------------------------
+* Flipped: twoway refuses a stray "' in option text; the maintainer's
+* ruling P4-5 (20oct2026) replaces the 24sep2026 stored-as-typed rule for
+* option text (WP-43 LT-24).  The plain title of 5,000 "'" strings opens
+* with "' and is refused as twoway refuses it, r(100) ") required", in
+* bounded time, and nothing is stored; it was stored whole and drawn.
+* It is given alone: twoway reads the qualifier first and refuses its
+* "' r(198), where dash keeps a qualifier as typed (P4-5).
+* The title stored and drawn is 5,000 strings each an apostrophe in
+* compound quotes; the qualifier is kept as typed, as before.
 mata: st_local("jg_t49", invtokens(J(1, 5000, char(34) + char(39) + char(34)), " "))
+mata: st_local("jg_t49c", invtokens(J(1, 5000, char(96) + char(34) + char(39) + char(34) + char(39)), " "))
 mata: st_local("jg_q49", 20000 * char(39))
 quietly count if make != "`macval(jg_q49)'" & foreign == 1
 local jg_n49 = r(N)
 capture dash clear
+timer clear 48
+timer on 48
+capture noisily dash scatter mpg weight, title(`macval(jg_t49)') name(jg49p)
+local jg_r0 = _rc
+timer off 48
+quietly timer list 48
+local jg_tm0 = r(t48)
+local jg_reg0 "${dash_graph_registry}"
+capture twoway scatter mpg weight, title(`macval(jg_t49)') name(jg49p)
+local jg_tw0 = _rc
+capture graph drop _all
+display as text "  plain title rc: `jg_r0' (twoway `jg_tw0') in `jg_tm0' s  registry: [`jg_reg0']"
+assert `jg_r0' == 100 & `jg_tw0' == 100 & "`jg_reg0'" == "" & `jg_tm0' < 120
 timer clear 49
 timer on 49
-capture noisily dash scatter mpg weight if make != "`macval(jg_q49)'" & foreign == 1, title(`macval(jg_t49)') name(jg49)
+capture noisily dash scatter mpg weight if make != "`macval(jg_q49)'" & foreign == 1, title(`macval(jg_t49c)') name(jg49)
 local jg_r1 = _rc
 tempfile jg_p49
 _jg_build "`jg_p49'.html"
@@ -2337,7 +2462,7 @@ timer off 49
 quietly timer list 49
 local jg_tm = r(t49)
 local jg_ok ""
-mata: st_global("JG_WANT", st_local("jg_t49"))
+mata: st_global("JG_WANT", st_local("jg_t49c"))
 _jg_stored jg49 "graph_options title"
 local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", "make != " + _jg_pq(st_local("jg_q49")) + " & foreign == 1")
@@ -2358,7 +2483,317 @@ assert `jg_rb' == 0
 assert "`jg_rows'" == "`jg_n49'"
 assert `jg_na' == 5000 & `jg_only' == 1
 assert `jg_tm' < 120
-display "JSE-49 PASS: 40,000 characters of quotes and apostrophes in a title and a qualifier are stored whole and built in bounded time"
+display "JSE-49 PASS: 40,000 characters of quotes and apostrophes in a title and a qualifier are refused as twoway refuses them or stored whole, and built, in bounded time"
+capture dash clear
+
+// ----------------------------------------------------------------
+// Q4305-12 -- WP-43 LT-24: every probe of test/fixtures/quote_truth.json
+// through dash gives twoway's return code and first line
+// ----------------------------------------------------------------
+// A stray "' in option text -- outside compound quotes, inside an option's
+// parentheses -- is refused before anything is stored, with twoway's rc
+// and words (maintainer ruling P4-5, 20oct2026): r(100) ") required",
+// r(109) "type mismatch", r(132) "too few/too many ')' or ']'" or r(198)
+// "parentheses do not balance", by what follows it.  The three rc 0
+// controls (an apostrophe after a word, the compound forms) draw: the page
+// is written.  After a refusal nothing is registered and no page is
+// written.  Each probe is a literal line of this file, written from the
+// fixture: a command held in a macro splits at its own "'.  The fixture's
+// twoway side is the oracle; its dash side is the answer before LT-24.
+capture program drop _q12_open
+program define _q12_open
+    version 16.0
+    args key
+    capture dash clear
+    capture log close _q12log
+    capture erase "`c(tmpdir)'dash_q12_`key'.log"
+    quietly log using "`c(tmpdir)'dash_q12_`key'.log", name(_q12log) text replace
+end
+capture program drop _q12_close
+program define _q12_close
+    local rc = _rc
+    local fn `"`r(filename)'"'
+    version 16.0
+    args key
+    quietly log close _q12log
+    local pg = 0
+    if `: length local fn' {
+        capture confirm file `"`fn'"'
+        local pg = (_rc == 0)
+        capture erase `"`fn'"'
+    }
+    global Q12_KEYS "${Q12_KEYS} `key'"
+    global Q12_R_`key' "`rc' `pg' `: word count ${dash_graph_registry}'"
+    capture dash clear
+end
+global Q12_KEYS ""
+global Q12_DIR "`c(tmpdir)'"
+local jg_ls = c(linesize)
+set linesize 255
+_q12_open apostrophe
+capture noisily dash scatter mpg weight, title("rock '90s")
+_q12_close apostrophe
+_q12_open bars
+capture noisily dash scatter mpg weight, title("'90s") || line mpg weight
+_q12_close bars
+_q12_open bars_after
+capture noisily dash scatter mpg weight || line mpg weight, title("'90s")
+_q12_close bars_after
+_q12_open by_note
+capture noisily dash scatter mpg weight, by(foreign, note("'90s"))
+_q12_close by_note
+_q12_open by_title
+capture noisily dash scatter mpg weight, by(foreign, title("'90s"))
+_q12_close by_title
+_q12_open caption
+capture noisily dash scatter mpg weight, caption("'90s")
+_q12_close caption
+_q12_open ch_amp
+capture noisily dash scatter mpg weight, title("'a&b")
+_q12_close ch_amp
+_q12_open ch_at
+capture noisily dash scatter mpg weight, title("'a@b")
+_q12_close ch_at
+_q12_open ch_bang
+capture noisily dash scatter mpg weight, title("'a!b")
+_q12_close ch_bang
+_q12_open ch_bar
+capture noisily dash scatter mpg weight, title("'a|b")
+_q12_close ch_bar
+_q12_open ch_blank
+capture noisily dash scatter mpg weight, title("'a b")
+_q12_close ch_blank
+_q12_open ch_bslash
+capture noisily dash scatter mpg weight, title("'a\b")
+_q12_close ch_bslash
+_q12_open ch_caret
+capture noisily dash scatter mpg weight, title("'a^b")
+_q12_close ch_caret
+_q12_open ch_colon
+capture noisily dash scatter mpg weight, title("'a:b")
+_q12_close ch_colon
+_q12_open ch_comma
+capture noisily dash scatter mpg weight, title("'a,b")
+_q12_close ch_comma
+_q12_open ch_dot
+capture noisily dash scatter mpg weight, title("'a.b")
+_q12_close ch_dot
+_q12_open ch_eq
+capture noisily dash scatter mpg weight, title("'a=b")
+_q12_close ch_eq
+_q12_open ch_gt
+capture noisily dash scatter mpg weight, title("'a>b")
+_q12_close ch_gt
+_q12_open ch_hash
+capture noisily dash scatter mpg weight, title("'a#b")
+_q12_close ch_hash
+_q12_open ch_lbr
+capture noisily dash scatter mpg weight, title("'a[b")
+_q12_close ch_lbr
+_q12_open ch_lbrace
+capture noisily dash scatter mpg weight, title("'a{b")
+_q12_close ch_lbrace
+_q12_open ch_lpar
+capture noisily dash scatter mpg weight, title("'a(b")
+_q12_close ch_lpar
+_q12_open ch_lt
+capture noisily dash scatter mpg weight, title("'a<b")
+_q12_close ch_lt
+_q12_open ch_minus
+capture noisily dash scatter mpg weight, title("'a-b")
+_q12_close ch_minus
+_q12_open ch_pct
+capture noisily dash scatter mpg weight, title("'a%b")
+_q12_close ch_pct
+_q12_open ch_plus
+capture noisily dash scatter mpg weight, title("'a+b")
+_q12_close ch_plus
+_q12_open ch_qmark
+capture noisily dash scatter mpg weight, title("'a?b")
+_q12_close ch_qmark
+_q12_open ch_rbr
+capture noisily dash scatter mpg weight, title("'a]b")
+_q12_close ch_rbr
+_q12_open ch_rbrace
+capture noisily dash scatter mpg weight, title("'a}b")
+_q12_close ch_rbrace
+_q12_open ch_rpar
+capture noisily dash scatter mpg weight, title("'a)b")
+_q12_close ch_rpar
+_q12_open ch_semi
+capture noisily dash scatter mpg weight, title("'a;b")
+_q12_close ch_semi
+_q12_open ch_slash
+capture noisily dash scatter mpg weight, title("'a/b")
+_q12_close ch_slash
+_q12_open ch_star
+capture noisily dash scatter mpg weight, title("'a*b")
+_q12_close ch_star
+_q12_open ch_tab
+capture noisily dash scatter mpg weight, title("'a	b")
+_q12_close ch_tab
+_q12_open ch_tilde
+capture noisily dash scatter mpg weight, title("'a~b")
+_q12_close ch_tilde
+_q12_open closing
+capture noisily dash scatter mpg weight, title("abc"')
+_q12_close closing
+_q12_open closing_more
+capture noisily dash scatter mpg weight, title("abc"'d")
+_q12_close closing_more
+_q12_open compound
+capture noisily dash scatter mpg weight, title(`"'90s"')
+_q12_close compound
+_q12_open compound_blank
+capture noisily dash scatter mpg weight, title(`"'90s cars"')
+_q12_close compound_blank
+_q12_open group
+capture noisily dash (scatter mpg weight, title("'90s"))
+_q12_close group
+_q12_open group_after
+capture noisily dash (scatter mpg weight), title("'90s")
+_q12_close group_after
+_q12_open leg_label
+capture noisily dash (scatter mpg weight) (scatter trunk weight), legend(label(1 "'90s"))
+_q12_close leg_label
+_q12_open leg_order
+capture noisily dash (scatter mpg weight) (scatter trunk weight), legend(order(1 "'90s"))
+_q12_close leg_order
+_q12_open leg_subtitle
+capture noisily dash (scatter mpg weight) (scatter trunk weight), legend(subtitle("'90s"))
+_q12_close leg_subtitle
+_q12_open leg_title
+capture noisily dash (scatter mpg weight) (scatter trunk weight), legend(title("'90s"))
+_q12_close leg_title
+_q12_open note
+capture noisily dash scatter mpg weight, note("'90s")
+_q12_close note
+_q12_open subtitle
+capture noisily dash scatter mpg weight, subtitle("'90s")
+_q12_close subtitle
+_q12_open t1title
+capture noisily dash scatter mpg weight, t1title("'90s")
+_q12_close t1title
+_q12_open text
+capture noisily dash scatter mpg weight, text(30 3000 "'90s")
+_q12_close text
+_q12_open title
+capture noisily dash scatter mpg weight, title("'90s")
+_q12_close title
+_q12_open title_blank
+capture noisily dash scatter mpg weight, title("'90s cars")
+_q12_close title_blank
+_q12_open title_size
+capture noisily dash scatter mpg weight, title("'90s", size(large))
+_q12_close title_size
+_q12_open title_then_opt
+capture noisily dash scatter mpg weight, title("'90s") msize(small)
+_q12_close title_then_opt
+_q12_open two_strays
+capture noisily dash scatter mpg weight, title("'a") subtitle("'b")
+_q12_close two_strays
+_q12_open xlabel
+capture noisily dash scatter mpg weight, xlabel(2000 "'90s")
+_q12_close xlabel
+_q12_open xtitle
+capture noisily dash scatter mpg weight, xtitle("'90s")
+_q12_close xtitle
+_q12_open ytitle
+capture noisily dash scatter mpg weight, ytitle("'90s")
+_q12_close ytitle
+set linesize `jg_ls'
+// For each probe: rc, page written, graphs registered, and the first line
+// printed -- the log less the command echo, wrapped lines and the log's
+// own header, as scripts/extract_quote_truth.do reads it.
+python:
+import json as _q12_json
+import os as _q12_os
+from sfi import Macro as _q12_M
+
+def _q12_check():
+    with open(_q12_os.path.join("fixtures", "quote_truth.json"), encoding="utf-8") as fh:
+        fx = _q12_json.load(fh)
+    keys = _q12_M.getGlobal("Q12_KEYS").split()
+    bad, refused = [], 0
+    for key in keys:
+        path = _q12_os.path.join(_q12_M.getGlobal("Q12_DIR"), "dash_q12_" + key + ".log")
+        with open(path, encoding="utf-8") as fh:
+            lines = [ln.strip() for ln in fh if ln.strip() and not ln.startswith((".", ">")) and not ln.lstrip().startswith(("name:", "log:", "log type:", "opened on:", "closed on:")) and not set(ln.strip()) <= set("-") and not ln.startswith("dash: dashboard saved to ")]
+        _q12_os.remove(path)
+        rc, page, nreg = (int(x) for x in _q12_M.getGlobal("Q12_R_" + key).split())
+        tw = fx[key]["twoway"]
+        first = lines[0] if lines else ""
+        if tw["rc"] == 0:
+            ok = rc == 0 and page == 1
+        else:
+            refused += 1
+            ok = rc == tw["rc"] and first == tw["first"] and page == 0 and nreg == 0
+        if not ok:
+            bad.append("%s: dash rc %d first [%s] page %d registered %d, twoway rc %d [%s]" % (key, rc, first, page, nreg, tw["rc"], tw["first"]))
+    _q12_M.setGlobal("Q12_N", str(len(keys)))
+    _q12_M.setGlobal("Q12_NFX", str(len([k for k in fx if k != "_meta"])))
+    _q12_M.setGlobal("Q12_REF", str(refused))
+    _q12_M.setGlobal("Q12_BAD", " | ".join(bad))
+
+_q12_check()
+end
+display as text "  probes: $Q12_N of the fixture's $Q12_NFX, twoway refuses $Q12_REF"
+mata: st_local("q12_bad", strofreal(st_global("Q12_BAD") != ""))
+if `q12_bad' {
+    display as error "Q4305-12 FAIL:"
+    mata: _dash_say("err", "  ", st_global("Q12_BAD"), "")
+}
+else display "Q4305-12 PASS: every quote_truth.json probe through dash gives twoway's rc and first line; the rc 0 controls draw, and nothing is stored after a refusal"
+assert "$Q12_N" == "$Q12_NFX" & "$Q12_N" == "57" & `q12_bad' == 0
+capture dash clear
+
+// ----------------------------------------------------------------
+// Q4305-13 -- WP-43 LT-24: the stray outside every option's parentheses
+// and the compound form are kept as typed (maintainer ruling P4-5)
+// ----------------------------------------------------------------
+// The refusal reads option text only.  A "' in a qualifier -- a function's
+// parentheses there are not an option's: inlist( -- before the comma, in
+// a plot group and after the plot groups, is stored as typed and gives
+// Stata's rows; a compound-quoted '90s beside it is drawn.
+quietly count if inlist(make, "'x") | foreign == 1
+local q13_n = r(N)
+capture noisily dash scatter mpg weight if inlist(make, "'x") | foreign == 1, title(`"'90s"') name(q13a)
+local q13_r1 = _rc
+capture noisily dash (scatter mpg weight if inlist(make, "'x") | foreign == 1, title(`"'90s"')) (line mpg weight), name(q13b)
+local q13_r2 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight) if make != "'x" & foreign == 1, title(`"'90s cars"') name(q13c)
+local q13_r3 = _rc
+local q13_ok ""
+mata: st_global("JG_WANT", "inlist(make, " + _jg_pq(char(39) + "x") + ") | foreign == 1")
+_jg_stored q13a "plots 0 if_expr"
+local q13_ok "`q13_ok'`r(ok)'"
+_jg_stored q13b "plots 0 if_expr"
+local q13_ok "`q13_ok'`r(ok)'"
+mata: st_global("JG_WANT", "make != " + _jg_pq(char(39) + "x") + " & foreign == 1")
+_jg_stored q13c "if_expr"
+local q13_ok "`q13_ok'`r(ok)'"
+mata: st_global("JG_WANT", _jg_cq(char(39) + "90s"))
+_jg_stored q13a "graph_options title"
+local q13_ok "`q13_ok'`r(ok)'"
+_jg_stored q13b "graph_options title"
+local q13_ok "`q13_ok'`r(ok)'"
+mata: st_global("JG_WANT", _jg_cq(char(39) + "90s cars"))
+_jg_stored q13c "graph_options title"
+local q13_ok "`q13_ok'`r(ok)'"
+tempfile q13p
+_jg_build "`q13p'.html"
+local q13_rb = r(rc)
+local q13_rows "`r(rows)'"
+mata: st_global("JG_WANT", char(39) + "90s")
+_jg_drawn Title
+local q13_d = r(n)
+capture erase "`q13p'.html"
+display as text "  rc: `q13_r1' `q13_r2' `q13_r3'  stored: `q13_ok'  build: `q13_rb'  rows: [`q13_rows'] of Stata's `q13_n' `q13_n' `jg_n22'  '90s drawn: `q13_d'"
+assert `q13_r1' == 0 & `q13_r2' == 0 & `q13_r3' == 0
+assert "`q13_ok'" == "111111"
+assert `q13_rb' == 0 & "`q13_d'" == "2"
+assert `q13_n' == `jg_n22' & "`q13_rows'" == "`q13_n' `q13_n' `jg_n22'"
+display "Q4305-13 PASS: a quote-apostrophe in a qualifier and a compound-quoted '90s are kept as typed and drawn"
 capture dash clear
 
 

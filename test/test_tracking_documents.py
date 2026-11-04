@@ -2931,7 +2931,6 @@ GAPS4_OPEN = {
     'PIC-11': 'Legend key shapes of rcap, rcapsym, pccapsym, dropline, pcarrow, pcbarrow and rarea are wrong',
     'MS-10': 'Keys are merged when two different pstyles look alike (s1mono line v6/v14, v12/v15)',
     'ST-14': 'Partial SMCL markup ({bf:}, {it:}, {sup:} on letters, fonts) in titles, labels and keys is drawn in one plain style',
-    'LT-24': 'title() whose text is an apostrophe and 90s inside double quotes is drawn where twoway gives r(100)',
     'RH-13': "A horizontal kdensity (and function) is keyed by its name; twoway keys it by the grid variable 'x'",
     'AX-13': 'Axis title textbox sub-options other than size/color are named: orientation() (Bokeh axis_label_orientation never set), justification(), placement(), box, margin() ...',
     'AX-5': 'custom on xlabel()/ylabel() is ignored: its styles reach every label and the grid; custom with no list is accepted (twoway r(198))',

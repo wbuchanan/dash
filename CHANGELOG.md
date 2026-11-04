@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- title("'90s") and every option text holding a stray "' are refused with twoway's rc and words -- ) required r(100), type mismatch r(109), too few or too many ')' or ']' r(132), parentheses do not balance r(198), by what follows the quote -- and nothing is stored; dash drew them.  Compound-quoted text and a "' in an if qualifier are kept as typed (WP-43, LT-24)
 - title(), subtitle(), note() and caption() with a ring() that is no number, inside or outside are refused, option ring() incorrectly specified, r(198), after twoway's notes, and an edge title's ring() word likewise, as twoway refuses them; dash drew the default ring (WP-43, LT-14)
 - legend(t1title()) .. legend(b2title()) are refused, option t1title() not allowed, r(198), as twoway refuses them; dash took them with a note (WP-43, LT-13)
 - zlabels(), zticks(), zmlabels() and zmticks() are taken as zlabel(), ztick(), zmlabel() and zmtick(), as twoway takes them (were refused r(198)) (WP-42, AX-12)

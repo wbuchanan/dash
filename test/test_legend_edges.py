@@ -205,8 +205,9 @@ class TestQuoteApostrophe:
     fails on what follows, in words that depend on it (quote.*: ")
     required", r(100), for title("'90s"), xlabel(), text() and by()'s
     title(); "type mismatch", r(109), for JSE-47's title; legend.jse47
-    r(100)).  dash reads the "' as text inside the quote, as CLAUDE.md
-    rule 18 requires, so it draws them; dash.sthlp says so."""
+    r(100)).  dash refuses them as twoway does since WP-43 LT-24
+    (maintainer ruling P4-5; test_json_escaping.cscript Q4305-12), where
+    it drew them; dash.sthlp says so."""
 
     def test_twoway_varies(self):
         q = _TRUTH["quote"]

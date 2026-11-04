@@ -1220,14 +1220,25 @@ there, is an invalid point.  The literal is read as data and never run.
     and the legend title's {cmd:color()} and {cmd:size()} are drawn.
     {cmd:title("T", prefix suffix)} prints {cmd:twoway}'s line,
     {cmd:option prefix ignored, may not be combined with suffix}, and draws
-    the title.  A quoted text that opens with an apostrophe,
-    {cmd:title("'90s")}, is drawn; {cmd:twoway} reads its {cmd:"'} as the
-    close of a compound quote never opened and stops on what follows, in
-    words that depend on it ({cmd:) required}, r(100), for
-    {cmd:title("'90s")}, {cmd:xlabel(3000 "'90s")} and
-    {cmd:legend(label(1 "'90s"))}; {cmd:type mismatch}, r(109), for others),
-    while {cmd:dash} keeps a quote's text whole, so that no text can end a
-    quote early and become command words.  {cmd:rows()} wins over
+    the title.  A quoted text in an option that holds a double quote
+    followed by an apostrophe, {cmd:title("'90s")}, is refused as
+    {cmd:twoway} refuses it, and nothing is stored: {cmd:twoway} reads the
+    {cmd:"'} as the close of a compound quote never opened and stops on
+    what follows.  When the first character outside quotes after the
+    apostrophe is a blank, a tab, a comma, {cmd:=}, {cmd:{c -(}} or
+    {cmd:{c )-}} ({cmd:title("'90s cars")}) the words are
+    {cmd:type mismatch}, r(109); a {cmd:(} or {cmd:[}, {cmd:too few ')' or ']'},
+    r(132); a {cmd:)} or {cmd:]}, {cmd:too many ')' or ']'}, r(132); with none,
+    {cmd:) required}, r(100) ({cmd:title("'90s")}, and
+    {cmd:title("'90s", size(large))}, whose comma lies inside the string the
+    apostrophe opens again).  When the quote closes a string,
+    {cmd:title("abc"')} is {cmd:too many ')' or ']'}, r(132), and
+    {cmd:title("abc"'d")} {cmd:parentheses do not balance}, r(198).  Write
+    the text in compound quotes, {cmd:title(`"'90s"')}, to draw it.  In an
+    {cmd:if} qualifier such a text is kept as typed.  {cmd:twoway} checks the
+    plot types, their variables and qualifiers, {cmd:by()}'s variables,
+    {cmd:name()} and the option names first, and gives their error when
+    one is wrong; {cmd:dash} gives the quote's.  {cmd:rows()} wins over
     {cmd:cols()}, and in one copy a word wins over its {cmd:no} form
     ({cmd:on} over {cmd:off}, {cmd:grid} over {cmd:nogrid}).  Repeated
     copies merge sub-option by sub-option under the full name, the last
