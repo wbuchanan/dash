@@ -459,3 +459,38 @@ class TestLayout:
                  if str(m.name or "").endswith("_key")]
         assert cells and all("translate" in _sheet(c, "dash_legend_layout")
                              for c in cells)
+
+
+# ---------------------------------------------------------------------------
+# LT-7: bexpand (measured; not drawn -- BUGS.md, no route under D69)
+# ---------------------------------------------------------------------------
+
+class TestBexpandFixture:
+
+    def test_measured(self):
+        """title("T", box bexpand) and note("N", box bexpand) span the
+        plot region, height and plot region unchanged; legend(bexpand)
+        below the plot spans it less 1.2 units a side; at 3 o'clock
+        (stcolor) it widens the legend and narrows the plot region."""
+        for k, box in (("t_bexpand", "t_box"), ("n_bexpand", "n_box")):
+            pr = TRUTH[k]["plot"]
+            fills = [r for r in _rects(k) if "#D9E6EB" in r[4].upper()
+                     and "fill:none" not in r[4]]
+            assert len(fills) == 1
+            f = fills[0]
+            assert abs(f[0] - pr["left"]) < 0.05
+            assert abs(f[2] - pr["right"]) < 0.05
+            f0 = [r for r in _rects(box) if "#D9E6EB" in r[4].upper()
+                  and "fill:none" not in r[4]][0]
+            assert abs((f[3] - f[1]) - (f0[3] - f0[1])) < 0.05
+            assert TRUTH[k]["plot"] == TRUTH[box]["plot"]
+        b = _region_box("bexpand")
+        pr = TRUTH["bexpand"]["plot"]
+        assert abs((b[0] - pr["left"]) - 1.2 * 28.8) < 0.1
+        assert abs((pr["right"] - b[2]) - 1.2 * 28.8) < 0.1
+        assert TRUTH["bexpand"]["plot"] == TRUTH["ctl"]["plot"]
+        st = _region_box("bexpand_st")
+        st0 = _region_box("ctl_st")
+        assert (st[2] - st[0]) > 2 * (st0[2] - st0[0])
+        assert TRUTH["bexpand_st"]["plot"]["right"] < \
+            TRUTH["ctl_st"]["plot"]["right"] - 1000
