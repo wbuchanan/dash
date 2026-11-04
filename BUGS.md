@@ -5353,11 +5353,11 @@
   - Suggested fix: Draw the expanded box (M11: every P6-P10 item is drawn).
   - Resolution: Not fixed because WP-43 section 43-03 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
 
-- [ ] Title: A title box under stcolor is filled #d9e6eb (the added-text fill), not textbox white with a 6.48 line
+- [x] Title: A title box under stcolor is filled #d9e6eb (the added-text fill), not textbox white with a 6.48 line
   - File Names and Line Numbers: dash_render.py:54211-54218; textboxstyle-heading.style; stcolor.scheme:43
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-8; confirmed; tracked: untracked. Registered as GAPS4 LT-8 (WP-43, section 43-05, Fix).
   - Suggested fix: Take the fill and line from the textbox style
-  - Resolution: Not fixed because WP-43 section 43-05 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+  - Resolution: Fixed 04nov2026 (WP-43, LT-8). Measured first (scripts/extract_title_box_truth.do, test/fixtures/title_box_truth.json box_<key>_<scheme>): title(), note() and caption() with box are filled white under stcolor (color textbox white) and #d9e6eb under s2color (bluishgray), the subtitle under stcolor #f0f0f0 (its textboxstyle subheading_gs reads set fillcolor scheme bylabel_outline), each lined black at the scheme's thin. dash filled every title box with text()'s text_option fill (#d9e6eb). Now the scheme generator writes Stata's color textbox and dash's derived keys color textbox_line and linewidth textbox_line (from linestyle textbox) into the 26 dash-*.scheme files, SchemeParser reads them (textbox_fill_color, textbox_line_color, textbox_line_width), and _dash_textbox_style's box draws them, the subtitle in by_label_fill (its own style's fill), in both modes; text() keeps text_option_*. Pinned by test/test_title_boxes.py::TestBoxDefaults (saved, served) and test_wp43_truth.cscript Q4305-1. Closes GAPS4 LT-8 (WP-43, LT-8).
 
 - [ ] Title: A fractional ring() (7.5, 4.5) or ring(100) is dropped silently
   - File Names and Line Numbers: dash_render.py:54064, 39598; ringposstyle.sthlp

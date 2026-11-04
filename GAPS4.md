@@ -466,7 +466,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-5 Tracked:** Closed in WP-43, BUGS.md "legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ", commit 0d12aaa.
 - **LT-6 Tracked:** Open (WP-43 section 43-03).
 - **LT-7 Tracked:** Open (WP-43 section 43-03).
-- **LT-8 Tracked:** Open (WP-43 section 43-05).
+- **LT-8 Tracked:** Closed in WP-43, BUGS.md "A title box under stcolor is filled #d9e6eb (the added-text fill), not textbox white with a 6.48 line", commit pending.
 - **LT-9 Tracked:** Open (WP-43 section 43-05).
 - **LT-10 Tracked:** Open (WP-43 section 43-03).
 - **LT-11 Tracked:** Closed in WP-43, BUGS.md "text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn", commit 884ebaa.

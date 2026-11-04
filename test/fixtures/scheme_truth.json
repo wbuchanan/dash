@@ -2,10 +2,10 @@
   "_meta": {
     "generated_by": "scripts/extract_scheme_truth.py",
     "do_not_hand_edit": "This file is GENERATED ground truth extracted from Stata's own scheme and style files. Regenerate it by re-running scripts/extract_scheme_truth.py; do not hand-edit.",
-    "generated_utc": "2026-11-04T07:34:51Z",
+    "generated_utc": "2026-11-04T13:33:03Z",
     "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
     "born_date": "12 Aug 2026",
-    "dash_commit": "9e1e3945497947df51ae5d1ce19049b50c6f1dd6",
+    "dash_commit": "13aabc028800659da857d6abaccb308695fc2ca0",
     "extracted": "4 Nov 2026",
     "source": "scripts/extract_scheme_truth.py",
     "scheme_dir": "/Applications/StataNow/ado/base/s",
@@ -11740,6 +11740,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#ffffff",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -12492,6 +12501,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -15875,6 +15888,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "white",
+        "file": "scheme-stcolor.scheme",
+        "line": 43
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 307,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -18152,6 +18196,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#ffffff",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -18904,6 +18957,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -22287,6 +22344,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "white",
+        "file": "scheme-stcolor.scheme",
+        "line": 43
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 307,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -24564,6 +24652,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#ffffff",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -25316,6 +25413,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -28699,6 +28800,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "white",
+        "file": "scheme-stcolor.scheme",
+        "line": 43
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 307,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -31054,6 +31186,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#ffffff",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -31820,6 +31961,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -35190,6 +35335,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "white",
+        "file": "scheme-stmono1.scheme",
+        "line": 40
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s1mono.scheme",
+        "line": 15,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -37642,6 +37818,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#ffffff",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -38424,6 +38609,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -41807,6 +41996,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "white",
+        "file": "scheme-stmono2.scheme",
+        "line": 41
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2mono.scheme",
+        "line": 16,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -44368,6 +44588,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#d0d0d0",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -45150,6 +45379,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -48533,6 +48766,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "gs13",
+        "file": "scheme-s2mono.scheme",
+        "line": 33
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2mono.scheme",
+        "line": 16,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -51015,6 +51279,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#d9e6eb",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -51767,6 +52040,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -55150,6 +55427,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 329
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 307,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -57500,6 +57808,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#d0d0d0",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -58282,6 +58599,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -61665,6 +61986,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "gs13",
+        "file": "scheme-s2mono.scheme",
+        "line": 33
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2mono.scheme",
+        "line": 16,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -64148,6 +64500,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#d9e6eb",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -64900,6 +65261,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -68283,6 +68648,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 329
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 307,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -70556,6 +70952,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#e5daa5",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -71308,6 +71713,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -74694,6 +75103,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "ltkhaki",
+        "file": "scheme-s1color.scheme",
+        "line": 37
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s1color.scheme",
+        "line": 19,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -77045,6 +77485,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#d0d0d0",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -77811,6 +78260,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -81181,6 +81634,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "gs13",
+        "file": "scheme-s1mono.scheme",
+        "line": 18
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s1mono.scheme",
+        "line": 15,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -83553,6 +84037,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#90353b",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#ffffff",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -84305,6 +84798,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -87691,6 +88188,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "maroon",
+        "file": "scheme-s1rcolor.scheme",
+        "line": 41
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "white",
+        "file": "scheme-s1rcolor.scheme",
+        "line": 19,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground white'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -89968,6 +90496,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#c6d3df",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -90737,6 +91274,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -94160,6 +94701,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "ebg",
+        "file": "scheme-economist.scheme",
+        "line": 121
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-economist.scheme",
+        "line": 115,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -96630,6 +97202,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#d0d0d0",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -97412,6 +97993,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -100795,6 +101380,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "gs13",
+        "file": "scheme-s2mono.scheme",
+        "line": 33
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2mono.scheme",
+        "line": 16,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -103356,6 +103972,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#d0d0d0",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -104138,6 +104763,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -107521,6 +108150,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "gs13",
+        "file": "scheme-s2mono.scheme",
+        "line": 33
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2mono.scheme",
+        "line": 16,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -110083,6 +110743,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#d0d0d0",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -110858,6 +111527,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -114228,6 +114901,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "gs13",
+        "file": "scheme-s1mono.scheme",
+        "line": 18
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s1mono.scheme",
+        "line": 15,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -116663,6 +117367,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#d0d0d0",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -117459,6 +118172,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -120826,6 +121543,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "gs13",
+        "file": "scheme-s2mono.scheme",
+        "line": 33
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2mono.scheme",
+        "line": 16,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -123407,6 +124155,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#d2d7e4",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -124159,6 +124916,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -127542,6 +128303,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "bluishgray8",
+        "file": "scheme-s2color8.scheme",
+        "line": 33
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 307,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -129818,6 +130610,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#d9e6eb",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       20.0,
       20.0,
@@ -130570,6 +131371,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -133953,6 +134758,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 329
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 307,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -136231,6 +137067,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#ffffff",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -136983,6 +137828,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -140366,6 +141215,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "white",
+        "file": "scheme-stcolor.scheme",
+        "line": 43
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 307,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -142639,6 +143519,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#d9e6eb",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -143392,6 +144281,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -146783,6 +147676,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 329
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 307,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -149060,6 +149984,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#ffffff",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -149812,6 +150745,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -153195,6 +154132,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "white",
+        "file": "scheme-stcolor.scheme",
+        "line": 43
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 307,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -155473,6 +156441,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#ffffff",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -156225,6 +157202,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -159608,6 +160589,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "white",
+        "file": "scheme-stcolor.scheme",
+        "line": 43
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 307,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -161885,6 +162897,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#ffffff",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -162637,6 +163658,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -166020,6 +167045,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "white",
+        "file": "scheme-stcolor.scheme",
+        "line": 43
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 307,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -168298,6 +169354,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#ffffff",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -169050,6 +170115,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -172433,6 +173502,37 @@
         "file": "scheme-s2color.scheme",
         "line": 1809
       },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "white",
+        "file": "scheme-stcolor.scheme",
+        "line": 43
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 307,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -174712,6 +175812,15 @@
     "text_option_margin": "zero",
     "text_option_justification": "center",
     "text_option_vertical": "middle",
+    "title_box_fill": "#ffffff",
+    "title_box_line_drawn": true,
+    "title_box_line_color": "#000000",
+    "title_box_line_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
+    "title_box_line_pattern": "solid",
     "p_colors_opacity": [
       null,
       null,
@@ -175464,6 +176573,10 @@
       "text_option_margin": "margin text_option",
       "text_option_justification": "horizontal text_option",
       "text_option_vertical": "vertical_text text_option",
+      "title_box_fill": "color textbox",
+      "title_box_line_color": "color foreground",
+      "title_box_line_line_width": "linewidth foreground",
+      "title_box_line_pattern": "linepattern foreground",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -178846,6 +179959,37 @@
         "value": "middle",
         "file": "scheme-s2color.scheme",
         "line": 1809
+      },
+      "title_box_fill": {
+        "kind": "transcribed",
+        "directive": "color textbox",
+        "value": "white",
+        "file": "scheme-stcolor.scheme",
+        "line": 43
+      },
+      "title_box_line_color": {
+        "kind": "inferred",
+        "directive": "color foreground",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 307,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black'"
+      },
+      "title_box_line_line_width": {
+        "kind": "inferred",
+        "directive": "linewidth foreground",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1200,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin'"
+      },
+      "title_box_line_pattern": {
+        "kind": "inferred",
+        "directive": "linepattern foreground",
+        "value": "solid",
+        "file": "scheme-s2color.scheme",
+        "line": 558,
+        "rule": "linestyle textbox foreground -> style/linestyle-foreground.style reads `linepattern foreground solid'"
       },
       "named_style_directives.color axisline": {
         "kind": "transcribed",

@@ -793,6 +793,136 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w43_run' {
 }
 * ==== end S02 ====
 
+// S05 helpers (WP-43 43-05).  _q4305_docs: the figures a registered
+// graph draws, saved and served (spec and data from _dash_serve_spec);
+// _q4305_model: the model drawing a title-family key's text;
+// _q4305_box: the box fill and line of that model against
+// title_box_truth.json's probe <case> (the smallest filled and stroked
+// rects holding the text), into globals q4305_s and q4305_v.
+python:
+import os as _q4305_os, sys as _q4305_sys, json as _q4305_json
+for _q4305_p in (_q4305_os.path.abspath(".."),
+                 _q4305_os.path.abspath(_q4305_os.path.join("..", "scripts"))):
+    if _q4305_p not in _q4305_sys.path:
+        _q4305_sys.path.insert(0, _q4305_p)
+with open(_q4305_os.path.join("fixtures", "title_box_truth.json"),
+          encoding="utf-8") as _q4305_fh:
+    _q4305_T = _q4305_json.load(_q4305_fh)
+
+
+def _q4305_docs(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_q4305_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_q4305_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+    return list(r.figures.values()), sv
+
+
+def _q4305_model(fig, key):
+    if key == "title" and fig.title is not None:
+        return fig.title
+    for side in ("center", "above", "below", "left", "right"):
+        for m in getattr(fig, side):
+            if key in list(getattr(m, "tags", None) or []):
+                return m
+    return None
+
+
+def _q4305_svg_box(case, text):
+    row = _q4305_T[case]
+    t = [x for x in row["texts"] if x["text"] == text][0]
+    holds = [r for r in row["rects"]
+             if r["x"] <= t["x"] <= r["x"] + r["w"]
+             and r["y"] - 1 <= t["y"] <= r["y"] + r["h"] + 1
+             and r["w"] < row["viewbox"][2] / 2]
+    f = min([r for r in holds if "fill:none" not in r["style"]],
+            key=lambda r: r["w"])
+    s = min([r for r in holds if "stroke:#" in r["style"]],
+            key=lambda r: r["w"])
+
+    def part(style, name):
+        for kv in style.split(";"):
+            if kv.startswith(name + ":"):
+                return kv.split(":", 1)[1].lower()
+        return None
+    return part(f["style"], "fill"), part(s["style"], "stroke")
+
+
+def _q4305_box(sp, dp, app, key, text, case):
+    from sfi import Macro
+    fill, stroke = _q4305_svg_box(case, text)
+    a, b = _q4305_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        m = _q4305_model(figs[0], key) if len(figs) == 1 else None
+        if m is None:
+            Macro.setGlobal("q4305_" + sfx, "no model")
+            continue
+        got = (str(m.background_fill_color).lower(),
+               str(m.border_line_color).lower())
+        Macro.setGlobal("q4305_" + sfx, "ok" if got == (fill, stroke) else
+                        "drawn %s, twoway %s" % (got, (fill, stroke)))
+end
+
+* ==== S05 LT-8: title boxes in the scheme's textbox fill and line ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w43_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+    local q5d "`w43_work'/s05"
+    capture mkdir "`q5d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4305-1: title(), subtitle(), note() and caption() with box, under
+    // stcolor and s2color, are filled and lined as twoway draws them
+    // (title_box_truth.json box_<key>_<scheme>), saved and served.
+    // ------------------------------------------------------------
+    foreach s in stcolor s2color {
+        foreach k in title subtitle note caption {
+            local t = upper(substr("`k'", 1, 1))
+            dash clear
+            capture noisily dash scatter mpg weight, `k'("`t'", box) scheme(`s') name(q4305a)
+            local rc = _rc
+            _w43_expect Q4305-1 "(`rc' == 0)" "`k' `s': rc `rc'"
+            if `rc' == 0 {
+                capture erase "`q5d'/a.py"
+                _dash_serve_spec, specpath("`q5d'/s.json") datapath("`q5d'/d.json")
+                python: _q4305_box("`q5d'/s.json", "`q5d'/d.json", "`q5d'/a.py", "`k'", "`t'", "box_`k'_`s'")
+                foreach m in s v {
+                    _w43_expect Q4305-1 `"("${q4305_`m'}" == "ok")"' "`k' `s' `m': ${q4305_`m'}"
+                }
+            }
+        }
+    }
+    _w43_done Q4305-1 "title-family boxes take their text box style's fill and line, saved and served"
+
+    local q5f : dir "`q5d'" files "*"
+    foreach f of local q5f {
+        capture erase "`q5d'/`f'"
+    }
+    capture rmdir "`q5d'"
+    capture graph drop _all
+    dash clear
+    macro drop q4305_*
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
 // S06 helpers (WP-43 43-06).  _q4306_docs: the figures a registered
 // graph draws, saved and served (spec and data from _dash_serve_spec);
 // _q4306_al: the one added-text Label's y_offset against the shift

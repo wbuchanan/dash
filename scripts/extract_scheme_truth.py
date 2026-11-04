@@ -1654,6 +1654,30 @@ def extract(stata_base: str, scheme: str) -> dict:
                         f"scheme {ck}', then `{spelled('color', ck)}'"))
         return res
 
+    def textbox_truth():
+        """WP-43 LT-8: the title boxes' frame.  title(), note(), caption()
+        and the edge titles are drawn in text box styles whose files read
+        `set fillcolor scheme textbox' and `set linestyle scheme textbox'
+        (textboxstyle-heading.style and kin): `color textbox' is Stata's
+        key; `linestyle textbox' names style/linestyle-<name>.style, whose
+        colour and width keys are carried as dash's derived keys `color
+        textbox_line' and `linewidth textbox_line'."""
+        res = {"title_box_fill": color_of("title_box_fill", ["textbox"],
+                                          required=False)}
+        ls = r.get("linestyle", "textbox", class_default=True)
+        if not ls:
+            unresolvable.append("title_box_line: `linestyle textbox' is "
+                                "not set anywhere in the #include chain")
+            res.update({"title_box_line_drawn": False,
+                        "title_box_line_color": None,
+                        "title_box_line_line_width": None,
+                        "title_box_line_pattern": None})
+            return res
+        res.update(line_via("title_box_line", "textbox_line", "textbox_line",
+                            ls.strip().strip('"'),
+                            f"linestyle textbox {ls.strip()}"))
+        return res
+
     def text_option_truth():
         """WP-30 P1.10: the keys `textboxstyle text_option' reads for
         text() and ttext() that no other group resolves -- its box's fill,
@@ -2101,6 +2125,7 @@ def extract(stata_base: str, scheme: str) -> dict:
     out.update(edge_title_truth())
     out.update(chrome_truth())
     out.update(text_option_truth())
+    out.update(textbox_truth())
     out.update(opacities)
     # WP-30 P1.14b: the keys the named styles read (scheme.class chain).
     _nsd, _hops, _bad = named_style_directives(r, provenance, sources)
@@ -2689,6 +2714,17 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         scalar("margin", "text_option", "text_option_margin"),
         scalar("horizontal", "text_option", "text_option_justification"),
         scalar("vertical_text", "text_option", "text_option_vertical"),
+    ])
+    # WP-43 LT-8: the title boxes' fill and frame.
+    group(["The title boxes' frame (Stata: color textbox, linestyle textbox;",
+           "WP-43 LT-8).  `color textbox_line' and `linewidth textbox_line'",
+           "are dash's derived keys, the colour and width of the linestyle",
+           "`linestyle textbox' names, resolved."], [
+        scalar("color", "textbox", "title_box_fill"),
+        scalar("color", "textbox_line", "title_box_line_color",
+               value=drawn_color("title_box_line")),
+        scalar("linewidth", "textbox_line", "title_box_line_line_width",
+               use_name=True),
     ])
     # WP-30 P1.14b: the keys Stata's style files read for the named styles,
     # as the scheme declares them along scheme.class's chain; last, so a key

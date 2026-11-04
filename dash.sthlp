@@ -5939,7 +5939,10 @@ one side, a larger ring further out: the title is ring 7, the subtitle
 {cmd:ring(0)} or {cmd:position(0)} draws the box inside the plot region
 at the clock's compass point ({cmd:position(0)} its centre), and
 {cmd:span} there prints {cmd:twoway}'s note "option span ignored for
-position(0)".  {cmd:box} frames the text: {cmd:bcolor()} colours the
+position(0)".  {cmd:box} frames the text in the scheme's text box fill
+and line ({cmd:color textbox}: white under {cmd:stcolor}; the
+subtitle's own style's fill, {cmd:color bylabel_outline} under
+{cmd:stcolor}), as {cmd:twoway} draws it: {cmd:bcolor()} colours the
 fill and the line, {cmd:fcolor()} and {cmd:bfcolor()} the fill,
 {cmd:lcolor()}, {cmd:lwidth()} and {cmd:lpattern()} the line; as in
 {cmd:twoway} they draw nothing without {cmd:box}, and {cmd:nobox}

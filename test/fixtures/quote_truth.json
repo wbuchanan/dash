@@ -1,0 +1,973 @@
+{
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "13aabc028800659da857d6abaccb308695fc2ca0",
+  "dash_side": "the dash answer at dash_commit, for the record",
+  "extracted": " 4 Nov 2026 08:26:01",
+  "source": "scripts/extract_quote_truth.do",
+  "stata_version": "19.5"
+ },
+ "apostrophe": {
+  "command": "twoway scatter mpg weight, title(\"rock '90s\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "",
+   "lines": [],
+   "rc": 0
+  }
+ },
+ "bars": {
+  "command": "twoway scatter mpg weight, title(\"'90s\") || line mpg weight",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "bars_after": {
+  "command": "twoway scatter mpg weight || line mpg weight, title(\"'90s\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "by_note": {
+  "command": "twoway scatter mpg weight, by(foreign, note(\"'90s\"))",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "by_title": {
+  "command": "twoway scatter mpg weight, by(foreign, title(\"'90s\"))",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "caption": {
+  "command": "twoway scatter mpg weight, caption(\"'90s\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_amp": {
+  "command": "twoway scatter mpg weight, title(\"'a&b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_at": {
+  "command": "twoway scatter mpg weight, title(\"'a@b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_bang": {
+  "command": "twoway scatter mpg weight, title(\"'a!b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_bar": {
+  "command": "twoway scatter mpg weight, title(\"'a|b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_blank": {
+  "command": "twoway scatter mpg weight, title(\"'a b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "type mismatch",
+   "lines": [
+    "type mismatch"
+   ],
+   "rc": 109
+  }
+ },
+ "ch_bslash": {
+  "command": "twoway scatter mpg weight, title(\"'a\\b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_caret": {
+  "command": "twoway scatter mpg weight, title(\"'a^b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_colon": {
+  "command": "twoway scatter mpg weight, title(\"'a:b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_comma": {
+  "command": "twoway scatter mpg weight, title(\"'a,b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "type mismatch",
+   "lines": [
+    "type mismatch"
+   ],
+   "rc": 109
+  }
+ },
+ "ch_dot": {
+  "command": "twoway scatter mpg weight, title(\"'a.b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_eq": {
+  "command": "twoway scatter mpg weight, title(\"'a=b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "type mismatch",
+   "lines": [
+    "type mismatch"
+   ],
+   "rc": 109
+  }
+ },
+ "ch_gt": {
+  "command": "twoway scatter mpg weight, title(\"'a>b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_hash": {
+  "command": "twoway scatter mpg weight, title(\"'a#b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_lbr": {
+  "command": "twoway scatter mpg weight, title(\"'a[b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "too few ')' or ']'",
+   "lines": [
+    "too few ')' or ']'"
+   ],
+   "rc": 132
+  }
+ },
+ "ch_lbrace": {
+  "command": "twoway scatter mpg weight, title(\"'a{b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "type mismatch",
+   "lines": [
+    "type mismatch"
+   ],
+   "rc": 109
+  }
+ },
+ "ch_lpar": {
+  "command": "twoway scatter mpg weight, title(\"'a(b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "too few ')' or ']'",
+   "lines": [
+    "too few ')' or ']'"
+   ],
+   "rc": 132
+  }
+ },
+ "ch_lt": {
+  "command": "twoway scatter mpg weight, title(\"'a<b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_minus": {
+  "command": "twoway scatter mpg weight, title(\"'a-b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_pct": {
+  "command": "twoway scatter mpg weight, title(\"'a%b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_plus": {
+  "command": "twoway scatter mpg weight, title(\"'a+b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_qmark": {
+  "command": "twoway scatter mpg weight, title(\"'a?b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_rbr": {
+  "command": "twoway scatter mpg weight, title(\"'a]b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "too many ')' or ']'",
+   "lines": [
+    "too many ')' or ']'"
+   ],
+   "rc": 132
+  }
+ },
+ "ch_rbrace": {
+  "command": "twoway scatter mpg weight, title(\"'a}b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "type mismatch",
+   "lines": [
+    "type mismatch"
+   ],
+   "rc": 109
+  }
+ },
+ "ch_rpar": {
+  "command": "twoway scatter mpg weight, title(\"'a)b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "too many ')' or ']'",
+   "lines": [
+    "too many ')' or ']'"
+   ],
+   "rc": 132
+  }
+ },
+ "ch_semi": {
+  "command": "twoway scatter mpg weight, title(\"'a;b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_slash": {
+  "command": "twoway scatter mpg weight, title(\"'a/b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_star": {
+  "command": "twoway scatter mpg weight, title(\"'a*b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ch_tab": {
+  "command": "twoway scatter mpg weight, title(\"'a\tb\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "type mismatch",
+   "lines": [
+    "type mismatch"
+   ],
+   "rc": 109
+  }
+ },
+ "ch_tilde": {
+  "command": "twoway scatter mpg weight, title(\"'a~b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "closing": {
+  "command": "twoway scatter mpg weight, title(\"abc\"')",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "too many ')' or ']'",
+   "lines": [
+    "too many ')' or ']'"
+   ],
+   "rc": 132
+  }
+ },
+ "closing_more": {
+  "command": "twoway scatter mpg weight, title(\"abc\"'d\")",
+  "dash": {
+   "first": "dash: unterminated quotation in the plot specification.",
+   "lines": [
+    "dash: unterminated quotation in the plot specification."
+   ],
+   "rc": 198
+  },
+  "twoway": {
+   "first": "parentheses do not balance",
+   "lines": [
+    "parentheses do not balance"
+   ],
+   "rc": 198
+  }
+ },
+ "compound": {
+  "command": "twoway scatter mpg weight, title(`\"'90s\"')",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "",
+   "lines": [],
+   "rc": 0
+  }
+ },
+ "compound_blank": {
+  "command": "twoway scatter mpg weight, title(`\"'90s cars\"')",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "",
+   "lines": [],
+   "rc": 0
+  }
+ },
+ "group": {
+  "command": "twoway (scatter mpg weight, title(\"'90s\"))",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "group_after": {
+  "command": "twoway (scatter mpg weight), title(\"'90s\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "leg_label": {
+  "command": "twoway (scatter mpg weight) (scatter trunk weight), legend(label(1 \"'90s\"))",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "leg_order": {
+  "command": "twoway (scatter mpg weight) (scatter trunk weight), legend(order(1 \"'90s\"))",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "leg_subtitle": {
+  "command": "twoway (scatter mpg weight) (scatter trunk weight), legend(subtitle(\"'90s\"))",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "leg_title": {
+  "command": "twoway (scatter mpg weight) (scatter trunk weight), legend(title(\"'90s\"))",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "note": {
+  "command": "twoway scatter mpg weight, note(\"'90s\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "subtitle": {
+  "command": "twoway scatter mpg weight, subtitle(\"'90s\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "t1title": {
+  "command": "twoway scatter mpg weight, t1title(\"'90s\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "text": {
+  "command": "twoway scatter mpg weight, text(30 3000 \"'90s\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "title": {
+  "command": "twoway scatter mpg weight, title(\"'90s\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "title_blank": {
+  "command": "twoway scatter mpg weight, title(\"'90s cars\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": "type mismatch",
+   "lines": [
+    "type mismatch"
+   ],
+   "rc": 109
+  }
+ },
+ "title_size": {
+  "command": "twoway scatter mpg weight, title(\"'90s\", size(large))",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "title_then_opt": {
+  "command": "twoway scatter mpg weight, title(\"'90s\") msize(small)",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "two_strays": {
+  "command": "twoway scatter mpg weight, title(\"'a\") subtitle(\"'b\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "xlabel": {
+  "command": "twoway scatter mpg weight, xlabel(2000 \"'90s\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "xtitle": {
+  "command": "twoway scatter mpg weight, xtitle(\"'90s\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ },
+ "ytitle": {
+  "command": "twoway scatter mpg weight, ytitle(\"'90s\")",
+  "dash": {
+   "first": "dash: this page is a temporary preview that later previews may remove; use saving() to keep it.",
+   "lines": [
+    "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+   ],
+   "rc": 0
+  },
+  "twoway": {
+   "first": ") required",
+   "lines": [
+    ") required"
+   ],
+   "rc": 100
+  }
+ }
+}

@@ -1009,6 +1009,7 @@ and now matches Stata.
 
 ### Fixed in WP-43
 
+- title(), subtitle(), note() and caption() with box are filled and lined in the scheme's text box style, white under stcolor (the subtitle gs15), as twoway draws them; they took text()'s #d9e6eb fill (WP-43, LT-8)
 - scale() leaves the legend's row, column and key gaps, given or not, as twoway's scale() does, so a hole's gap stays one row gap; they grew with the keys (WP-43)
 - legend(all) keys every plot, so two plots that look alike keep two keys and draw a legend; legend(draw) is legend(on) and legend(nodraw) is legend(off), on and draw winning, as twoway draws them; they were named and dropped (WP-43, LT-5)
 - A legend(holes()) hole in a one-column or one-row legend is one row (column) gap at its place, as twoway draws it; it was a blank key row (WP-43, LT-17)

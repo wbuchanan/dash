@@ -9503,6 +9503,11 @@ class SchemeParser:
         "color text_option": "#000000",  # noqa: F601  # the later entry is the one in force; S60 found the repeat and kept it (no behaviour change)
         "color text_option_line": "#000000",
         "color text_option_fill": "#d9e6eb",
+        # The title boxes' frame (WP-43 LT-8; scheme-s2color.scheme:329,
+        # :904 and style/linestyle-foreground.style).
+        "color textbox": "#d9e6eb",
+        "color textbox_line": "#000000",
+        "linewidth textbox_line": "thin",
         "compass2dir text_option": "center",
         "yesno text_option": "no",
         "linewidth text_option": "thin",
@@ -12197,6 +12202,20 @@ class SchemeParser:
                               ("caption", "body"))}
         self.by_label_fill: str = self._color("color by_label_fill",
                                               "#d9e6eb")
+        # The title boxes' fill and frame (WP-43 LT-8): title(), note(),
+        # caption() and the edge titles are drawn in text box styles
+        # whose files read `set fillcolor scheme textbox' and `set
+        # linestyle scheme textbox'; `color textbox_line' and `linewidth
+        # textbox_line' are dash's derived keys, the colour and width of
+        # `linestyle textbox' (the foreground's, black and thin, in every
+        # shipped scheme).  The subtitle's style may name another fill
+        # (stcolor's subheading_gs: bylabel_outline), by_label_fill.
+        self.textbox_fill_color: str = self._color(
+            "color textbox", self.text_option_fill_color)
+        self.textbox_line_color: str = self._color(
+            "color textbox_line", self.foreground_color)
+        self.textbox_line_width: float = self._bounded_lwidth(
+            "linewidth textbox_line", OptionTranslator.translate_lwidth("thin"))
         self.by_label_outline: str = self._color("color bylabel_outline",
                                                  "#d9e6eb")
         try:
@@ -58786,13 +58805,21 @@ def _dash_textbox_style(model, opts, fig, scheme, option, *, base_size=None,
             return None
         fill = col("fcolor", "bfcolor", "bcolor")
         line = col("lcolor", "bcolor")
+        # WP-43 LT-8: the box's own text box style's fill and line
+        # (textboxstyle-heading.style and kin: `set fillcolor scheme
+        # textbox', `set linestyle scheme textbox'); the subtitle's style
+        # names its own fill (by_label_fill; stcolor's subheading_gs is
+        # bylabel_outline).  text() keeps text_option_* (_dash_text_box).
+        if scheme is None:
+            dfill, dline, lw = None, "#000000", 1.0
+        else:
+            dfill = (scheme.by_label_fill if option == "subtitle"
+                     else scheme.textbox_fill_color)
+            dline = scheme.textbox_line_color
+            lw = scheme.textbox_line_width
         model.background_fill_color = fill or model.background_fill_color \
-            or (scheme.text_option_fill_color if scheme is not None
-                else None)
-        model.border_line_color = line or (
-            scheme.text_option_line_color if scheme is not None
-            else "#000000")
-        lw = scheme.text_option_line_width if scheme is not None else 1.0
+            or dfill
+        model.border_line_color = line or dline
         if o.get("lwidth"):
             try:
                 lw = T.translate_lwidth(o["lwidth"], None, ref)

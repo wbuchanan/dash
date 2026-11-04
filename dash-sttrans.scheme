@@ -745,6 +745,23 @@ textboxstyle leg_note      small_body
 textboxstyle leg_caption   body
 
 * ---------------------------------------------------------------------------
+* Added 04nov2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> sttrans); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* The title boxes' frame (Stata: color textbox, linestyle textbox;
+* WP-43 LT-8).  `color textbox_line' and `linewidth textbox_line'
+* are dash's derived keys, the colour and width of the linestyle
+* `linestyle textbox' names, resolved.
+color textbox       #d9e6eb
+color textbox_line  #000000
+linewidth textbox_line  thin
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -985,6 +1002,9 @@ textboxstyle leg_caption   body
 * provenance: margin text_option -- transcribed from scheme-s2color.scheme:741 `margin text_option zero'
 * provenance: horizontal text_option -- transcribed from scheme-s2color.scheme:1784 `horizontal text_option center'
 * provenance: vertical_text text_option -- transcribed from scheme-s2color.scheme:1809 `vertical_text text_option middle'
+* provenance: color textbox -- transcribed from scheme-s2color.scheme:329 `color textbox bluishgray'
+* provenance: color textbox_line -- inferred: linestyle textbox foreground -> style/linestyle-foreground.style reads `color foreground black' (scheme-s2color.scheme:307)
+* provenance: linewidth textbox_line -- inferred: linestyle textbox foreground -> style/linestyle-foreground.style reads `linewidth foreground thin' (scheme-s2color.scheme:1200)
 * provenance: color ci2_symbol -- transcribed from scheme-s2color.scheme:359 `color ci2_symbol khaki'
 * provenance: color ci_symbol -- transcribed from scheme-s2color.scheme:355 `color ci_symbol gs8'
 * provenance: color clegend_line -- transcribed from scheme-s2color.scheme:417 `color clegend_line black'
