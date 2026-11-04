@@ -12208,7 +12208,11 @@ real scalar _dash_subreq_check(string scalar kind)
             _dash_note("named style ", lastpos,
                        " not found in class clockdir, default attributes used")
         }
-        if (lastring != "" & !_dash_so_isnum(lastring, 0)) {
+        // A lowercase abbreviation of inside or outside is drawn with no
+        // note (WP-43 LT-9; title_box_truth.json leg_ring_w_<w>).
+        if (lastring != "" & !_dash_so_isnum(lastring, 0)
+            & strpos("inside", lastring) != 1
+            & strpos("outside", lastring) != 1) {
             _dash_note("named style ", lastring,
                        " not found in class gridringstyle, default attributes used")
             _dash_note("", "gridringstyle",

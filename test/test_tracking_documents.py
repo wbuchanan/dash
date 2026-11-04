@@ -2926,7 +2926,6 @@ GAPS4_OPEN = {
     'LT-3': 'Key-text textbox options are not drawn: box (silent), bcolor(), fcolor(), justification(), alignment(), margin(), linegap(), tstyle()',
     'LT-6': 'Legend layout sub-options named: style(), width(), height(), xoffset(), yoffset(), showindex, region(style()/lstyle()/lalign())',
     'LT-7': 'bexpand on legend() and on title/subtitle/note/caption is taken silently where twoway widens the box',
-    'LT-9': 'A fractional ring() (7.5, 4.5) or ring(100) is dropped silently',
     'LT-10': 'Numeric marginstyle forms (# # # #, l=#, l+#) are refused for textbox margins; legend region margin collapses four sides to the largest',
     'LT-14': 'title(..., ring(x)) is accepted silently where twoway prints notes and refuses r(198)',
     'LT-16': 'title/subtitle/note/caption placement() at ring(0) is drawn as a Label anchor (n lifts the box out of the plot) and long names, clocks and synonyms are ignored',

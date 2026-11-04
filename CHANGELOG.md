@@ -1009,6 +1009,7 @@ and now matches Stata.
 
 ### Fixed in WP-43
 
+- ring() takes a real number on title(), subtitle(), note(), caption(), the edge titles and the legend, so subtitle("S", ring(7.5)) is drawn outside the title and legend(position(6) ring(4.5)) outside the note, and legend(ring(in)) or ring(o) is drawn inside or outside with no note, as twoway draws them; dash dropped a fractional ring or ring(100) in silence (WP-43, LT-9)
 - title(), subtitle(), note() and caption() with box are filled and lined in the scheme's text box style, white under stcolor (the subtitle gs15), as twoway draws them; they took text()'s #d9e6eb fill (WP-43, LT-8)
 - scale() leaves the legend's row, column and key gaps, given or not, as twoway's scale() does, so a hole's gap stays one row gap; they grew with the keys (WP-43)
 - legend(all) keys every plot, so two plots that look alike keep two keys and draw a legend; legend(draw) is legend(on) and legend(nodraw) is legend(off), on and draw winning, as twoway draws them; they were named and dropped (WP-43, LT-5)

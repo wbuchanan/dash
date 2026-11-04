@@ -17402,10 +17402,8 @@ class GlyphMapper:
         cell._dash_cvar_key_cell = bool(getattr(key, "_dash_cvar_key", False))
         for _t in getattr(key, "tags", None) or []:
             if str(_t).startswith("ring="):
-                try:
-                    cell._dash_key_ring = int(str(_t)[5:])
-                except ValueError:
-                    pass
+                if _dash_ring_of_tag(_t) is not None:
+                    cell._dash_key_ring = _dash_ring_of_tag(_t)
         fig._dash_key_cell = cell
         # The key the cell replaces leaves the figure, its swatches with it
         # (no Legend or ColorBar is drawn for it).
@@ -17487,7 +17485,7 @@ class GlyphMapper:
         # inside a ring 4 key and outside a ring 1 or 2 one, as twoway
         # draws them; it goes after the axes, the edge titles and every
         # box of a ring at or inside its own.
-        key.tags = list(key.tags or []) + [f"ring={int(ring)}"]
+        key.tags = list(key.tags or []) + [_dash_ring_tag(ring)]
         from bokeh.models import Axis, Legend
         panel = list(getattr(fig, side))
 
@@ -17499,10 +17497,8 @@ class GlyphMapper:
                 return True
             for t in tags:
                 if t.startswith("ring="):
-                    try:
-                        return int(t[5:]) <= ring
-                    except ValueError:
-                        return False
+                    r_ = _dash_ring_of_tag(t)
+                    return r_ is not None and r_ <= ring
             # A series legend already placed is ring 3.
             return isinstance(m, Legend) and ring >= 3 \
                 and getattr(m, "name", None) != _COLORVAR_LEGEND_NAME
@@ -40801,10 +40797,8 @@ def _dash_move_legend(fig, legend, side, location="center", ring=3):
             return True
         for t in tags:
             if t.startswith("ring="):
-                try:
-                    return int(t[5:]) <= ring
-                except ValueError:
-                    return False
+                r_ = _dash_ring_of_tag(t)
+                return r_ is not None and r_ <= ring
         return False
     at = 1 + max((i for i, m in enumerate(panel) if _inside(m)), default=-1)
     panel.insert(at, legend)
@@ -42236,7 +42230,10 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     #    not implement.  twoway's clockdir names are 0..12 as written: 13,
     #    06 and 3.0 draw the default (Stata prints twoway's note).
     m_pos = _dash_legend_arg(_calls, ("position",), r"([0-9]|1[0-2])")
-    m_ring = _dash_legend_arg(_calls, ("ring",), r"(\d+)")
+    # ring(): a real number, or an abbreviation of inside or outside
+    # (WP-43 LT-9, _dash_legend_ring); anything else the scheme's ring.
+    _ring_arg = _dash_legend_arg(_calls, ("ring",))
+    _ring_v = _dash_legend_ring(_ring_arg) if _ring_arg else None
     try:
         _sclock = int(chrome.get("legend_position"))
     except (TypeError, ValueError):
@@ -42244,10 +42241,11 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     clock = int(m_pos.group(1)) if m_pos else (
         _sclock if _sclock is not None else 6)
     try:
-        ring = (int(m_ring.group(1)) if m_ring
+        ring = (_ring_v if _ring_v is not None
                 else int(chrome.get("legend_ring", 3)))
     except (TypeError, ValueError):
         ring = 3
+    m_ring = _ring_v is not None
     # bplacement() is read as twoway's compass2dir reads it (WP-43 LT-4:
     # nor, NE, top, 3); a name it does not know is noted and drawn east,
     # compass2dir's default attributes (legend_place_truth.json
@@ -55450,7 +55448,9 @@ def _dash_key_wrap(fig, graph_opts, fixed_w=None):
     nom = getattr(fig, "_dash_nominal_px", None)
     ring0 = getattr(cell, "_dash_key_ring0", None)
     _ring = getattr(cell, "_dash_key_ring", None)
-    if not ring0 and vert and isinstance(_ring, int) and _ring < 3:
+    # The ring is a real since WP-43 LT-9 (_dash_ring_of_tag).
+    if not ring0 and vert and isinstance(_ring, (int, float)) \
+            and not isinstance(_ring, bool) and _ring < 3:
         # A ring inside the series legend's 3 on the legend's side
         # (scheme_key_readers: clegend(ring(2)) beside legend(pos(3))):
         # twoway draws the key between the plot and the legend.  A
@@ -58630,6 +58630,74 @@ def _dash_textbox_place(clock, just) -> "tuple[str, str]":
     return table[clock]
 
 
+#: The ring words title(), subtitle(), note() and caption() draw (WP-43
+#: LT-9; title_box_truth.json ring_w_<w>): inside and outside as typed.
+#: Every other word -- an abbreviation (in, o, outs) or another case
+#: (Inside) -- twoway refuses there, r(198); dash.ado's _dash_ring_ok
+#: holds the same two words.
+_DASH_RING_WORDS = {"inside": 0.0, "outside": 1.0}
+
+_DASH_RING_NUMBER_RE = re.compile(
+    r"\s*([-+]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?)\s*")
+
+
+def _dash_ring_value(text, words=None):
+    """The ring a textbox's ``ring()`` names (WP-43 LT-9), or None.
+
+    A real number as written (twoway draws ``ring(7.5)`` between the
+    subtitle's 6 and the title's 7, and ``ring(-1)`` and ``ring(101)``
+    with no note: title_box_truth.json ring_75, ring_neg, ring_101), or a
+    word of *words* (default ``_DASH_RING_WORDS``: inside 0, outside 1).
+    None for anything else, which twoway refuses on a title."""
+    t = str(text if text is not None else "").strip()
+    w = _DASH_RING_WORDS if words is None else words
+    if t in w:
+        return float(w[t])
+    m = _DASH_RING_NUMBER_RE.fullmatch(t)
+    if m is None:
+        return None
+    try:
+        v = float(m.group(1))
+    except ValueError:
+        return None
+    return v if math.isfinite(v) else None
+
+
+def _dash_legend_ring(text):
+    """The ring ``legend(ring())`` names (WP-43 LT-9), or None (the
+    scheme's ring, after twoway's notes).  twoway's legend reads a
+    lowercase abbreviation of inside (0) or outside (1), at least one
+    letter, any real, and draws a ring at or below 0 inside the plot
+    region (title_box_truth.json leg_ring_w_<w>, leg_ring_neg)."""
+    t = str(text if text is not None else "").strip()
+    if t and "inside".startswith(t):
+        return 0.0
+    if t and "outside".startswith(t):
+        return 1.0
+    v = _dash_ring_value(t, {})
+    if v is None:
+        return None
+    return max(0.0, v)
+
+
+def _dash_ring_tag(ring):
+    """The ``ring=<r>`` tag of a side-panel model: the ring in Python's
+    shortest form (7, 7.5)."""
+    return "ring=%s" % format(float(ring), "g")
+
+
+def _dash_ring_of_tag(tag):
+    """The ring a ``ring=<r>`` tag holds, or None."""
+    t = str(tag)
+    if not t.startswith("ring="):
+        return None
+    try:
+        v = float(t[5:])
+    except ValueError:
+        return None
+    return v if math.isfinite(v) else None
+
+
 def _dash_textbox_position(opts, default_clock, default_ring, just,
                            option="title", note=True) -> dict:
     """Where a textbox goes (WP-31 D3): ``{"mode", "side", "align", "sx",
@@ -58652,14 +58720,11 @@ def _dash_textbox_position(opts, default_clock, default_ring, just,
     pos = str(o.get("position", "") or "").strip()
     user = re.fullmatch(r"[0-9]|1[0-2]", pos) is not None
     clock = int(pos) if user else default_clock
-    rr = str(o.get("ring", "") or "").strip()
-    if rr == "inside":
-        ring = 0
-    elif rr == "outside":
-        ring = 1
-    elif re.fullmatch(r"[0-9]{1,2}", rr):
-        ring = int(rr)
-    else:
+    # A real ring (WP-43 LT-9): ring(7.5) between the subtitle and the
+    # title, ring(100) outermost; a word twoway refuses is the default
+    # here (dash.ado refuses it first, LT-14).
+    ring = _dash_ring_value(o.get("ring", ""))
+    if ring is None:
         ring = default_ring
     if clock == 0 or ring == 0:
         if note and "span" in o:
@@ -58888,7 +58953,7 @@ def _dash_textbox_insert(fig, side, model, ring, tag=True):
     from bokeh.models import Axis, Legend, Title
     tags = list(getattr(model, "tags", None) or [])
     if tag and not any(str(t).startswith("ring=") for t in tags):
-        model.tags = tags + ["ring=%d" % ring]
+        model.tags = tags + [_dash_ring_tag(ring)]
     # Bokeh's own title slot is drawn outside the whole panel; a box of a
     # larger ring on the title's side (t1title("E", ring(8)), WP-31 D2b)
     # goes outside the title, so the title moves into the panel first, at
@@ -58902,7 +58967,7 @@ def _dash_textbox_insert(fig, side, model, ring, tag=True):
             and not any(getattr(getattr(m, a, None), "target", None) is t
                         for m in fig.center for a in ("x", "y"))):
         props = t.properties_with_values(include_defaults=False)
-        props["tags"] = ["dash_textbox", "title", "ring=%d" % t_ring]
+        props["tags"] = ["dash_textbox", "title", _dash_ring_tag(t_ring)]
         fig.title = None
         moved = Title(**props)
         _dash_span_move(fig, t, moved)
@@ -58911,8 +58976,8 @@ def _dash_textbox_insert(fig, side, model, ring, tag=True):
     def ring_of(m):
         tg = [str(t) for t in (getattr(m, "tags", None) or [])]
         for t in tg:
-            if t.startswith("ring=") and t[5:].isdigit():
-                return int(t[5:])
+            if _dash_ring_of_tag(t) is not None:
+                return _dash_ring_of_tag(t)
         if "dash_edge_title" in tg:
             k = next((t for t in tg if re.fullmatch(r"[tblr][12]title", t)),
                      "x1")
@@ -58947,7 +59012,7 @@ def _dash_textbox_draw(fig, key, text, opts, scheme, place, *,
     "ring=<n>"]``.  The text is raw: the canvas-text pass finishes it.
     """
     from bokeh.models import Label, Node, Title
-    tags = ["dash_textbox", key, "ring=%d" % place["ring"]]
+    tags = ["dash_textbox", key, _dash_ring_tag(place["ring"])]
     if place["mode"] == "inside":
         m = Label(x=Node(target="frame", symbol=place["sx"]),
                   y=Node(target="frame", symbol=place["sy"]),
@@ -59253,7 +59318,7 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
                          anchor="top_" + align, text=text,
                          background_fill_color=fill,
                          tags=["dash_textbox", ann_key,
-                               "ring=%d" % place["ring"]])
+                               _dash_ring_tag(place["ring"])])
             _dash_textbox_style(band, opts, fig, scheme, ann_key,
                                 base_size=size_default,
                                 base_color=color_default)
@@ -59334,11 +59399,10 @@ def _dash_edge_titles(fig, graph_opts, seen=None, key="", scheme=None):
         pos = str(opts.get("position", "") or "").strip()
         rr = str(opts.get("ring", "") or "").strip()
         user_pos = re.fullmatch(r"[0-9]|1[0-2]", pos) is not None
-        user_ring = rr in ("inside", "outside") or \
-            re.fullmatch(r"[0-9]{1,2}", rr) is not None
+        # A real ring, ordered by value (WP-43 LT-9).
+        user_ring = _dash_ring_value(rr) is not None
         if user_pos or user_ring:
-            ring_k = (0 if rr == "inside" else 1 if rr == "outside"
-                      else int(rr) if user_ring else ring)
+            ring_k = _dash_ring_value(rr) if user_ring else ring
             if user_pos and pos == "0":
                 place = _dash_textbox_position({"position": "0"}, 0, ring_k,
                                                "center", k)
@@ -74765,6 +74829,7 @@ class ServerAppBuilder:
                       "_DASH_LEGEND_SUBOPTS", "_DASH_LEGEND_LABEL_RE",
                       "_DASH_ORDER_WORD_RE", "_DASH_ORDER_BLANK_RE",
                       "_DASH_TEXTBOX_HONOURED", "_DASH_TEXTBOX_BOX_HONOURED",
+                      "_DASH_RING_WORDS", "_DASH_RING_NUMBER_RE",
                       "_DASH_GRAPH_MARGIN_JS",
                       "_DASH_SPAN_JS", "_DASH_SPAN_KEYS",
                       "_DASH_LEGEND_TITLE_DRAWN", "_DASH_LEGEND_TITLE_SILENT",
@@ -75543,6 +75608,8 @@ class ServerAppBuilder:
                          "_dash_textbox_or_default",
                          "_dash_textbox_place",
                          "_dash_textbox_position", "_dash_textbox_margin_px",
+                         "_dash_ring_value", "_dash_legend_ring",
+                         "_dash_ring_tag", "_dash_ring_of_tag",
                          "_dash_textbox_margin_rel",
                          "_dash_textbox_style",
                          "_dash_textbox_insert", "_dash_textbox_draw",

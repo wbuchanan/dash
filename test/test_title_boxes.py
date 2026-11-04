@@ -208,3 +208,137 @@ class TestBoxDefaults:
         sch = dr.SchemeParser.resolve_or_fallback("stcolor", "x")
         assert str(lab[0].background_fill_color).lower() == \
             sch.text_option_fill_color.lower()
+
+
+# ============================================================
+# LT-9: real-valued rings, ordered by value
+# ============================================================
+def _y(case, text):
+    return [t for t in TRUTH[case]["texts"] if t["text"] == text][0]["y"]
+
+
+def _x(case, text):
+    return [t for t in TRUTH[case]["texts"] if t["text"] == text][0]["x"]
+
+
+def _tagged(panel, key):
+    hit = [i for i, m in enumerate(panel)
+           if key in list(getattr(m, "tags", None) or [])]
+    assert len(hit) == 1, (key, panel)
+    return hit[0]
+
+
+class TestRings:
+
+    @pytest.mark.parametrize("text,want", [
+        ("7.5", 7.5), (".5", 0.5), ("100", 100.0), ("101", 101.0),
+        ("-1", -1.0), (" 4 ", 4.0), ("inside", 0.0), ("outside", 1.0),
+        ("x", None), ("in", None), ("o", None), ("Inside", None),
+        ("OUTSIDE", None), ("", None), ("7.5.1", None), ("1e2", 100.0)])
+    def test_grammar(self, text, want):
+        """title()'s ring(): any real (twoway draws ring(-1) and ring(101)
+        with no note: ring_neg, ring_101) and the two words inside and
+        outside (ring_w_inside, ring_w_outside); every other word twoway
+        refuses on title() (ring_w_<w>, rc 198) is None."""
+        assert dr._dash_ring_value(text) == want
+        assert dr._DASH_RING_WORDS == {"inside": 0.0, "outside": 1.0}
+
+    @pytest.mark.parametrize("ring,tag", [(7, "ring=7"), (7.5, "ring=7.5"),
+                                          (100.0, "ring=100"),
+                                          (-1, "ring=-1")])
+    def test_tags(self, ring, tag):
+        """A side-panel model's ring tag is the ring's shortest form, and
+        every reader takes it back as a number (a float tag must not
+        break an isdigit() reader)."""
+        assert dr._dash_ring_tag(ring) == tag
+        assert dr._dash_ring_of_tag(tag) == float(ring)
+        for bad in ("ring=", "ring=x", "ring=nan", "rings=3", "dash"):
+            assert dr._dash_ring_of_tag(bad) is None
+
+    def test_the_fixture_words(self):
+        for w, v in dr._DASH_RING_WORDS.items():
+            assert TRUTH["ring_w_" + w]["rc"] == 0
+            assert TRUTH["ring_w_" + w]["lines"] == []
+        for w in ("in", "out", "o", "i", "Inside", "OUTSIDE", "ins",
+                  "insid", "ou", "outs", "outsid"):
+            assert TRUTH["ring_w_" + w]["rc"] == 198, w
+            assert dr._dash_ring_value(w) is None
+
+    @pytest.mark.parametrize("text,want", [
+        ("inside", 0.0), ("in", 0.0), ("i", 0.0), ("insid", 0.0),
+        ("outside", 1.0), ("o", 1.0), ("ou", 1.0), ("outsid", 1.0),
+        ("4.5", 4.5), ("-1", 0.0), ("101", 101.0), ("Inside", None),
+        ("OUTSIDE", None), ("x", None), ("insidex", None)])
+    def test_legend_grammar(self, text, want):
+        """legend(ring()): a lowercase abbreviation of inside or outside
+        (leg_ring_w_<w>, drawn with no note), any real, ring(-1) drawn
+        inside the plot region (leg_ring_neg)."""
+        assert dr._dash_legend_ring(text) == want
+
+    def test_legend_fixture(self):
+        inside = _y("leg_ring_0", "Trunk space (cu. ft.)")
+        outside = _y("leg_ring_1", "Trunk space (cu. ft.)")
+        for w in ("inside", "in", "i", "ins", "insid"):
+            assert _y("leg_ring_w_" + w, "Trunk space (cu. ft.)") == inside
+            assert TRUTH["leg_ring_w_" + w]["lines"] == []
+        for w in ("outside", "out", "o", "ou", "outs", "outsid"):
+            assert _y("leg_ring_w_" + w, "Trunk space (cu. ft.)") == outside
+            assert TRUTH["leg_ring_w_" + w]["lines"] == []
+        assert _y("leg_ring_neg", "Trunk space (cu. ft.)") == inside
+
+    def test_fixture_order(self):
+        assert _y("ring_75", "S") < _y("ring_75", "T")
+        assert _y("ring_100", "S") < _y("ring_100", "T")
+        assert _y("ring_101", "S") < _y("ring_101", "T")
+        assert _y("ring_ctrl", "S") > _y("ring_ctrl", "T")
+        assert _y("leg_45", "Trunk space (cu. ft.)") > _y("leg_45", "N")
+        assert _y("leg_ctrl", "Trunk space (cu. ft.)") < _y("leg_ctrl", "N")
+        assert _x("e_r1_ring75", "E") > _x("e_r1_ring75", "T")
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("ring", ["7.5", "100", "101"])
+    def test_fractional_order(self, mode, ring):
+        f, caught = _fig(mode, {"title": '"T"',
+                                "subtitle": '"S", ring(%s)' % ring})
+        above = list(f.above)
+        assert _tagged(above, "subtitle") > _tagged(above, "title")
+        s = above[_tagged(above, "subtitle")]
+        assert "ring=%s" % format(float(ring), "g") in s.tags
+        assert not [w for w in caught if "ring" in w]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_point_five_stays_inside(self, mode):
+        f, _c = _fig(mode, {"title": '"T"', "subtitle": '"S", ring(.5)',
+                            "t1title": '"E"'})
+        above = list(f.above)
+        assert _tagged(above, "subtitle") < _tagged(above, "t1title")
+        assert f.title is not None
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_legend_fraction(self, mode):
+        plots = [tp._sc(), tp.plot_for("scatter", yvar="trunk",
+                                       xvar="weight")]
+        f, _c = _fig(mode, {"note": '"N"',
+                            "legend": "position(6) ring(4.5)"}, plots)
+        below = list(f.below)
+        leg = [i for i, m in enumerate(below) if type(m).__name__ == "Legend"]
+        assert len(leg) == 1
+        assert leg[0] > _tagged(below, "note")
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("word,inside", [("in", True), ("i", True),
+                                             ("o", False), ("-1", True),
+                                             ("outs", False)])
+    def test_legend_words(self, mode, word, inside):
+        plots = [tp._sc(), tp.plot_for("scatter", yvar="trunk",
+                                       xvar="weight")]
+        f, caught = _fig(mode, {"legend": "ring(%s)" % word}, plots)
+        legs = [m for m in f.center if type(m).__name__ == "Legend"]
+        assert bool(legs) == inside
+        assert not [w for w in caught if "gridringstyle" in w]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_edge_title_fraction(self, mode):
+        f, _c = _fig(mode, {"title": '"T"', "t1title": '"E", ring(7.5)'})
+        above = list(f.above)
+        assert _tagged(above, "t1title") > _tagged(above, "title")

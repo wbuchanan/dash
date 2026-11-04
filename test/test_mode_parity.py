@@ -2842,6 +2842,11 @@ CORPUS = [
               "caption": '"C", box bcolor(gs14) lcolor(red)'}),
     _case("note tstyle(heading) margin(medium) (WP-31 D3)", [_sc()],
           go={"note": '"N", tstyle(heading) margin(medium)'}),
+    # WP-43 (section 43-05): title boxes, rings, placement, edge titles
+    _case('title("T", box) default fill (WP-43 LT-8)', [_sc()],
+          go={"title": '"T", box', "note": '"N", box'}),
+    _case('subtitle("S", ring(7.5)) (WP-43 LT-9)', [_sc()],
+          go={"title": '"T"', "subtitle": '"S", ring(7.5)'}),
 
     # WP-31 D4/C13 (section 31): legend geometry
     _case("legend(pos(1) symxsize(5) keygap(1)) (WP-31 D4)",

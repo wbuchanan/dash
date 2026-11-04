@@ -5048,6 +5048,10 @@ text after a number in {cmd:order()} wins over {cmd:label()}; and
 the first plot's key.
 {cmd:all} keys every plot, so two plots that look alike keep two keys;
 {cmd:draw} is {cmd:on} and {cmd:nodraw} is {cmd:off}, as in {cmd:twoway}.
+{cmd:legend(ring())} is a real number ({cmd:ring(4.5)} outside a note's
+4) or an abbreviation of {cmd:inside} or {cmd:outside}
+({cmd:ring(in)}, {cmd:ring(o)}), and a ring at or below 0 is inside the
+plot region, as {cmd:twoway} draws them.
 {cmd:twoway} has no {cmd:legend(top)}, {cmd:legend(bottom)},
 {cmd:legend(left)} or {cmd:legend(right)} and refuses each
 ({cmd:option top not allowed}, r(198)); so does {cmd:dash}, naming the
@@ -5935,7 +5939,10 @@ nearer horizontal side, at the right or left -- {cmd:title("T",}
 a side panel is turned on its side.  {cmd:ring()} orders the boxes on
 one side, a larger ring further out: the title is ring 7, the subtitle
 6, the caption 5, the note 4 (the scheme's {cmd:gridringstyle}
-{it:box}{cmd:_ring}), the legend 3 and the edge titles 1 and 2.
+{it:box}{cmd:_ring}), the legend 3 and the edge titles 1 and 2.  A ring
+is a real number, as in {cmd:twoway}: {cmd:ring(7.5)} sits between the
+subtitle's 6 and the title's 7, {cmd:ring(100)} outermost, and
+{cmd:legend(ring())} takes reals too.
 {cmd:ring(0)} or {cmd:position(0)} draws the box inside the plot region
 at the clock's compass point ({cmd:position(0)} its centre), and
 {cmd:span} there prints {cmd:twoway}'s note "option span ignored for

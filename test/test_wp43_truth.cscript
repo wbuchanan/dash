@@ -923,6 +923,122 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w43_run' {
 }
 * ==== end S05 ====
 
+// S05 LT-9 helper: _q4305_order -- in both modes, the model tagged
+// <outer> (or the Legend, "legend") lies further out on panel <side>
+// than the one tagged <inner>, as the probe <case> of title_box_truth.json
+// measured; "center" for <outer> asks that the Legend be inside the plot.
+python:
+def _q4305_order(sp, dp, app, side, outer, inner):
+    from sfi import Macro
+    a, b = _q4305_docs(sp, dp, app)
+
+    def at(panel, key):
+        for i, m in enumerate(panel):
+            if key == "legend" and type(m).__name__ == "Legend":
+                return i
+            if key in list(getattr(m, "tags", None) or []):
+                return i
+        return None
+    for figs, sfx in ((a, "s"), (b, "v")):
+        f = figs[0]
+        if outer == "center":
+            ok = any(type(m).__name__ == "Legend" for m in f.center)
+            Macro.setGlobal("q4305_" + sfx, "ok" if ok else "legend not inside")
+            continue
+        panel = list(getattr(f, side))
+        i, j = at(panel, outer), at(panel, inner)
+        ok = i is not None and j is not None and i > j
+        Macro.setGlobal("q4305_" + sfx, "ok" if ok else
+                        "%s at %s, %s at %s" % (outer, i, inner, j))
+end
+
+* ==== S05 LT-9: real-valued rings ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w43_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+    local q5d "`w43_work'/s05"
+    capture mkdir "`q5d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4305-2: subtitle("S", ring(7.5)), ring(100) and ring(101) draw S
+    // outside T, as twoway draws them (title_box_truth.json ring_75,
+    // ring_100, ring_101), saved and served; t1title("E", ring(7.5)) is
+    // outside the title too.
+    // ------------------------------------------------------------
+    foreach r in 7.5 100 101 {
+        dash clear
+        capture noisily dash scatter mpg weight, title("T") subtitle("S", ring(`r')) name(q4305b)
+        local rc = _rc
+        _w43_expect Q4305-2 "(`rc' == 0)" "ring(`r'): rc `rc'"
+        if `rc' == 0 {
+            capture erase "`q5d'/a.py"
+            _dash_serve_spec, specpath("`q5d'/s.json") datapath("`q5d'/d.json")
+            python: _q4305_order("`q5d'/s.json", "`q5d'/d.json", "`q5d'/a.py", "above", "subtitle", "title")
+            foreach m in s v {
+                _w43_expect Q4305-2 `"("${q4305_`m'}" == "ok")"' "ring(`r') `m': ${q4305_`m'}"
+            }
+        }
+    }
+    dash clear
+    capture noisily dash scatter mpg weight, title("T") t1title("E", ring(7.5)) name(q4305b)
+    _dash_serve_spec, specpath("`q5d'/s.json") datapath("`q5d'/d.json")
+    capture erase "`q5d'/a.py"
+    python: _q4305_order("`q5d'/s.json", "`q5d'/d.json", "`q5d'/a.py", "above", "t1title", "title")
+    foreach m in s v {
+        _w43_expect Q4305-2 `"("${q4305_`m'}" == "ok")"' "t1title ring(7.5) `m': ${q4305_`m'}"
+    }
+    _w43_done Q4305-2 "fractional and large title rings are ordered by value, saved and served"
+
+    // ------------------------------------------------------------
+    // Q4305-3: legend(position(6) ring(4.5)) is outside note() (leg_45);
+    // legend(ring(<w>)) for an abbreviation of inside draws the legend
+    // inside the plot region, and dash prints what twoway prints (nothing).
+    // ------------------------------------------------------------
+    dash clear
+    capture noisily dash (scatter mpg weight) (scatter trunk weight), note("N") legend(position(6) ring(4.5)) name(q4305c)
+    _w43_expect Q4305-3 "(_rc == 0)" "ring(4.5): rc `=_rc'"
+    capture erase "`q5d'/a.py"
+    _dash_serve_spec, specpath("`q5d'/s.json") datapath("`q5d'/d.json")
+    python: _q4305_order("`q5d'/s.json", "`q5d'/d.json", "`q5d'/a.py", "below", "legend", "note")
+    foreach m in s v {
+        _w43_expect Q4305-3 `"("${q4305_`m'}" == "ok")"' "legend ring(4.5) `m': ${q4305_`m'}"
+    }
+    foreach w in in i insid -1 {
+        dash clear
+        capture log close q4305l
+        log using "`q5d'/lw.log", text replace name(q4305l)
+        capture noisily twoway (scatter mpg weight) (scatter trunk weight), legend(ring(`w')) name(q4305t, replace)
+        local trc = _rc
+        capture noisily dash (scatter mpg weight) (scatter trunk weight), legend(ring(`w')) name(q4305c)
+        local drc = _rc
+        log close q4305l
+        local q5n = strpos(fileread("`q5d'/lw.log"), "gridringstyle") > 0
+        _w43_expect Q4305-3 "(`trc' == 0 & `drc' == 0 & `q5n' == 0)" "legend(ring(`w')): rc `trc' `drc', noted `q5n'"
+        if `drc' == 0 {
+            capture erase "`q5d'/a.py"
+            _dash_serve_spec, specpath("`q5d'/s.json") datapath("`q5d'/d.json")
+            python: _q4305_order("`q5d'/s.json", "`q5d'/d.json", "`q5d'/a.py", "center", "center", "")
+            foreach m in s v {
+                _w43_expect Q4305-3 `"("${q4305_`m'}" == "ok")"' "legend ring(`w') `m': ${q4305_`m'}"
+            }
+        }
+    }
+    _w43_done Q4305-3 "legend rings take reals and inside's abbreviations, drawn as twoway draws them"
+
+    local q5f : dir "`q5d'" files "*"
+    foreach f of local q5f {
+        capture erase "`q5d'/`f'"
+    }
+    capture rmdir "`q5d'"
+    capture graph drop _all
+    dash clear
+    macro drop q4305_*
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
 // S06 helpers (WP-43 43-06).  _q4306_docs: the figures a registered
 // graph draws, saved and served (spec and data from _dash_serve_spec);
 // _q4306_al: the one added-text Label's y_offset against the shift
