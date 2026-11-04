@@ -6976,7 +6976,7 @@ Colours may be Stata colour names or {cmd:#rrggbb}.
 {pstd}
 {ul:What the shipped files are.}  Each is a translation in {cmd:dash}'s
 own format, not a copy of StataCorp's file and not a drop-in Stata
-scheme: 310 to 390 directives (more for the monochrome schemes, whose
+scheme: 320 to 400 directives (more for the monochrome schemes, whose
 chains declare connecting-line and line-plot keys, a symbol cycle and
 {cmd:color plabel}; every file carries {cmd:gsize plabel}) where Stata's
 {cmd:scheme-s2color.scheme}
