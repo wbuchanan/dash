@@ -1695,9 +1695,12 @@ def _u09_draw(sp, dp, app, letter):
     for figs, sfx in ((a, "s"), (b, "v")):
         f = figs[0]
         Macro.setGlobal("u09_ax" + sfx, _u09_axes(f, letter))
+        # Flipped (WP-43 LT-21): not a legend-only key proxy (tag
+        # dash_key_proxy), which sits on its layer's range.
         Macro.setGlobal("u09_rn" + sfx, " ".join(
             getattr(r, letter + "_range_name") for r in f.renderers
-            if type(r).__name__ == "GlyphRenderer"))
+            if type(r).__name__ == "GlyphRenderer"
+            and "dash_key_proxy" not in (r.tags or [])))
         a3 = ""
         for ax in f.left + f.right:
             if getattr(ax, "y_range_name", "") != "y3":
