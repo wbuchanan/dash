@@ -1012,6 +1012,7 @@ and now matches Stata.
 
 ### Fixed in WP-43
 
+- margin(l=20), margin(1 2 3 4) and margin(l+5) are read on title(), subtitle(), note(), caption(), the edge titles and text(), and legend(region(margin())) keeps each of its four sides, as twoway draws them; the forms were noted and the region margin was its largest side (bmargin() per side is still open) (WP-43, LT-10)
 - legend(style(column)), width(), height(), xoffset(), yoffset(), showindex and region(style() lstyle() lalign()) are drawn as twoway draws them, and legend(style(bogus)) is noted in twoway's words; they were named (style(zyx2) is still named) (WP-43, LT-6)
 - legend(box) frames each key text in the scheme's text box fill and line, bcolor(), fcolor(), lcolor(), lwidth() and lpattern() colour and line the frames, and margin(), alignment(), linegap() and tstyle() pad, move, spread and style the key texts, as twoway draws them; box was taken silently and the rest named (WP-43, LT-3)
 - Edge titles draw their box, justification(), margin(), tstyle() and placement(), and r1title() and r2title() read upward, by()'s own included, as twoway draws them; they took size() and color() only and the right ones read downward (WP-43, LT-19)

@@ -195,3 +195,17 @@ class TestLayoutInChrome:
         assert [round(a - b, 1) for a, b in zip(base["frame"][1:],
                                                 moved["frame"][1:])] == \
             [0.0, 0.0, 0.0]
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestMarginsInChrome:
+
+    def test_legend_four_sides(self, mode):
+        """region(margin(1 20 1 1)): Bokeh 3.8 and 3.9 draw the four-sided
+        padding; the box is 18.6 units wider than the default's and the
+        width scale carries each side (legend_box_truth.json rm_1_20)."""
+        base, four = _legends(mode, "", "region(margin(1 20 1 1))")
+        u = 28.8 * four["items"][0]["fs"] / _SIZE
+        dw = (four["host"][2] - four["host"][0]) - (base["host"][2]
+                                                    - base["host"][0])
+        assert abs(dw - 18.6 * u) <= 3, (dw, 18.6 * u)

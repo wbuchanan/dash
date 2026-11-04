@@ -759,10 +759,13 @@ _PLAIN_DIGESTS = {
     # 9299b510... -> d03b126c... saved, 2ff9cd13... -> 8d93b119... served:
     # WP-43 LT-6, the width scale writes its factor as --dash-k on each
     # plot (width-scale JS text only); the same under both Pythons.
+    # d03b126c... -> 6ede92b7... saved, 8d93b119... -> 08dea935... served:
+    # WP-43 LT-10, the width scale's pair kind takes a legend's four-sided
+    # padding (width-scale JS text only); the same under both Pythons.
     ("saved", "plain"):
-        "d03b126c63ef75867366317ae6a1c637cc2f3a08356b32268a92a3ff879f6756",
+        "6ede92b7a0a9c78b3439cff787b173d286269fb8c4b17dff0bbae772b19a2b8e",
     ("saved", "yaxis2"):
-        "d03b126c63ef75867366317ae6a1c637cc2f3a08356b32268a92a3ff879f6756",
+        "6ede92b7a0a9c78b3439cff787b173d286269fb8c4b17dff0bbae772b19a2b8e",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -777,9 +780,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "8d93b119f531655ae56e3e52cdb89abe670f9c4ed75823574c2277e2c2c54cdf",
+        "08dea9359c18f1a721003c6df225ac6cd0ca2e557156bd4fa1bc3547b0c0c94e",
     ("served", "yaxis2"):
-        "8d93b119f531655ae56e3e52cdb89abe670f9c4ed75823574c2277e2c2c54cdf",
+        "08dea9359c18f1a721003c6df225ac6cd0ca2e557156bd4fa1bc3547b0c0c94e",
 }
 
 

@@ -28648,6 +28648,12 @@ def _dash_apply_scale(fig, factor, keep=None):
             v = getattr(m, p, None)
             if isinstance(v, (int, float)) and not isinstance(v, bool):
                 setattr(m, p, max(0, int(round(v * factor))))
+            elif isinstance(v, (tuple, list)) and v and all(
+                    isinstance(x, (int, float)) and not isinstance(x, bool)
+                    for x in v):
+                # WP-43 LT-10: a four-sided legend padding.
+                setattr(m, p, tuple(max(0, int(round(x * factor)))
+                                    for x in v))
 
     cols = []
     for m in fig.references():
@@ -28805,6 +28811,13 @@ def _dash_width_scale_entries(models):
                     if p not in m.properties():
                         continue
                     v = getattr(m, p, None)
+                    if kind == "int" and isinstance(v, (tuple, list)) \
+                            and v and all(isinstance(x, (int, float))
+                                          and not isinstance(x, bool)
+                                          for x in v):
+                        # WP-43 LT-10: a four-sided legend padding.
+                        out.append([m, p, [float(x) for x in v], "pair"])
+                        continue
                     if kind == "css":
                         v = OptionTranslator.css_to_pt(
                             v.get("value") if isinstance(v, dict) else v)
@@ -28914,9 +28927,11 @@ state.k = k;
 for (const [m, p, b, kind] of entries) {
   const v = b * k;
   if (kind === "pair") {
-    const n = [Math.round(b[0] * k), Math.round(b[1] * k)];
+    // A by() grid's spacing pair, or a legend's four-sided padding.
+    const n = b.map((x) => Math.round(x * k));
     const cur = m[p];
-    if (!Array.isArray(cur) || cur[0] !== n[0] || cur[1] !== n[1]) {
+    if (!Array.isArray(cur) || cur.length !== n.length
+        || n.some((x, i) => cur[i] !== x)) {
       m[p] = n;
     }
   } else if (kind === "css") {
@@ -41528,6 +41543,21 @@ _DASH_LEGEND_REGION_NAMES = (("fcolor", "fc"), ("lcolor", "lc"),
                              ("lalign", "la"))
 
 
+def _dash_margin_px(text, start, scheme=None, ref=None):
+    """One margin() text over *start* (``[left, right, bottom, top]`` in
+    relative units) as px at dash's 4-inch reference, every marginstyle
+    form twoway reads (a name, ``# # # #``, ``l=#``, ``l+#``; WP-43
+    LT-10, through :func:`_dash_margin_sides`); returns ``(sides,
+    noted)``, *sides* None when twoway would note the text."""
+    T = OptionTranslator
+    sides, noted = _dash_margin_sides(text, list(start), scheme,
+                                      ref or 4.0)
+    if noted is not None:
+        return None, noted
+    return [max(0.0, min(5000.0, float(v) * T.PT_PER_RS * T.PX_PER_PT))
+            for v in sides], None
+
+
 def _dash_legend_margin_px(arg):
     """A marginstyle (a name or up to four numbers) as whole pixels, the
     largest side (Bokeh's ``padding`` and ``margin`` are one Int), or
@@ -41659,11 +41689,22 @@ def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
                     except (ValueError, TypeError):
                         _note(where, inner, "line pattern")
                 elif full == "margin":
-                    px = _dash_legend_margin_px(inner)
-                    if px is None:
+                    # Each side kept, over the box's current margin (WP-43
+                    # LT-10: region(margin(l=20)), region(margin(1 20 1
+                    # 1)); legend_box_truth.json rm_l20, rm_1_20): Bokeh's
+                    # 4-tuple padding, (left, right, top, bottom) in 3.8
+                    # and 3.9; one number when the four are equal.
+                    p0 = legend.padding if isinstance(legend.padding,
+                                                      int) else 0
+                    u = T.PT_PER_RS * T.PX_PER_PT
+                    sides, _nt = _dash_margin_px(inner, [p0 / u] * 4,
+                                                 scheme)
+                    if sides is None or len(inner) > 64:
                         _note(where, inner, "margin")
                     else:
-                        legend.padding = px
+                        l_, r_, b_, t_ = (int(round(v)) for v in sides)
+                        legend.padding = (l_ if l_ == r_ == b_ == t_
+                                          else (l_, r_, t_, b_))
                 elif full in ("style", "lstyle"):
                     # WP-43 LT-6: region(style(none)) draws no box,
                     # region(lstyle(p1)) lines it in linestyle p1
@@ -59289,14 +59330,18 @@ def _dash_textbox_style(model, opts, fig, scheme, option, *, base_size=None,
             model.border_line_alpha = 0.0
 
     def sides_px(sub):
-        sides = SchemeParser.margin_sides(
-            scheme if scheme is not None else SchemeParser, o[sub])
+        # Every marginstyle form, over the box's default sides (WP-43
+        # LT-10: margin(l=20) sets the left side, the rest the text box
+        # style's; legend_box_truth.json t_margin_l20, t_margin_4,
+        # t_margin_lplus).
+        start = ((_dash_textbox_margin_rel(scheme, option)
+                  if scheme is not None and sub == "margin" else None)
+                 or [0.0] * 4)
+        sides, _noted = _dash_margin_px(o[sub], start, scheme, ref)
         if sides is None:
             _dash_style_note(f"{option}({sub})", o[sub], "margin")
             return None
-        return [int(round(float(s[1]) * T.PX_PER_PT if isinstance(s, tuple)
-                          else float(s) * T.PT_PER_RS * T.PX_PER_PT))
-                for s in sides]
+        return [int(round(v)) for v in sides]
     if o.get("margin"):
         p = sides_px("margin")
         if p is not None:
@@ -60097,13 +60142,11 @@ def _dash_added_text_opts(opts, seen=None, key="", scheme=None,
     elif o.get("lalign"):
         _dash_style_note("text(lalign)", o["lalign"], "line alignment")
     if o.get("margin"):
-        sides = SchemeParser.margin_sides(scheme if scheme is not None
-                                          else SchemeParser, o["margin"])
-        if sides is None:
+        # Every marginstyle form (WP-43 LT-10, x_box_ml10).
+        px, _noted = _dash_margin_px(o["margin"], [0.0] * 4, scheme)
+        if px is None:
             _dash_style_note("text(margin)", o["margin"], "margin")
         else:
-            px = [float(v[1]) * T.PX_PER_PT if isinstance(v, tuple)
-                  else float(v) * T.PT_PER_RS * T.PX_PER_PT for v in sides]
             out["padding"] = {"left": int(round(px[0])),
                               "right": int(round(px[1])),
                               "bottom": int(round(px[2])),
@@ -75888,6 +75931,7 @@ class ServerAppBuilder:
                          "_dash_compass_dir",
                          "_dash_legend_margin_px", "_dash_legend_box",
                          "_dash_legend_key_text", "_dash_legend_layout",
+                         "_dash_margin_px",
                          "_dash_legend_title_block",
                          "_dash_legend_hole_sheet", "_dash_legend_holes",
                          "_dash_apply_legend",

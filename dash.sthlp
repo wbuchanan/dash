@@ -5094,7 +5094,7 @@ keys fill it row by row, or column by column with {cmd:colfirst}.
 {cmd:holes(2)} leaves the second place blank and a hole past the last
 key is ignored; in a one-column or one-row legend a hole is a row's or a
 column's gap, as {cmd:twoway} draws it.
-{cmd:region(lcolor() fcolor() lwidth() lpattern() margin() style() lstyle() lalign())} draws the box; {cmd:nobox} and {cmd:box} act on the key texts, as in {cmd:twoway} ({cmd:region()} draws the box); {cmd:bmargin()} is the
+{cmd:region(lcolor() fcolor() lwidth() lpattern() margin() style() lstyle() lalign())} draws the box ({cmd:region(margin())} in any marginstyle form, its four sides kept); {cmd:nobox} and {cmd:box} act on the key texts, as in {cmd:twoway} ({cmd:region()} draws the box); {cmd:bmargin()} is the
 space around it, {cmd:bplacement()} its place along its side, or,
 inside the plot region ({cmd:ring(0)} or {cmd:position(0)}), the plot
 region's compass point it names; every spelling {cmd:twoway} reads for a
@@ -5992,7 +5992,9 @@ subtitle's own style's fill, {cmd:color bylabel_outline} under
 fill and the line, {cmd:fcolor()} and {cmd:bfcolor()} the fill,
 {cmd:lcolor()}, {cmd:lwidth()} and {cmd:lpattern()} the line; as in
 {cmd:twoway} they draw nothing without {cmd:box}, and {cmd:nobox}
-removes a scheme's box.  {cmd:margin()} pads the text, {cmd:linegap()}
+removes a scheme's box.  {cmd:margin()} pads the text, in any
+marginstyle form ({cmd:margin(l=20)}, {cmd:margin(1 2 3 4)},
+{cmd:margin(l+5)}, each side over the box's default), {cmd:linegap()}
 adds to the line step (the font size), {cmd:justification()} aligns the
 text inside its box (the box stays at its clock, as in {cmd:twoway}),
 {cmd:alignment()} sets its vertical place and {cmd:bmargin()} the gap

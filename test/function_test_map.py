@@ -412,6 +412,7 @@ FUNCTIONS = {
  '_dash_legend_layout': 'test/test_legend_box.py::TestLayout::test_width_height',
  '_dash_legend_layout.<locals>.px': 'test/test_legend_box.py::TestLayout::test_offset',
  '_dash_legend_layout.<locals>.k': 'test/test_legend_box.py::TestLayout::test_width_height',
+ '_dash_margin_px': 'test/test_legend_box.py::TestMargins::test_textbox_forms',
  '_dash_legend_title_block': 'test/test_legend_title_style.py::TestSubtitleStyle::test_two_styles',
  '_dash_legend_title_block.<locals>.em': 'test/test_legend_title_style.py::TestTitleSubopts::test_box',
  '_dash_legend_title_block.<locals>.col': 'test/test_legend_title_style.py::TestTitleSubopts::test_box_options',

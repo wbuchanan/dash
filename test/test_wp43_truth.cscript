@@ -1170,6 +1170,126 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w43_run' {
 }
 * ==== end S03 ====
 
+// S03 LT-10 helper.  _q4303_mar <svg> <base svg> <what> <dir>: live
+// twoway's box growth from an SVG against the same graph without the
+// margin -- "title": the title box's width less the default's, "legend":
+// the legend box's width and height less the default's, in units --
+// beside dash's padding of the graph registered last in <dir> against
+// the default sides (the Title's text box margin, the legend's padding),
+// saved and served: "ok" or what differs, into q4303_m<s|v>.
+python:
+def _q4303_mar(svg, base, what, d, dflt):
+    import dash_render as dr
+    from sfi import Macro
+    from bokeh.models import Legend, Plot
+    from svg_truth import svg_document, svg_rects
+    U = 28.8
+    T = dr.OptionTranslator
+    pxu = T.PT_PER_RS * T.PX_PER_PT
+
+    def tbox(p):
+        rs = [r for r in svg_rects(p) if r["fill"] == "#d9e6eb"]
+        return rs[0] if rs else None
+
+    def lbox(p):
+        ks = [t for t in svg_document(p)["texts"] if not t["anchor"]]
+        rs = [r for r in svg_rects(p) if r["w"] and r["w"] < 3900
+              and r["fill"] not in (None, "none")
+              and all(r["x"] <= k["x"] <= r["x"] + r["w"]
+                      and r["y"] <= k["y"] <= r["y"] + r["h"] for k in ks)]
+        return min(rs, key=lambda r: r["w"])
+    if what == "title":
+        tw = (round((tbox(svg)["w"] - tbox(base)["w"]) / U, 1),)
+    else:
+        a, b = lbox(svg), lbox(base)
+        tw = (round((a["w"] - b["w"]) / U, 1), round((a["h"] - b["h"]) / U, 1))
+    for (models, _m), sfx in zip(_q4302_models(d + "/s.json", d + "/d.json",
+                                               d + "/a.py"), ("s", "v")):
+        got = None
+        for p in models:
+            if not isinstance(p, Plot):
+                continue
+            if what == "title" and p.title is not None and p.title.text:
+                pd = p.title.padding
+                got = (round((pd["left"] + pd["right"]) / pxu - dflt, 1),)
+            elif what == "legend":
+                for lg in p.select({"type": Legend}):
+                    if str(lg.name or "") != dr._COLORVAR_LEGEND_NAME:
+                        q = lg.padding
+                        q = (q,) * 4 if isinstance(q, int) else q
+                        got = (round((q[0] + q[1]) / pxu - dflt, 1),
+                               round((q[2] + q[3]) / pxu - dflt, 1))
+        ok = got is not None and all(abs(x - y) <= 0.15
+                                     for x, y in zip(got, tw))
+        Macro.setGlobal("q4303_m" + sfx, "ok" if ok else
+                        "dash %s, twoway %s" % (got, tw))
+end
+
+* ==== S03 LT-10: every marginstyle form; the legend's margin per side ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w43_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03d "`w43_work'/s03d"
+    capture mkdir "`q03d'"
+    capture graph drop _all
+    sysuse auto, clear
+    local three (scatter mpg weight) (scatter price weight) (scatter turn weight)
+
+    // ------------------------------------------------------------
+    // Q4303-7: title("T", box margin(l=20 | 1 2 3 4 | l+5)) and
+    // legend(region(margin(l=20 | 1 20 1 1))) -- live twoway's box
+    // growth in units against its default beside the growth of dash's
+    // padding (each side kept), saved and served, with no note.
+    // ------------------------------------------------------------
+    quietly twoway `three', scheme(s2color) title("T", box) name(q03t, replace)
+    capture erase "`q03d'/q03t.svg"
+    cert_svg_export, name(q03t) file("`q03d'/q03t.svg")
+    quietly twoway `three', scheme(s2color) name(q03c, replace)
+    capture erase "`q03d'/q03c.svg"
+    cert_svg_export, name(q03c) file("`q03d'/q03c.svg")
+    local k 0
+    foreach o in "title|l=20" "title|1 2 3 4" "title|l+5" "legend|l=20" "legend|1 20 1 1" {
+        local ++k
+        gettoken what m : o, parse("|")
+        local m = substr("`m'", 2, .)
+        if "`what'" == "title" {
+            local opt title("T", box margin(`m'))
+            local bsv "`q03d'/q03t.svg"
+            local dflt 1.2
+        }
+        else {
+            local opt legend(region(margin(`m')))
+            local bsv "`q03d'/q03c.svg"
+            local dflt = 2 * 5 / (2.88 * 4 / 3)
+        }
+        quietly twoway `three', scheme(s2color) `opt' name(q03n, replace)
+        capture erase "`q03d'/q03n`k'.svg"
+        cert_svg_export, name(q03n) file("`q03d'/q03n`k'.svg")
+        _q4303_reg "`q03d'" `three', scheme(s2color) `opt' name(q03e)
+        local ns ${q4303_ns}
+        local nv ${q4303_nv}
+        python: import __main__ as _q4303_m; _q4303_m._q4303_mar("`q03d'/q03n`k'.svg", "`bsv'", "`what'", "`q03d'", `dflt')
+        foreach mm in s v {
+            _w43_expect Q4303-7 `"("${q4303_m`mm'}" == "ok")"' `"`opt' `mm': ${q4303_m`mm'}"'
+        }
+        _w43_expect Q4303-7 "(`ns' == 0 & `nv' == 0)" `"`opt' printed a note"'
+    }
+    _w43_done Q4303-7 "every marginstyle form and the legend's four sides drawn as twoway's, saved and served"
+
+    forvalues j = 1/`k' {
+        capture erase "`q03d'/q03n`j'.svg"
+    }
+    foreach f in q03t.svg q03c.svg s.json d.json a.py {
+        capture erase "`q03d'/`f'"
+    }
+    capture rmdir "`q03d'"
+    macro drop q4303_ms q4303_mv q4303_s q4303_v q4303_ns q4303_nv
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // S05 helpers (WP-43 43-05).  _q4305_docs: the figures a registered
 // graph draws, saved and served (spec and data from _dash_serve_spec);
 // _q4305_model: the model drawing a title-family key's text;

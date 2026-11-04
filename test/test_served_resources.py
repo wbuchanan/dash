@@ -684,7 +684,9 @@ _SAVED_DIGEST = (
     # ef273b93... -> 07fa8f4b...: WP-43 LT-6, the width scale writes its
     # factor as --dash-k on each plot (code only: the base's width-scale
     # JS gives the old digest on the new tree).
-    "07fa8f4bb2f0565a7aaac7999a2431cc3a50932615923fc685bdc031167d2b75")
+    # 07fa8f4b... -> b5d0411e...: WP-43 LT-10, the width scale's pair
+    # kind takes a legend's four-sided padding (code only, as above).
+    "b5d0411ea1f74e0b865307eafb3a99cf35128055941fcf5670ab4c879f48db30")
 
 
 # ===========================================================================

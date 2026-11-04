@@ -494,3 +494,83 @@ class TestBexpandFixture:
         assert (st[2] - st[0]) > 2 * (st0[2] - st0[0])
         assert TRUTH["bexpand_st"]["plot"]["right"] < \
             TRUTH["ctl_st"]["plot"]["right"] - 1000
+
+
+# ---------------------------------------------------------------------------
+# LT-10: every marginstyle form; the legend's region margin per side
+# ---------------------------------------------------------------------------
+
+_U = 28.8          # SVG units a Stata unit
+_PXU = 2.88 * 4.0 / 3.0   # px a Stata unit at dash's 4-inch reference
+
+
+class TestMarginsFixture:
+
+    def test_measured(self):
+        """A margin form sets the sides it names over the default:
+        title("T", box margin(l=20)) widens the box by 20 less the
+        default's 0.6 units, margin(1 2 3 4) sets all four, margin(l+5)
+        adds 5; legend(region(margin(l=20))) widens the box by 20 less
+        1.2 units, region(margin(1 20 1 1)) by 21 less 2.4 and is 0.4
+        units shorter."""
+        def fill(k):
+            return [r for r in _rects(k) if "#D9E6EB" in r[4].upper()
+                    and "fill:none" not in r[4]][0]
+        w0 = fill("t_box")[2] - fill("t_box")[0]
+        assert abs((fill("t_margin_l20")[2] - fill("t_margin_l20")[0]) - w0
+                   - 19.4 * _U) < 0.2
+        assert abs((fill("t_margin_lplus")[2] - fill("t_margin_lplus")[0])
+                   - w0 - 5 * _U) < 0.2
+        f4 = fill("t_margin_4")
+        assert abs((f4[2] - f4[0]) - (w0 - 1.2 * _U + 3 * _U)) < 0.2
+        b0, bl, b4 = (_region_box(k) for k in ("ctl", "rm_l20", "rm_1_20"))
+        assert abs((bl[2] - bl[0]) - (b0[2] - b0[0]) - 18.8 * _U) < 0.2
+        assert abs((b4[2] - b4[0]) - (b0[2] - b0[0]) - 18.6 * _U) < 0.2
+        assert abs((b4[3] - b4[1]) - (b0[3] - b0[1]) + 0.4 * _U) < 0.2
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestMargins:
+
+    @pytest.mark.parametrize("form,sides", [
+        ("l=20", (20, 0.6, 0.6, 0.6)), ("1 2 3 4", (1, 2, 3, 4)),
+        ("l+5", (5.6, 0.6, 0.6, 0.6))])
+    def test_textbox_forms(self, mode, form, sides):
+        """title("T", box margin(<form>)): read, no note; the Title's
+        padding is each side in px (left, right, bottom, top)."""
+        fig, caught = G._build(mode, [G._sc()], go={
+            "title": '"T", box margin(%s)' % form})
+        assert not [w for w in caught if "margin" in w], caught
+        p = fig.title.padding
+        got = (p["left"], p["right"], p["bottom"], p["top"])
+        assert got == tuple(int(round(s * _PXU)) for s in sides)
+
+    def test_legend_four_sides(self, mode):
+        """region(margin(l=20)) and region(margin(1 20 1 1)): the
+        legend's padding is (left, right, top, bottom), each side kept."""
+        _f, lg, caught = G._fig_legend(mode, G.THREE, "region(margin(l=20))")
+        assert not [w for w in caught if "margin" in w], caught
+        assert lg.padding == (int(round(20 * _PXU)), 5, 5, 5)
+        _f, lg, _ = G._fig_legend(mode, G.THREE, "region(margin(1 20 1 1))")
+        assert lg.padding == (int(round(_PXU)), int(round(20 * _PXU)),
+                              int(round(_PXU)), int(round(_PXU)))
+        _f, lg, _ = G._fig_legend(mode, G.THREE, "region(margin(zero))")
+        assert lg.padding == 0
+
+    def test_legend_sides_scale(self, mode):
+        """scale(1.5) multiplies each side of a four-sided padding."""
+        _f, lg, _ = G._fig_legend(mode, G.THREE, "region(margin(l=20))",
+                                  go={"scale": "1.5"})
+        assert lg.padding == tuple(int(round(v * 1.5)) for v in
+                                   (int(round(20 * _PXU)), 5, 5, 5))
+
+    def test_text_margin(self, mode):
+        """text(30 3000 "Peak", box margin(l=10)): read, no note; the
+        Label's left padding is 10 units (x_box_ml10)."""
+        import test_added_text as tat
+        caught = []
+        spec = tat._spec([tat._at(30, 3000, ["Peak"], "box margin(l=10)")])
+        (fig,) = tat._figs(spec, mode, None, caught)
+        assert not [w for w in caught if "margin" in str(w)], caught
+        (lab,) = tat._labels(fig)
+        assert lab.padding["left"] >= int(round(10 * _PXU))

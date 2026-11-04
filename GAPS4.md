@@ -468,7 +468,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-7 Tracked:** Open (WP-43 section 43-03).
 - **LT-8 Tracked:** Closed in WP-43, BUGS.md "A title box under stcolor is filled #d9e6eb (the added-text fill), not textbox white with a 6.48 line", commit edc071a.
 - **LT-9 Tracked:** Closed in WP-43, BUGS.md "A fractional ring() (7.5, 4.5) or ring(100) is dropped silently", commit d7aaa44.
-- **LT-10 Tracked:** Open (WP-43 section 43-03).
+- **LT-10 Tracked:** Partly closed in WP-43 (section 43-03, commit pending): every marginstyle form on title-family boxes, text() and legend(region(margin())), four sides kept; open: bmargin() per side (BUGS.md "legend(bmargin()) and a title's bmargin() keep only the largest side; twoway reserves each side").
 - **LT-11 Tracked:** Closed in WP-43, BUGS.md "text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn", commit 884ebaa.
 - **LT-13 Tracked:** Closed in WP-43, BUGS.md "legend(t1title() ... b2title()) is accepted and named where twoway refuses r(198)", commit 900153e.
 - **LT-14 Tracked:** Closed in WP-43, BUGS.md "title(..., ring(x)) is accepted silently where twoway prints notes and refuses r(198)", commit 12a9e8e.
