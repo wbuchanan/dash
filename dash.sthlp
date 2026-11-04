@@ -5035,7 +5035,9 @@ key is ignored.
 space around it, {cmd:bplacement()} its place along its side,
 {cmd:color()} the key text's colour, {cmd:textwidth()} its least width
 and {cmd:title()} a line above the keys, with the legend's own
-{cmd:subtitle()} a line under it; {cmd:colgap()} is the gap between keys
+{cmd:subtitle()} a line under it, in the scheme's legend title and
+subtitle text boxes ({cmd:textboxstyle leg_title}, {cmd:leg_subtitle}:
+under {cmd:s2color} the heading and the subheading); {cmd:colgap()} is the gap between keys
 in one row, as {cmd:twoway} draws it, and {cmd:rowgap()} the gap between
 rows (a legend of several rows and columns has one gap, the row gap);
 {cmd:span} places a legend beside the plot along its side on the whole

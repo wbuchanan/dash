@@ -1624,6 +1624,12 @@ def extract(stata_base: str, scheme: str) -> dict:
             res["textboxstyle_" + _k] = scalar(
                 "textboxstyle_" + _k, "textboxstyle", [_k], tok_name,
                 class_default=False, required=False)
+        # WP-43 LT-1: legend(title()), subtitle(), note() and caption()
+        # are drawn in `textboxstyle leg_<box>' (_fr_legend_parse_and_log).
+        for _k in ("leg_title", "leg_subtitle", "leg_note", "leg_caption"):
+            res["textboxstyle_" + _k] = scalar(
+                "textboxstyle_" + _k, "textboxstyle", [_k], tok_name,
+                class_default=False, required=False)
         res["bylabel_outline_color"] = color_of(
             "bylabel_outline_color", ["bylabel_outline"], required=False)
         # The label box's fill: the scheme's `textboxstyle subtitle' names a
@@ -2403,6 +2409,10 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         scalar("textboxstyle", "title", "textboxstyle_title"),
         scalar("textboxstyle", "subtitle", "textboxstyle_subtitle"),
         scalar("textboxstyle", "caption", "textboxstyle_caption"),
+        scalar("textboxstyle", "leg_title", "textboxstyle_leg_title"),
+        scalar("textboxstyle", "leg_subtitle", "textboxstyle_leg_subtitle"),
+        scalar("textboxstyle", "leg_note", "textboxstyle_leg_note"),
+        scalar("textboxstyle", "leg_caption", "textboxstyle_leg_caption"),
         scalar("margin", "heading", "margin_heading"),
         scalar("margin", "body", "margin_body"),
         scalar("margin", "small_body", "margin_small_body"),

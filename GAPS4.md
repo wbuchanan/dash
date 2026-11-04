@@ -459,7 +459,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **sil:SD-4 Tracked:** Closed in WP-42, BUGS.md "The colour bar is a fixed 12 px (twoway uses the scheme's clegend_width, about 23 px); the scheme contour keys (outline, colorlines, reversekey, levels) are never read", commit d7dffa5.
 - **CV-17 Tracked:** Closed in WP-42, BUGS.md "colorlist() with quoted RGB colours is not applied under colorvar(): every marker is black and the key is a legend of ranges where twoway draws the listed colours with a colour bar", commit 642cb58.
 - **LT-22 Tracked:** Closed in WP-42, BUGS.md "contourline with colorlines draws no level legend; plain contourline gets a needless note; the contour key title sits above with no axis line", commit 514098a.
-- **LT-1 Tracked:** Open (WP-43 section 43-01).
+- **LT-1 Tracked:** Closed in WP-43, BUGS.md "legend(title()/subtitle()) are drawn at key-text size and colour, not the scheme's leg_title/leg_subtitle styles", commit pending.
 - **LT-4 Tracked:** Open (WP-43 section 43-02).
 - **LT-2 Tracked:** Open (WP-43 section 43-03).
 - **LT-3 Tracked:** Open (WP-43 section 43-03).

@@ -11788,6 +11788,14 @@ class SchemeParser:
                     color = self._color(f"color {key}", color)
         return size, color
 
+    def _legend_text_style(self, box, default) -> str:
+        """The text box style ``textboxstyle leg_<box>`` names in this
+        scheme, or *default* (s2color's) when it names none textbox_style()
+        knows (WP-43 LT-1)."""
+        name = str(self._props.get("textboxstyle leg_%s" % box, "")
+                   or "").strip().strip('"')
+        return name if self.textbox_style(name) is not None else default
+
     _NOTE_TEXTBOXES: "dict[str, tuple]" = {
         "small_body":   ("small_body", "small_body", "textbox", "textbox"),
         "body":         ("body", "body", "textbox", "textbox"),
@@ -12177,6 +12185,16 @@ class SchemeParser:
         self.text_option_vertical: str = (
             _tv if _tv in ("top", "middle", "bottom", "baseline") else
             "middle")
+        # legend()'s own title(), subtitle(), note() and caption() are
+        # drawn in `textboxstyle leg_<box>' (scheme-s2color.scheme:1322-
+        # 1325; stcolor's leg_title is legend_title), not in the key
+        # text's style (WP-43 LT-1).
+        self.legend_text_styles: dict = {
+            box: self._legend_text_style(box, dflt)
+            for box, dflt in (("title", "heading"),
+                              ("subtitle", "subheading"),
+                              ("note", "small_body"),
+                              ("caption", "body"))}
         self.by_label_fill: str = self._color("color by_label_fill",
                                               "#d9e6eb")
         self.by_label_outline: str = self._color("color bylabel_outline",
@@ -41367,6 +41385,16 @@ def _dash_textbox_span(fig, model, opts, side, clock=12):
                    getattr(model, "offset", 0.0) or 0.0)
 
 
+def _dash_legend_text_box(scheme, box):
+    """``(size, colour)`` of legend()'s *box* text box (title, subtitle,
+    note or caption) in *scheme*, or ``(None, None)`` (WP-43 LT-1)."""
+    styles = getattr(scheme, "legend_text_styles", None) or {}
+    fn = getattr(scheme, "textbox_style", None)
+    if not styles.get(box) or fn is None:
+        return (None, None)
+    return fn(styles[box]) or (None, None)
+
+
 def _dash_scheme_chrome(scheme):
     """The legend's chrome and default placement from *scheme*, for both
     modes: the saved renderer's ``_rebuild_legend`` and the served app
@@ -41387,6 +41415,12 @@ def _dash_scheme_chrome(scheme):
                                 else None),
         "label_text_font_size": scheme.key_label_font_size,
         "label_text_color": scheme.key_label_color,
+        # WP-43 LT-1: legend()'s title, subtitle, note and caption text
+        # boxes (`textboxstyle leg_<box>'): size and colour.
+        **{f"legend_{box}_{part}": val
+           for box in ("title", "subtitle", "note", "caption")
+           for part, val in zip(("size", "color"), _dash_legend_text_box(
+               scheme, box))},
         "legend_position": getattr(scheme, "legend_position", None),
         "legend_cols": getattr(scheme, "legend_cols", None) or 0,
         "legend_rows": getattr(scheme, "legend_rows", 0) or 0,
@@ -41439,7 +41473,8 @@ def _dash_legend_margin_px(arg):
     return max(0, min(500, int(round(max(vals) * OptionTranslator.PX_PER_PT))))
 
 
-def _dash_legend_box(legend, calls, words):
+def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
+                     seen=None, key=""):
     """legend()'s box and text sub-options on the series *legend* (WP-31
     D4): region() -> the border and fill, nobox -> neither, bmargin() ->
     Bokeh's ``margin``, region(margin()) -> ``padding``, color() -> the
@@ -41465,6 +41500,45 @@ def _dash_legend_box(legend, calls, words):
             return "none"
         hx, _a = T.parse_color_alpha(r, option)
         return hx
+
+    ch = chrome or {}
+    scheme = getattr(fig, "_dash_scheme", None) if fig is not None else None
+
+    def _style(sub, box):
+        # (size, colour) of legend(<box>()): the scheme's leg_<box> text
+        # box, then tstyle(), then size() and color() (WP-43 LT-1).
+        size = ch.get("legend_%s_size" % box) or legend.label_text_font_size
+        colour = ch.get("legend_%s_color" % box) or legend.label_text_color
+        if sub.get("tstyle"):
+            sch = scheme if scheme is not None else \
+                SchemeParser.resolve_or_fallback("s2color", "legend()")
+            st = sch.textbox_style(str(sub["tstyle"]))
+            if st is None:
+                _dash_warn_once(
+                    ("textboxstyle", str(sub["tstyle"])),
+                    "dash: named style %s not found in class textboxstyle, "
+                    "default attributes used"
+                    % _dash_display(str(sub["tstyle"])))
+                st = sch.textbox_style("body")
+            if st is not None:
+                size, colour = st
+        if sub.get("color"):
+            c = _colour(sub["color"], "legend(%s(color))" % box)
+            if c and c != "none":
+                colour = c
+        if sub.get("size"):
+            try:
+                _base = float(str(size)[:-2])
+            except (TypeError, ValueError):
+                _base = 10.0
+            try:
+                _pt = T.resolve_size(str(sub["size"]), "text", _base)
+                if not 0 < _pt <= 1000:
+                    raise ValueError("not a size")
+                size = f"{round(_pt, 3):g}pt"
+            except (ValueError, TypeError):
+                _note("%s(size)" % box, sub["size"], "size")
+        return size, colour
 
     for name, arg, typed in calls:
         if name == "region":
@@ -41529,30 +41603,16 @@ def _dash_legend_box(legend, calls, words):
             legend.title = "\n".join(lines)[:2000]
             legend.title_location = "above"
             legend.title_text_font_style = "normal"
-            legend.title_text_font_size = legend.label_text_font_size
-            legend.title_text_color = legend.label_text_color
-            # The title's own color() and size(), as twoway draws them; a
-            # name it does not know is noted and the default kept (WP-31
-            # D16, tabs_legend_edges_truth.json nested.title_*).
-            if _sub.get("color"):
-                c = _colour(_sub["color"], "legend(title(color))")
-                if c and c != "none":
-                    legend.title_text_color = c
-            if _sub.get("size"):
-                try:
-                    _base = float(str(legend.label_text_font_size)[:-2])
-                except (TypeError, ValueError):
-                    _base = 10.0
-                try:
-                    _pt = T.resolve_size(str(_sub["size"]), "text", _base)
-                    if not 0 < _pt <= 1000:
-                        raise ValueError("not a size")
-                    legend.title_text_font_size = f"{round(_pt, 3):g}pt"
-                except (ValueError, TypeError):
-                    _note("title(size)", _sub["size"], "size")
+            # twoway's leg_title text box (WP-43 LT-1), then the title's
+            # own tstyle(), color() and size(); a name it does not know is
+            # noted and the default kept (WP-31 D16,
+            # tabs_legend_edges_truth.json nested.title_*).
+            _sz, _cl = _style(_sub, "title")
+            legend.title_text_font_size = _sz
+            legend.title_text_color = _cl
     # The legend's own subtitle(): twoway draws it centred above the keys,
     # under the title (WP-31 D4b, legend_remainder_truth.json lsubtitle,
-    # lall); a line of the title, in its style.
+    # lall), in the scheme's leg_subtitle text box (WP-43 LT-1).
     for name, arg, typed in calls:
         if name != "subtitle":
             continue
@@ -41566,8 +41626,9 @@ def _dash_legend_box(legend, calls, words):
         if not head:
             legend.title_location = "above"
             legend.title_text_font_style = "normal"
-            legend.title_text_font_size = legend.label_text_font_size
-            legend.title_text_color = legend.label_text_color
+            _sz, _cl = _style(_sub, "subtitle")
+            legend.title_text_font_size = _sz
+            legend.title_text_color = _cl
     if "nobox" in words and "box" not in words:
         legend.border_line_color = None
         legend.background_fill_color = None
@@ -42012,7 +42073,8 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     #     forcesize's partner noforcesize, bexpand and their no-forms are
     #     taken in silence.
     if legend is not None:
-        _dash_legend_box(legend, _calls, _words)
+        _dash_legend_box(legend, _calls, _words, chrome=chrome, fig=fig,
+                         seen=seen, key=key)
 
     # 7c. span (WP-32): legend(span), else the scheme's `yesno
     #     legend_span' unless legend(nospan) undoes it; span beside
@@ -74641,7 +74703,7 @@ class ServerAppBuilder:
                          "_dash_move_legend", "_dash_span",
                          "_dash_span_move", "_dash_textbox_span",
                          "_dash_span_sides", "_dash_span_keep",
-                         "_dash_scheme_chrome",
+                         "_dash_scheme_chrome", "_dash_legend_text_box",
                          "_dash_legend_parts", "_dash_legend_arg",
                          "_dash_legend_margin_px", "_dash_legend_box",
                          "_dash_apply_legend",

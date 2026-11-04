@@ -390,6 +390,7 @@ GENERATORS = {
     "kpi_weights_truth.json": "scripts/extract_kpi_weights_truth.do",
     "legend_geometry_truth.json": "scripts/extract_legend_geometry_truth.do",
     "legend_remainder_truth.json": "scripts/extract_legend_remainder_truth.do",
+    "legend_title_truth.json": "scripts/extract_legend_title_truth.do",
     "line_width_truth.json": "scripts/extract_line_width_truth.do",
     "linewidth_chain_truth.json": "scripts/extract_linewidth_chain_truth.do",
     "lpoly_rot_truth.json": "scripts/extract_lpoly_rot_truth.do",

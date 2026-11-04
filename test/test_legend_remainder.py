@@ -105,6 +105,10 @@ class TestSubtitle:
         assert "Sub" in [t["text"] for t in _TRUTH["lsubtitle"]["texts"]]
         lg, msgs = _legend(mode, 'subtitle("Sub")')
         assert lg.title == "Sub"
+        # Flipped: was drawn at the key text's size; twoway's
+        # leg_title/leg_subtitle text boxes (WP-43 LT-1): subheading.
+        sc = dr.SchemeParser("s2color")
+        assert lg.title_text_font_size == sc.textbox_style("subheading")[0]
         assert not [m for m in msgs if "subtitle" in m], msgs
 
     @pytest.mark.parametrize("mode", MODES)

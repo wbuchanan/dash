@@ -1008,6 +1008,8 @@ and now matches Stata.
 
 ### Fixed in WP-43
 
+- legend(title()) and legend(subtitle()) are drawn in the scheme's legend-title and legend-subtitle styles, larger than the keys, as twoway draws them (WP-43, LT-1)
+
 ### Fixed in WP-42
 
 - colorlist("68 1 84" ...) and ccolors() take each quoted colour whole: the corpus example draws its eight listed colours (was black markers and a note) (WP-42, CV-17)

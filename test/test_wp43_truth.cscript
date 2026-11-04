@@ -203,6 +203,149 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w43_run' {
 }
 * ==== end S00 ====
 
+// S01 helpers (WP-43 43-01).  _q4301_reg <dir> <dash command...>:
+// register one graph and read the series legend both modes draw -- its
+// title, the title's size over the key text's (3 decimals) and colour,
+// into q4301_<s|v>, and the count of notes naming legend()'s title or
+// subtitle into q4301_n<s|v>; _q4301_svg: twoway's T and S size over the
+// key text's and their fills from an SVG, into q4301_tw (T) and
+// q4301_sw (S).
+python:
+import os as _q4301_os, sys as _q4301_sys
+for _q4301_p in (_q4301_os.path.abspath(".."),
+                 _q4301_os.path.abspath(_q4301_os.path.join("..", "scripts"))):
+    if _q4301_p not in _q4301_sys.path:
+        _q4301_sys.path.insert(0, _q4301_p)
+
+
+def _q4301_models(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings(record=True) as w1:
+        warnings.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_q4301_app")
+    with warnings.catch_warnings(record=True) as w2:
+        warnings.simplefilter("always")
+        exec(compile(src.replace(attach, "pass"), "dash_q4301_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    return ((list(r._last_layout_root.references()), [str(x.message) for x in w1]),
+            (list(doc.models), [str(x.message) for x in w2]))
+
+
+def _q4301_pt(v):
+    s = str(v).strip()
+    f = float(s[:-2])
+    return f if s.endswith("pt") else f * 0.75
+
+
+def _q4301_read(sp, dp, app):
+    from sfi import Macro
+    from bokeh.models import Legend
+    for (models, msgs), sfx in zip(_q4301_models(sp, dp, app), ("s", "v")):
+        lgs = [m for m in models if isinstance(m, Legend) and m.items]
+        out = "none"
+        if lgs:
+            lg = lgs[0]
+            out = "%s %.3f %s" % (
+                str(lg.title or "").replace("\n", "|"),
+                _q4301_pt(lg.title_text_font_size)
+                / _q4301_pt(lg.label_text_font_size),
+                str(lg.title_text_color).lower())
+        Macro.setGlobal("q4301_" + sfx, out)
+        Macro.setGlobal("q4301_n" + sfx, str(sum(
+            1 for m in msgs if "title" in m and "legend" in m)))
+
+
+def _q4301_svg(path):
+    from sfi import Macro
+    from svg_truth import svg_document
+    d = svg_document(path)
+    keys = [t for t in d["texts"] if not t["anchor"]]
+    ks = keys[0]["size"]
+    for name, g in (("T", "q4301_tw"), ("S", "q4301_sw")):
+        t = [x for x in d["texts"] if x["text"] == name]
+        Macro.setGlobal(g, "%s %.3f %s" % (name, t[0]["size"] / ks, t[0]["fill"])
+                        if t else "none")
+end
+
+capture program drop _q4301_reg
+program define _q4301_reg
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4301_m; _q4301_m._q4301_read("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
+* ==== S01 LT-1: legend title and subtitle styles ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w43_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+    local q01d "`w43_work'/s01a"
+    capture mkdir "`q01d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4301-1: legend(title("T")) and legend(subtitle("S")) alone are
+    // drawn in the scheme's leg_title / leg_subtitle text boxes: the
+    // text's size over the key text's (within 2%) and its colour are
+    // twoway's, under stcolor and s2color, saved and served.
+    // ------------------------------------------------------------
+    foreach sch in stcolor s2color {
+        foreach box in title subtitle {
+            local w = cond("`box'" == "title", "T", "S")
+            quietly twoway (scatter mpg weight) (scatter price weight), scheme(`sch') legend(title("T") subtitle("S")) name(q01t, replace)
+            capture erase "`q01d'/q01t.svg"
+            cert_svg_export, name(q01t) file("`q01d'/q01t.svg")
+            python: import __main__ as _q4301_m; _q4301_m._q4301_svg("`q01d'/q01t.svg")
+            local tw = cond("`box'" == "title", "${q4301_tw}", "${q4301_sw}")
+            _q4301_reg "`q01d'" (scatter mpg weight) (scatter price weight), scheme(`sch') legend(`box'("`w'")) name(q01d)
+            foreach m in s v {
+                local got "${q4301_`m'}"
+                gettoken gt rest : got
+                gettoken gr gc : rest
+                gettoken tt rest : tw
+                gettoken tr tc : rest
+                local gc = strtrim("`gc'")
+                local tc = strtrim("`tc'")
+                _w43_expect Q4301-1 `"("`gt'" == "`w'" & abs(`gr' / `tr' - 1) < 0.02 & "`gc'" == "`tc'")"' `"`sch' `box' `m': dash `got'; twoway `tw'"'
+            }
+        }
+    }
+    _w43_done Q4301-1 "legend(title()) and legend(subtitle()) in the scheme's leg_title and leg_subtitle text boxes, saved and served"
+
+    // ------------------------------------------------------------
+    // Q4301-2: nothing is printed for legend(title("T") subtitle("S")):
+    // twoway draws both, saved and served.
+    // ------------------------------------------------------------
+    _q4301_reg "`q01d'" (scatter mpg weight) (scatter price weight), legend(title("T") subtitle("S")) name(q01d)
+    _w43_expect Q4301-2 "(${q4301_ns} == 0 & ${q4301_nv} == 0)" "notes naming the title: saved ${q4301_ns}, served ${q4301_nv}"
+    _w43_done Q4301-2 "no note for legend(title() subtitle()), saved and served"
+
+    foreach f in q01t.svg s.json d.json a.py {
+        capture erase "`q01d'/`f'"
+    }
+    capture rmdir "`q01d'"
+    macro drop q4301_s q4301_v q4301_ns q4301_nv q4301_tw q4301_sw
+    capture graph drop _all
+    dash clear
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
