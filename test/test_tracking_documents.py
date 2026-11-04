@@ -2924,7 +2924,6 @@ class TestTheCountsAreTrue:
 GAPS4_OPEN = {
     'LT-2': 'legend(nobox) removes the region box; in twoway nobox is the key-text textbox option and changes nothing',
     'LT-3': 'Key-text textbox options are not drawn: box (silent), bcolor(), fcolor(), justification(), alignment(), margin(), linegap(), tstyle()',
-    'LT-5': 'legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ',
     'LT-6': 'Legend layout sub-options named: style(), width(), height(), xoffset(), yoffset(), showindex, region(style()/lstyle()/lalign())',
     'LT-7': 'bexpand on legend() and on title/subtitle/note/caption is taken silently where twoway widens the box',
     'LT-8': 'A title box under stcolor is filled #d9e6eb (the added-text fill), not textbox white with a 6.48 line',

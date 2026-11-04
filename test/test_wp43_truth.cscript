@@ -745,6 +745,54 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w43_run' {
 }
 * ==== end S02 ====
 
+* ==== S02 LT-5: legend all, draw and nodraw ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w43_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local q02d "`w43_work'/s02c"
+    capture mkdir "`q02d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4302-3: legend(all), draw and nodraw -- live twoway's drawn flag
+    // and key count (.legend.draw_view, .legend.keys) beside dash's
+    // series legend (visible, items), saved and served, and no note
+    // naming the word.
+    // ------------------------------------------------------------
+    local p1 (scatter mpg weight, pstyle(p1)) (scatter price weight, pstyle(p1))
+    local two (scatter mpg weight) (scatter price weight)
+    local one (scatter mpg weight)
+    foreach o in "p1|all" "one|draw" "two|nodraw" "two|on nodraw" "one|nodraw on" "one|off draw" "p1|all nodraw" {
+        gettoken g lo : o, parse("|")
+        local lo = substr("`lo'", 2, .)
+        quietly twoway ``g'', scheme(s2color) legend(`lo') name(q02l, replace)
+        local tdv "`.q02l.legend.draw_view.istrue'"
+        local tnk "`.q02l.legend.keys.arrnels'"
+        _q4302_reg "`q02d'" implemented ``g'', scheme(s2color) legend(`lo') name(q02e)
+        foreach m in s v {
+            local got "${q4302_`m'}"
+            gettoken gp rest : got
+            gettoken gl rest : rest
+            gettoken gk gv : rest
+            local gv = strtrim("`gv'")
+            _w43_expect Q4302-3 `"("`gv' `gk'" == "`tdv' `tnk'")"' `"legend(`lo') `m': dash visible/keys `gv' `gk'; twoway drawn/keys `tdv' `tnk'"'
+            _w43_expect Q4302-3 "(${q4302_n`m'} == 0)" `"legend(`lo') `m': ${q4302_n`m'} notes name a sub-option dash does not implement"'
+        }
+    }
+    _w43_done Q4302-3 "legend(all) keys every plot, draw is on and nodraw is off, as twoway draws them, saved and served"
+
+    foreach f in s.json d.json a.py {
+        capture erase "`q02d'/`f'"
+    }
+    capture rmdir "`q02d'"
+    macro drop q4302_s q4302_v q4302_ns q4302_nv
+    capture graph drop _all
+    dash clear
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 // S06 helpers (WP-43 43-06).  _q4306_docs: the figures a registered
 // graph draws, saved and served (spec and data from _dash_serve_spec);
 // _q4306_al: the one added-text Label's y_offset against the shift

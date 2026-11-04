@@ -5335,11 +5335,11 @@
   - Suggested fix: Draw them (M11: every P6-P10 item is drawn, none only named).
   - Resolution: Not fixed because WP-43 section 43-03 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
 
-- [ ] Title: legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ
+- [x] Title: legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ
   - File Names and Line Numbers: legend_g.class:161-240; L_mrgall, L_draw1, L_nodraw
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-5; confirmed; tracked: generic. Registered as GAPS4 LT-5 (WP-43, section 43-02, Fix).
   - Suggested fix: Honour all (skip the merge), draw and nodraw
-  - Resolution: Not fixed because WP-43 section 43-02 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+  - Resolution: Fixed 04nov2026 (WP-43, LT-5). Measured first (scripts/extract_legend_place_truth.do, test/fixtures/legend_place_truth.json): two pstyle(p1) scatters draw one merged key and no legend (all_p1_0) and, under legend(all), two keys and a legend (all_p1); legend(draw) draws a one-key legend (draw_1), legend(nodraw) none on two keys (nodraw_2); on and draw win over off and nodraw in either order (on_nodraw, nodraw_on, off_draw, draw_off); legend(all nodraw) draws none (all_nodraw), as _fr_legend_parse_and_log.ado sets them. dash merged under all, ignored draw and nodraw and named all three. Now _dash_apply_legend skips the merge under all and reads draw as on and nodraw as off, on and draw winning, and the three words are taken in silence (_DASH_LEGEND_SUBOPTS), in both modes. Pinned by test/test_legend_place.py::TestAllDrawNodraw (saved, served), test_mode_parity.py "WP-43 LT-5" and test_wp43_truth.cscript Q4302-3. Closes GAPS4 LT-5 (WP-43, LT-5).
 
 - [ ] Title: Legend layout sub-options named: style(), width(), height(), xoffset(), yoffset(), showindex, region(style()/lstyle()/lalign())
   - File Names and Line Numbers: dash_render.py:39145-39147, 53797; probes

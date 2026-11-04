@@ -2884,6 +2884,10 @@ CORPUS = [
           [_sc(), plot_for("scatter", yvar="price"),
            plot_for("scatter", yvar="rep")],
           go={"legend": "holes(2) rows(1)"}),
+    _case("legend(all) two p1 scatters (WP-43 LT-5)",
+          [plot_for("scatter", {"pstyle": "p1"}),
+           plot_for("scatter", {"pstyle": "p1"}, yvar="price")],
+          go={"legend": "all"}),
 
     # WP-31 D5/E11 (section 32): sizing
     _case("scale(1.5) (WP-31 D5)", [plot_for("scatter")],

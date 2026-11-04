@@ -5046,6 +5046,8 @@ text after a number in {cmd:order()} wins over {cmd:label()}; and
 {cmd:lastlabel(}{it:#}{cmd:)} is applied last, to the {it:#}th row drawn, a
 {cmd:-} row counted, so {cmd:legend(order(2 1) lastlabel(2 "L"))} renames
 the first plot's key.
+{cmd:all} keys every plot, so two plots that look alike keep two keys;
+{cmd:draw} is {cmd:on} and {cmd:nodraw} is {cmd:off}, as in {cmd:twoway}.
 {cmd:twoway} has no {cmd:legend(top)}, {cmd:legend(bottom)},
 {cmd:legend(left)} or {cmd:legend(right)} and refuses each
 ({cmd:option top not allowed}, r(198)); so does {cmd:dash}, naming the

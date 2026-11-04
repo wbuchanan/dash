@@ -342,3 +342,50 @@ class TestHolesTwoColumns:
         _f, lg, _ = G._fig_legend(mode, G.THREE, "holes(2) cols(2)")
         assert len(lg.items) == 4 and list(lg.items[1].renderers) == []
         assert _hole_sheet(lg) is None
+
+
+# ---------------------------------------------------------------------------
+# LT-5: legend(all) keys every plot, draw is on and nodraw is off.
+# twoway's _fr_legend_parse_and_log.ado: all sets .legend._all (legend_g
+# rebuild adds every view's key, no merge); nodraw/off force no legend,
+# draw/on force one, applied after, so on/draw win in either order
+# (legend_place_truth.json all_p1, draw_1, nodraw_2, on_nodraw, nodraw_on,
+# off_draw, draw_off, all_nodraw).
+# ---------------------------------------------------------------------------
+
+_P1 = [G._sc(pstyle="p1"), G._sc("price", pstyle="p1")]
+
+#: probe -> (plots, legend(), the fixture key).
+_LT5 = {
+    "all": (_P1, "all", "all_p1"),
+    "no_all": (_P1, "", "all_p1_0"),
+    "draw": ([G._sc()], "draw", "draw_1"),
+    "nodraw": (G.TWO, "nodraw", "nodraw_2"),
+    "on_nodraw": (G.TWO, "on nodraw", "on_nodraw"),
+    "nodraw_on": ([G._sc()], "nodraw on", "nodraw_on"),
+    "off_draw": ([G._sc()], "off draw", "off_draw"),
+    "draw_off": ([G._sc()], "draw off", "draw_off"),
+    "all_nodraw": (_P1, "all nodraw", "all_nodraw"),
+}
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestAllDrawNodraw:
+
+    @pytest.mark.parametrize("probe", sorted(_LT5))
+    def test_as_twoway(self, mode, probe):
+        """The legend is drawn exactly when twoway draws it, with
+        twoway's key count, and nothing is noted for the words."""
+        plots, opt, key = _LT5[probe]
+        rec = TRUTH[key]
+        fig, lg, msgs = G._fig_legend(mode, plots, opt)
+        assert bool(lg.visible) == bool(rec["drawn"]), (probe, rec)
+        assert len(lg.items) == rec["keys"], (probe, rec)
+        for word in ("all", "draw", "nodraw"):
+            assert not [m for m in msgs if "legend" in m
+                        and re.search(r"\b%s\b" % word, m)], msgs
+
+    def test_all_keeps_both_texts(self, mode):
+        _f, lg, _ = G._fig_legend(mode, _P1, "all")
+        assert [G._text(i) for i in lg.items] == [
+            G._text(i) for i in G._fig_legend(mode, G.TWO, "")[1].items]

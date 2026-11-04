@@ -463,7 +463,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-4 Tracked:** Closed in WP-43, BUGS.md "legend(ring(0) bplacement()) ignores bplacement; bplacement abbreviations (nor, nea, t, top) are not read", commit pending.
 - **LT-2 Tracked:** Open (WP-43 section 43-03).
 - **LT-3 Tracked:** Open (WP-43 section 43-03).
-- **LT-5 Tracked:** Open (WP-43 section 43-02).
+- **LT-5 Tracked:** Closed in WP-43, BUGS.md "legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ", commit pending.
 - **LT-6 Tracked:** Open (WP-43 section 43-03).
 - **LT-7 Tracked:** Open (WP-43 section 43-03).
 - **LT-8 Tracked:** Open (WP-43 section 43-05).

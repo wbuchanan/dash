@@ -42011,7 +42011,11 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         # (merge_lab2_on, merge_order2).  The merged item holds both
         # renderer lists, its numbers in its tags ("dash_key_numbers", ...).
         _folded = {}
-        if keys:
+        # WP-43 LT-5: legend(all) keys every plot, merging none (twoway's
+        # legend_g adds every view's key under .legend._all:
+        # legend_place_truth.json all_p1 draws two keys for two pstyle(p1)
+        # scatters).
+        if keys and "all" not in _words:
             _plot_of, _pn = {}, 1
             for _pl, _r in live:
                 _plot_of[_pn] = _pl
@@ -42395,8 +42399,13 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     #    twoway draws legend(order(1)) on a two-key graph with its one row
     #    (axis_truth.json c_order1, text_truth.json l_order_beats_label)
     #    and no legend for order(1 - "Only") on a one-key graph (l_one_dash).
-    forced_on = "on" in _words
-    turned_off = "off" in _words and "on" not in _words  # on wins
+    #    draw is on and nodraw is off (WP-43 LT-5): twoway forces the
+    #    legend off for either of nodraw and off and on for either of draw
+    #    and on, applied after, so on and draw win in either order
+    #    (_fr_legend_parse_and_log.ado; legend_place_truth.json draw_1,
+    #    nodraw_2, on_nodraw, nodraw_on, off_draw, draw_off).
+    forced_on = bool({"on", "draw"} & _words)
+    turned_off = bool({"off", "nodraw"} & _words) and not forced_on
     if n_keys is None:
         n_keys = len(legend.items) if legend is not None else 0
     show = not (turned_off or (n_keys < 2 and not forced_on))
@@ -58359,7 +58368,9 @@ _DASH_LEGEND_SUBOPTS = frozenset({
     "holes", "colfirst", "nocolfirst", "title", "region", "bplacement",
     "span", "nospan", "symxsize", "symysize", "keygap", "rowgap",
     "textwidth", "forcesize", "noforcesize", "nobox", "box", "color",
-    "bmargin", "bexpand", "nobexpand", "colgap", "subtitle"})
+    "bmargin", "bexpand", "nobexpand", "colgap", "subtitle",
+    # WP-43 LT-5: drawn as twoway draws them.
+    "all", "draw", "nodraw"})
 
 #: legend(label(# text)): the key's number, then its text, read by
 #: _textbox_lines.  The number is bounded so no label can make int() read
