@@ -1484,6 +1484,50 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w43_run' {
 }
 * ==== end S04 ====
 
+* ==== S04 RH-13: a turned kdensity or function keyed x ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w43_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    local q04d "`w43_work'/s04c"
+    capture mkdir "`q04d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4304-5: a turned kdensity or function -- live twoway's key texts
+    // beside dash's, saved and served: kdensity mpg, horizontal and
+    // function y=x^2, horizontal are keyed x; recast(area) keeps
+    // "kdensity mpg"; the upright kdensity its name.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "(scatter mpg weight) (kdensity mpg, horizontal xaxis(2))," "(scatter mpg weight) (kdensity mpg, horizontal xaxis(2) recast(area))," "(scatter mpg weight) (function y=x^2, range(0 2) horizontal xaxis(2))," "(scatter mpg weight) (kdensity mpg, xaxis(2))," {
+        local ++k
+        capture noisily twoway `c' scheme(s2color) name(q04h, replace)
+        _w43_expect Q4304-5 "(_rc == 0)" "twoway `c' rc `=_rc'"
+        capture erase "`q04d'/q04h`k'.svg"
+        cert_svg_export, name(q04h) file("`q04d'/q04h`k'.svg")
+        python: import __main__ as _q4304_m; _q4304_m._q4304_tw("`q04d'/q04h`k'.svg")
+        _q4304_reg "`q04d'" `c' scheme(s2color) name(q04e)
+        foreach m in s v {
+            _w43_expect Q4304-5 `"("${q4304_k`m'}" == "${q4304_tw}")"' `"`c' `m': dash ${q4304_k`m'} twoway ${q4304_tw}"'
+        }
+    }
+    _w43_done Q4304-5 "a turned kdensity or function keyed x as twoway's, saved and served"
+
+    forvalues j = 1/`k' {
+        capture erase "`q04d'/q04h`j'.svg"
+    }
+    foreach f in s.json d.json a.py {
+        capture erase "`q04d'/`f'"
+    }
+    capture rmdir "`q04d'"
+    macro drop q4304_cs q4304_cv q4304_ks q4304_kv q4304_ns q4304_nv q4304_tw q4304_anchor
+    capture graph drop _all
+    dash clear
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 // S05 helpers (WP-43 43-05).  _q4305_docs: the figures a registered
 // graph draws, saved and served (spec and data from _dash_serve_spec);
 // _q4305_model: the model drawing a title-family key's text;

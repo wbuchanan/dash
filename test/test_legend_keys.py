@@ -1,7 +1,7 @@
 """
 test_legend_keys.py -- the legend's keys as twoway draws them (WP-43
-section 43-04): textfirst and stacked (LT-21) and which keys merge
-(MS-10).
+section 43-04): textfirst and stacked (LT-21), which keys merge (MS-10)
+and a turned kdensity's or function's key text (RH-13).
 
 twoway's facts are measured (scripts/extract_legend_keys_truth.do ->
 test/fixtures/legend_keys_truth.json); each mode's legend is built here
@@ -337,3 +337,50 @@ class TestMergeRule:
     def test_style_id(self, plot, band, idx, want):
         assert dr._dash_key_style_id(plot, band, idx) == want
 
+
+
+def _kd(**o):
+    return {"type": "kdensity", "yvar": "mpg", "xvar": "",
+            "options": dict({"xaxis": "2"}, **o)}
+
+
+def _fn(**o):
+    return {"type": "function", "expr": "x^2",
+            "options": dict({"range": "0 2", "xaxis": "2"}, **o)}
+
+
+class TestHorizontalKey:
+    """RH-13: twoway keys a turned kdensity or function by its grid's
+    name, x (twoway_kdensity_parse.class and twoway_function_parse.class
+    swap the varlist under yxswitch); recast(area) and recast(bar) keep
+    the name (legend_keys_truth.json hz_*, vt_*)."""
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("case,layer,want", [
+        ("hz_kdensity", _kd(horizontal="horizontal"), "x"),
+        ("vt_kdensity", _kd(), "kdensity mpg"),
+    ])
+    def test_kdensity(self, mode, case, layer, want):
+        assert _fixture_keys(case) == ["Mileage (mpg)", want]
+        keys, _shown = _keys_of(mode, [bk._p("scatter"), layer])
+        assert keys == ["Mileage (mpg)", want]
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("case,layer,want", [
+        ("hz_function", _fn(horizontal="horizontal"), "x"),
+        ("vt_function", _fn(), "y"),
+    ])
+    def test_function(self, mode, case, layer, want):
+        assert _fixture_keys(case) == ["Mileage (mpg)", want]
+        keys, _shown = _keys_of(mode, [bk._p("scatter"), layer])
+        assert keys == ["Mileage (mpg)", want]
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("target", ("area", "bar"))
+    def test_recast(self, mode, target):
+        assert _fixture_keys("hz_kd_" + target) == ["Mileage (mpg)",
+                                                    "kdensity mpg"]
+        keys, _shown = _keys_of(mode, [bk._p("scatter"),
+                                       _kd(horizontal="horizontal",
+                                           recast=target)])
+        assert keys == ["Mileage (mpg)", "kdensity mpg"]

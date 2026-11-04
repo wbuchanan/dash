@@ -65648,6 +65648,16 @@ def _dash_legend_key(plot, var_labels=None):
     text = series[-1][0] if series else ""
     ptype = (str(plot.get("type", "")).lower() if isinstance(plot, dict)
              else "")
+    # WP-43 RH-13: a turned kdensity or function is keyed by its grid's
+    # name, x, as twoway's parse classes swap the varlist under yxswitch;
+    # a recast() one keeps its name (legend_keys_truth.json hz_kdensity,
+    # hz_function: "x"; hz_kd_area, hz_kd_bar: "kdensity mpg").
+    _o = (plot.get("options") if isinstance(plot, dict)
+          and isinstance(plot.get("options"), dict) else {})
+    if (ptype in ("kdensity", "function") and series
+            and _dash_is_horizontal(plot)
+            and not str(_o.get("recast", "") or "").strip()):
+        text = series[-1][1] or text
     return text or ptype
 
 

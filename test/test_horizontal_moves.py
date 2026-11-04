@@ -414,8 +414,19 @@ class TestAfterASavedMove:
                 [a] = _geometry([after[i]])
                 [u] = _geometry([after[n + _STALE.index(t)]])
                 u = _turned_profile(u)
-                bad += [(label, t, k, tp._diff(a[k], u[k]))
-                        for k in ("glyphs", "annotations") if a[k] != u[k]]
+                for k in ("glyphs", "annotations"):
+                    if a[k] == u[k]:
+                        continue
+                    d = tp._diff(a[k], u[k])
+                    # Flipped: a turned kdensity or function is keyed by
+                    # its grid's name, x, where the upright one is keyed
+                    # by its own (WP-43 RH-13, legend_keys_truth.json
+                    # hz_kdensity): only that key text may differ.
+                    if k == "annotations" and t in ("kdensity", "function"):
+                        d = [x for x in d if not (
+                            "/items[" in str(x[0]) and x[1] == "x")]
+                    if d:
+                        bad.append((label, t, k, d))
             if _turned_classes(after) != before:
                 bad.append((label, "classes", _turned_classes(after)))
         assert not bad, bad

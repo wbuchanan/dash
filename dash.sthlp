@@ -1578,7 +1578,9 @@ there, is an invalid point.  The literal is read as data and never run.
     name.
     A {cmd:histogram} layer is keyed {cmd:Density}, {cmd:Percent},
     {cmd:Frequency} or {cmd:Fraction}, and a {cmd:kdensity} layer
-    {cmd:kdensity} {it:varname}, as in {cmd:twoway}.  Every other layer
+    {cmd:kdensity} {it:varname}, and a turned ({cmd:horizontal})
+    {cmd:kdensity} or {cmd:function} layer {cmd:x}, its grid's name (a
+    {cmd:recast()} one keeps its own key), as in {cmd:twoway}.  Every other layer
     is keyed as {cmd:twoway} keys it (see Statistical Layer Options).
 
 {phang2}7.  {ul:Options dash takes that twoway refuses:} {cmd:hover()} and
@@ -4214,7 +4216,9 @@ name when it has none; a range or {cmd:pc} layer by both variables,
 {cmd:lpoly} {cmd:lpoly smooth:} {it:ylabel}; {cmd:mband}
 {cmd:Median bands}; {cmd:mspline} {cmd:Median spline}; {cmd:function}
 by the name before its {cmd:=}, or {cmd:y}; {cmd:histogram}
-{cmd:Density} (or its scale); {cmd:kdensity} {cmd:kdensity} {it:varname}.
+{cmd:Density} (or its scale); {cmd:kdensity} {cmd:kdensity} {it:varname};
+a {cmd:horizontal} {cmd:kdensity} or {cmd:function} with no {cmd:recast()}
+{cmd:x}.
 A {cmd:ci} fit has two keys, its band {it:#}{cmd:% CI} and then its line.
 Each axis is titled by default with the label of the first series
 drawn on it when the last series drawn on it has the same label, and
