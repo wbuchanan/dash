@@ -455,6 +455,117 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w43_run' {
 }
 * ==== end S06 ====
 
+// S06 LT-20 helper.  _q4306_box: the one added-text Label of a
+// registered graph, saved and served, against the fixture's box
+// (added_text_box_truth.json x_w: its width in em of the text; x_lg: the
+// line step; x_lp: a dashed frame) -- into globals q4306_s and q4306_v.
+python:
+def _q4306_box(sp, dp, app, fx):
+    import json
+    import dash_render as dr
+    from sfi import Macro
+    with open(fx, encoding="utf-8") as fh:
+        pr = json.load(fh)["probes"]
+    b = pr["x_w"]["boxes"][0]
+    size = pr["x_w"]["texts"][0]["size"]
+    em_w = (b["right"] - b["left"]) / size
+    t = pr["x_lg"]["texts"]
+    step = (t[1]["y_px"] - t[0]["y_px"]) / t[0]["size"]
+    a, v = _q4306_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (v, "v")):
+        labs = _q4306_labels(figs)
+        if len(labs) != 1:
+            Macro.setGlobal("q4306_" + sfx, "%d labels" % len(labs))
+            continue
+        lab = labs[0]
+        f = (float(dr.OptionTranslator.css_to_pt(lab.text_font_size))
+             * dr.OptionTranslator.PX_PER_PT)
+        its = []
+        for fg in figs:
+            for cbs in fg.js_property_callbacks.values():
+                for c in cbs:
+                    if getattr(c, "code", None) == dr._DASH_TEXT_BOX_JS:
+                        its.extend(i for i in c.args["items"] if i[0] is lab)
+        bad = []
+        if not its:
+            bad.append("no box hook")
+        else:
+            o = its[0][1]
+            if abs(o["w"] - em_w) > 1.0 / f:
+                bad.append("w %s em, twoway %.4g" % (o["w"], em_w))
+            if not o["edge"] > 0:
+                bad.append("edge %s" % o["edge"])
+        if abs(float(lab.text_line_height) - step) > 0.02 * step:
+            bad.append("line height %s, twoway %.4g"
+                       % (lab.text_line_height, step))
+        if not list(lab.border_line_dash):
+            bad.append("frame not dashed")
+        Macro.setGlobal("q4306_" + sfx, "; ".join(bad) or "ok")
+end
+
+* ==== S06 LT-20: text() box options ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S06") & `: list posof "S06" in w43_run' {
+    display as text "S06 start " c(current_date) " " c(current_time)
+    local q6d "`w43_work'/s06b"
+    capture mkdir "`q6d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4306-2: box width(20) linegap(3) lpattern(dash) lwidth(thick)
+    // lalign(outside) typed through dash: the fixed box in em of the
+    // text (x_w), the line step (x_lg), a dashed frame (x_lp) and the
+    // outside edge, saved and served, with no note.
+    // ------------------------------------------------------------
+    dash clear
+    capture log close q4306
+    log using "`q6d'/box.log", text replace name(q4306)
+    capture noisily dash scatter mpg weight, text(30 3000 "Peak" "two", box width(20) linegap(3) blpattern(dash) lwidth(thick) lalign(outside)) name(q4306b)
+    local rc = _rc
+    log close q4306
+    _w43_expect Q4306-2 "(`rc' == 0)" "rc `rc'"
+    cert_log_has "`q6d'/box.log", needle("draws no")
+    _w43_expect Q4306-2 "(r(found) == 0)" "a note names a drawn sub-option"
+    if `rc' == 0 {
+        capture erase "`q6d'/a.py"
+        _dash_serve_spec, specpath("`q6d'/s.json") datapath("`q6d'/d.json")
+        python: _q4306_box("`q6d'/s.json", "`q6d'/d.json", "`q6d'/a.py", "fixtures/added_text_box_truth.json")
+        foreach m in s v {
+            _w43_expect Q4306-2 `"("${q4306_`m'}" == "ok")"' "`m': ${q4306_`m'}"
+        }
+    }
+    _w43_done Q4306-2 "width(), linegap(), blpattern() and lalign() drawn as twoway draws them, saved and served"
+
+    // ------------------------------------------------------------
+    // Q4306-3: bexpand and bmargin() are taken in silence (x_bexpand and
+    // x_bmargin draw x_box); what is still noted is named once.
+    // ------------------------------------------------------------
+    dash clear
+    capture log close q4306
+    log using "`q6d'/silent.log", text replace name(q4306)
+    capture noisily dash scatter mpg weight, text(30 3000 "Peak", box bexpand bmargin(large) angle(45)) name(q4306c)
+    local rc = _rc
+    log close q4306
+    _w43_expect Q4306-3 "(`rc' == 0)" "rc `rc'"
+    cert_log_has "`q6d'/silent.log", needle("text() draws no angle(); see help dash##added_text")
+    // The note names angle() alone: had bexpand or bmargin() been named,
+    // they would stand in it beside angle().
+    _w43_expect Q4306-3 "(r(found) == 1)" "no note naming angle() alone"
+    _w43_done Q4306-3 "bexpand and bmargin() taken in silence; angle() named once"
+
+    local q6f : dir "`q6d'" files "*"
+    foreach f of local q6f {
+        capture erase "`q6d'/`f'"
+    }
+    capture rmdir "`q6d'"
+    capture graph drop _all
+    dash clear
+    macro drop q4306_*
+    display as text "S06 end " c(current_date) " " c(current_time)
+}
+* ==== end S06 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

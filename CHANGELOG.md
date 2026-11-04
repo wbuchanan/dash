@@ -1012,6 +1012,7 @@ and now matches Stata.
 - legend(title()) and legend(subtitle()) are drawn in the scheme's legend-title and legend-subtitle styles, larger than the keys, as twoway draws them (WP-43, LT-1)
 
 - text(..., alignment()) is drawn as twoway draws it; it was named in a note and dropped before the drawing (WP-43, LT-11)
+- text()'s width(), height(), linegap(), lstyle(), lpattern() and lalign() (and their bl forms) are drawn as twoway draws them, also under scale(); bexpand and bmargin() are taken without a note (WP-43, LT-20, in part)
 
 ### Fixed in WP-42
 

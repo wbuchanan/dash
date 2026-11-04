@@ -170,12 +170,14 @@ class TestTheOptions:
         empty = dr._dash_added_text_opts("")
         assert all(v is None for v in empty.values()), empty
         seen = set()
+        # Flipped: width() is drawn (WP-43 LT-20); angle() is a sub-option
+        # dash still names once and does not draw.
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            o = dr._dash_added_text_opts("width(5)", seen, "g1")
-            dr._dash_added_text_opts("width(5)", seen, "g1")
+            o = dr._dash_added_text_opts("angle(5)", seen, "g1")
+            dr._dash_added_text_opts("angle(5)", seen, "g1")
         assert all(v is None for v in o.values()), o
-        assert sum("width" in str(x.message) for x in w) == 1
+        assert sum("angle" in str(x.message) for x in w) == 1
 
 
 # ---------------------------------------------------------------------------

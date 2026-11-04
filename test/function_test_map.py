@@ -1620,6 +1620,8 @@ FUNCTIONS = {
  # WP-30 S56 (P1.10): text() and ttext() annotations (P1.10)
  '_dash_added_text': 'test/test_added_text.py::TestAgainstTwoway::test_probe',
  '_dash_added_text_opts': 'test/test_added_text.py::TestTheOptions::test_each_drawn_sub_option',
+ '_dash_added_text_edge': 'test/test_added_text_box.py::TestLineOptions::test_lalign',
+ '_dash_text_box_fit': 'test/test_added_text_box.py::TestFixedBox::test_hook_items',
  # WP-30 S57 (P1.31b): Served recompute off the event loop (P1.31 part b)
  'app:_DashLockedCatchWarnings.__enter__': 'test/test_served_worker.py::TestTheWarningFilters::test_blocks_serialise',
  'app:_DashLockedCatchWarnings.__exit__': 'test/test_served_worker.py::TestTheWarningFilters::test_filters_survive',

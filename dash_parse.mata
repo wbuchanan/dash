@@ -13655,8 +13655,9 @@ void _dash_at_records(string scalar kind)
 // _dash_at_canon() -- the drawn sub-options of one copy, read from the
 // caller's (_dash_at_opts's) syntax locals by value, in full names:
 // size() color() tstyle() justification() alignment() orientation() box or
-// nobox fcolor() lcolor() lwidth() margin() placement(), bfcolor()
-// blcolor() blwidth() standing in for the plain ones when those are absent and bcolor() for
+// nobox fcolor() lcolor() lwidth() lpattern() lstyle() lalign() linegap()
+// width() height() margin() placement(), bfcolor() blcolor() blwidth()
+// blpattern() blstyle() blalign() standing in for the plain ones when those are absent and bcolor() for
 // both colours when neither is given; _dash_json_escape()d.  orientation()
 // and placement() are dash.ado's canonical names (_dash_at_orient,
 // _dash_at_place); a name twoway notes is left out.
@@ -13695,6 +13696,23 @@ string scalar _dash_at_canon()
     lw = st_local("lwidth")
     if (lw == "") lw = st_local("blwidth")
     if (lw != "") out = out + " lwidth(" + lw + ")"
+    // WP-43 LT-20: the frame's pattern, style and alignment (the bl forms
+    // standing in), the line gap and the fixed box.
+    v = st_local("lpattern")
+    if (v == "") v = st_local("blpattern")
+    if (v != "") out = out + " lpattern(" + v + ")"
+    v = st_local("lstyle")
+    if (v == "") v = st_local("blstyle")
+    if (v != "") out = out + " lstyle(" + v + ")"
+    v = st_local("lalign")
+    if (v == "") v = st_local("blalign")
+    if (v != "") out = out + " lalign(" + v + ")"
+    v = st_local("linegap")
+    if (v != "") out = out + " linegap(" + v + ")"
+    v = st_local("width")
+    if (v != "") out = out + " width(" + v + ")"
+    v = st_local("height")
+    if (v != "") out = out + " height(" + v + ")"
     v = st_local("margin")
     if (v != "") out = out + " margin(" + v + ")"
     p = st_local("placement")

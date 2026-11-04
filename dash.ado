@@ -11376,9 +11376,10 @@ program define _dash_at_opts
         }
     }
     local _nt ""
-    foreach _n in width height astextbox noastextbox bexpand nobexpand ///
-        drawview ascircle angle linegap bmargin lpattern ///
-        lstyle lalign blpattern blstyle blalign {
+    // width() .. blalign() are drawn (WP-43 LT-20); bexpand and bmargin()
+    // are taken, as twoway draws an added text's box with them as without
+    // (added_text_box_truth.json x_bexpand, x_bmargin).
+    foreach _n in astextbox noastextbox drawview ascircle angle {
         if `: length local `_n'' local _nt `_nt' `_n'
     }
     if `xoffset' != -99999 local _nt `_nt' xoffset

@@ -58669,7 +58669,8 @@ _DASH_ADDED_TEXT_ORIENT = {
 _DASH_ADDED_TEXT_HONOURED = frozenset({
     "size", "color", "justification", "orientation", "box", "nobox",
     "fcolor", "lcolor", "lwidth", "margin", "placement", "tstyle",
-    "alignment",
+    "alignment", "width", "height", "linegap", "lstyle", "lpattern",
+    "lalign",
 })
 
 #: text()'s vertical alignment as a shift from middle's place, up, in
@@ -58679,6 +58680,121 @@ _DASH_ADDED_TEXT_HONOURED = frozenset({
 #: and bottom alike and 0.50 at baseline; lines shift together.
 _DASH_ADDED_TEXT_VSHIFT = {"middle": 0.0, "top": 0.15, "bottom": 0.15,
                            "baseline": -0.15}
+
+#: text()'s fixed box (WP-43 LT-20; added_text_box_truth.json x_w, x_h,
+#: x_wj_*, x_h_*): width(#) and height(#) fix the box, centred where the
+#: text's own box is, the text placed in it by justification() and
+#: alignment().  BokehJS draws a Label's box round its text and padding,
+#: so the padding is set from the text's laid-out size: one callback per
+#: figure, on its laid-out size and once the fonts are ready, holding
+#: ``[label, {"w", "h", "pad", "edge", "valign"}]`` per Label, every
+#: length in em of the Label's font, so a scale() or by() panel that
+#: scales the font scales the box with it.  ``pad`` is the padding the
+#: margin gives ([left, right, top, bottom]), ``edge`` the lalign() shift
+#: added to every side after the fit; ``w``/``h`` null when not given.
+#: The text is measured on an offscreen canvas in the Label's font; a text
+#: wider than the box keeps its padding (twoway draws a box narrower than
+#: its text, x_w_small, which a Label cannot).  Padding is written only
+#: when it changes.
+_DASH_TEXT_BOX_JS = """
+const its = (typeof items !== "undefined" && Array.isArray(items)) ? items : [];
+const run = () => {
+  let ctx = null;
+  try { ctx = document.createElement("canvas").getContext("2d"); }
+  catch (e) { ctx = null; }
+  if (ctx == null) { return; }
+  const n = Math.min(its.length, 100000);
+  for (let i = 0; i < n; i++) {
+    const it = its[i];
+    if (!Array.isArray(it) || it[0] == null) { continue; }
+    const lab = it[0], o = it[1] || {};
+    const m = /^([0-9.]+)(pt|px)$/.exec(String(lab.text_font_size || ""));
+    if (m == null) { continue; }
+    const k = parseFloat(m[1]) * (m[2] === "pt" ? 96 / 72 : 1);
+    if (!(k > 0)) { continue; }
+    ctx.font = String(lab.text_font_style || "normal") + " " + k + "px " +
+      String(lab.text_font || "helvetica");
+    const lines = String(lab.text == null ? "" : lab.text).split("\n");
+    let tw = 0;
+    const nl = Math.min(lines.length, 100000);
+    for (let j = 0; j < nl; j++) {
+      tw = Math.max(tw, ctx.measureText(lines[j]).width);
+    }
+    const lh = lab.text_line_height > 0 ? lab.text_line_height : 1.2;
+    const th = nl * k * lh;
+    const pd = Array.isArray(o.pad) ? o.pad : [0, 0, 0, 0];
+    let L = pd[0] * k, R = pd[1] * k, T = pd[2] * k, B = pd[3] * k;
+    if (typeof o.w === "number" && o.w > 0) {
+      const ex = Math.max(0, o.w * k - tw - L - R);
+      const f = {left: 0, center: 0.5, right: 1}[lab.text_align];
+      const a = Math.round(ex * (f == null ? 0.5 : f));
+      L = L + a; R = R + ex - a;
+    }
+    if (typeof o.h === "number" && o.h > 0) {
+      const ex = Math.max(0, o.h * k - th - T - B);
+      const g = {top: 0, middle: 0.5, bottom: 1, baseline: 1}[o.valign];
+      const a = Math.round(ex * (g == null ? 0.5 : g));
+      T = T + a; B = B + ex - a;
+    }
+    const e = (typeof o.edge === "number") ? o.edge * k : 0;
+    const nd = {left: Math.max(0, Math.round(L + e)),
+                right: Math.max(0, Math.round(R + e)),
+                top: Math.max(0, Math.round(T + e)),
+                bottom: Math.max(0, Math.round(B + e))};
+    const cur = lab.padding;
+    if (cur == null || typeof cur !== "object" || cur.left !== nd.left ||
+        cur.right !== nd.right || cur.top !== nd.top ||
+        cur.bottom !== nd.bottom) {
+      lab.padding = nd;
+    }
+  }
+};
+run();
+if (typeof document !== "undefined" && document.fonts &&
+    document.fonts.ready) {
+  document.fonts.ready.then(run);
+}
+"""
+
+
+def _dash_text_box_fit(fig, label, w_px=None, h_px=None, valign=None,
+                       edge_px=0.0):
+    """Register *label* on *fig*'s one ``_DASH_TEXT_BOX_JS`` callback
+    (WP-43 LT-20): its box *w_px* wide and *h_px* tall (None: as its text
+    and padding make it), the text placed by its justification and
+    *valign*, *edge_px* (lalign()) added to every side after the fit.
+    Every length is stored in em of the Label's font at build, with the
+    padding it has now; a later call for the same Label replaces its
+    item."""
+    from bokeh.models import CustomJS
+    try:
+        f = float(OptionTranslator.css_to_pt(label.text_font_size)) \
+            * OptionTranslator.PX_PER_PT
+    except (TypeError, ValueError):
+        return
+    if not f > 0:
+        return
+    p = label.padding
+    if isinstance(p, dict):
+        pad = [p.get("left", 0), p.get("right", 0), p.get("top", 0),
+               p.get("bottom", 0)]
+    else:
+        pad = [int(p or 0)] * 4
+    item = [label, {"w": None if w_px is None else round(w_px / f, 6),
+                    "h": None if h_px is None else round(h_px / f, 6),
+                    "pad": [round(float(v) / f, 6) for v in pad],
+                    "edge": round(float(edge_px or 0.0) / f, 6),
+                    "valign": valign or "middle"}]
+    key0 = "change:" + _DASH_SPAN_KEYS[0]
+    cb = next((c for c in fig.js_property_callbacks.get(key0, [])
+               if getattr(c, "code", None) == _DASH_TEXT_BOX_JS), None)
+    if cb is None:
+        cb = CustomJS(args={"items": [item]}, code=_DASH_TEXT_BOX_JS)
+        for k in _DASH_SPAN_KEYS[:2]:
+            fig.js_on_change(k, cb)
+        return
+    cb.args = dict(cb.args, items=[it for it in cb.args.get("items", [])
+                                   if it[0] is not label] + [item])
 
 
 def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
@@ -58936,7 +59052,9 @@ def _dash_added_text_opts(opts, seen=None, key="", scheme=None,
     T = OptionTranslator
     _text, o = _parse_textbox_opt('"", ' + str(opts or ""))
     out = dict.fromkeys(("anchor", "angle", "align", "px", "color", "box",
-                         "fill", "line", "lwidth", "padding", "valign"))
+                         "fill", "line", "lwidth", "padding", "valign",
+                         "width_px", "height_px", "gap_pt", "lstyle",
+                         "dash", "lalign"))
     bad = [k if v == k else f"{k}({v})" for k, v in o.items()
            if k not in _DASH_ADDED_TEXT_HONOURED]
     _dash_report_suboptions("text", bad, seen, key)
@@ -58991,6 +59109,36 @@ def _dash_added_text_opts(opts, seen=None, key="", scheme=None,
             out["lwidth"] = T.translate_lwidth(o["lwidth"], None, ref_in)
         except ValueError:
             _dash_style_note("text(lwidth)", o["lwidth"], "line width")
+    # WP-43 LT-20: width() and height() (sizes, px), linegap() (pt),
+    # lstyle() (the line style's bundle, its colour, width and pattern the
+    # frame's base), lpattern() and lalign().
+    for name, slot in (("width", "width_px"), ("height", "height_px")):
+        if o.get(name):
+            try:
+                out[slot] = int(round(T.resolve_size(
+                    str(o[name]), "gap", 0.0, ref_in) * T.PX_PER_PT))
+            except (ValueError, TypeError):
+                _dash_style_note(f"text({name})", o[name], "size")
+    if o.get("linegap"):
+        try:
+            out["gap_pt"] = max(0.0, float(T.resolve_size(
+                str(o["linegap"]), "line", 0.0, ref_in)))
+        except (ValueError, TypeError):
+            _dash_style_note("text(linegap)", o["linegap"], "size")
+    if o.get("lstyle"):
+        sch = scheme if scheme is not None else \
+            SchemeParser.resolve_or_fallback("s2color", "text()")
+        out["lstyle"] = sch.style_bundle("line", str(o["lstyle"]))
+    if o.get("lpattern"):
+        try:
+            out["dash"] = T.translate_lpattern(str(o["lpattern"]))
+        except (ValueError, TypeError):
+            _dash_style_note("text(lpattern)", o["lpattern"],
+                             "line pattern")
+    if o.get("lalign") in ("inside", "outside", "center"):
+        out["lalign"] = o["lalign"]
+    elif o.get("lalign"):
+        _dash_style_note("text(lalign)", o["lalign"], "line alignment")
     if o.get("margin"):
         sides = SchemeParser.margin_sides(scheme if scheme is not None
                                           else SchemeParser, o["margin"])
@@ -59004,6 +59152,16 @@ def _dash_added_text_opts(opts, seen=None, key="", scheme=None,
                               "bottom": int(round(px[2])),
                               "top": int(round(px[3]))}
     return out
+
+
+def _dash_added_text_edge(pad, edge):
+    """*pad* (an int or a {left, right, top, bottom} dict of ints) with
+    *edge* px added to every side, each floored at 0 (lalign(); WP-43
+    LT-20)."""
+    if not isinstance(pad, dict):
+        pad = dict.fromkeys(("left", "right", "top", "bottom"), int(pad or 0))
+    return {k: max(0, int(round(float(pad.get(k, 0)) + edge)))
+            for k in ("left", "right", "top", "bottom")}
 
 
 def _dash_added_text(fig, graph_opts, scheme=None, seen=None, key="",
@@ -59115,11 +59273,39 @@ def _dash_added_text(fig, graph_opts, scheme=None, seen=None, key="",
                 * OptionTranslator.PX_PER_PT
         except (TypeError, ValueError):
             _shift = 0.0
+        # A fixed height (WP-43 LT-20, x_h_*): the box stays centred on
+        # its place and alignment() places the text inside it.
+        if o["height_px"] is not None:
+            _shift = 0.0
         kw["x_offset"] = round(-math.sin(angle) * _shift, 4) + 0.0
         kw["y_offset"] = round(math.cos(angle) * _shift, 4) + 0.0
+        # The frame (WP-43 LT-20; added_text_box_truth.json x_lst .. x_la_*,
+        # drawn only with box): lstyle()'s colour, width and pattern, then
+        # lcolor(), lwidth() and lpattern() over them in either order (x_lst_lc,
+        # x_lc_lst); lalign(outside) moves the box's edge out by half the
+        # line, inside in by half (Bokeh strokes the box centred on it).
+        bundle = o["lstyle"] or {}
+        lcol = o["line"] or bundle.get("line") or \
+            scheme.text_option_line_color
+        lw = o["lwidth"] if o["lwidth"] is not None else \
+            bundle.get("line_width", scheme.text_option_line_width)
+        ldash = o["dash"] if o["dash"] is not None else \
+            (bundle.get("line_dash") or [])
+        edge = 0.0
+        if boxed and o["lalign"] in ("outside", "inside"):
+            edge = (0.5 if o["lalign"] == "outside" else -0.5) \
+                * float(lw or 0.0)
+            if o["width_px"] is None and o["height_px"] is None:
+                pad = _dash_added_text_edge(pad, edge)
+        if o["gap_pt"] is not None:
+            try:
+                kw["text_line_height"] = round(1.0 + o["gap_pt"] / float(
+                    OptionTranslator.css_to_pt(font)), 6)
+            except (TypeError, ValueError, ZeroDivisionError):
+                pass
         # C0 controls and DEL are not drawn (A34): a char(30) a line holds
         # is its own, never the copies' separator.
-        fig.add_layout(Label(
+        label = Label(
             x=pos["x"], y=pos["y"], x_units="data", y_units="data",
             text="\n".join(re.sub(r"[\x00-\x1f\x7f]", "", s)
                            for s in lines),
@@ -59131,11 +59317,15 @@ def _dash_added_text(fig, graph_opts, scheme=None, seen=None, key="",
             text_color=o["color"] or base_color,
             background_fill_color=(o["fill"] or scheme.text_option_fill_color)
             if boxed else None,
-            border_line_color=(o["line"] or scheme.text_option_line_color)
-            if boxed else None,
-            border_line_width=(o["lwidth"] if o["lwidth"] is not None
-                               else scheme.text_option_line_width),
-            padding=pad, tags=["dash_added_text"], **kw), "center")
+            border_line_color=lcol if boxed else None,
+            border_line_width=lw,
+            border_line_dash=ldash if boxed else [],
+            padding=pad, tags=["dash_added_text"], **kw)
+        fig.add_layout(label, "center")
+        if o["width_px"] is not None or o["height_px"] is not None:
+            _dash_text_box_fit(fig, label, o["width_px"], o["height_px"],
+                               o["valign"] or scheme.text_option_vertical,
+                               edge)
     if bad:
         _dash_warn_once(
             ("added_text", key, bad),
@@ -74232,6 +74422,7 @@ class ServerAppBuilder:
                       "_DASH_ADDED_TEXT_VSHIFT",
                       "_DASH_TEXTBOX_DEFAULTS", "_DASH_EDGE_TITLES",
                       "_DASH_SCALE_SUBOPTS",
+                      "_DASH_TEXT_BOX_JS",
                       "_DASH_TBSTYLE_ROWS", "_DASH_LEGEND_SUBOPT_TABLE",
                       "_DASH_AXLABEL_SUBOPT_TABLE",
                       "_DASH_AXSCALE_SUBOPT_TABLE",
@@ -74998,6 +75189,7 @@ class ServerAppBuilder:
                          "_dash_text_annotations", "_dash_edge_titles",
                          "_dash_scale_spec",
                          "_dash_added_text", "_dash_added_text_opts",
+                         "_dash_text_box_fit", "_dash_added_text_edge",
                          "_dash_apply_scale_ranges",
                          # the copied _dash_route_axis_titles reads the
                          # axis word as twoway does (WP-29 P0.5)

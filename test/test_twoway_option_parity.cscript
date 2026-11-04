@@ -5392,16 +5392,18 @@ else display as text "AT-05 PASS: option nosuch() not allowed; c() si() orient()
 // AT-06: sub-options twoway takes and dash does not draw are named once.
 * flipped WP-31 D13: tstyle() is drawn (the heading's size), so the note
 * names width() and linegap() only.
+* Flipped: width() and linegap() are drawn (WP-43 LT-20), so nothing of
+* text(30 3000 "NTD", width(5) linegap(2) tstyle(heading)) is named.
 _zat_same noted
 local bad `"`_zat_bad'"'
-cert_log_has "$zta_log", needle("text() draws no width() linegap();")
-if !r(found) local bad `"`bad' [no note naming width() linegap()]"'
+cert_log_has "$zta_log", needle("text() draws no")
+if r(found) local bad `"`bad' [a note names a sub-option dash now draws]"'
 if `"`bad'"' != "" {
     local nfail = `nfail' + 1
     local faillist "`faillist' AT-06"
     display as error `"AT-06 FAIL:`bad'"'
 }
-else display as text "AT-06 PASS: width() linegap() named once"
+else display as text "AT-06 PASS: width(), linegap() and tstyle() drawn, nothing named"
 
 // AT-07: an empty string, no string or no point draws nothing, rc 0.
 _zat_same empty nostr none

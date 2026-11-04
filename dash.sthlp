@@ -844,13 +844,24 @@ and {opt bfcolor()}, {opt lcolor()} and {opt blcolor()}, {opt bcolor()},
 {opt lwidth()} and {opt blwidth()}, {opt margin()}, {opt alignment()}
 ({cmd:top} and {cmd:bottom} draw the text 0.15 of its size above
 {cmd:middle}'s place and {cmd:baseline} 0.15 below it, as {cmd:twoway}
-does) and {opt tstyle()}
+does; any other word, an abbreviation too, is noted and drawn as
+{cmd:bottom}, as {cmd:twoway} draws it), {opt width()} and {opt height()}
+(a box of that size centred where the text's own box is, the text placed
+in it by {opt justification()} and {opt alignment()}, and grown with the
+text by {opt scale()}; a box narrower or shorter than its text is drawn
+round the text), {opt linegap()}, {opt lstyle()} and {opt blstyle()},
+{opt lpattern()} and {opt blpattern()}, {opt lalign()} and
+{opt blalign()} (the frame drawn with {opt box}; {opt lcolor()},
+{opt lwidth()} and {opt lpattern()} win over {opt lstyle()} in either
+order) and {opt tstyle()}
 (the base size and colour, {cmd:tstyle(heading)} the heading's, which
 {opt size()} and {opt color()} still override; an unknown name draws the
 default with {cmd:twoway}'s note); the scheme's {cmd:text_option} box
 otherwise, its {cmd:vertical_text text_option} the default
-{opt alignment()}.  Every other textbox sub-option {cmd:twoway} takes
-({opt width()}, {opt height()}, {opt linegap()}, {opt angle()} ...) is
+{opt alignment()}.  {opt bexpand} and {opt bmargin()} are taken:
+{cmd:twoway} draws an added text's box with them as without.  Every other
+textbox sub-option {cmd:twoway} takes ({opt angle()}, {opt astextbox},
+{opt drawview()}, {opt ascircle}, {opt xoffset()}, {opt yoffset()}) is
 named once in a note and not drawn.  A
 {cmd:$}{it:name}, with or without braces around {it:name}, that reaches
 {cmd:dash} in a line -- written {cmd:\$name} in a do-file, or passed

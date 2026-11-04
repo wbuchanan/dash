@@ -2695,6 +2695,13 @@ CORPUS = [
               {"at_kind": "text", "at_y": 8000, "at_x": 3500, "at_yaxis": 2,
                "at_xaxis": 1, "at_lines": ["V"],
                "at_opts": "orientation(vertical) color(red)"}]}),
+    _case("text() box width() height() lpattern() (WP-43 LT-20)",
+          [_sc()], None,
+          {"added_text_n": "1", "added_text": [
+              {"at_kind": "text", "at_y": 30, "at_x": 3000, "at_yaxis": 1,
+               "at_xaxis": 1, "at_lines": ["Peak"],
+               "at_opts": "box width(20) height(8) lpattern(dash) "
+                          "lalign(outside)"}]}),
     # WP-31 C3: option applicability.  Accepted pairs render alike in both
     # modes; a refused pair never reaches the renderer.
     _case("lpoly kernel(gaussian) degree(1) (WP-31 C3)",
