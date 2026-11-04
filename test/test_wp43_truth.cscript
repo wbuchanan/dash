@@ -1039,6 +1039,107 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w43_run' {
 }
 * ==== end S05 ====
 
+// S05 LT-16 helper: _q4305_place -- in both modes the title's box is
+// where title_box_truth.json's probe <case> draws TT: inside, the frame
+// symbols of the third of the plot region its text lies in; outside, the
+// Title's align from the side of the band it lies at.
+python:
+def _q4305_place(sp, dp, app, case):
+    from sfi import Macro
+    row = _q4305_T[case]
+    p = [r for r in row["rects"] if r["style"] == "fill:#FFFFFF"
+         and r["w"] < row["viewbox"][2] * 0.95][0]
+    t = [x for x in row["texts"] if x["text"] == "TT"][0]
+
+    def third(v, lo, size):
+        f = (v - lo) / size
+        return 0 if f < 1 / 3 else 2 if f > 2 / 3 else 1
+    sx = ("left", "center", "right")[third(t["x"], p["x"], p["w"])]
+    sy = ("top", "center", "bottom")[third(t["y"], p["y"], p["h"])]
+    a, b = _q4305_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        m = _q4305_model(figs[0], "title")
+        if m is None:
+            got = None
+        elif type(m).__name__ == "Label":
+            got = (m.x.symbol, m.y.symbol)
+            want = (sx, sy)
+        else:
+            got = m.align
+            want = sx
+        Macro.setGlobal("q4305_" + sfx, "ok" if got is not None
+                        and got == want else "drawn %s, twoway %s"
+                        % (got, (sx, sy)))
+end
+
+* ==== S05 LT-16: placement() at ring(0) ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w43_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+    local q5d "`w43_work'/s05"
+    capture mkdir "`q5d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4305-5: title("TT", ring(0) placement(<x>)) for every spelling
+    // probed is drawn at the plot region's compass point twoway draws it
+    // at (pl_<x>), and ring(0) position(1) placement(sw) at the bottom
+    // left (pl_pos1_sw), saved and served.
+    // ------------------------------------------------------------
+    foreach x in n north 12 top t nor N ne neast 1 sw c center s se w e nw {
+        dash clear
+        capture noisily dash scatter mpg weight, title("TT", ring(0) placement(`x')) name(q4305p)
+        local rc = _rc
+        _w43_expect Q4305-5 "(`rc' == 0)" "placement(`x'): rc `rc'"
+        if `rc' == 0 {
+            capture erase "`q5d'/a.py"
+            _dash_serve_spec, specpath("`q5d'/s.json") datapath("`q5d'/d.json")
+            python: _q4305_place("`q5d'/s.json", "`q5d'/d.json", "`q5d'/a.py", "pl_`x'")
+            foreach m in s v {
+                _w43_expect Q4305-5 `"("${q4305_`m'}" == "ok")"' "placement(`x') `m': ${q4305_`m'}"
+            }
+        }
+    }
+    dash clear
+    capture noisily dash scatter mpg weight, title("TT", ring(0) position(1) placement(sw)) name(q4305p)
+    capture erase "`q5d'/a.py"
+    _dash_serve_spec, specpath("`q5d'/s.json") datapath("`q5d'/d.json")
+    python: _q4305_place("`q5d'/s.json", "`q5d'/d.json", "`q5d'/a.py", "pl_pos1_sw")
+    foreach m in s v {
+        _w43_expect Q4305-5 `"("${q4305_`m'}" == "ok")"' "position(1) placement(sw) `m': ${q4305_`m'}"
+    }
+    _w43_done Q4305-5 "placement() at ring(0) is the plot region's compass point, saved and served"
+
+    // ------------------------------------------------------------
+    // Q4305-6: outside the plot region placement(w) and placement(e) move
+    // the title to the left and right of its band (pl_side_w, pl_side_e),
+    // and the default stays centred (pl_side_ctrl).
+    // ------------------------------------------------------------
+    foreach x in w e {
+        dash clear
+        capture noisily dash scatter mpg weight, title("TT", placement(`x')) name(q4305p)
+        capture erase "`q5d'/a.py"
+        _dash_serve_spec, specpath("`q5d'/s.json") datapath("`q5d'/d.json")
+        python: _q4305_place("`q5d'/s.json", "`q5d'/d.json", "`q5d'/a.py", "pl_side_`x'")
+        foreach m in s v {
+            _w43_expect Q4305-6 `"("${q4305_`m'}" == "ok")"' "outside placement(`x') `m': ${q4305_`m'}"
+        }
+    }
+    _w43_done Q4305-6 "placement() outside the plot region moves the box along its band, saved and served"
+
+    local q5f : dir "`q5d'" files "*"
+    foreach f of local q5f {
+        capture erase "`q5d'/`f'"
+    }
+    capture rmdir "`q5d'"
+    capture graph drop _all
+    dash clear
+    macro drop q4305_*
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
 // S06 helpers (WP-43 43-06).  _q4306_docs: the figures a registered
 // graph draws, saved and served (spec and data from _dash_serve_spec);
 // _q4306_al: the one added-text Label's y_offset against the shift

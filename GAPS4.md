@@ -473,7 +473,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-13 Tracked:** Closed in WP-43, BUGS.md "legend(t1title() ... b2title()) is accepted and named where twoway refuses r(198)", commit 900153e.
 - **LT-14 Tracked:** Closed in WP-43, BUGS.md "title(..., ring(x)) is accepted silently where twoway prints notes and refuses r(198)", commit pending.
 - **LT-15 Tracked:** Closed in WP-43, BUGS.md "legend title()/subtitle() sub-options (position(), box ...) are dropped silently; subtitle size()/color() are ignored", commit 3c3b781.
-- **LT-16 Tracked:** Open (WP-43 section 43-05).
+- **LT-16 Tracked:** Closed in WP-43, BUGS.md "title/subtitle/note/caption placement() at ring(0) is drawn as a Label anchor (n lifts the box out of the plot) and long names, clocks and synonyms are ignored", commit pending.
 - **LT-17 Tracked:** Closed in WP-43, BUGS.md "legend(holes()) with cols(1) inserts a full blank row", commit 5fc359a.
 - **LT-18 Tracked:** Open (WP-43 section 43-05).
 - **LT-19 Tracked:** Open (WP-43 section 43-05).

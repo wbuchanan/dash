@@ -1176,6 +1176,7 @@ FUNCTIONS = {
  'SchemeParser.axis_side': 'test/test_scheme_chrome.py::TestTheChromeKeysAreRead::test_axis_side_reads_the_alt_keys',
  '_dash_textbox_place': 'test/test_scheme_chrome.py::TestTextboxPlace::test_every_clock',
  '_dash_ring_value': 'test/test_title_boxes.py::TestRings::test_grammar',
+ '_dash_textbox_place_align': 'test/test_title_boxes.py::TestPlacementInside::test_outside_aligns',
  '_dash_legend_ring': 'test/test_title_boxes.py::TestRings::test_legend_grammar',
  '_dash_ring_tag': 'test/test_title_boxes.py::TestRings::test_tags',
  '_dash_ring_of_tag': 'test/test_title_boxes.py::TestRings::test_tags',

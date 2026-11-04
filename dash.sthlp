@@ -5962,9 +5962,13 @@ fill and the line, {cmd:fcolor()} and {cmd:bfcolor()} the fill,
 removes a scheme's box.  {cmd:margin()} pads the text, {cmd:linegap()}
 adds to the line step (the font size), {cmd:justification()} aligns the
 text inside its box (the box stays at its clock, as in {cmd:twoway}),
-{cmd:alignment()} sets its vertical place, {cmd:bmargin()} the gap to
-the plot and {cmd:placement()} the anchor of a box inside the plot
-region.  {cmd:tstyle()} is the base style -- {cmd:tstyle(heading)}
+{cmd:alignment()} sets its vertical place and {cmd:bmargin()} the gap
+to the plot.  Inside the plot region ({cmd:ring(0)} or
+{cmd:position(0)}), {cmd:placement()} is the compass point of the plot
+region the box is drawn at, in place of the clock's, read in every
+spelling {cmd:twoway} reads ({cmd:nor}, {cmd:NE}, {cmd:top}, a clock
+number); outside it, a west or east {cmd:placement()} moves the box to
+the left or right of its band, as {cmd:twoway} draws it.  {cmd:tstyle()} is the base style -- {cmd:tstyle(heading)}
 draws the heading's size and colour -- and {cmd:size()} and
 {cmd:color()} still win; an unknown name draws the default with
 {cmd:twoway}'s note "named style ... not found in class textboxstyle,

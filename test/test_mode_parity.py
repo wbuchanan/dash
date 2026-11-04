@@ -2847,6 +2847,9 @@ CORPUS = [
           go={"title": '"T", box', "note": '"N", box'}),
     _case('subtitle("S", ring(7.5)) (WP-43 LT-9)', [_sc()],
           go={"title": '"T"', "subtitle": '"S", ring(7.5)'}),
+    _case('title("T", ring(0) placement(sw)) (WP-43 LT-16)', [_sc()],
+          go={"title": '"T", ring(0) placement(sw)',
+              "note": '"N", placement(e)'}),
 
     # WP-31 D4/C13 (section 31): legend geometry
     _case("legend(pos(1) symxsize(5) keygap(1)) (WP-31 D4)",

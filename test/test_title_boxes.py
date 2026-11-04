@@ -356,3 +356,74 @@ class TestRings:
         above = list(f.above)
         assert _tagged(above, "t1title") > _tagged(above, "title")
 
+
+# ============================================================
+# LT-16: placement() at ring(0) is the plot region's compass point
+# ============================================================
+def _plot_rect(case):
+    row = TRUTH[case]
+    return [r for r in row["rects"] if r["style"] == "fill:#FFFFFF"
+            and r["w"] < row["viewbox"][2] * 0.95][0]
+
+
+def _third(v, lo, size):
+    f = (v - lo) / size
+    return 0 if f < 1 / 3 else 2 if f > 2 / 3 else 1
+
+
+def _measured_place(case, text="TT"):
+    """(sx, sy) of the frame symbols where twoway draws *text* in the
+    plot region of *case*: the third of the region its anchor lies in."""
+    p = _plot_rect(case)
+    t = [x for x in TRUTH[case]["texts"] if x["text"] == text][0]
+    return (("left", "center", "right")[_third(t["x"], p["x"], p["w"])],
+            ("top", "center", "bottom")[_third(t["y"], p["y"], p["h"])])
+
+
+_PLACEMENTS = ["n", "north", "12", "top", "t", "nor", "N", "ne", "neast",
+               "1", "sw", "c", "center", "s", "se", "w", "e", "nw"]
+
+
+class TestPlacementInside:
+
+    @pytest.mark.parametrize("x", _PLACEMENTS)
+    def test_fixture(self, x):
+        assert TRUTH["pl_" + x]["rc"] == 0 and TRUTH["pl_" + x]["lines"] == []
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("x", _PLACEMENTS)
+    def test_compass(self, mode, x):
+        f, caught = _fig(mode, {"title": '"TT", ring(0) placement(%s)' % x})
+        [(side, _i, m)] = _box(f, "title")
+        assert side == "center"
+        sx, sy = _measured_place("pl_" + x)
+        assert (m.x.symbol, m.y.symbol) == (sx, sy), x
+        want = "center" if (sx, sy) == ("center", "center") else (
+            "%s_%s" % (sy, sx))
+        assert m.anchor == want
+        assert not [w for w in caught if "placement" in w]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_placement_beats_clock(self, mode):
+        f, _c = _fig(mode, {"title": '"TT", ring(0) position(1) '
+                                     'placement(sw)'})
+        [(_s, _i, m)] = _box(f, "title")
+        assert _measured_place("pl_pos1_sw") == ("left", "bottom")
+        assert (m.x.symbol, m.y.symbol, m.anchor) == \
+            ("left", "bottom", "bottom_left")
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("x,align", [("w", "left"), ("e", "right")])
+    def test_outside_aligns(self, mode, x, align):
+        """Outside the plot region placement() moves the title box along
+        its band (pl_side_w at the plot region's left, pl_side_e at its
+        right, as placement(w) and placement(e) inside)."""
+        assert _x("pl_side_" + x, "TT") == _x("pl_" + x, "TT")
+        f, caught = _fig(mode, {"title": '"TT", placement(%s)' % x})
+        assert _model(f, "title").align == align
+        assert not [w for w in caught if "placement" in w]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_outside_north_unchanged(self, mode):
+        f, _c = _fig(mode, {"title": '"TT", placement(n)'})
+        assert _model(f, "title").align == "center"

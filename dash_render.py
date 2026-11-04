@@ -58550,6 +58550,8 @@ def _dash_figure_title(fig, graph_opts, seen=None, key="", scheme=None):
     # (and named)": the scheme's heading, set before this runs, stays.
     _dash_textbox_style(t, _t_opts, fig, scheme, "title",
                         base_size=t.text_font_size, base_color=t.text_color)
+    # placement() moves the box along its band (WP-43 LT-16).
+    t.align = _dash_textbox_place_align(_t_opts, t.align)
     _dash_textbox_span(fig, t, _t_opts,
                        getattr(fig, "title_location", None) or "above")
 
@@ -58698,8 +58700,27 @@ def _dash_ring_of_tag(tag):
     return v if math.isfinite(v) else None
 
 
+#: placement() of a title-family box (WP-43 LT-16; title_box_truth.json
+#: pl_<x>): inside the plot region the box sits at the compass point of
+#: the plot region it names -- (frame x symbol, frame y symbol, Label
+#: anchor) -- in place of the clock's; outside it, its horizontal part
+#: moves the box along its band (pl_side_w, pl_side_e).
+_DASH_TEXTBOX_PLACEMENT = {
+    "north": ("center", "top", "top_center"),
+    "neast": ("right", "top", "top_right"),
+    "east": ("right", "center", "center_right"),
+    "seast": ("right", "bottom", "bottom_right"),
+    "south": ("center", "bottom", "bottom_center"),
+    "swest": ("left", "bottom", "bottom_left"),
+    "west": ("left", "center", "center_left"),
+    "nwest": ("left", "top", "top_left"),
+    "center": ("center", "center", "center"),
+}
+
+
 def _dash_textbox_position(opts, default_clock, default_ring, just,
-                           option="title", note=True) -> dict:
+                           option="title", note=True,
+                           placement=True) -> dict:
     """Where a textbox goes (WP-31 D3): ``{"mode", "side", "align", "sx",
     "sy", "anchor", "ring", "clock"}``.
 
@@ -58742,11 +58763,35 @@ def _dash_textbox_position(opts, default_clock, default_ring, just,
             9: ("left", "center", "center_left"),
             10: ("left", "top", "top_left"), 11: ("left", "top", "top_left"),
         }.get(clock, ("center", "center", "center"))
+        # placement() names the plot region's compass point (WP-43 LT-16),
+        # read in every spelling twoway reads (_dash_compass_dir).
+        _pd = _dash_compass_dir(o.get("placement")) \
+            if placement and o.get("placement") else None
+        if _pd in _DASH_TEXTBOX_PLACEMENT:
+            sx, sy, anchor = _DASH_TEXTBOX_PLACEMENT[_pd]
         return {"mode": "inside", "side": "center", "align": sx, "sx": sx,
                 "sy": sy, "anchor": anchor, "ring": ring, "clock": clock}
     side, align = _dash_textbox_place(clock, "center" if user else just)
+    if placement:
+        align = _dash_textbox_place_align(o, align)
     return {"mode": "side", "side": side, "align": align, "sx": None,
             "sy": None, "anchor": None, "ring": ring, "clock": clock}
+
+
+def _dash_textbox_place_align(opts, align):
+    """The align of a box outside the plot region under placement()
+    (WP-43 LT-16): west, northwest and southwest put it at the left of its
+    band, east and its corners at the right, as twoway draws
+    title("TT", placement(w)) at the plot region's left
+    (title_box_truth.json pl_side_w, pl_side_e); north, south, center and
+    a name twoway does not read leave *align*."""
+    p = (opts or {}).get("placement")
+    d = _dash_compass_dir(p) if p else None
+    if d in ("west", "nwest", "swest"):
+        return "left"
+    if d in ("east", "neast", "seast"):
+        return "right"
+    return align
 
 
 def _dash_textbox_margin_px(scheme, tstyle, option):
@@ -58845,8 +58890,9 @@ def _dash_textbox_style(model, opts, fig, scheme, option, *, base_size=None,
     if o.get("justification") in ("left", "center", "right"):
         model.text_align = o["justification"]
     is_label = type(model).__name__ == "Label"
-    if is_label and o.get("placement") in _DASH_ADDED_TEXT_PLACE:
-        model.anchor = _DASH_ADDED_TEXT_PLACE[o["placement"]]
+    # placement() is a compass point of the plot region, set where the
+    # box is placed (_dash_textbox_position, WP-43 LT-16), not text()'s
+    # anchor from its point: placement(n) lifted the box out of the plot.
     v = {"top": "top", "middle": "middle", "baseline": "bottom",
          "bottom": "bottom"}.get(str(o.get("alignment", "")))
     if v is not None:
@@ -59795,7 +59841,7 @@ def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
             scheme.text_clock["subtitle"] if scheme is not None else 12,
             scheme.text_ring["subtitle"] if scheme is not None else 6,
             scheme.text_just["subheading"] if scheme is not None
-            else "center", "subtitle", note=False)
+            else "center", "subtitle", note=False, placement=False)
         if place["mode"] == "inside":
             # nobexpand: the box only round the text, at the compass point
             # (measured: position(1) ring(0) nobexpand at the top right).
@@ -74830,6 +74876,7 @@ class ServerAppBuilder:
                       "_DASH_ORDER_WORD_RE", "_DASH_ORDER_BLANK_RE",
                       "_DASH_TEXTBOX_HONOURED", "_DASH_TEXTBOX_BOX_HONOURED",
                       "_DASH_RING_WORDS", "_DASH_RING_NUMBER_RE",
+                      "_DASH_TEXTBOX_PLACEMENT",
                       "_DASH_GRAPH_MARGIN_JS",
                       "_DASH_SPAN_JS", "_DASH_SPAN_KEYS",
                       "_DASH_LEGEND_TITLE_DRAWN", "_DASH_LEGEND_TITLE_SILENT",
@@ -75610,6 +75657,7 @@ class ServerAppBuilder:
                          "_dash_textbox_position", "_dash_textbox_margin_px",
                          "_dash_ring_value", "_dash_legend_ring",
                          "_dash_ring_tag", "_dash_ring_of_tag",
+                         "_dash_textbox_place_align",
                          "_dash_textbox_margin_rel",
                          "_dash_textbox_style",
                          "_dash_textbox_insert", "_dash_textbox_draw",
