@@ -435,8 +435,9 @@ class TestNamedAndSilent:
 
     # Flipped (WP-31 D4b): colgap() and subtitle() are drawn
     # (test_legend_remainder.py); the rest stay named (M17).
-    @pytest.mark.parametrize("word", ["textfirst", "stacked",
-                                      "symplacement(e)", 'note("n")',
+    # Flipped: textfirst and stacked are drawn as twoway draws them
+    # (WP-43 LT-21, test_legend_keys.py::TestKeyOrder).
+    @pytest.mark.parametrize("word", ["symplacement(e)", 'note("n")',
                                       'caption("c")'])
     def test_named(self, mode, word):
         _fig, _lg, caught = _fig_legend(mode, TWO, word)

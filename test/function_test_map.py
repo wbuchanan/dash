@@ -409,6 +409,7 @@ FUNCTIONS = {
  '_dash_legend_key_text': 'test/test_legend_box.py::TestKeyText::test_frames',
  '_dash_legend_key_text.<locals>.col': 'test/test_legend_box.py::TestKeyText::test_frames',
  '_dash_legend_key_text.<locals>.em': 'test/test_legend_box.py::TestKeyText::test_margin_reserved',
+ '_dash_legend_key_order': 'test/test_legend_keys.py::TestKeyOrder::test_only_fixed_words',
  '_dash_legend_layout': 'test/test_legend_box.py::TestLayout::test_width_height',
  '_dash_legend_layout.<locals>.px': 'test/test_legend_box.py::TestLayout::test_offset',
  '_dash_legend_layout.<locals>.k': 'test/test_legend_box.py::TestLayout::test_width_height',

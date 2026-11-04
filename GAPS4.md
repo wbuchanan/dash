@@ -478,7 +478,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-18 Tracked:** Partly closed in WP-43 (section 43-05, commit 5b47081): orientation(), width(), height(), lstyle(), blstyle(), the bl* family, lalign(), blalign(), style() and the 2-4 and 8-10 o'clock boxes are drawn, and angle() without box; open: angle() with box (BUGS.md "title(..., angle() box) turns twoway's text inside its level box; dash keeps the title level").
 - **LT-19 Tracked:** Closed in WP-43, BUGS.md "Edge titles draw no box, justification(), margin() or tstyle()", commit 0dae9a3.
 - **LT-20 Tracked:** Documented in WP-43, BUGS.md "text() draws no width(), height(), linegap(), bexpand, bmargin(), lstyle(), lpattern(), lalign(); a `=exp' global is drawn literally", commit 065aace.
-- **LT-21 Tracked:** Open (WP-43 section 43-04).
+- **LT-21 Tracked:** Partly closed in WP-43 (section 43-04, commit pending): textfirst and stacked drawn; open: marker key size, angle and width, symplacement(), the legend's note() and caption() (BUGS.md "Legend marker keys are drawn at 0.4 of the key box and the box is symxsize() wide; symplacement() and the legend's note()/caption() are not drawn").
 - **PIC-11 Tracked:** Open (WP-43 section 43-04).
 - **MS-10 Tracked:** Open (WP-43 section 43-04).
 - **ST-14 Tracked:** Open (WP-43 section 43-07).

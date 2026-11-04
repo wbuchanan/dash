@@ -122,7 +122,9 @@ class TestSubtitle:
 class TestStillNamed:
     """M17: no Bokeh Legend property draws these; each stays in the note."""
 
-    @pytest.mark.parametrize("opt", ["stacked", "symplacement(n)",
+    # Flipped: stacked is drawn as twoway draws it (WP-43 LT-21,
+    # test_legend_keys.py::TestKeyOrder).
+    @pytest.mark.parametrize("opt", ["symplacement(n)",
                                      'note("Nt")', 'caption("Cap")'])
     def test_named(self, opt):
         _, msgs = _legend("saved", opt)

@@ -1988,7 +1988,9 @@ CORPUS = [
           [_sc(), plot_for("lfit")], None,
           # Flipped (WP-31 D4): span and holes(1) are drawn (span taken
           # in silence); stacked and colgap() are the words still named.
-          {"legend": "position(6) stacked colgap(1)"}),
+          # Flipped: stacked is drawn (WP-43 LT-21); symplacement() is
+          # the word still named.
+          {"legend": "position(6) symplacement(n) colgap(1)"}),
     _case("xscale(range()) and yscale with an unimplemented sub-option",
           [_sc()], None, {"xscale": "range(1500 4500)",
                           # Flipped (WP-31 D7): outergap() is drawn.
@@ -2929,6 +2931,9 @@ CORPUS = [
           [_sc(), plot_for("scatter", yvar="price")],
           go={"legend": "region(margin(1 20 1 1))",
               "title": '"T", box margin(l=20)', "scale": "1.5"}),
+    _case("legend(textfirst stacked) (WP-43 LT-21)",
+          [_sc(), plot_for("line", yvar="price")],
+          go={"legend": "textfirst stacked"}),
 
     # WP-31 D5/E11 (section 32): sizing
     _case("scale(1.5) (WP-31 D5)", [plot_for("scatter")],
@@ -3332,9 +3337,10 @@ _MUST_WARN = {
     "graph title with sub-options":
         "dash: title() sub-option(s) not implemented and ignored: astextbox",
     # Flipped: WP-31 D4b draws colgap(); stacked is still named.
+    # Flipped: WP-43 LT-21 draws stacked; symplacement() is still named.
     "legend with an unimplemented sub-option":
         "dash: legend() sub-option(s) not implemented and ignored: "
-        "stacked",
+        "symplacement(n)",
     "xscale(range()) and yscale with an unimplemented sub-option":
         "dash: yscale() sub-option(s) not implemented and ignored: "
         "logit",

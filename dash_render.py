@@ -41905,6 +41905,36 @@ def _dash_legend_layout(fig, legend, calls, words, *, seen=None, key=""):
     return css
 
 
+def _dash_legend_key_order(legend, words):
+    """textfirst and stacked on the series *legend* (WP-43 LT-21, ruling
+    D69), through the Legend's own stylesheet tagged
+    ``dash_legend_keyorder`` (Bokeh 3.8 and 3.9 draw each key as a
+    ``.bk-item`` flex row of its glyph canvas and its ``.bk-label``, the
+    keygap its ``gap``): textfirst puts each text before its key, the
+    texts right-aligned against the keys of their column; stacked puts
+    the text under its key, both at the left of the column, and with
+    textfirst too above it; a no-form undoes its word
+    (legend_keys_truth.json textfirst, textfirst_cols1, stacked,
+    textfirst_stacked).  Only fixed words reach the CSS.  Returns the CSS
+    ('' for none)."""
+    from bokeh.models import InlineStyleSheet
+    first = "textfirst" in words and "notextfirst" not in words
+    stacked = "stacked" in words and "nostacked" not in words
+    if stacked:
+        css = (".bk-grid .bk-item{flex-direction:%s;align-items:flex-start;}"
+               % ("column-reverse" if first else "column"))
+    elif first:
+        css = ".bk-grid .bk-item{flex-direction:row-reverse;}"
+    else:
+        css = ""
+    legend.stylesheets = [ss for ss in legend.stylesheets
+                          if "dash_legend_keyorder" not in (
+                              getattr(ss, "tags", None) or [])] + (
+        [InlineStyleSheet(css=css, tags=["dash_legend_keyorder"])]
+        if css else [])
+    return css
+
+
 #: alignment() of the key texts -> how far twoway moves each text, in its
 #: size, downward (legend_box_truth.json align_top, align_bottom: up
 #: 15.09 of a 99.99 text; align_baseline down 14.97; middle is the
@@ -42738,6 +42768,8 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         # and yoffset().
         _dash_legend_layout(fig, legend, _calls, _words, seen=seen,
                             key=key)
+        # WP-43 LT-21: textfirst and stacked.
+        _dash_legend_key_order(legend, _words)
 
     # 7c. span (WP-32): legend(span), else the scheme's `yesno
     #     legend_span' unless legend(nospan) undoes it; span beside
@@ -58742,7 +58774,9 @@ _DASH_LEGEND_SUBOPTS = frozenset({
     "justification", "alignment", "margin", "linegap", "tstyle", "bcolor",
     "fcolor", "bfcolor", "lcolor", "lwidth", "lpattern",
     # WP-43 LT-6: the layout sub-options (_dash_legend_layout).
-    "style", "width", "height", "xoffset", "yoffset", "showindex"})
+    "style", "width", "height", "xoffset", "yoffset", "showindex",
+    # WP-43 LT-21: textfirst and stacked (_dash_legend_key_order).
+    "textfirst", "notextfirst", "stacked", "nostacked"})
 
 #: legend(label(# text)): the key's number, then its text, read by
 #: _textbox_lines.  The number is bounded so no label can make int() read
@@ -75931,6 +75965,7 @@ class ServerAppBuilder:
                          "_dash_compass_dir",
                          "_dash_legend_margin_px", "_dash_legend_box",
                          "_dash_legend_key_text", "_dash_legend_layout",
+                         "_dash_legend_key_order",
                          "_dash_margin_px",
                          "_dash_legend_title_block",
                          "_dash_legend_hole_sheet", "_dash_legend_holes",

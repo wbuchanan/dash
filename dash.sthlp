@@ -5143,15 +5143,16 @@ least size with the keys centred, {cmd:xoffset()} and {cmd:yoffset()}
 move it right and up, and {cmd:showindex} numbers the key texts, as in
 {cmd:twoway}.
 {cmd:bexpand} and its
-{cmd:no} form are taken.  {cmd:textfirst}, {cmd:stacked},
-{cmd:symplacement()} and the legend's own {cmd:note()} and
-{cmd:caption()} are named in the note: a {cmd:dash} legend draws each key
-and then its text in one row, centred in the key's height, with nothing
-under the keys, so {cmd:legend(textfirst)}, which {cmd:twoway} draws text
-then key, is drawn key then text; {cmd:legend(stacked)}, which
-{cmd:twoway} draws with the text under its symbol, and
+{cmd:no} form are taken.  {cmd:textfirst} puts each text before its
+key, the texts of a column ending one key gap before its keys, and
+{cmd:stacked} puts the text under its key, both at the left of the
+column ({cmd:textfirst stacked} the text above it), as {cmd:twoway} draws
+them; {cmd:notextfirst} and {cmd:nostacked} undo them.
+{cmd:symplacement()} and the legend's own
+{cmd:note()} and {cmd:caption()} are named in the note: a {cmd:dash}
+legend centres each key in its row, with nothing under the keys, so
 {cmd:legend(symplacement(n))}, which raises the symbol 28 of the graph's
-1,440 SVG units in its key, are drawn as the default; and the legend's
+1,440 SVG units in its key, is drawn as the default, and the legend's
 {cmd:note()} and {cmd:caption()}, which {cmd:twoway} writes under the
 keys inside the box, are not drawn.
 
