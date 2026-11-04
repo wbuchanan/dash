@@ -934,8 +934,10 @@ class TestTheSubOptionSplitterReadsStataQuotes:
         # Flipped (WP-31 D4): span is taken in silence now (a side-panel
         # legend spans its side), so the word after the apostrophe is
         # stack, which twoway's legend_g draws and Bokeh cannot.
-        assert dr._dash_legend_unsupported("label(1 Bob's) stack") == [
-            "stack"]
+        # Flipped (WP-43 LT-21): stacked is drawn now (CSS on the Legend),
+        # so the word after the apostrophe is symplacement(), still named.
+        assert dr._dash_legend_unsupported(
+            "label(1 Bob's) symplacement(e)") == ["symplacement(e)"]
 
     def test_in_both_modes(self):
         """Flipped (WP-30 P1.15a): title(Bob's cars) was named as not

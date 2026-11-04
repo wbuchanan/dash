@@ -50,9 +50,12 @@ SUBOPTIONS = [
     # lays them out (or, span, taken in silence), so each row names a word
     # dash still does not draw (stack, colgap(), symplacement(),
     # textfirst) beside the honoured ones.
-    ("legend span stack holes", {"legend": "span stack holes(1) position(6)"},
+    # Flipped (WP-43 LT-21): stacked and textfirst are drawn now, so these
+    # two rows name symplacement(), which dash still does not draw.
+    ("legend span stack holes", {"legend": "span symplacement(n) holes(1)"
+                                           " position(6)"},
      [plot_for("scatter"), plot_for("lfit")], "legend",
-     ["stack"], ["position", "span", "holes"]),
+     ["symplacement(n)"], ["position", "span", "holes"]),
     ("legend keygap symxsize textwidth bmargin",
      {"legend": "keygap(2) symxsize(3) textwidth(20) bmargin(small) cols(2)"
                 " colgap(2) symplacement(e)"},
@@ -60,8 +63,8 @@ SUBOPTIONS = [
      # Flipped (WP-31 D4b): colgap() is drawn, so it is honoured.
      ["symplacement(e)"],
      ["cols", "keygap", "symxsize", "textwidth", "bmargin", "colgap"]),
-    ("legend colfirst", {"legend": "colfirst textfirst on"}, None, "legend",
-     ["textfirst"], ["on", "colfirst"]),
+    ("legend colfirst", {"legend": "colfirst symplacement(n) on"}, None,
+     "legend", ["symplacement(n)"], ["on", "colfirst"]),
     # Flipped (WP-30 P1.18a): labcolor(), tlength(), noline, titlegap()
     # and off are drawn as twoway draws them, so each row names a word
     # dash still does not draw (labgap, outergap, extend).
