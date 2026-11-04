@@ -11488,16 +11488,10 @@ string matrix _dash_so_rows(string scalar fam)
                   "lcolor", "lc", "4", "a", "1", "")
         t = t \ ("lpattern", "lp", "4", "a", "1", "" \
                   "lalign", "la", "4", "a", "1", "" \
-                  "orientation", "orient", "4", "a", "1", "" \
-                  "r1title", "r1", "5", "r", "1", "" \
-                  "r2title", "r2", "5", "r", "1", "" \
-                  "l1title", "l1", "5", "r", "1", "")
-        t = t \ ("l2title", "l2", "5", "r", "1", "" \
-                  "t1title", "t1", "5", "r", "1", "" \
-                  "t2title", "t2", "5", "r", "1", "" \
-                  "b1title", "b1", "5", "r", "1", "" \
-                  "b2title", "b2", "5", "r", "1", "" \
-                  "note", "note", "5", "r", "1", "")
+                  "orientation", "orient", "4", "a", "1", "")
+        // The edge titles are not legend() options: twoway refuses
+        // legend(t1title()) .. legend(b2title()), r(198) (WP-43 LT-13).
+        t = t \ ("note", "note", "5", "r", "1", "")
         t = t \ ("caption", "cap", "5", "r", "1", "" \
                   "subtitle", "sub", "5", "r", "1", "" \
                   "title", "t", "5", "r", "1", "" \

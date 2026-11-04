@@ -57822,13 +57822,11 @@ _DASH_LEGEND_SUBOPT_TABLE = (
         ("height", "height", "a"), ("nodraw", "nodraw", "w"),
         ("draw", "draw", "w"), ("on", "on", "w"), ("off", "off", "w")))
     + _dash_so_stage(4, True, _DASH_TBSTYLE_ROWS)
-    # R1title..B2title: the digit is part of the minimum -- twoway refuses
-    # legend(rows(1) r(2)) with "option r() not allowed" (measured).
+    # The edge titles r1title() .. b2title() are not legend() options:
+    # twoway refuses each, "option t1title() not allowed", r(198)
+    # (measured, legend_title_truth.json edge_*; WP-43 LT-13), so they
+    # are in no stage and the parser refuses them with twoway's words.
     + _dash_so_stage(5, True, (
-        ("r1title", "r1", "r"), ("r2title", "r2", "r"),
-        ("l1title", "l1", "r"), ("l2title", "l2", "r"),
-        ("t1title", "t1", "r"), ("t2title", "t2", "r"),
-        ("b1title", "b1", "r"), ("b2title", "b2", "r"),
         ("note", "note", "r"), ("caption", "cap", "r"),
         ("subtitle", "sub", "r"), ("title", "t", "r")))
     + _dash_so_stage(6, True, (("label", "lab", "r"),))

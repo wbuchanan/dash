@@ -5377,11 +5377,11 @@
   - Suggested fix: Pass alignment through _dash_at_canon; add an end-to-end test
   - Resolution: Not fixed because WP-43 section 43-06 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
 
-- [ ] Title: legend(t1title() ... b2title()) is accepted and named where twoway refuses r(198)
+- [x] Title: legend(t1title() ... b2title()) is accepted and named where twoway refuses r(198)
   - File Names and Line Numbers: dash_render.py:53560-53566; dash_parse.mata:9746-9751
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 8 (major): ids LT-13; confirmed; tracked: untracked. Registered as GAPS4 LT-13 (WP-43, section 43-01, Fix).
   - Suggested fix: Drop the eight edge titles from both legend tables
-  - Resolution: Not fixed because WP-43 section 43-01 has not landed. Graded S2 (WP-43): drop-in audit package 8, major.
+  - Resolution: Fixed 04nov2026 (WP-43, LT-13). Measured first (scripts/extract_legend_title_truth.do, test/fixtures/legend_title_truth.json edge_*; live 04nov2026 for t1(), t1t(), b2(), r1(), l2(), t2()): twoway refuses every edge title inside legend() -- t1title() .. b2title(), r1title() and l2title() included, and each abbreviation -- with "option <name>() not allowed", r(198); dash took them, rc 0, with "legend() sub-option(s) not implemented and ignored". The eight rows are gone from stage 5 of _DASH_LEGEND_SUBOPT_TABLE and from the Mata legend family (dash_parse.mata), so the parser refuses each with twoway's rc and words and the renderer names any a hand-written spec carries. Pinned by test/test_subopt_abbrev.py::TestLegendEdgeTitles::test_refused, ::TestTheResolver::test_the_measured_refusals, test_option_validation.cscript Q4301-5. Closes GAPS4 LT-13 (WP-43, LT-13).
 
 - [ ] Title: title(..., ring(x)) is accepted silently where twoway prints notes and refuses r(198)
   - File Names and Line Numbers: _dash_textbox_position (dash_render.py:54059-54067); R_tring

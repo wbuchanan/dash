@@ -59,6 +59,10 @@ _LEGEND_REFUSALS = {
     "xoffset(x)": "option xoffset() not allowed",
     "xoffset()": "option xoffset() not allowed",
     "yoffset(1 2)": "option yoffset() not allowed",
+    # WP-43 LT-13: the edge titles are no legend() option (measured
+    # 04nov2026; legend_title_truth.json edge_*).
+    't1("TT")': "option t1() not allowed",
+    't1title("TT")': "option t1title() not allowed",
 }
 
 _AXIS_REFUSALS = {
@@ -98,7 +102,10 @@ _ACCEPTED = {
                'title("TA") title("TB")', 'label(1 "AA") lab(1 "BB")',
                "cols(2/2)", "cols(+2)", "cols()", "holes()", "label()",
                'label(01 "A")', 'label(+1 "A")', "pos( 9 )", "ring(-1)",
-               "ring(1.5)", "on off", "off on", 't("TT")', 't1("TT")',
+               "ring(1.5)", "on off", "off on", 't("TT")',
+               # Flipped: t1("TT") was taken as t1title(); twoway refuses
+               # it, "option t1() not allowed" (measured 04nov2026, WP-43
+               # LT-13): it is in _LEGEND_REFUSALS now.
                ],
     "axis": ["labs(large)", "labsi(large)", "ang(45)", "form(%9.1f)",
              "for(%9.1f)", "nogr", "nog", "g", "gr", "gri", "glc(red)",
@@ -215,9 +222,11 @@ class TestTheTables:
         A = dr._DASH_AXLABEL_SUBOPT_TABLE
         R = dr._DASH_REFLINE_SUBOPT_TABLE
         for nm, full in (("c", "cols"), ("la", "lalign"), ("s", "size"),
-                         ("b", "box"), ("r", "rows"), ("t", "title"),
-                         ("t1", "t1title")):
+                         ("b", "box"), ("r", "rows"), ("t", "title")):
             assert dr._dash_subopt_canon(nm, L) == full, nm
+        # Flipped: t1 was t1title; twoway refuses the edge titles in
+        # legend() (WP-43 LT-13, legend_title_truth.json edge_t1).
+        assert dr._dash_subopt_canon("t1", L) is None
         for nm, full in (("g", "grid"), ("nog", "nogrid"),
                          ("val", "valuelabels"), ("for", "format"),
                          ("tl", "tlength")):
@@ -709,3 +718,27 @@ class TestTheFixture:
             prob = dr._dash_subopt_resolve(body.strip(), table)[1]
             assert prob is not None and prob[3] == p["messages"][0], \
                 (pid, p["cmd"], prob)
+
+
+class TestLegendEdgeTitles:
+    """twoway refuses the edge titles inside legend(): ``option t1title()
+    not allowed``, r(198), for each of t1, t2, b1, b2, l1, l2, r1 and r2
+    (test/fixtures/legend_title_truth.json edge_*, WP-43 LT-13); dash took
+    them with a note.  Neither table names them now, so the Mata parser
+    refuses them with twoway's words and the renderer names any that a
+    hand-written spec carries."""
+
+    _TRUTH = json.load(open(os.path.join(
+        _HERE, "fixtures", "legend_title_truth.json"), encoding="utf-8"))
+
+    @pytest.mark.parametrize("edge", ("t1", "t2", "b1", "b2", "l1", "l2",
+                                      "r1", "r2"))
+    def test_refused(self, edge):
+        rec = self._TRUTH["edge_" + edge]
+        assert rec["rc"] == 198
+        assert rec["first_line"] == "option %stitle() not allowed" % edge
+        L = dr._DASH_LEGEND_SUBOPT_TABLE
+        assert dr._dash_subopt_canon(edge + "title", L) is None
+        assert dr._dash_subopt_canon(edge, L) is None
+        assert dr._dash_legend_unsupported(edge + "title(x)") == [
+            edge + "title(x)"]

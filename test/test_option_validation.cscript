@@ -2824,6 +2824,19 @@ foreach c in "legend(region(lcolor(bogus)))" "legend(region(fcolor(red)))" `"leg
 }
 _u05_judge U39-05 `"`bad'"' "words inside legend(region()) and legend(title()) refused or taken as twoway does"
 
+// Q4301-5 (WP-43 LT-13): the edge titles are not legend() options --
+// twoway refuses legend(t1title("E")) .. legend(r2title("E")), "option
+// t1title() not allowed", r(198) (legend_title_truth.json edge_*); dash
+// took them with a note.  Live: the same rc and line, twoway and dash.
+local bad ""
+foreach e in t1 t2 b1 b2 l1 l2 r1 r2 {
+    _u05_rc `"scatter mpg weight, legend(`e'title("E"))"' "option `e'title() not allowed"
+    if r(trc) != 198 | r(drc) != 198 | r(tn) < 1 | r(dn) < 1 {
+        local bad `"`bad' [`e'title: twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+    }
+}
+_u05_judge Q4301-5 `"`bad'"' "legend(t1title()) .. legend(r2title()) refused as twoway refuses them"
+
 // U39-07 (WP-31 D16b): a quoted string standing alone among the options
 // is refused as twoway refuses it, r(198), in its words, which follow
 // where the string stands and how many there are
