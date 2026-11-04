@@ -2,6 +2,8 @@
 
 > Part of: WP-43 (Legend, titles and added text) · Items: LT-8, LT-9, LT-14, LT-16, LT-18, LT-19, LT-24 · Risk: yellow · Batch: 43.3 · Depends on: 43-02 · Blocks: 43-03 · Tasks: 8, 7 commits · Case-id prefix: Q4305
 
+> **D69 (04nov2026) supersedes this section's use of the overlay dispatcher.** D-43-01.c / R4-7 are withdrawn: there is no `_DASH_OVERLAY_JS`, `_dash_overlay_item`, `_dash_overlay` or `_dash_overlay_move`, because Bokeh clips a `fig.center` annotation to the plot frame. Every task below that registers a dispatcher kind or overlay is re-planned at its start: measure, then draw by native model properties, CSS on the model, an annotation only where its target lies inside the plot frame, or bring a documented difference for a ruling. Add no shared layout callback. See .ultraplan/review/DECISIONS.md D69.
+
 ## Overview
 
 **What is wrong today.** Seven defects of title(), subtitle(), note(), caption() and the edge titles (audit :373-427 and the legend-titles-text appendix):

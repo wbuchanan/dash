@@ -2,6 +2,8 @@
 
 > Part of: WP-43 (Legend, titles and added text) · Items: LT-2, LT-3, LT-6, LT-7, LT-10 · Risk: yellow · Batch: 43.4 · Depends on: 43-05 · Blocks: 43-04 · Tasks: 7, 5 commits · Case-id prefix: Q4303
 
+> **D69 (04nov2026) supersedes this section's use of the overlay dispatcher.** D-43-01.c / R4-7 are withdrawn: there is no `_DASH_OVERLAY_JS`, `_dash_overlay_item`, `_dash_overlay` or `_dash_overlay_move`, because Bokeh clips a `fig.center` annotation to the plot frame. Every task below that registers a dispatcher kind or overlay is re-planned at its start: measure, then draw by native model properties, CSS on the model, an annotation only where its target lies inside the plot frame, or bring a documented difference for a ruling. Add no shared layout callback. See .ultraplan/review/DECISIONS.md D69.
+
 ## Overview
 
 **What is wrong today.** Five defects of the legend's box and of text boxes' margins (audit :364-381, :388-390, :403-405; appendix LT-2, LT-3, LT-6, LT-7, LT-10):

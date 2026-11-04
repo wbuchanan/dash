@@ -2,6 +2,8 @@
 
 > Part of: WP-43 (Legend, titles and added text) · Items: ST-14 · Risk: red · Batch: 43.6 · Depends on: 43-04 · Blocks: none · Tasks: 6, 1 commit · Case-id prefix: Q4307
 
+> **D69 (04nov2026) supersedes this section's use of the overlay dispatcher.** D-43-01.c / R4-7 are withdrawn: there is no `_DASH_OVERLAY_JS`, `_dash_overlay_item`, `_dash_overlay` or `_dash_overlay_move`, because Bokeh clips a `fig.center` annotation to the plot frame. Every task below that registers a dispatcher kind or overlay is re-planned at its start: measure, then draw by native model properties, CSS on the model, an annotation only where its target lies inside the plot frame, or bring a documented difference for a ruling. Add no shared layout callback. See .ultraplan/review/DECISIONS.md D69.
+
 ## Overview
 
 **What is wrong today.** ST-14 with TR-14, DG-17 and PIC-18 (audit :437-439; appendix ST-14, TR-14, DG-17, PIC-18): "Partial SMCL markup ({bf:}, {it:}, {sup:} on letters, fonts) in titles, labels and keys is drawn in one plain style". twoway draws `title("a {bf:b} c")` with only the b bold, raises the q of `a{sup:q}`, italicises only the p of `{it:p}-value`, and in `xlabel(3000 "{it:italic} text" 4000 "{bf:bold}" 5000 "a{sup:2}")` styles each run; dash gives a drawn text one style, font and baseline (dash.sthlp:5171-5183), draws partial markup in the text's own style with one note per graph and kind (`_dash_graph_text_note`, dash_render.py:49186-49205), and raises only characters with a Unicode superscript form (`_DASH_GT_SUP`, :48418). graph_text.sthlp's examples 13-16 print the note (probe6). The BUGS entry "Inline SMCL style runs and raised text with no Unicode form are drawn in the text's own style ..." (BUGS.md:3689) was closed as a documented limit (M17, D-42a).

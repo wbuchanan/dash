@@ -2,6 +2,8 @@
 
 > Part of: WP-44 (Axes, audit package 9) · Items: AX-13, PIC-12, MS-13, MS-11 · Risk: yellow · Batch: 44.1 · Depends on: none (WP-43 landed) · Blocks: 44-02 · Tasks: 9, 4 commits · Case-id prefix: Q4401
 
+> **D69 (04nov2026) supersedes this section's use of the overlay dispatcher.** D-43-01.c / R4-7 are withdrawn: there is no `_DASH_OVERLAY_JS`, `_dash_overlay_item`, `_dash_overlay` or `_dash_overlay_move`, because Bokeh clips a `fig.center` annotation to the plot frame. Every task below that registers a dispatcher kind or overlay is re-planned at its start: measure, then draw by native model properties, CSS on the model, an annotation only where its target lies inside the plot frame, or bring a documented difference for a ruling. Add no shared layout callback. See .ultraplan/review/DECISIONS.md D69.
+
 ## Overview
 
 **What is wrong today.** Four ways an axis title differs from twoway's:
