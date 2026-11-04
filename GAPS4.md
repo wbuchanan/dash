@@ -480,7 +480,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-20 Tracked:** Documented in WP-43, BUGS.md "text() draws no width(), height(), linegap(), bexpand, bmargin(), lstyle(), lpattern(), lalign(); a `=exp' global is drawn literally", commit 065aace.
 - **LT-21 Tracked:** Partly closed in WP-43 (section 43-04, commit pending): textfirst and stacked drawn; open: marker key size, angle and width, symplacement(), the legend's note() and caption() (BUGS.md "Legend marker keys are drawn at 0.4 of the key box and the box is symxsize() wide; symplacement() and the legend's note()/caption() are not drawn").
 - **PIC-11 Tracked:** Open (WP-43 section 43-04).
-- **MS-10 Tracked:** Open (WP-43 section 43-04).
+- **MS-10 Tracked:** Closed in WP-43, BUGS.md "Keys are merged when two different pstyles look alike (s1mono line v6/v14, v12/v15)", commit pending.
 - **ST-14 Tracked:** Open (WP-43 section 43-07).
 - **LT-24 Tracked:** Closed in WP-43, BUGS.md "title() whose text is an apostrophe and 90s inside double quotes is drawn where twoway gives r(100)", commit 40e9946.
 - **RH-13 Tracked:** Open (WP-43 section 43-04).

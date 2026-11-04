@@ -6327,9 +6327,13 @@ when the graph has two or more keys: a lone {cmd:scatter} gets none, a
 {cmd:scatter} with an {cmd:lfit} over it gets one.  {cmd:legend(on)} forces
 one onto a single-key graph and {cmd:legend(off)} removes it from any graph;
 in one {cmd:legend()}, {cmd:on} wins over {cmd:off}.
-Plots that look the same, none given a style option of its own, share one
-key, the first plot's, its text their texts joined by "/", as
-{cmd:twoway} draws them: two histograms, of {cmd:mpg} and of {cmd:price},
+Two plots are one key when they are the same kind of plot in the same
+{cmd:pstyle()} with no style option of their own -- the first plot's key,
+its text their texts joined by "/" -- as {cmd:twoway} merges them, not
+when they only look alike: under {cmd:s1mono} the lines of
+{cmd:line v1-v14 x} are 14 keys, while a {cmd:kdensity} and a
+{cmd:line} both in {cmd:pstyle(p1)} are one, and a sixteenth line, drawn
+in {cmd:p1} again, is the first line's key; two histograms, of {cmd:mpg} and of {cmd:price},
 are one key, "Density", in the one histogram colour, so they draw no
 legend; scatters of {cmd:mpg} and {cmd:price} with {cmd:pstyle(p1)} are one
 key, "Mileage (mpg)/Price"; {cmd:color(red)} on one histogram, or

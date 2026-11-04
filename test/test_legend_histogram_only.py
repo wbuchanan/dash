@@ -164,17 +164,3 @@ class TestMergeKeepsNumbers:
         assert [_text(i) for i in _legend(mode, two, "on order(2)").items
                 ] == []
 
-
-class TestKeySignature:
-
-    def test_equal_glyphs_sign_alike(self):
-        from bokeh.models import ColumnDataSource, GlyphRenderer, Scatter
-        src = ColumnDataSource({"x": [1], "y": [2]})
-
-        def r(**kw):
-            return GlyphRenderer(data_source=src,
-                                 glyph=Scatter(x="x", y="y", **kw))
-        a = dr._dash_key_signature([r(fill_color="red", size=6)])
-        b = dr._dash_key_signature([r(fill_color="red", size=6)])
-        c = dr._dash_key_signature([r(fill_color="blue", size=6)])
-        assert a == b != c

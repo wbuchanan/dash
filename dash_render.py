@@ -42302,7 +42302,8 @@ def _dash_legend_holes(legend):
 
 
 def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
-                       default_level=None, chrome=None, seen=None, key=""):
+                       default_level=None, chrome=None, seen=None, key="",
+                       pcycle=None):
     """Stata's keys, Stata's drawing rule, and every legend() sub-option.
 
     ``twoway`` draws a legend if and only if the graph has two or more keys;
@@ -42332,6 +42333,8 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                         default placement (clock, cols, rows), which
                         applies only when the user gave no position()
                         or ring().
+        pcycle:         The graph's pcycle() (``_dash_pcycle``), for the
+                        p# each key merges by (WP-43 MS-10).
     """
     from bokeh.models import LegendItem
     legend_opt = str(legend_opt or "")
@@ -42381,10 +42384,15 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         live = [(plot, [r for r in rends if r in fig.renderers])
                 for plot, rends in plot_renderers]
         keys = _dash_legend_keys(live, var_labels or {}, default_level)
-        # WP-31 C13: twoway's legend_g draws the keys of two plots that
-        # look the same, neither given a style option of its own,
-        # as ONE key, the first's, its text the plots' distinct texts
-        # joined by "/" -- and a graph of one key draws no legend.  Two
+        # WP-31 C13: twoway's legend_g draws the keys of two plots
+        # neither given a style option of its own as ONE key, the
+        # first's, its text the plots' distinct texts joined by "/" --
+        # and a graph of one key draws no legend.  WP-43 MS-10: two keys
+        # are one when they are the same view type in the same pstyle
+        # (_dash_key_style_id), not when they look alike: s1mono's p6 and
+        # p14 lines are two keys (legend_keys_truth.json merge_s1mono14),
+        # kdensity and line in pstyle(p1) one (merge_cross), and a 16th
+        # line is the first's key (merge_s2color16).  Two
         # histograms are one "Density" key in the one histogram colour, so
         # they draw none; color(red) on one keeps two keys; scatters of mpg
         # and price with pstyle(p1) are one key "Mileage (mpg)/Price"; an
@@ -42404,11 +42412,22 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         # scatters).
         if keys and "all" not in _words:
             _plot_of, _pn = {}, 1
-            for _pl, _r in live:
+            # WP-43 MS-10: each key's plot, whether it is a ci band, and
+            # its p# index, for twoway's merge id (_dash_key_style_id).
+            _sidx = _dash_plot_style_indices([_pl for _pl, _r in live],
+                                             pcycle)
+            _band_of, _sidx_of = {}, {}
+            for _i, (_pl, _r) in enumerate(live):
                 _plot_of[_pn] = _pl
+                _sidx_of[_pn] = _sidx[_i]
+                _ptype = (str(_pl.get("type", "")).lower()
+                          if isinstance(_pl, dict) else "")
+                _band_of[_pn] = _ptype in _DASH_CI_TYPES
                 # A nofit ci layer is one plot (WP-34 PIC-3).
                 if _dash_ci_plot_count(_pl) == 2:
                     _plot_of[_pn + 1] = _pl
+                    _sidx_of[_pn + 1] = _sidx[_i]
+                    _band_of[_pn + 1] = False
                     _pn += 2
                 else:
                     _pn += 1
@@ -42421,7 +42440,8 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                        and str(_v).strip() for _k, _v in _o.items()):
                     _kept.append((_n, _t, list(_rends)))
                     continue
-                _sig = _dash_key_signature(_rends)
+                _sig = _dash_key_style_id(_pl, _band_of.get(_n, False),
+                                          _sidx_of.get(_n, 0))
                 if _sig in _first:
                     _k = _first[_sig]
                     _n0, _t0, _r0 = _kept[_k]
@@ -65644,36 +65664,49 @@ _DASH_KEY_STYLE_OPTS = frozenset({
     "blcolor", "blwidth", "blpattern", "blstyle", "balign"})
 
 
-def _dash_key_signature(renderers):
-    """The style of one legend key, for twoway's rule that two keys with
-    the same text and style are one (WP-31 C13): per renderer, its glyph's
-    class and the values of the properties a key draws with -- colours,
-    alphas, widths, dash, hatch, marker and size.  A number is rounded to
-    nine places; a list is a tuple; anything else (a field or value spec)
-    is its repr, so two layers coloured by their own mappers stay apart.
-    """
-    out = []
-    for r in renderers or ():
-        g = getattr(r, "glyph", None)
-        props = []
-        for name in ("line_color", "line_alpha", "line_width", "line_dash",
-                     "fill_color", "fill_alpha", "hatch_pattern",
-                     "hatch_color", "marker", "size", "angle"):
-            if g is None or name not in g.properties():
-                continue
-            v = getattr(g, name, None)
-            if isinstance(v, bool) or v is None or isinstance(v, str):
-                pass
-            elif isinstance(v, (int, float)):
-                v = round(float(v), 9)
-            elif isinstance(v, (list, tuple)):
-                v = tuple(v)
-            else:
-                v = repr(v)
-            props.append((name, v))
-        out.append((type(g).__name__, tuple(props)))
-    return tuple(out)
+#: The view type twoway's legend merges keys by (WP-43 MS-10): a plot
+#: type drawn as another type's view is that type (legend_keys_truth.json
+#: merge_cross: kdensity and line in pstyle(p1) are one key; merge_cross_lfit
+#: lfit and line; merge_cross_sc keeps scatter and line apart).
+_DASH_KEY_VIEW_TYPE = {
+    "lfit": "line", "qfit": "line", "fpfit": "line", "lowess": "line",
+    "lpoly": "line", "mspline": "line", "mband": "line", "kdensity": "line",
+    "function": "line", "tsline": "line", "histogram": "bar",
+    "tsrline": "rline", "scatteri": "scatter", "pci": "pcspike",
+    "pcarrowi": "pcarrow"}
 
+
+def _dash_key_style_id(plot, band, style_index):
+    """``(view_type, style_name)``: what twoway's legend_g merges two keys
+    by (WP-43 MS-10, D-43-04.a; legend_g.class rebuild's
+    ``"<type stylename>:<style stylename>"``).  *view_type* is a ci
+    band's ciplot() target (rarea by default), a ci line's ``line``, else
+    the plot's recast() target, else its type through
+    ``_DASH_KEY_VIEW_TYPE``; *style_name* the plot's p() or pstyle()
+    (lower case) when given, else ``histogram`` for a histogram, ``ci``
+    for a band, else ``p<style_index + 1>``.  Anything that is not a dict
+    is a plot of no type."""
+    if not isinstance(plot, dict):
+        return ("", "p%d" % (int(style_index) + 1))
+    opts = plot.get("options") if isinstance(plot.get("options"),
+                                             dict) else {}
+    ptype = str(plot.get("type", "") or "").strip().lower()
+    recast = str(opts.get("recast", "") or "").strip().lower()
+    if band:
+        view = str(opts.get("ciplot", "") or "").strip().lower() or "rarea"
+    elif ptype in _DASH_CI_TYPES:
+        view = "line"
+    else:
+        view = recast or _DASH_KEY_VIEW_TYPE.get(ptype, ptype)
+    style = ""
+    for k in ("p", "pstyle"):
+        style = str(opts.get(k, "") or "").strip().lower()
+        if style:
+            break
+    if not style:
+        style = ("histogram" if ptype == "histogram" else "ci" if band
+                 else "p%d" % (int(style_index) + 1))
+    return (view, style)
 
 def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
     """``[(number, key_text, [renderer, ...]), ...]`` for one figure's
@@ -71377,7 +71410,7 @@ class DashRenderer:
             getattr(self, "default_level", _DEFAULT_LEVEL),
             _dash_scheme_chrome(self.scheme),
             getattr(self, "_reported_subopts", None),
-            graph_opts.get("name", ""))
+            graph_opts.get("name", ""), pcycle=_dash_pcycle(graph_opts))
 
     def _resolve_aspect_ratio(self, graph_opts: dict) -> "float | None":
         """Return Bokeh's width/height ratio for this figure.
@@ -75414,6 +75447,7 @@ class ServerAppBuilder:
                       "_DASH_COMPASS_CLOCK",
                       "_DASH_LEGEND_REGION_NAMES", "_DASH_KEY_STYLE_OPTS",
                       "_DASH_LEGEND_KEY_ALIGN", "_DASH_LEGENDSTYLES",
+                      "_DASH_KEY_VIEW_TYPE",
                       "_DASH_HIST_YTITLES",
                       "_DASH_OPT_VAR_KEYS", "_DASH_PLOT_VAR_KEYS",
                       "_DASH_SWATCH_PREFIX",
@@ -75880,7 +75914,7 @@ class ServerAppBuilder:
                          # ... and the note for a layer it cannot reach.
                          "_dash_note_hover_unreached",
                          # Stata's legend keying rules.
-                         "_dash_legend_key", "_dash_key_signature",
+                         "_dash_legend_key", "_dash_key_style_id",
                          "_dash_legend_entries",
                          "_dash_layer_series", "_dash_function_yname",
                          # twoway's label-or-name rule (WP-29 P0.3).
@@ -79274,7 +79308,8 @@ class ServerAppBuilder:
             "        _dash_apply_legend(fig, _plot_rends, go.get('legend', ''),",
             "                           var_labels, _dash_cur_mapper().default_level,",
             "                           _dash_scheme_chrome(_dash_cur_scheme()),",
-            "                           _reported_subopts, gname)",
+            "                           _reported_subopts, gname,",
+            "                           pcycle=_dash_pcycle(go))",
             "",
             '        # ---- The figure\'s one HoverTool ----',
             '        # GAPS.md D2: HoverTool was imported into this file and',

@@ -1296,7 +1296,7 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w43_run' {
 // q4304_cv, its key texts joined by "|" into q4304_ks and q4304_kv, and
 // the count of notes naming legend() into q4304_ns and q4304_nv.
 // _q4304_tw <svg>: twoway's key texts from its SVG (the texts inside the
-// legend's frame below the plot region, in reading order) into
+// framed box holding the most texts, the legend's, in reading order) into
 // q4304_tw, and "end" when every one ends at its x (textfirst) into
 // q4304_anchor.
 python:
@@ -1333,25 +1333,29 @@ def _q4304_read(sp, dp, app):
 def _q4304_tw(path):
     import re
     from sfi import Macro
-    from svg_truth import svg_plotregion
     with open(path, encoding="utf-8") as fh:
         src = fh.read()
-    pb = (svg_plotregion(path) or {}).get("bottom") or 0
     att = lambda s: dict(re.findall(r'([a-zA-Z0-9_:-]+)="([^"]*)"', s))
+    vb = [float(v) for v in re.search(r'viewBox="([-0-9. ]+)"',
+                                      src).group(1).split()]
     frames = [att(a) for a in re.findall(r"<rect\b([^>]*)/?>", src)]
     frames = [a for a in frames if "stroke:" in a.get("style", "")
-              and float(a.get("y", 0)) > pb]
-    texts = []
+              and float(a.get("width", 0)) * float(a.get("height", 0))
+              < vb[2] * vb[3] / 4]
+    every = []
     for a, body in re.findall(r"<text\b([^>]*)>([^<]*)</text>", src):
         a = att(a)
-        x, y = float(a["x"]), float(a["y"])
-        for f in frames:
-            fx, fy = float(f["x"]), float(f["y"])
-            if (fx <= x <= fx + float(f["width"])
-                    and fy <= y <= fy + float(f["height"])):
-                texts.append((round(y, 1), x, body.replace("&amp;", "&"),
-                              a.get("text-anchor", "start")))
-                break
+        every.append((round(float(a["y"]), 1), float(a["x"]),
+                      body.replace("&amp;", "&"),
+                      a.get("text-anchor", "start")))
+    texts = []
+    for f in frames:
+        fx, fy = float(f["x"]), float(f["y"])
+        inside = [t for t in every
+                  if fx <= t[1] <= fx + float(f["width"])
+                  and fy <= t[0] <= fy + float(f["height"])]
+        if len(inside) > len(texts):
+            texts = inside
     texts.sort()
     Macro.setGlobal("q4304_tw", "|".join(t[2] for t in texts))
     Macro.setGlobal("q4304_anchor", "end" if texts and all(
@@ -1407,6 +1411,67 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w43_run' {
 
     forvalues j = 1/`k' {
         capture erase "`q04d'/q04t`j'.svg"
+    }
+    foreach f in s.json d.json a.py {
+        capture erase "`q04d'/`f'"
+    }
+    capture rmdir "`q04d'"
+    macro drop q4304_cs q4304_cv q4304_ks q4304_kv q4304_ns q4304_nv q4304_tw q4304_anchor
+    capture graph drop _all
+    dash clear
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
+* ==== S04 MS-10: keys merge by view type and pstyle ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w43_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    local q04d "`w43_work'/s04b"
+    capture mkdir "`q04d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // Q4304-4: which keys merge -- live twoway's key texts beside
+    // dash's, saved and served: s1mono's 14 lines (p6 and p14 look
+    // alike) are 14 keys; s2color's 16th line is the first's key; a
+    // kdensity and a line in pstyle(p1) are one key.  The s1mono legend
+    // is given a frame so its texts can be read; it merges nothing.
+    // ------------------------------------------------------------
+    clear
+    set obs 10
+    generate x = _n
+    forvalues i = 1/16 {
+        generate v`i' = x + `i'
+    }
+    local k 0
+    foreach c in "line v1-v14 x, sort scheme(s1mono) legend(region(lcolor(black)))" "line v1-v16 x, sort scheme(s2color)" {
+        local ++k
+        capture noisily twoway `c' name(q04m, replace)
+        _w43_expect Q4304-4 "(_rc == 0)" "twoway `c' rc `=_rc'"
+        capture erase "`q04d'/q04m`k'.svg"
+        cert_svg_export, name(q04m) file("`q04d'/q04m`k'.svg")
+        python: import __main__ as _q4304_m; _q4304_m._q4304_tw("`q04d'/q04m`k'.svg")
+        _q4304_reg "`q04d'" `c' name(q04e)
+        foreach m in s v {
+            _w43_expect Q4304-4 `"("${q4304_k`m'}" == "${q4304_tw}")"' `"`c' `m': dash ${q4304_k`m'} twoway ${q4304_tw}"'
+        }
+    }
+    sysuse auto, clear
+    local c "(kdensity mpg, pstyle(p1)) (line mpg weight, sort pstyle(p1)), legend(on)"
+    capture noisily twoway `c' name(q04m, replace)
+    _w43_expect Q4304-4 "(_rc == 0)" "twoway `c' rc `=_rc'"
+    capture erase "`q04d'/q04m3.svg"
+    cert_svg_export, name(q04m) file("`q04d'/q04m3.svg")
+    python: import __main__ as _q4304_m; _q4304_m._q4304_tw("`q04d'/q04m3.svg")
+    _q4304_reg "`q04d'" `c' name(q04e)
+    foreach m in s v {
+        _w43_expect Q4304-4 `"("${q4304_k`m'}" == "${q4304_tw}")"' `"`c' `m': dash ${q4304_k`m'} twoway ${q4304_tw}"'
+    }
+    _w43_done Q4304-4 "keys merge by view type and pstyle, not by look, as twoway's, saved and served"
+
+    forvalues j = 1/3 {
+        capture erase "`q04d'/q04m`j'.svg"
     }
     foreach f in s.json d.json a.py {
         capture erase "`q04d'/`f'"
