@@ -2861,6 +2861,17 @@ CORPUS = [
     _case("histogram only, no legend (WP-31 C13)",
           [plot_for("histogram"), plot_for("histogram", var="price")]),
 
+    # WP-43 LT-1/LT-15 (section 43-01): legend title block
+    _case('legend(title("T") subtitle("S")) (WP-43 LT-1)',
+          [_sc(), plot_for("scatter", yvar="price")],
+          go={"legend": 'title("T") subtitle("S")'}),
+    _case('legend(title("T", position(5) box)) (WP-43 LT-15)',
+          [_sc(), plot_for("scatter", yvar="price")],
+          go={"legend": 'title("T", position(5) box)'}),
+    _case('legend(title("T", box) subtitle("S")) scale(1.5) (WP-43 LT-15)',
+          [_sc(), plot_for("scatter", yvar="price")],
+          go={"legend": 'title("T", box) subtitle("S")', "scale": "1.5"}),
+
     # WP-31 D5/E11 (section 32): sizing
     _case("scale(1.5) (WP-31 D5)", [plot_for("scatter")],
           go={"scale": "1.5"}),

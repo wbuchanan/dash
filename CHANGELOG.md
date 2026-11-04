@@ -1009,6 +1009,7 @@ and now matches Stata.
 
 ### Fixed in WP-43
 
+- legend(title()) is centred over the keys, and its and legend(subtitle())'s position(), justification(), box, box colours, lwidth(), lpattern() and margin() are drawn as twoway draws them; a subtitle under a title is drawn in its own style (was the title's), and the title sub-options dash does not draw are named (were dropped in silence) (WP-43, LT-15)
 - legend(title()) and legend(subtitle()) are drawn in the scheme's legend-title and legend-subtitle styles, larger than the keys, as twoway draws them (WP-43, LT-1)
 - text(..., alignment()) is drawn as twoway draws it; it was named in a note and dropped before the drawing (WP-43, LT-11)
 - text()'s width(), height(), linegap(), lstyle(), lpattern() and lalign() are drawn, and a global's =exp of numbers, operators and listed functions in text() and in every graph text option is evaluated as twoway evaluates it (WP-43, LT-20)

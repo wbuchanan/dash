@@ -5,7 +5,7 @@
 *! subtitle's size() and color(), the block under scale(1.5) -- whether
 *! each other textbox sub-option of the title changes the SVG at all, and
 *! twoway's answer to the edge titles t1title() .. r2title() inside
-*! legend().
+*! legend(), and a two-line title above a subtitle (WP-43 LT-15).
 *!
 *! Output: test/fixtures/legend_title_truth.json
 *!
@@ -88,6 +88,7 @@ _lt_run sub_style `"`two' legend(subtitle("S", size(large) color(red)))"'
 _lt_run sub_under `"`two' legend(title("T") subtitle("S"))"'
 _lt_run block_box `"`two' legend(title("T", box) subtitle("S"))"'
 _lt_run scale_block `"`two' legend(title("T", box) subtitle("S")) scale(1.5)"'
+_lt_run title_multi `"`two' legend(title("T1" "T2") subtitle("S"))"'
 _lt_run title_orientation `"`two' legend(title("T", orientation(vertical)))"'
 _lt_run title_width `"`two' legend(title("T", width(40)))"'
 _lt_run title_height `"`two' legend(title("T", height(20)))"'
@@ -166,7 +167,7 @@ def record(key):
     rec["key_size"] = keys[0]["size"] if keys else None
     rec["key_fill"] = keys[0]["fill"] if keys else None
     for t in texts:
-        if t["text"] in ("T", "S"):
+        if t["text"] in ("T", "S", "T1", "T2"):
             rec[t["text"]] = t
     return rec
 
@@ -175,7 +176,8 @@ keys = (["style_" + s for s in ("stcolor", "s2color", "s1mono", "economist",
                                 "meta")]
         + ["control"] + ["title_pos_%s" % k for k in (0, 3, 5, 6, 9, 12)]
         + ["title_box", "title_box_margin", "title_just", "title_tstyle",
-           "sub_style", "sub_under", "block_box", "scale_block"])
+           "sub_style", "sub_under", "block_box", "scale_block",
+           "title_multi"])
 subs = ("orientation", "width", "height", "angle", "alignment", "linegap",
         "bmargin", "bexpand", "placement", "ring", "span", "lstyle",
         "blcolor", "blwidth", "lalign", "prefix", "suffix")

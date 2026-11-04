@@ -1267,6 +1267,19 @@ there, is an invalid point.  The literal is read as data and never run.
     Stata's own schemes; {help dash##scheme:Stata scheme support} below says
     what a scheme sets and what {cmd:dash} does not yet carry.
 
+{phang2}
+    {ul:The legend's title.}  {cmd:dash} draws the legend's title above or
+    below its keys, as its title is laid out in the browser, so three forms
+    differ from {cmd:twoway}.  {cmd:legend(title("T", position(3)))}, and
+    {cmd:position(0)} and {cmd:position(9)}, draw the title above the keys
+    at the right, centred or at the left; {cmd:twoway} draws it in the
+    keys' row, right of them, over them or left of them.
+    {cmd:legend(title("T", box) subtitle("S"))} frames the title and the
+    subtitle together; {cmd:twoway} frames the title alone.
+    {cmd:legend(title("T1" "T2") subtitle("S"))} draws the title's first
+    line in its own style and its second in the subtitle's; {cmd:twoway}
+    draws both lines of the title in the title's style.
+
 {marker validation}
 {phang2}    {ul:Option values.}  A value is refused where {cmd:twoway}
     refuses it, and a word is refused where a number-only option was given
@@ -5063,7 +5076,15 @@ space around it, {cmd:bplacement()} its place along its side,
 and {cmd:title()} a line above the keys, with the legend's own
 {cmd:subtitle()} a line under it, in the scheme's legend title and
 subtitle text boxes ({cmd:textboxstyle leg_title}, {cmd:leg_subtitle}:
-under {cmd:s2color} the heading and the subheading); {cmd:colgap()} is the gap between keys
+under {cmd:s2color} the heading and the subheading), centred over the
+keys as in {cmd:twoway}; their {cmd:position()}, {cmd:justification()},
+{cmd:tstyle()}, {cmd:size()}, {cmd:color()}, {cmd:box} and its colours,
+{cmd:lwidth()}, {cmd:lpattern()} and {cmd:margin()} are drawn as
+{cmd:twoway} draws them ({cmd:position(5)} below the keys at the right),
+those {cmd:twoway} draws as without them are taken, and the rest named in
+the note (see {it:The legend's title} under
+{help dash##differences:Differences from twoway} for three forms drawn
+otherwise); {cmd:colgap()} is the gap between keys
 in one row, as {cmd:twoway} draws it, and {cmd:rowgap()} the gap between
 rows (a legend of several rows and columns has one gap, the row gap);
 {cmd:span} places a legend beside the plot along its side on the whole

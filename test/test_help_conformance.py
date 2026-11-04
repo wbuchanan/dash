@@ -1586,4 +1586,6 @@ class TestInternalLinksResolve:
         # old -> new: 181 -> 183 links: the Differences sub-point A global's
         # =exp outside the listed functions and Text in graphs' global
         # sentence link Added text (WP-43 LT-20).
-        assert len(refs) == 183 and len(set(refs)) == 52
+        # old -> new: 183 -> 184 links: the legend paragraph's title
+        # sentence links Differences from twoway (WP-43 LT-15).
+        assert len(refs) == 184 and len(set(refs)) == 52

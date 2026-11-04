@@ -472,7 +472,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-11 Tracked:** Closed in WP-43, BUGS.md "text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn", commit 884ebaa.
 - **LT-13 Tracked:** Closed in WP-43, BUGS.md "legend(t1title() ... b2title()) is accepted and named where twoway refuses r(198)", commit 900153e.
 - **LT-14 Tracked:** Open (WP-43 section 43-05).
-- **LT-15 Tracked:** Open (WP-43 section 43-01).
+- **LT-15 Tracked:** Closed in WP-43, BUGS.md "legend title()/subtitle() sub-options (position(), box ...) are dropped silently; subtitle size()/color() are ignored", commit pending.
 - **LT-16 Tracked:** Open (WP-43 section 43-05).
 - **LT-17 Tracked:** Open (WP-43 section 43-02).
 - **LT-18 Tracked:** Open (WP-43 section 43-05).

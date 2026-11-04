@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "14 Oct 2026",
-  "dash_commit": "9e1e3945497947df51ae5d1ce19049b50c6f1dd6",
-  "extracted": " 4 Nov 2026 02:33:53",
+  "dash_commit": "2ad273f7e4c54e57f6c59caeed3d755541194b9f",
+  "extracted": " 4 Nov 2026 04:58:48",
   "scheme": "s2color unless the key says otherwise",
   "source": "scripts/extract_legend_title_truth.do",
   "stata_version": "19.5",
@@ -4052,6 +4052,239 @@
     "text": "T",
     "x": 2074.92,
     "y": 2533.51
+   }
+  ]
+ },
+ "title_multi": {
+  "S": {
+   "anchor": "middle",
+   "fill": "#000000",
+   "rotate": null,
+   "size": 110.01,
+   "text": "S",
+   "x": 2074.92,
+   "y": 2542.5
+  },
+  "T1": {
+   "anchor": "middle",
+   "fill": "#1e2d53",
+   "rotate": null,
+   "size": 139.96,
+   "text": "T1",
+   "x": 2074.92,
+   "y": 2248.88
+  },
+  "T2": {
+   "anchor": "middle",
+   "fill": "#1e2d53",
+   "rotate": null,
+   "size": 139.96,
+   "text": "T2",
+   "x": 2074.92,
+   "y": 2388.97
+  },
+  "key_fill": "#000000",
+  "key_size": 99.99,
+  "log": [],
+  "rc": 0,
+  "rects": [
+   {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "h": 2880.0,
+    "stroke": "none",
+    "stroke_width": null,
+    "w": 3960.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "h": 2880.0,
+    "stroke": null,
+    "stroke_width": null,
+    "w": 3959.88,
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "dasharray": null,
+    "fill": "none",
+    "h": 2874.24,
+    "stroke": "#eaf2f3",
+    "stroke_width": 5.76,
+    "w": 3954.12,
+    "x": 2.88,
+    "y": 2.88
+   },
+   {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "h": 1673.77,
+    "stroke": null,
+    "stroke_width": null,
+    "w": 3568.21,
+    "x": 290.81,
+    "y": 100.86
+   },
+   {
+    "dasharray": null,
+    "fill": "none",
+    "h": 1668.01,
+    "stroke": "#ffffff",
+    "stroke_width": 5.76,
+    "w": 3562.45,
+    "x": 293.69,
+    "y": 103.74
+   },
+   {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "h": 645.5,
+    "stroke": null,
+    "stroke_width": null,
+    "w": 1320.54,
+    "x": 1414.71,
+    "y": 2099.11
+   },
+   {
+    "dasharray": null,
+    "fill": "none",
+    "h": 639.74,
+    "stroke": "#000000",
+    "stroke_width": 5.76,
+    "w": 1314.78,
+    "x": 1417.59,
+    "y": 2101.99
+   }
+  ],
+  "texts": [
+   {
+    "anchor": "middle",
+    "fill": "#000000",
+    "rotate": -90.0,
+    "size": 99.99,
+    "text": "0",
+    "x": 200.73,
+    "y": 1711.27
+   },
+   {
+    "anchor": "middle",
+    "fill": "#000000",
+    "rotate": -90.0,
+    "size": 99.99,
+    "text": "5000",
+    "x": 200.73,
+    "y": 1224.92
+   },
+   {
+    "anchor": "middle",
+    "fill": "#000000",
+    "rotate": -90.0,
+    "size": 99.99,
+    "text": "10000",
+    "x": 200.73,
+    "y": 738.56
+   },
+   {
+    "anchor": "middle",
+    "fill": "#000000",
+    "rotate": -90.0,
+    "size": 99.99,
+    "text": "15000",
+    "x": 200.73,
+    "y": 252.33
+   },
+   {
+    "anchor": "middle",
+    "fill": "#000000",
+    "rotate": null,
+    "size": 99.99,
+    "text": "2,000",
+    "x": 609.1,
+    "y": 1904.46
+   },
+   {
+    "anchor": "middle",
+    "fill": "#000000",
+    "rotate": null,
+    "size": 99.99,
+    "text": "3,000",
+    "x": 1671.24,
+    "y": 1904.46
+   },
+   {
+    "anchor": "middle",
+    "fill": "#000000",
+    "rotate": null,
+    "size": 99.99,
+    "text": "4,000",
+    "x": 2733.51,
+    "y": 1904.46
+   },
+   {
+    "anchor": "middle",
+    "fill": "#000000",
+    "rotate": null,
+    "size": 99.99,
+    "text": "5,000",
+    "x": 3795.66,
+    "y": 1904.46
+   },
+   {
+    "anchor": "middle",
+    "fill": "#000000",
+    "rotate": null,
+    "size": 99.99,
+    "text": "Weight (lbs.)",
+    "x": 2074.92,
+    "y": 2014.48
+   },
+   {
+    "anchor": null,
+    "fill": "#000000",
+    "rotate": null,
+    "size": 99.99,
+    "text": "Mileage (mpg)",
+    "x": 1561.85,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "fill": "#000000",
+    "rotate": null,
+    "size": 99.99,
+    "text": "Price",
+    "x": 2457.92,
+    "y": 2686.46
+   },
+   {
+    "anchor": "middle",
+    "fill": "#000000",
+    "rotate": null,
+    "size": 110.01,
+    "text": "S",
+    "x": 2074.92,
+    "y": 2542.5
+   },
+   {
+    "anchor": "middle",
+    "fill": "#1e2d53",
+    "rotate": null,
+    "size": 139.96,
+    "text": "T1",
+    "x": 2074.92,
+    "y": 2248.88
+   },
+   {
+    "anchor": "middle",
+    "fill": "#1e2d53",
+    "rotate": null,
+    "size": 139.96,
+    "text": "T2",
+    "x": 2074.92,
+    "y": 2388.97
    }
   ]
  },

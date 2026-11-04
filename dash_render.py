@@ -41478,8 +41478,10 @@ def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
     """legend()'s box and text sub-options on the series *legend* (WP-31
     D4): region() -> the border and fill, nobox -> neither, bmargin() ->
     Bokeh's ``margin``, region(margin()) -> ``padding``, color() -> the
-    key text's colour, textwidth() -> ``label_width``, title() -> the
-    legend's title above the keys.  Colours through Stata's colour
+    key text's colour, textwidth() -> ``label_width``, title() and
+    subtitle() -> the legend's title in the scheme's leg_title and
+    leg_subtitle text boxes, placed, framed and drawn in two styles by
+    :func:`_dash_legend_title_block` (WP-43 LT-1, LT-15).  Colours through Stata's colour
     grammar, sizes through ``OptionTranslator.resolve_size``; text stays
     a DOM text node (test_label_sinks.py)."""
     T = OptionTranslator
@@ -41503,6 +41505,7 @@ def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
 
     ch = chrome or {}
     scheme = getattr(fig, "_dash_scheme", None) if fig is not None else None
+    head = tail = None
 
     def _style(sub, box):
         # (size, colour) of legend(<box>()): the scheme's leg_<box> text
@@ -41610,9 +41613,13 @@ def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
             _sz, _cl = _style(_sub, "title")
             legend.title_text_font_size = _sz
             legend.title_text_color = _cl
+            head = (lines, _sub, _sz, _cl)
     # The legend's own subtitle(): twoway draws it centred above the keys,
     # under the title (WP-31 D4b, legend_remainder_truth.json lsubtitle,
     # lall), in the scheme's leg_subtitle text box (WP-43 LT-1).
+    # Drawn as one text, "T" newline "S", in the subtitle's text box;
+    # the legend's stylesheet draws the title's line in its own size and
+    # colour (WP-43 LT-15, D69).
     for name, arg, typed in calls:
         if name != "subtitle":
             continue
@@ -41620,18 +41627,184 @@ def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
         lines = _textbox_lines(text)
         if not any(lines):
             continue
-        head = str(legend.title or "")
-        legend.title = ((head + "\n") if head else "") + "\n".join(lines)
+        _hd = str(legend.title or "")
+        legend.title = ((_hd + "\n") if _hd else "") + "\n".join(lines)
         legend.title = legend.title[:2000]
-        if not head:
-            legend.title_location = "above"
-            legend.title_text_font_style = "normal"
-            _sz, _cl = _style(_sub, "subtitle")
-            legend.title_text_font_size = _sz
-            legend.title_text_color = _cl
+        legend.title_location = "above"
+        legend.title_text_font_style = "normal"
+        _sz, _cl = _style(_sub, "subtitle")
+        legend.title_text_font_size = _sz
+        legend.title_text_color = _cl
+        tail = (lines, _sub, _sz, _cl)
+    if head is not None or tail is not None:
+        _dash_legend_title_block(legend, head, tail, _colour, scheme,
+                                 seen=seen, key=key, ref=(
+                                     T.size_ref_of(fig) if fig is not None
+                                     else None))
     if "nobox" in words and "box" not in words:
         legend.border_line_color = None
         legend.background_fill_color = None
+
+
+#: legend(title()) and legend(subtitle()) sub-options dash draws (WP-43
+#: LT-15): the text box's style, its place and its box.
+_DASH_LEGEND_TITLE_DRAWN = frozenset({
+    "size", "color", "tstyle", "justification", "position", "box", "nobox",
+    "bcolor", "fcolor", "bfcolor", "lcolor", "lwidth", "lpattern", "margin"})
+
+#: legend(title()) sub-options taken in silence: twoway's SVG of
+#: legend(title("T", <name>)) is byte for byte its SVG of
+#: legend(title("T")) (legend_title_truth.json title_<name>
+#: same_as_control, WP-43 LT-15).
+_DASH_LEGEND_TITLE_SILENT = frozenset({
+    "width", "angle", "linegap", "bmargin", "bexpand", "span", "lstyle",
+    "blcolor", "blwidth", "lalign", "prefix", "suffix"})
+
+#: position() of the legend's title -> (title_location, where the title
+#: block sits along it), as twoway draws it (legend_title_truth.json
+#: title_pos_<k>): 12 above and centred, 6 below and centred, 5 below at
+#: the right.  0, 3 and 9 put the title in the key row (3 right of the
+#: keys, 9 left of them, 0 over them), which Bokeh's legend draws only
+#: turned on its side: they are drawn above, at the right (2-4), at the
+#: left (8-10) or centred (0), a documented difference.
+_DASH_LEGEND_TITLE_CLOCK = {
+    0: ("above", "center"), 12: ("above", "center"),
+    11: ("above", "left"), 1: ("above", "right"),
+    2: ("above", "right"), 3: ("above", "right"), 4: ("above", "right"),
+    5: ("below", "right"), 6: ("below", "center"), 7: ("below", "left"),
+    8: ("above", "left"), 9: ("above", "left"), 10: ("above", "left"),
+}
+
+_DASH_HEX_RE = re.compile(r"#[0-9a-fA-F]{6}")
+
+
+def _dash_legend_title_block(legend, head, tail, colour, scheme, *,
+                             seen=None, key="", ref=None):
+    """Draw legend(title()) and legend(subtitle())'s place, box and the
+    title's own style beside a subtitle (WP-43 LT-15, D69); returns the
+    stylesheet's CSS ('' for none).
+
+    *head* and *tail* are ``(lines, sub-options, size, colour)`` of the
+    title and the subtitle, or None.  The legend's title is one text in
+    the subtitle's text box when both are given; a Legend
+    ``InlineStyleSheet`` sizes and colours its first line as the title
+    (``.bk-title::first-line``, in em of the title text, so scale() and
+    the width scale carry it) and places and frames the block
+    (``.bk-title``: width fit-content, its side margins for the clock,
+    text-align for justification(), border, background and padding in em
+    for box).  Only numbers, fixed words and colours dash's colour parser
+    returned as #rrggbb reach the CSS; the text stays a DOM text node.
+    Sub-options not drawn are named once, those twoway draws as without
+    them (``_DASH_LEGEND_TITLE_SILENT``) taken in silence."""
+    from bokeh.models import InlineStyleSheet
+    T = OptionTranslator
+    main = head if head is not None else tail
+    o = dict(main[1] or {})
+    # Name what is not drawn: the subtitle's place and justification
+    # beside a title follow the title's.
+    for box, part in (("title", head), ("subtitle", tail)):
+        if part is None:
+            continue
+        sub = part[1] or {}
+        drawn = set(_DASH_LEGEND_TITLE_DRAWN)
+        if box == "subtitle" and head is not None:
+            drawn -= {"position", "justification"}
+        bad = [k if v == k else "%s(%s)" % (k, v) for k, v in sub.items()
+               if k not in drawn and k not in _DASH_LEGEND_TITLE_SILENT]
+        _dash_report_suboptions("legend(%s)" % box, bad, seen, key)
+    # A box given on the subtitle frames the block too (it frames both
+    # lines, a documented difference).
+    if tail is not None and head is not None:
+        for k in ("box", "nobox", "bcolor", "fcolor", "bfcolor", "lcolor",
+                  "lwidth", "lpattern", "margin"):
+            if k in (tail[1] or {}) and k not in o:
+                o[k] = tail[1][k]
+    pos = str(o.get("position", "") or "").strip()
+    loc, side = _DASH_LEGEND_TITLE_CLOCK.get(
+        int(pos) if re.fullmatch(r"[0-9]|1[0-2]", pos) else 12,
+        ("above", "center"))
+    legend.title_location = loc
+    just = o.get("justification")
+    align = just if just in ("left", "center", "right") else "center"
+    legend.title_text_align = align
+    base_pt = T.css_to_pt(legend.title_text_font_size) or 0.0
+    base_px = base_pt * T.PX_PER_PT
+
+    def em(px):
+        return "%.4gem" % (max(0.0, min(500.0, float(px))) / base_px)
+    margins = {"center": ("auto", "auto"), "left": ("0", "auto"),
+               "right": ("auto", "0")}[side]
+    rules = ["width:fit-content", "margin-left:%s" % margins[0],
+             "margin-right:%s" % margins[1], "text-align:%s" % align]
+    if "box" in o and "nobox" not in o and base_px > 0:
+        def col(*names):
+            for n in names:
+                if o.get(n):
+                    c = colour(o[n], "legend(title(%s))" % n)
+                    if c == "none":
+                        return "transparent"
+                    if c and _DASH_HEX_RE.fullmatch(str(c)):
+                        return str(c).lower()
+            return None
+        fill = col("fcolor", "bfcolor", "bcolor") or str(
+            getattr(scheme, "text_option_fill_color", "#d9e6eb"))
+        line = col("lcolor", "bcolor") or str(
+            getattr(scheme, "text_option_line_color", "#000000"))
+        for c in (fill, line):
+            if c != "transparent" and not _DASH_HEX_RE.fullmatch(c):
+                fill = line = "transparent"
+        lw = float(getattr(scheme, "text_option_line_width", 0.768))
+        if o.get("lwidth"):
+            try:
+                lw = T.translate_lwidth(o["lwidth"], None, ref)
+            except (ValueError, TypeError):
+                _dash_style_note("legend(title(lwidth))", o["lwidth"],
+                                 "line width")
+        dash = "solid"
+        if o.get("lpattern"):
+            try:
+                pat = T.translate_lpattern(o["lpattern"])
+                dash = ("solid" if not pat else "dotted"
+                        if len(pat) == 2 and pat[0] <= 1 else "dashed")
+            except (ValueError, TypeError):
+                _dash_style_note("legend(title(lpattern))", o["lpattern"],
+                                 "line pattern")
+        pad = None
+        if o.get("margin"):
+            sides = SchemeParser.margin_sides(
+                scheme if scheme is not None else SchemeParser, o["margin"])
+            if sides is None:
+                _dash_style_note("legend(title(margin))", o["margin"],
+                                 "margin")
+            else:
+                pad = [float(v[1]) * T.PX_PER_PT if isinstance(v, tuple)
+                       else float(v) * T.PT_PER_RS * T.PX_PER_PT
+                       for v in sides]
+        if pad is None and scheme is not None:
+            pad = _dash_textbox_margin_px(scheme, o.get("tstyle"),
+                                          "leg_title")
+        pad = pad or [0, 0, 0, 0]
+        rules += ["border:%s %s %s" % (em(lw), dash, line),
+                  "background-color:%s" % fill,
+                  # [left, right, bottom, top] -> CSS top right bottom left
+                  "padding:%s %s %s %s" % (em(pad[3]), em(pad[1]),
+                                           em(pad[2]), em(pad[0]))]
+    css = ".bk-title{%s;}" % ";".join(rules)
+    if head is not None and tail is not None:
+        t_pt = T.css_to_pt(head[2]) or 0.0
+        c = str(head[3] or "")
+        first = []
+        if base_pt > 0 and t_pt > 0:
+            first.append("font-size:%.4gem" % (t_pt / base_pt))
+        if _DASH_HEX_RE.fullmatch(c):
+            first.append("color:%s" % c.lower())
+        if first:
+            css += " .bk-title::first-line{%s;}" % ";".join(first)
+    legend.stylesheets = [ss for ss in legend.stylesheets
+                          if "dash_legend_title" not in (
+                              getattr(ss, "tags", None) or [])] + [
+        InlineStyleSheet(css=css, tags=["dash_legend_title"])]
+    return css
 
 
 def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
@@ -60520,7 +60693,10 @@ def _dash_by_legend_cell(scheme, name, side, legend, items, tag,
                  "title_text_color",
                  # WP-31 D4: the rest of legend()'s geometry and box.
                  "margin", "label_width", "border_line_dash",
-                 "title_location", "title_text_font_style"):
+                 "title_location", "title_text_font_style",
+                 # WP-43 LT-15 (D69): the title block's alignment, box and
+                 # two-style subtitle are the legend's own stylesheet.
+                 "title_text_align", "title_standoff", "stylesheets"):
         if legend is not None and prop in legend.properties():
             kw[prop] = getattr(legend, prop)
     leg = Legend(items=new_items,
@@ -74414,6 +74590,8 @@ class ServerAppBuilder:
                       "_DASH_TEXTBOX_HONOURED", "_DASH_TEXTBOX_BOX_HONOURED",
                       "_DASH_GRAPH_MARGIN_JS",
                       "_DASH_SPAN_JS", "_DASH_SPAN_KEYS",
+                      "_DASH_LEGEND_TITLE_DRAWN", "_DASH_LEGEND_TITLE_SILENT",
+                      "_DASH_LEGEND_TITLE_CLOCK", "_DASH_HEX_RE",
                       "_DASH_BY_HOLE_PLACE", "_DASH_BY_FIT_JS",
                       # WP-41 VF-6: what a moved y axis keeps.
                       "_DASH_BY_YAXIS_SKIP",
@@ -74906,6 +75084,7 @@ class ServerAppBuilder:
                          "_dash_scheme_chrome", "_dash_legend_text_box",
                          "_dash_legend_parts", "_dash_legend_arg",
                          "_dash_legend_margin_px", "_dash_legend_box",
+                         "_dash_legend_title_block",
                          "_dash_apply_legend",
                          # Axis titles, Stata's tick grammar, second axes.
                          "_parse_axis_angle", "_stata_date_kind",

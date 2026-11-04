@@ -346,6 +346,144 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w43_run' {
 }
 * ==== end S01 ====
 
+// S01 LT-15 helpers (WP-43 43-01).  _q4301_block: the series legend's
+// title block both modes draw for a registered graph -- its side, the
+// block's side margins, its text-align and whether it is framed (the
+// legend's dash_legend_title stylesheet, D69) -- into q4301_b<s|v>, and the
+// notes naming legend(title) into q4301_n<s|v>; _q4301_tsvg: twoway's T
+// against the keys from an SVG -- above or below, its text-anchor and
+// whether a text box frame is drawn -- into q4301_tb.
+python:
+def _q4301_css(lg, sel, prop):
+    import re
+    css = "".join(ss.css for ss in lg.stylesheets
+                  if "dash_legend_title" in (ss.tags or []))
+    m = re.search(re.escape(sel) + r"\{([^}]*)\}", css)
+    for part in (m.group(1).split(";") if m else []):
+        k, _, v = part.partition(":")
+        if k.strip() == prop:
+            return v.strip()
+    return "-"
+
+
+def _q4301_block(sp, dp, app):
+    from sfi import Macro
+    from bokeh.models import Legend
+    for (models, msgs), sfx in zip(_q4301_models(sp, dp, app), ("s", "v")):
+        lgs = [m for m in models if isinstance(m, Legend) and m.items]
+        out = "none"
+        if lgs:
+            lg = lgs[0]
+            side = {("auto", "auto"): "center", ("auto", "0"): "right",
+                    ("0", "auto"): "left"}.get(
+                (_q4301_css(lg, ".bk-title", "margin-left"),
+                 _q4301_css(lg, ".bk-title", "margin-right")), "-")
+            out = "%s %s %s %s" % (
+                lg.title_location, side,
+                _q4301_css(lg, ".bk-title", "text-align"),
+                "framed" if _q4301_css(lg, ".bk-title", "border") != "-"
+                else "plain")
+        Macro.setGlobal("q4301_b" + sfx, out)
+        Macro.setGlobal("q4301_n" + sfx, str(sum(
+            1 for m in msgs if "legend(title)" in m)))
+
+
+def _q4301_tsvg(path):
+    from sfi import Macro
+    from svg_truth import svg_document, svg_rects
+    d = svg_document(path)
+    keys = [t for t in d["texts"] if not t["anchor"]]
+    t = [x for x in d["texts"] if x["text"] == "T"][0]
+    framed = any(r["w"] is not None and r["h"] is not None
+                 and r["w"] < 400 and r["h"] < 400
+                 and r["x"] <= t["x"] <= r["x"] + r["w"]
+                 and r["y"] <= t["y"] <= r["y"] + r["h"]
+                 for r in svg_rects(path))
+    Macro.setGlobal("q4301_tb", "%s %s %s" % (
+        "above" if t["y"] < keys[0]["y"] else "below",
+        "right" if t["anchor"] == "end" else "center",
+        "framed" if framed else "plain"))
+end
+
+capture program drop _q4301_breg
+program define _q4301_breg
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4301_m; _q4301_m._q4301_block("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
+* ==== S01 LT-15: legend title sub-options ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w43_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+    local q01d "`w43_work'/s01b"
+    capture mkdir "`q01d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // Q4301-3: legend(title("T", position(5))) below the keys at the
+    // right, title("T", box) framed in the text box, title("T") above and
+    // centred -- live twoway beside dash's legend, saved and served;
+    // justification(right) aligns the text in its own box, the block
+    // staying centred (text-align right).
+    // ------------------------------------------------------------
+    local k 0
+    foreach o in `"title("T", position(5))"' `"title("T", box)"' `"title("T")"' {
+        local ++k
+        quietly twoway (scatter mpg weight) (scatter price weight), legend(`o') name(q01b`k', replace)
+        capture erase "`q01d'/q01b`k'.svg"
+        cert_svg_export, name(q01b`k') file("`q01d'/q01b`k'.svg")
+        python: import __main__ as _q4301_m; _q4301_m._q4301_tsvg("`q01d'/q01b`k'.svg")
+        local tw "${q4301_tb}"
+        _q4301_breg "`q01d'" (scatter mpg weight) (scatter price weight), legend(`o') name(q01e)
+        foreach m in s v {
+            local got "${q4301_b`m'}"
+            gettoken gl rest : got
+            gettoken gs rest : rest
+            gettoken ga gf : rest
+            local gf = strtrim("`gf'")
+            _w43_expect Q4301-3 `"("`gl' `gs' `gf'" == "`tw'")"' `"`o' `m': dash `got'; twoway `tw'"'
+        }
+    }
+    _q4301_breg "`q01d'" (scatter mpg weight) (scatter price weight), legend(title("T", justification(right))) name(q01e)
+    _w43_expect Q4301-3 `"("${q4301_bs}" == "above center right plain" & "${q4301_bv}" == "above center right plain")"' "justification(right): saved ${q4301_bs}, served ${q4301_bv}"
+    _w43_done Q4301-3 "legend(title()) position(5), box and justification() drawn as twoway draws them, saved and served"
+
+    // ------------------------------------------------------------
+    // Q4301-4: a sub-option whose twoway SVG differs from title("T")'s
+    // and dash does not draw is named once (orientation(vertical)); one
+    // whose SVG is twoway's control is taken in silence (width(40), live
+    // twoway SVG compared with the control's).
+    // ------------------------------------------------------------
+    quietly twoway (scatter mpg weight) (scatter price weight), legend(title("T")) name(q01c, replace)
+    capture erase "`q01d'/q01c.svg"
+    cert_svg_export, name(q01c) file("`q01d'/q01c.svg")
+    foreach sub in "orientation(vertical)" "width(40)" {
+        quietly twoway (scatter mpg weight) (scatter price weight), legend(title("T", `sub')) name(q01x, replace)
+        capture erase "`q01d'/q01x.svg"
+        cert_svg_export, name(q01x) file("`q01d'/q01x.svg")
+        python: from svg_truth import svg_document as _q4301_d; from sfi import Macro as _q4301_M; _q4301_M.setGlobal("q4301_same", str(int([(t["text"], t["x"], t["y"], t["rotate"]) for t in _q4301_d("`q01d'/q01x.svg")["texts"]] == [(t["text"], t["x"], t["y"], t["rotate"]) for t in _q4301_d("`q01d'/q01c.svg")["texts"]])))
+        local want = cond(${q4301_same}, 0, 1)
+        _q4301_breg "`q01d'" (scatter mpg weight) (scatter price weight), legend(title("T", `sub')) name(q01e)
+        _w43_expect Q4301-4 "(${q4301_ns} == `want' & ${q4301_nv} == `want')" "`sub': twoway same as control ${q4301_same}; notes saved ${q4301_ns}, served ${q4301_nv}"
+    }
+    _w43_done Q4301-4 "a legend(title()) sub-option twoway draws is named once when dash does not draw it, taken in silence when twoway draws nothing different"
+
+    foreach f in q01b1.svg q01b2.svg q01b3.svg q01c.svg q01x.svg s.json d.json a.py {
+        capture erase "`q01d'/`f'"
+    }
+    capture rmdir "`q01d'"
+    macro drop q4301_bs q4301_bv q4301_ns q4301_nv q4301_tb q4301_s q4301_v q4301_same
+    capture graph drop _all
+    dash clear
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 // S06 helpers (WP-43 43-06).  _q4306_docs: the figures a registered
 // graph draws, saved and served (spec and data from _dash_serve_spec);
 // _q4306_al: the one added-text Label's y_offset against the shift
