@@ -811,3 +811,199 @@ class TestTitleSuboptsInChrome:
         assert y[0] >= fr[0] + fr[2]
         assert y[1] + y[3] / 2 == pytest.approx(fr[1] + fr[3] / 2, abs=2)
         assert r[2] > r[3]
+
+
+# ============================================================
+# LT-19: the edge titles' box, justification(), margin(), tstyle() and
+# placement(); r1title() and r2title() read upward
+# ============================================================
+_LT19_CASES = ["e_t1_plain", "e_t1_box", "e_t1_boxjl", "e_t1_placement",
+               "e_b1_box", "e_b1_mbox", "e_t2_ts", "e_r1_dir", "e_r2_dir",
+               "e_l1_dir", "e_r1_box", "e_r1_just_left", "e_r1_just_center",
+               "e_r1_just_right", "e_by_r_dir"]
+
+
+def _edge(fig, k):
+    hit = [(sd, m) for sd in ("above", "below", "left", "right")
+           for m in getattr(fig, sd)
+           if k in list(getattr(m, "tags", None) or [])]
+    assert len(hit) == 1, (k, hit)
+    return hit[0]
+
+
+def _by_cells(mode, go):
+    """{cell name: [models of its panels]} of a by() graph's dash_by_*
+    cells."""
+    from bokeh.models import Plot
+    spec = tp._spec([tp._sc()], {"scheme": "s2color"}, go)
+    if mode == "saved":
+        r, _c = tp._standalone(spec)
+        roots = [r._last_layout_root]
+    else:
+        roots = tp._served(spec)[0].roots
+    out = {}
+    for root in roots:
+        for m in root.references():
+            if isinstance(m, Plot) and str(m.name or "").startswith(
+                    "dash_by_"):
+                out[m.name] = [x for sd in ("above", "below", "left",
+                                            "right")
+                               for x in getattr(m, sd)]
+    return out
+
+
+class TestEdgeTitleBox:
+
+    @pytest.mark.parametrize("case", _LT19_CASES)
+    def test_fixture(self, case):
+        assert TRUTH[case]["rc"] == 0 and TRUTH[case]["lines"] == [], case
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_box(self, mode):
+        """t1title("E", box) is framed in the text box fill and line
+        (e_t1_box), justification(left) aligns its text (e_t1_boxjl)."""
+        fill, stroke, _w = _svg_box("e_t1_box", "E")
+        f, caught = _fig(mode, {"t1title": '"E", box justification(left)'})
+        side, m = _edge(f, "t1title")
+        assert side == "above"
+        assert str(m.background_fill_color).lower() == fill
+        assert str(m.border_line_color).lower() == stroke
+        assert m.text_align == "left"
+        assert not [w for w in caught if "t1title()" in w], caught
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_margin(self, mode):
+        """b1title("E", margin(large) box): the box is the text plus
+        large's margin (e_b1_mbox 535.84 x 570.75 against e_b1_box's
+        109.64 x 144.54)."""
+        a, b = _tbox("e_b1_box", "E"), _tbox("e_b1_mbox", "E")
+        assert b["w"] - a["w"] == pytest.approx(b["h"] - a["h"], abs=1)
+        f0, _c = _fig(mode, {"b1title": '"E", box'})
+        f, caught = _fig(mode, {"b1title": '"E", margin(large) box'})
+        m0, m = _edge(f0, "b1title")[1], _edge(f, "b1title")[1]
+        assert _pad(m)[0] > _pad(m0)[0]
+        large = dr.SchemeParser.resolve_or_fallback("s2color", "x") \
+            .margin_sides("large")
+        want = int(round(float(large[0]) * dr.OptionTranslator.PT_PER_RS
+                         * dr.OptionTranslator.PX_PER_PT))
+        assert _pad(m) == [want] * 4
+        assert not [w for w in caught if "b1title()" in w], caught
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_tstyle(self, mode):
+        """t2title("E", tstyle(heading)) is the heading's size and colour
+        (e_t2_ts: 139.96 units, #1E2D53, as t_ctrl's title)."""
+        t = [x for x in TRUTH["e_t2_ts"]["texts"] if x["text"] == "E"][0]
+        h = [x for x in TRUTH["t_ctrl"]["texts"] if x["text"] == "T"][0]
+        assert (t["size"], t["style"][-7:]) == (h["size"], h["style"][-7:])
+        f, caught = _fig(mode, {"t2title": '"E", tstyle(heading)'})
+        m = _edge(f, "t2title")[1]
+        sch = dr.SchemeParser.resolve_or_fallback("s2color", "x")
+        assert (m.text_font_size, str(m.text_color).lower()) == \
+            tuple(str(v).lower() for v in sch.textbox_style("heading"))
+        assert not [w for w in caught if "t2title()" in w], caught
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_placement(self, mode):
+        """t1title("E", placement(w)) moves the text to the band's left
+        (e_t1_placement: x 445.62 against 2124.91)."""
+        assert _x("e_t1_placement", "E") < _plot_rect("e_t1_placement")[
+            "x"] + 100
+        f, caught = _fig(mode, {"t1title": '"E", placement(w)'})
+        assert _edge(f, "t1title")[1].align == "left"
+        assert not [w for w in caught if "t1title()" in w], caught
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("k", ["r1title", "r2title"])
+    def test_right_reads_upward(self, mode, k):
+        """twoway draws r1title() and r2title() rotate(-90), reading
+        upward (e_r1_dir, e_r2_dir), level with the plot region's centre:
+        a Label in the right panel turned a right angle counter-clockwise,
+        its turned box's left edge on the slot's inner edge; l1title()
+        (e_l1_dir, also rotate(-90)) stays BokehJS's left-panel Title,
+        which reads upward."""
+        import math
+        case = {"r1title": "e_r1_dir", "r2title": "e_r2_dir"}[k]
+        t = [x for x in TRUTH[case]["texts"] if x["text"] == "Edge"][0]
+        p = _plot_rect(case)
+        assert t["rotate"] == -90.0
+        assert t["y"] == pytest.approx(p["y"] + p["h"] / 2, abs=0.5)
+        f, caught = _fig(mode, {k: '"Edge"'})
+        side, m = _edge(f, k)
+        assert (side, type(m).__name__, m.text) == ("right", "Label", "Edge")
+        assert m.angle == pytest.approx(math.radians(-t["rotate"]))
+        assert (m.x, m.y.target, m.y.symbol) == (0, "frame", "center")
+        assert m.anchor == "top_center"
+        assert "dash_edge_title" in m.tags
+        assert not [w for w in caught if k + "()" in w], caught
+        fl, _c = _fig(mode, {"l1title": '"Edge"'})
+        assert type(_edge(fl, "l1title")[1]).__name__ == "Title"
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("j", ["left", "center", "right"])
+    def test_right_justification(self, mode, j):
+        """justification() aligns the turned text in its box, the box
+        level with the plot region's centre (e_r1_just_<j>: left starts at
+        the centred text's bottom, right ends at its top)."""
+        c = [x for x in TRUTH["e_r1_just_center"]["texts"]
+             if x["text"] == "Edge"][0]
+        t = [x for x in TRUTH["e_r1_just_" + j]["texts"]
+             if x["text"] == "Edge"][0]
+        assert t["anchor"] == {"left": "start", "center": "middle",
+                               "right": "end"}[j]
+        assert (t["y"] > c["y"]) if j == "left" else \
+            (t["y"] < c["y"]) if j == "right" else t["y"] == c["y"]
+        f, _c = _fig(mode, {"r1title": '"Edge", justification(%s)' % j})
+        m = _edge(f, "r1title")[1]
+        assert m.text_align == j and m.y.symbol == "center"
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_right_box(self, mode):
+        """r1title("Edge", box): the turned box (e_r1_box: 144.54 wide,
+        293.30 tall) in the text box fill and line."""
+        b = _tbox("e_r1_box", "Edge")
+        assert b["h"] > b["w"]
+        fill, stroke, _w = _svg_box("e_r1_box", "Edge")
+        f, _c = _fig(mode, {"r1title": '"Edge", box'})
+        m = _edge(f, "r1title")[1]
+        assert type(m).__name__ == "Label"
+        assert str(m.background_fill_color).lower() == fill
+        assert str(m.border_line_color).lower() == stroke
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_by_cells_read_upward(self, mode):
+        """by()'s own r1title() and r2title() read upward too
+        (e_by_r_dir: R1 and R2 rotate(-90)): each cell holds one Label
+        turned a right angle counter-clockwise, its text finished and
+        marked by the canvas-text pass, and no Title."""
+        import math
+        rot = {x["text"]: x["rotate"] for x in TRUTH["e_by_r_dir"]["texts"]
+               if x["text"] in ("R1", "R2")}
+        assert rot == {"R1": -90.0, "R2": -90.0}
+        cells = _by_cells(mode, {"by": 'foreign, r1title("R1") '
+                                       'r2title("R2")'})
+        for name, text in (("dash_by_r1title", "R1"),
+                           ("dash_by_r2title", "R2")):
+            ms = cells[name]
+            labs = [m for m in ms if type(m).__name__ == "Label"]
+            assert [type(m).__name__ for m in ms] == ["Label"], ms
+            assert labs[0].text == text
+            assert labs[0].angle == pytest.approx(math.pi / 2)
+            assert getattr(labs[0], dr._DASH_GRAPH_TEXT_DONE, False)
+
+
+@pytest.mark.release
+@pytest.mark.parametrize("mode", MODES)
+class TestEdgeTitleInChrome:
+
+    def test_right_reads_upward(self, mode):
+        """r1title() is drawn right of the frame, turned (taller than
+        wide), its box round it, level with the frame's centre
+        (e_r1_box)."""
+        p = _chrome(mode, {"r1title": '"Tgxyz", box %s' % _LOUD})
+        y, r, fr = p["yellow"], p["red"], p["frame"]
+        assert y is not None and r is not None
+        assert y[0] >= fr[0] + fr[2]
+        assert y[3] > y[2] and r[3] > r[2]
+        assert y[1] + y[3] / 2 == pytest.approx(fr[1] + fr[3] / 2, abs=2)
+        assert y[1] <= r[1] and r[1] + r[3] <= y[1] + y[3]

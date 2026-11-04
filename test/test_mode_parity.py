@@ -2856,6 +2856,14 @@ CORPUS = [
           go={"title": '"T", position(3) box',
               "subtitle": '"S", orientation(vertical) width(20) box',
               "note": '"N", lstyle(p1) lalign(outside) box'}),
+    _case('t1title("E", box justification(left)) (WP-43 LT-19)', [_sc()],
+          go={"t1title": '"E", box justification(left)',
+              "b1title": '"B", margin(large) box'}),
+    _case('r1title("E", box) reads upward (WP-43 LT-19)', [_sc()],
+          go={"r1title": '"E", box', "r2title": '"F", tstyle(heading)'}),
+    _case('by(foreign, r1title("R1") r2title("R2")) cells read upward '
+          '(WP-43 LT-19)', [_sc()],
+          go={"by": 'foreign, r1title("R1") r2title("R2")'}),
 
     # WP-31 D4/C13 (section 31): legend geometry
     _case("legend(pos(1) symxsize(5) keygap(1)) (WP-31 D4)",

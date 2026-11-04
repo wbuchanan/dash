@@ -5906,7 +5906,9 @@ r(111), as they refuse a dropped plotted variable.
 {cmd:1} titles) are drawn where {cmd:twoway} draws them, in both render
 modes: the {cmd:t} titles above the plot region, the {cmd:b} titles
 below it, the {cmd:l} titles to its left and the {cmd:r} titles to its
-right, turned on their side.  The {cmd:1} title is nearest the plot and
+right, turned on their side, the {cmd:l} and {cmd:r} titles reading
+upward, as {cmd:twoway} draws them ({cmd:by()}'s own {cmd:r1title()}
+and {cmd:r2title()} too).  The {cmd:1} title is nearest the plot and
 the {cmd:2} title outside it, both outside every axis on that side and
 inside the legend, the note, the caption, the subtitle and the title
 ({cmd:twoway}'s rings 1 and 2).  Each is the scheme's
@@ -5921,8 +5923,12 @@ rule of {help dash##textbox_options:Textbox options}
 orders it on its side ({cmd:ring(8)} is outside the title; {cmd:ring(0)}
 stays nearest the plot, as in {cmd:twoway}); {cmd:span} and
 {cmd:nospan} are refused, {cmd:option(s) t1title_span(yes) not allowed},
-{cmd:r(198)}, as {cmd:twoway} refuses them; {cmd:orientation()} and the
-other text-box sub-options are named in the note.  On a {cmd:by()} graph
+{cmd:r(198)}, as {cmd:twoway} refuses them.  The text-box sub-options
+of {help dash##textbox_options:Textbox options} are drawn as on
+{cmd:title()} -- {cmd:box}, {cmd:justification()}, {cmd:margin()},
+{cmd:tstyle()}, {cmd:placement()} and the rest -- except
+{cmd:orientation()}, {cmd:width()}, {cmd:height()} and {cmd:angle()},
+which are named in the note.  On a {cmd:by()} graph
 each panel carries them, as {cmd:twoway} draws them.
 
 {marker textbox_options}{...}

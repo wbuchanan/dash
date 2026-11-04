@@ -333,7 +333,7 @@ def _w41_s02_read():
     import re as _re, json as _json
     from sfi import Macro as _M
     from bokeh.document import Document as _Doc
-    from bokeh.models import Plot as _Plot, Title as _Title
+    from bokeh.models import Plot as _Plot, Title as _Title, Label as _Label
     with open(_M.getGlobal("W41_S02_PAGE"), encoding="utf-8") as _fh:
         _page = _fh.read()
     _w41_s02_cells.clear()
@@ -342,9 +342,11 @@ def _w41_s02_read():
             for _p in _Doc.from_json(_dd).select(dict(type=_Plot)):
                 _nm = str(_p.name or "")
                 if _nm.startswith("dash_by_"):
+                    # Flipped: by()'s r1title() cell holds a Label reading
+                    # upward, as twoway draws it (WP-43 LT-19, A-13).
                     _w41_s02_cells.setdefault(_nm, []).extend(
                         str(_m.text) for _m in _p.references()
-                        if isinstance(_m, _Title) and _m.text)
+                        if isinstance(_m, (_Title, _Label)) and _m.text)
 
 
 def _w41_s02_has(name, text):

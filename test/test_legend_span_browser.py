@@ -329,7 +329,11 @@ function state() {
                         return [cr.left + b.x0, cr.top + b.y0, cr.left + b.x1,
                                 cr.top + b.y1]; })() : null,
                       orient: t === 'ColorBar' ? m.orientation : null});
-        } else if (t === 'Title' && m.text) {
+        } else if ((t === 'Title' || (t === 'Label'
+                    && (v.model.name || '').startsWith('dash_by_')))
+                   && m.text) {
+          // A by() cell's Label too: r1title()/r2title() read upward
+          // (WP-43 LT-19).
           rv.compute_geometry();
           const r = rv._rect; if (!r) continue;
           // The text's box about its anchor, turned by its angle (a y

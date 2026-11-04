@@ -1588,4 +1588,6 @@ class TestInternalLinksResolve:
         # sentence link Added text (WP-43 LT-20).
         # old -> new: 183 -> 184 links: the legend paragraph's title
         # sentence links Differences from twoway (WP-43 LT-15).
-        assert len(refs) == 184 and len(set(refs)) == 52
+        # old -> new: 184 -> 185 links: the Edge titles paragraph links
+        # Textbox options for the sub-options it draws (WP-43 LT-19).
+        assert len(refs) == 185 and len(set(refs)) == 52

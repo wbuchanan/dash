@@ -58493,9 +58493,16 @@ def _dash_textbox(raw, option, seen=None, key="", placed=True, extra=()):
             elif placed and nm in _DASH_TEXTBOX_BOX_HONOURED and option in (
                     "title", "subtitle", "note", "caption"):
                 continue
-            elif nm in ("position", "ring") and re.fullmatch(
+            elif nm in _DASH_TEXTBOX_BOX_HONOURED and nm not in (
+                    "span", "nospan", "orientation", "width", "height",
+                    "angle") and re.fullmatch(
                     r"[tblr][12]title", str(option)):
-                # An edge title's clock and ring (WP-31 D2b).
+                # An edge title's clock and ring (WP-31 D2b) and its box,
+                # justification(), margin(), tstyle() and the rest as on
+                # title() (WP-43 LT-19); span is refused before here, and
+                # orientation(), width(), height() and angle(), which
+                # twoway was not measured drawing on an edge title, stay
+                # named.
                 continue
             bad.append(t)
         _dash_report_suboptions(option, bad, seen, key)
@@ -59618,7 +59625,11 @@ def _dash_edge_titles(fig, graph_opts, seen=None, key="", scheme=None):
                                    if user_pos else (side, align))
                 place = {"mode": "side", "side": side_k, "align": align_k,
                          "ring": ring_k}
-            m = _dash_textbox_draw(fig, k, text, {}, scheme, place,
+            # The box sub-options too (WP-43 LT-19); size() and color()
+            # are in the base already.
+            o2 = {n: v for n, v in opts.items()
+                  if n not in ("size", "color", "position", "ring")}
+            m = _dash_textbox_draw(fig, k, text, o2, scheme, place,
                                    base_size=px if px is not None
                                    else size_default,
                                    base_color=colour if colour is not None
@@ -59628,17 +59639,52 @@ def _dash_edge_titles(fig, graph_opts, seen=None, key="", scheme=None):
             if alpha is not None:
                 m.text_alpha = alpha
             continue
-        made.setdefault(side, []).append(Title(
-            text=text, align=align, text_font_style="normal",
-            text_font_size=px if px is not None else size_default,
-            text_color=colour if colour is not None else color_default,
-            tags=["dash_edge_title", k],
-            **({"text_alpha": alpha} if alpha is not None else {})))
+        # WP-43 LT-19: the box, justification(), margin(), tstyle() and
+        # the rest on the Title (_dash_textbox_style), placement() along
+        # its band; r1title() and r2title() read upward, as twoway draws
+        # them rotate(-90) (_dash_edge_title_up).
+        t = Title(text=text, align=align, text_font_style="normal",
+                  tags=["dash_edge_title", k])
+        _dash_textbox_style(t, opts, fig, scheme, k, base_size=size_default,
+                            base_color=color_default)
+        t.align = _dash_textbox_place_align(opts, t.align)
+        made.setdefault(side, []).append(
+            _dash_edge_title_up(t) if k in ("r1title", "r2title") else t)
     # Each at its digit's ring, after the axes and every model of a ring
     # not larger (WP-31 D2b: a user ring() among them).
     for side, titles in made.items():
         for t in titles:
             _dash_textbox_insert(fig, side, t, int(t.tags[1][1]), tag=False)
+
+
+def _dash_edge_title_up(title):
+    """A right edge title's ``Title`` as a ``Label`` reading upward (WP-43
+    LT-19): twoway draws r1title() and r2title() rotate(-90), bottom to
+    top (title_box_truth.json e_r1_dir, e_r2_dir; by()'s own, e_by_r_dir),
+    where BokehJS turns a right-panel Title to read downward.  The Label
+    takes the Title's text, font, size, colour, alignment, box and tags
+    (and its canvas-text mark), and is turned a right angle
+    counter-clockwise in the right panel's slot -- which BokehJS sizes to
+    the turned box and does not clip (measured in Chrome, Bokeh 3.8 and
+    3.9) -- its turned box's left edge on the slot's inner edge and level
+    with the frame's centre, where the Title was centred.  No overlay
+    (D69)."""
+    from bokeh.models import Label, Node
+    kw = {}
+    for p in ("text", "text_font", "text_font_size", "text_font_style",
+              "text_color", "text_alpha", "text_align", "text_line_height",
+              "background_fill_color", "background_fill_alpha",
+              "border_line_color", "border_line_alpha", "border_line_width",
+              "border_line_dash", "padding", "tags", "name"):
+        if p in title.properties_with_values(include_defaults=False):
+            kw[p] = getattr(title, p)
+    lab = Label(x=0, y=Node(target="frame", symbol="center"),
+                x_units="screen", y_units="screen", angle=math.pi / 2,
+                anchor=_dash_textbox_turned_anchor(math.pi / 2, "center",
+                                                   "left"), **kw)
+    if getattr(title, _DASH_GRAPH_TEXT_DONE, False):
+        setattr(lab, _DASH_GRAPH_TEXT_DONE, True)
+    return lab
 
 
 def _dash_added_text_opts(opts, seen=None, key="", scheme=None,
@@ -60774,6 +60820,10 @@ def _dash_by_title_cell(scheme, name, text, side, axis):
     kw["standoff"] = 0
     title = Title(text=str(text), align="center", name=name + "_text", **kw)
     setattr(title, _DASH_GRAPH_TEXT_DONE, True)
+    if name in ("dash_by_r1title", "dash_by_r2title"):
+        # by()'s own r1title() and r2title() read upward, as twoway draws
+        # them (WP-43 LT-19, e_by_r_dir; 41-02's hand-back).
+        title = _dash_edge_title_up(title)
     cell.add_layout(title, side)
     if side in ("above", "below"):
         # WP-45 GW-6: centred on the panels' box, from one y-title size
@@ -75827,6 +75877,7 @@ class ServerAppBuilder:
                          "_textbox_canon", "_dash_route_axis_titles",
                          "_dash_figure_title", "_dash_style_axis_titles",
                          "_dash_text_annotations", "_dash_edge_titles",
+                         "_dash_edge_title_up",
                          "_dash_scale_spec",
                          "_dash_added_text", "_dash_added_text_opts",
                          "_dash_text_box_fit", "_dash_added_text_edge",

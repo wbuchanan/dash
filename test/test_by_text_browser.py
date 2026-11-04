@@ -139,7 +139,10 @@ def _chrome_boxes(mode, pid, text):
         spec["build_options"]["scheme"] or "stcolor"
     st = kb._measure(mode, spec, lsb._BY_JS)[1400]["wide"]
     g = st["grid"]
-    boxes = lsb._by_titles(st, text)
+    # Flipped: by()'s r1title() and r2title() cells hold a Label reading
+    # upward, as twoway draws them (WP-43 LT-19, A-13).
+    boxes = [b for b in st["boxes"] if b["type"] in ("Title", "Label")
+             and b["text"] == text]
     if len(boxes) != 1:
         return t["x"] / w, t["y"] / (w * 0.6), None, None, len(boxes)
     b = boxes[0]["box"]

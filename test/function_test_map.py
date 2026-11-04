@@ -1181,6 +1181,7 @@ FUNCTIONS = {
  '_dash_textbox_turned_anchor': 'test/test_title_boxes.py::TestTitleSubopts::test_side_clock_turned',
  '_dash_textbox_label': 'test/test_title_boxes.py::TestTitleSubopts::test_orientation',
  '_dash_textbox_needs_label': 'test/test_title_boxes.py::TestTitleSubopts::test_fixed_box',
+ '_dash_edge_title_up': 'test/test_title_boxes.py::TestEdgeTitleBox::test_right_reads_upward',
  '_dash_legend_ring': 'test/test_title_boxes.py::TestRings::test_legend_grammar',
  '_dash_ring_tag': 'test/test_title_boxes.py::TestRings::test_tags',
  '_dash_ring_of_tag': 'test/test_title_boxes.py::TestRings::test_tags',

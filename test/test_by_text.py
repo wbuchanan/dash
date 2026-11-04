@@ -470,8 +470,11 @@ def _grid_kids(r):
 
 
 def _cell_texts(r):
-    """``{cell name: [Title texts]}`` of every dash_by_* cell of *r*."""
-    from bokeh.models import Plot, Title
+    """``{cell name: [Title texts]}`` of every dash_by_* cell of *r*.
+    Flipped: by()'s r1title() and r2title() cells hold a Label reading
+    upward, as twoway draws them (WP-43 LT-19, A-13), so a cell's Label
+    texts count too."""
+    from bokeh.models import Label, Plot, Title
     out = {}
     for root in r.roots:
         for m in root.references():
@@ -479,7 +482,7 @@ def _cell_texts(r):
                     "dash_by_"):
                 out.setdefault(m.name, []).extend(
                     str(t.text) for t in m.references()
-                    if isinstance(t, Title) and t.text)
+                    if isinstance(t, (Title, Label)) and t.text)
     return out
 
 

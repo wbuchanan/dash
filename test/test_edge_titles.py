@@ -84,7 +84,10 @@ def _edges(fig, key=None):
     for side in ("above", "below", "left", "right"):
         for i, m in enumerate(getattr(fig, side)):
             tags = list(getattr(m, "tags", None) or [])
-            if isinstance(m, Title) and "dash_edge_title" in tags \
+            # Flipped: r1title() and r2title() are Labels reading upward,
+            # as twoway draws them (WP-43 LT-19, A-13).
+            if type(m).__name__ in ("Title", "Label") \
+                    and "dash_edge_title" in tags \
                     and (key is None or key in tags):
                 out.append((side, i, m))
     return out
