@@ -798,7 +798,7 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w43_run' {
 // box's line and fill colours and padding, and the CSS of its key-text
 // stylesheet (tag dash_legend_keytext, "none" without one) -- into
 // q4303_<s|v> ("<line> <fill> <padding> <css>"), and the count of notes
-// naming a legend() sub-option into q4303_n<s|v>; _q4303_same <svg>
+// naming a legend() sub-option or a legend style into q4303_n<s|v>; _q4303_same <svg>
 // <svg>: 1 when two twoway SVGs draw the same rects and texts, into
 // q4303_same.  Built on S02's _q4302_models.
 python:
@@ -826,7 +826,7 @@ def _q4303_read(sp, dp, app):
                             pad, css or "none")
         Macro.setGlobal("q4303_" + sfx, out)
         Macro.setGlobal("q4303_n" + sfx, str(sum(
-            1 for m in msgs if "legend(" in m)))
+            1 for m in msgs if "legend" in m)))
 
 
 def _q4303_same(a, b):
@@ -1017,6 +1017,153 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w43_run' {
     }
     capture rmdir "`q03d'"
     macro drop q4303_ks q4303_kv
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+// S03 LT-6 helper.  _q4303_lay <svg> <base svg> <what> <dir>: one fact of
+// twoway's legend from an SVG of legend(<options>) against the same
+// graph's default -- "cols" its key columns, "index" its key texts,
+// "width"/"height" its box less 2.4 units in units, "dx"/"dy" its box's
+// move right and up in units, "line" its frame colour (none for no box)
+// beside the same fact of the series legend of the graph registered
+// last in <dir>, saved and served: "ok" or what differs, into
+// q4303_l<s|v>.
+python:
+def _q4303_lay(svg, base, what, d):
+    import re
+    import dash_render as dr
+    from sfi import Macro
+    from bokeh.models import Legend, Plot
+    from svg_truth import svg_document, svg_rects
+    U = 28.8
+    T = dr.OptionTranslator
+    pxu = T.PT_PER_RS * T.PX_PER_PT
+
+    def keys(p):
+        return [t for t in svg_document(p)["texts"] if not t["anchor"]]
+
+    def box(p):
+        ks = keys(p)
+        rs = [r for r in svg_rects(p) if r["w"] and r["w"] < 3900
+              and all(r["x"] <= k["x"] <= r["x"] + r["w"]
+                      and r["y"] <= k["y"] <= r["y"] + r["h"] for k in ks)]
+        f = [r for r in rs if r["fill"] not in (None, "none")]
+        ln = [r for r in rs if r["fill"] in (None, "none")]
+        return (min(f, key=lambda r: r["w"]) if f else None,
+                min(ln, key=lambda r: r["w"])["stroke"] if ln else "none")
+    k = keys(svg)
+    b, line = box(svg)
+    b0, _l = box(base)
+    tw = {"cols": len({round(t["x"]) for t in k}),
+          "index": "|".join(t["text"] for t in k),
+          "width": round(b["w"] / U - 2.4, 2) if b else None,
+          "height": round(b["h"] / U - 2.4, 2) if b else None,
+          "dx": round((b["x"] - b0["x"]) / U, 2) if b else None,
+          "dy": round((b0["y"] - b["y"]) / U, 2) if b else None,
+          "line": line}[what]
+    for (models, _m), sfx in zip(_q4302_models(d + "/s.json", d + "/d.json",
+                                               d + "/a.py"), ("s", "v")):
+        lg = None
+        for p in models:
+            if isinstance(p, Plot):
+                for m in p.select({"type": Legend}):
+                    if str(m.name or "") != dr._COLORVAR_LEGEND_NAME:
+                        lg = m
+        css = "".join(ss.css for ss in lg.stylesheets
+                      if "dash_legend_layout" in (ss.tags or []))
+        nums = [float(x) for x in re.findall(r"calc\(([-0-9.e]+)px", css)]
+        pad = lg.padding if isinstance(lg.padding, int) else 0
+        if what == "cols":
+            got = lg.ncols
+        elif what == "index":
+            got = "|".join(str(dr._dash_legend_item_text(i)
+                               if hasattr(dr, "_dash_legend_item_text")
+                               else (i.label.get("value")
+                                     if isinstance(i.label, dict)
+                                     else getattr(i.label, "value", "")))
+                           for i in lg.items)
+        elif what in ("width", "height"):
+            got = round((nums[0] - 2 * pad) / pxu, 2) if nums else None
+        elif what == "dx":
+            got = round(nums[0] / pxu, 2) if nums else None
+        elif what == "dy":
+            got = round(-nums[1] / pxu, 2) if len(nums) > 1 else None
+        else:
+            got = str(lg.border_line_color or "none").lower()
+        if what in ("width", "height", "dx", "dy"):
+            ok = got is not None and abs(got - tw) <= 0.05
+        else:
+            ok = got == tw
+        Macro.setGlobal("q4303_l" + sfx, "ok" if ok else
+                        "dash %s, twoway %s" % (got, tw))
+end
+
+* ==== S03 LT-6: legend layout and region style sub-options ====
+local only : env WP43_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w43_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03d "`w43_work'/s03c"
+    capture mkdir "`q03d'"
+    capture graph drop _all
+    sysuse auto, clear
+    local three (scatter mpg weight) (scatter price weight) (scatter turn weight)
+    quietly twoway `three', scheme(s2color) name(q03c, replace)
+    capture erase "`q03d'/q03c.svg"
+    cert_svg_export, name(q03c) file("`q03d'/q03c.svg")
+
+    // ------------------------------------------------------------
+    // Q4303-4: style(column), showindex and region(style(none))/
+    // region(lstyle(p1)) -- live twoway's key columns, key texts and
+    // frame colour beside dash's, saved and served; style(bogus) noted.
+    // Q4303-5: width(), height(), xoffset() and yoffset() -- live
+    // twoway's box size (less its margins) and move in units beside
+    // dash's least size and move, saved and served.
+    // ------------------------------------------------------------
+    local k 0
+    foreach id in Q4303-4 Q4303-5 {
+        if "`id'" == "Q4303-4" local opts `""style(column)|cols" "showindex|index" "region(style(none))|line" "region(lstyle(p1))|line""'
+        else local opts `""cols(1) width(60)|width" "height(30)|height" "xoffset(5)|dx" "yoffset(5)|dy""'
+        foreach o of local opts {
+            local ++k
+            gettoken lo what : o, parse("|")
+            local what = substr("`what'", 2, .)
+            quietly twoway `three', scheme(s2color) legend(`lo') name(q03l, replace)
+            capture erase "`q03d'/q03l`k'.svg"
+            cert_svg_export, name(q03l) file("`q03d'/q03l`k'.svg")
+            local bsv "`q03d'/q03c.svg"
+            if "`what'" == "width" {
+                quietly twoway `three', scheme(s2color) legend(cols(1)) name(q03m, replace)
+                capture erase "`q03d'/q03m.svg"
+                cert_svg_export, name(q03m) file("`q03d'/q03m.svg")
+                local bsv "`q03d'/q03m.svg"
+            }
+            dash clear
+            quietly dash `three', scheme(s2color) legend(`lo') name(q03e)
+            _dash_serve_spec, specpath("`q03d'/s.json") datapath("`q03d'/d.json")
+            python: import __main__ as _q4303_m; _q4303_m._q4303_lay("`q03d'/q03l`k'.svg", "`bsv'", "`what'", "`q03d'")
+            foreach m in s v {
+                _w43_expect `id' `"("${q4303_l`m'}" == "ok")"' `"legend(`lo') `m': ${q4303_l`m'}"'
+            }
+        }
+        if "`id'" == "Q4303-4" {
+            _q4303_reg "`q03d'" `three', scheme(s2color) legend(style(bogus)) name(q03e)
+            _w43_expect Q4303-4 "(${q4303_ns} >= 1 & ${q4303_nv} >= 1)" "legend(style(bogus)) printed no note"
+            _w43_done Q4303-4 "legend(style()), showindex and the region styles drawn as twoway's, saved and served"
+        }
+        else _w43_done Q4303-5 "legend(width() height() xoffset() yoffset()) size and move the box as twoway's, saved and served"
+    }
+
+    forvalues j = 1/`k' {
+        capture erase "`q03d'/q03l`j'.svg"
+    }
+    foreach f in q03c.svg q03m.svg s.json d.json a.py {
+        capture erase "`q03d'/`f'"
+    }
+    capture rmdir "`q03d'"
+    macro drop q4303_ls q4303_lv q4303_s q4303_v q4303_ns q4303_nv
     capture graph drop _all
     dash clear
     display as text "S03 end " c(current_date) " " c(current_time)

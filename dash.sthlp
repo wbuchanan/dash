@@ -5094,7 +5094,7 @@ keys fill it row by row, or column by column with {cmd:colfirst}.
 {cmd:holes(2)} leaves the second place blank and a hole past the last
 key is ignored; in a one-column or one-row legend a hole is a row's or a
 column's gap, as {cmd:twoway} draws it.
-{cmd:region(lcolor() fcolor() lwidth() lpattern() margin())} draws the box; {cmd:nobox} and {cmd:box} act on the key texts, as in {cmd:twoway} ({cmd:region()} draws the box); {cmd:bmargin()} is the
+{cmd:region(lcolor() fcolor() lwidth() lpattern() margin() style() lstyle() lalign())} draws the box; {cmd:nobox} and {cmd:box} act on the key texts, as in {cmd:twoway} ({cmd:region()} draws the box); {cmd:bmargin()} is the
 space around it, {cmd:bplacement()} its place along its side, or,
 inside the plot region ({cmd:ring(0)} or {cmd:position(0)}), the plot
 region's compass point it names; every spelling {cmd:twoway} reads for a
@@ -5137,6 +5137,11 @@ its lines and {cmd:tstyle()} sizes and colours it ({cmd:size()} and
 {cmd:color()} winning), as in {cmd:twoway}; {cmd:justification()} is
 taken, as {cmd:twoway}'s key text box is its text's width.  The frames
 are the legend's stylesheet, which the toolbar's picture leaves out.
+{cmd:style(column)} lays the keys in one column ({cmd:style(zyx2)} is
+named in the note), {cmd:width()} and {cmd:height()} give the box its
+least size with the keys centred, {cmd:xoffset()} and {cmd:yoffset()}
+move it right and up, and {cmd:showindex} numbers the key texts, as in
+{cmd:twoway}.
 {cmd:bexpand} and its
 {cmd:no} form are taken.  {cmd:textfirst}, {cmd:stacked},
 {cmd:symplacement()} and the legend's own {cmd:note()} and

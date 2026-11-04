@@ -681,7 +681,10 @@ _SAVED_DIGEST = (
     # aa5fd76a... -> ef273b93...: the key cell's ztick() labels after a
     # move take the page's set dp (code only: the base's key cell update
     # JS gives the old digest on the new tree).
-    "ef273b936a0e7a8b84362938f21e58ce9c59b83fe35ecbd199044f6ba62d069d")
+    # ef273b93... -> 07fa8f4b...: WP-43 LT-6, the width scale writes its
+    # factor as --dash-k on each plot (code only: the base's width-scale
+    # JS gives the old digest on the new tree).
+    "07fa8f4bb2f0565a7aaac7999a2431cc3a50932615923fc685bdc031167d2b75")
 
 
 # ===========================================================================

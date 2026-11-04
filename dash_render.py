@@ -28935,6 +28935,11 @@ if (typeof Bokeh !== "undefined" && Bokeh.index != null) {
   for (const pl of plots) {
     let pv = null;
     try { pv = Bokeh.index.find_one(pl); } catch (e) { pv = null; }
+    if (pv != null && pv.el != null) {
+      // WP-43 LT-6: the factor for CSS lengths in the plot (a legend's
+      // width(), height() and offsets: _dash_legend_layout).
+      pv.el.style.setProperty("--dash-k", String(k));
+    }
     if (pv != null && pv.invalidate_layout != null) {
       setTimeout(() => pv.invalidate_layout(), 0);
     }
@@ -41516,7 +41521,11 @@ def _dash_scheme_chrome(scheme):
 #: minimum abbreviations (areastyle's options).
 _DASH_LEGEND_REGION_NAMES = (("fcolor", "fc"), ("lcolor", "lc"),
                              ("lwidth", "lw"), ("lpattern", "lp"),
-                             ("color", "color"), ("margin", "margin"))
+                             ("color", "color"), ("margin", "margin"),
+                             # WP-43 LT-6: areastyle's style(), lstyle()
+                             # and lalign().
+                             ("style", "sty"), ("lstyle", "lst"),
+                             ("lalign", "la"))
 
 
 def _dash_legend_margin_px(arg):
@@ -41578,6 +41587,7 @@ def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
     ch = chrome or {}
     scheme = getattr(fig, "_dash_scheme", None) if fig is not None else None
     head = tail = None
+    lalign = None
 
     def _style(sub, box):
         # (size, colour) of legend(<box>()): the scheme's leg_<box> text
@@ -41654,6 +41664,37 @@ def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
                         _note(where, inner, "margin")
                     else:
                         legend.padding = px
+                elif full in ("style", "lstyle"):
+                    # WP-43 LT-6: region(style(none)) draws no box,
+                    # region(lstyle(p1)) lines it in linestyle p1
+                    # (legend_box_truth.json reg_style_none,
+                    # reg_lstyle_p1).
+                    sch = scheme if scheme is not None else \
+                        SchemeParser.resolve_or_fallback("s2color",
+                                                         "legend()")
+                    nm = inner.strip()
+                    b = ({"fill": None, "line": None, "line_width": 0.0}
+                         if nm == "none" else sch.style_bundle(
+                             "area" if full == "style" else "line", nm))
+                    if b is None:
+                        _dash_style_note("legend(%s)" % where, nm,
+                                         "areastyle" if full == "style"
+                                         else "linestyle")
+                        continue
+                    legend.border_line_color = b.get("line")
+                    if b.get("line_width"):
+                        legend.border_line_width = b["line_width"]
+                    if full == "style":
+                        legend.background_fill_color = b.get("fill")
+                elif full == "lalign":
+                    # twoway draws the line inside the box, or outside it
+                    # with outside: the box one line width larger a side
+                    # (reg_thick_out, reg_thick_in).
+                    al = inner.strip().lower()
+                    if al not in ("inside", "outside", "center"):
+                        _note(where, inner, "linealignment")
+                    else:
+                        lalign = al
                 else:
                     _dash_report_suboptions("legend(region)", [tok])
         elif name == "bmargin":
@@ -41713,6 +41754,11 @@ def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
                                  seen=seen, key=key, ref=(
                                      T.size_ref_of(fig) if fig is not None
                                      else None))
+    if lalign in ("outside", "center") and legend.border_line_color \
+            is not None and isinstance(legend.padding, int):
+        legend.padding = legend.padding + int(round(
+            float(legend.border_line_width or 0)
+            / (1 if lalign == "outside" else 2)))
     # nobox and box are the key texts' textbox options (WP-43 LT-2):
     # twoway's legend(nobox) draws the default region box
     # (legend_box_truth.json nobox == ctl); only the scheme and region()
@@ -41720,6 +41766,102 @@ def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
     _dash_legend_key_text(legend, calls, words, scheme, _colour,
                           ref=T.size_ref_of(fig) if fig is not None
                           else None)
+
+
+#: legend(style()) -> the grid twoway's legendstyle file sets
+#: (base/style/legendstyle-*.style): column is one column, default the
+#: scheme's; zyx2 reads the scheme's zyx2 keys, which dash's scheme files
+#: do not carry, so it is named (WP-43 LT-6).
+_DASH_LEGENDSTYLES = {"default": {}, "column": {"cols": 1}}
+
+
+def _dash_legend_layout(fig, legend, calls, words, *, seen=None, key=""):
+    """legend()'s layout sub-options on the series *legend* (WP-43 LT-6,
+    ruling D69), after its grid (step 6) and box: style() (a legendstyle
+    file's grid; an unknown name noted in twoway's words), showindex
+    ("n:" before each key text), and width(), height(), xoffset() and
+    yoffset() through the Legend's own stylesheet tagged
+    ``dash_legend_layout`` on its root (``:host``): a least size of the
+    size plus the box's padding, the keys centred in it, and a move
+    (yoffset() upward), in px at dash's 4-inch reference times the width
+    scale's factor (``--dash-k``, 1 without the scale).  Only numbers
+    reach the CSS.  Returns the CSS ('' for none)."""
+    from bokeh.models import InlineStyleSheet
+    T = OptionTranslator
+    given = {n for n, _a, _t in calls}
+    st = None
+    for name, arg, typed in calls:
+        if name == "style":
+            st = (str(arg or "").strip(), typed)
+    if st is not None:
+        if st[0] in _DASH_LEGENDSTYLES:
+            g = _DASH_LEGENDSTYLES[st[0]]
+            n = len(legend.items)
+            if g.get("cols") and not ({"cols", "rows"} & given) and n:
+                legend.ncols = g["cols"]
+                legend.nrows = 1 + (n - 1) // g["cols"]
+        elif st[0] == "zyx2":
+            _dash_report_suboptions("legend", ["%s(%s)" % st[::-1]],
+                                    seen, key)
+        else:
+            _dash_warn_once(
+                ("legendstyle", st[0]),
+                "dash: named style %s not found in class legendstyle, "
+                "default attributes used" % _dash_display(st[0]))
+    if "showindex" in words:
+        i = 0
+        for it in legend.items:
+            if not list(it.renderers or ()):
+                continue
+            i += 1
+            lab = it.label
+            text = lab.get("value") if isinstance(lab, dict) else getattr(
+                lab, "value", lab)
+            if isinstance(text, str):
+                it.label = {"value": "%d:%s" % (i, text)}
+    pad = legend.padding
+    if isinstance(pad, (tuple, list)) and len(pad) == 4:
+        pw, ph = pad[0] + pad[1], pad[2] + pad[3]
+    elif isinstance(pad, int):
+        pw = ph = 2 * pad
+    else:
+        pw = ph = 0
+    rules = []
+
+    def px(arg, typed):
+        try:
+            v = T.resolve_size(str(arg), "gap", 0.0) * T.PX_PER_PT
+        except (ValueError, TypeError):
+            _dash_style_note("legend(%s)" % typed, arg, "size")
+            return None
+        return max(-5000.0, min(5000.0, v))
+
+    def k(v):
+        return "calc(%.4gpx * var(--dash-k, 1))" % v
+    size = {}
+    for name, arg, typed in calls:
+        if name in ("width", "height", "xoffset", "yoffset"):
+            v = px(arg, typed)
+            if v is not None:
+                size[name] = v
+    if "width" in size or "height" in size:
+        rules.append("box-sizing:border-box")
+    if "width" in size:
+        rules += ["min-width:" + k(max(0.0, size["width"]) + pw),
+                  "justify-content:center"]
+    if "height" in size:
+        rules += ["min-height:" + k(max(0.0, size["height"]) + ph),
+                  "align-content:center"]
+    if "xoffset" in size or "yoffset" in size:
+        rules.append("translate:%s %s" % (k(size.get("xoffset", 0.0)),
+                                          k(-size.get("yoffset", 0.0))))
+    css = ":host{%s;}" % ";".join(rules) if rules else ""
+    legend.stylesheets = [ss for ss in legend.stylesheets
+                          if "dash_legend_layout" not in (
+                              getattr(ss, "tags", None) or [])] + (
+        [InlineStyleSheet(css=css, tags=["dash_legend_layout"])]
+        if css else [])
+    return css
 
 
 #: alignment() of the key texts -> how far twoway moves each text, in its
@@ -42551,6 +42693,10 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     if legend is not None:
         _dash_legend_box(legend, _calls, _words, chrome=chrome, fig=fig,
                          seen=seen, key=key)
+        # WP-43 LT-6: style(), showindex, width(), height(), xoffset()
+        # and yoffset().
+        _dash_legend_layout(fig, legend, _calls, _words, seen=seen,
+                            key=key)
 
     # 7c. span (WP-32): legend(span), else the scheme's `yesno
     #     legend_span' unless legend(nospan) undoes it; span beside
@@ -58553,7 +58699,9 @@ _DASH_LEGEND_SUBOPTS = frozenset({
     "all", "draw", "nodraw",
     # WP-43 LT-3: the key texts' textbox options (_dash_legend_key_text).
     "justification", "alignment", "margin", "linegap", "tstyle", "bcolor",
-    "fcolor", "bfcolor", "lcolor", "lwidth", "lpattern"})
+    "fcolor", "bfcolor", "lcolor", "lwidth", "lpattern",
+    # WP-43 LT-6: the layout sub-options (_dash_legend_layout).
+    "style", "width", "height", "xoffset", "yoffset", "showindex"})
 
 #: legend(label(# text)): the key's number, then its text, read by
 #: _textbox_lines.  The number is bounded so no label can make int() read
@@ -75188,7 +75336,7 @@ class ServerAppBuilder:
                       "_DASH_COMPASS_NAMES", "_DASH_COMPASS_CAPS",
                       "_DASH_COMPASS_CLOCK",
                       "_DASH_LEGEND_REGION_NAMES", "_DASH_KEY_STYLE_OPTS",
-                      "_DASH_LEGEND_KEY_ALIGN",
+                      "_DASH_LEGEND_KEY_ALIGN", "_DASH_LEGENDSTYLES",
                       "_DASH_HIST_YTITLES",
                       "_DASH_OPT_VAR_KEYS", "_DASH_PLOT_VAR_KEYS",
                       "_DASH_SWATCH_PREFIX",
@@ -75739,7 +75887,7 @@ class ServerAppBuilder:
                          "_dash_legend_parts", "_dash_legend_arg",
                          "_dash_compass_dir",
                          "_dash_legend_margin_px", "_dash_legend_box",
-                         "_dash_legend_key_text",
+                         "_dash_legend_key_text", "_dash_legend_layout",
                          "_dash_legend_title_block",
                          "_dash_legend_hole_sheet", "_dash_legend_holes",
                          "_dash_apply_legend",

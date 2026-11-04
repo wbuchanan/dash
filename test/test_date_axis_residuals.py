@@ -756,10 +756,13 @@ _PLAIN_DIGESTS = {
     # colour key labels", the graph region box a column of its own round
     # the figure (the figure keeps the margin's inside ratio) and the
     # width-scale and span JS's graph box; the same under both Pythons.
+    # 9299b510... -> d03b126c... saved, 2ff9cd13... -> 8d93b119... served:
+    # WP-43 LT-6, the width scale writes its factor as --dash-k on each
+    # plot (width-scale JS text only); the same under both Pythons.
     ("saved", "plain"):
-        "9299b510f9f8e31d7690b6ecf257379c7f21a9092f297089a321c8873642ddf5",
+        "d03b126c63ef75867366317ae6a1c637cc2f3a08356b32268a92a3ff879f6756",
     ("saved", "yaxis2"):
-        "9299b510f9f8e31d7690b6ecf257379c7f21a9092f297089a321c8873642ddf5",
+        "d03b126c63ef75867366317ae6a1c637cc2f3a08356b32268a92a3ff879f6756",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -774,9 +777,9 @@ _PLAIN_DIGESTS = {
     # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
     # as the saved page's.
     ("served", "plain"):
-        "2ff9cd1335d2934aa43b996a63739a371171294acfe74b697cac2efd79d9f322",
+        "8d93b119f531655ae56e3e52cdb89abe670f9c4ed75823574c2277e2c2c54cdf",
     ("served", "yaxis2"):
-        "2ff9cd1335d2934aa43b996a63739a371171294acfe74b697cac2efd79d9f322",
+        "8d93b119f531655ae56e3e52cdb89abe670f9c4ed75823574c2277e2c2c54cdf",
 }
 
 

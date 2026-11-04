@@ -464,7 +464,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-2 Tracked:** Closed in WP-43, BUGS.md "legend(nobox) removes the region box; in twoway nobox is the key-text textbox option and changes nothing", commit pending.
 - **LT-3 Tracked:** Closed in WP-43, BUGS.md "Key-text textbox options are not drawn: box (silent), bcolor(), fcolor(), justification(), alignment(), margin(), linegap(), tstyle()", commit pending.
 - **LT-5 Tracked:** Closed in WP-43, BUGS.md "legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ", commit 0d12aaa.
-- **LT-6 Tracked:** Open (WP-43 section 43-03).
+- **LT-6 Tracked:** Partly closed in WP-43 (section 43-03, commit pending): style(column), style() notes, width(), height(), xoffset(), yoffset(), showindex and region(style() lstyle() lalign()) are drawn; open: style(zyx2) (BUGS.md "legend(style(zyx2)) is named; twoway lays the keys in one column at the scheme's zyx2 gaps and key size").
 - **LT-7 Tracked:** Open (WP-43 section 43-03).
 - **LT-8 Tracked:** Closed in WP-43, BUGS.md "A title box under stcolor is filled #d9e6eb (the added-text fill), not textbox white with a 6.48 line", commit edc071a.
 - **LT-9 Tracked:** Closed in WP-43, BUGS.md "A fractional ring() (7.5, 4.5) or ring(100) is dropped silently", commit d7aaa44.

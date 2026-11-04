@@ -313,3 +313,149 @@ class TestKeyText:
         cells = [m for f in figs for m in f.select({"type": Legend})
                  if str(m.name or "").endswith("_key")]
         assert cells and all("::before" in _sheet(c) for c in cells)
+
+
+# ---------------------------------------------------------------------------
+# LT-6: the legend's layout and region style sub-options
+# ---------------------------------------------------------------------------
+
+def _region_box(key):
+    """The legend's fill rect in row *key* (the smallest filled rect
+    holding every key text), as (x0, y0, x1, y1)."""
+    rs = [r for r in _legend_region(key) if "fill:none" not in r[4]]
+    return min(rs, key=lambda r: (r[2] - r[0]) * (r[3] - r[1]))[:4] \
+        if rs else None
+
+
+def _layout_decl(lg, prop):
+    css = _sheet(lg, "dash_legend_layout")
+    i = css.find(":host{")
+    if i < 0:
+        return None
+    for d in css[i + 6:css.index("}", i)].split(";"):
+        if d.startswith(prop + ":"):
+            return d.split(":", 1)[1]
+    return None
+
+
+class TestLayoutFixture:
+
+    def test_measured(self):
+        """style(column) is cols(1); style(bogus) is noted and drawn as
+        the default; width(60) and height(30) make the box 60 and 30
+        units plus its margins (1.2 units a side), the keys centred in
+        it; xoffset(5) moves the box 5 units right, yoffset(5) 5 up, the
+        plot region unmoved; showindex writes "n:" before each key text;
+        region(style(none)) draws no box; region(lstyle(p1)) lines it
+        #1A476F at medium; lalign(outside) draws the line outside the
+        fill, inside is the default."""
+        assert TRUTH["style_column"]["rects"] == TRUTH["cols1"]["rects"]
+        assert TRUTH["style_bogus"]["rects"] == TRUTH["ctl"]["rects"]
+        assert any("legendstyle" in ln for ln in TRUTH["style_bogus"]["lines"])
+        b0 = _region_box("ctl")
+        bw = _region_box("width60")
+        bh = _region_box("height30")
+        assert abs((bw[2] - bw[0]) - (60 + 2.4) * 28.8) < 0.5
+        assert abs((bh[3] - bh[1]) - (30 + 2.4) * 28.8) < 0.5
+        assert abs((bw[0] + bw[2]) / 2 - (b0[0] + b0[2]) / 2) < 0.5
+        bx, by = _region_box("xoff5"), _region_box("yoff5")
+        assert abs((bx[0] - b0[0]) - 5 * 28.8) < 0.1
+        assert abs((b0[1] - by[1]) - 5 * 28.8) < 0.2
+        for k in ("xoff5", "yoff5"):
+            assert TRUTH[k]["plot"] == TRUTH["ctl"]["plot"]
+        texts = [t["text"] for t in TRUTH["showindex"]["texts"]
+                 if ":" in t["text"]]
+        assert texts == ["1:Mileage (mpg)", "2:Price",
+                         "3:Turn circle (ft.)"]
+        # Only the graph region's outline holds the keys.
+        assert [r for r in _legend_region("reg_style_none")
+                if r[2] - r[0] < 3900] == []
+        line = [r for r in _legend_region("reg_lstyle_p1")
+                if "fill:none" in r[4] and r[2] - r[0] < 3900][0]
+        assert _style(line, "stroke") == "#1a476f"
+        assert _style(line, "stroke-width") == "8.64"
+        out = [r for r in _rects("reg_thick_out") if "fill:none" in r[4]
+               and "23.04" in r[4]][0]
+        inn = [r for r in _rects("reg_thick_in") if "fill:none" in r[4]
+               and "23.04" in r[4]][0]
+        assert abs((inn[0] - out[0]) - 23.04) < 0.05
+        assert _rects("reg_thick_in") == _rects("reg_thick")
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestLayout:
+
+    def test_style(self, mode):
+        """style(column) lays the keys in one column; style(default) is
+        the default; style(bogus) is noted with twoway's words."""
+        _f, lg, _ = G._fig_legend(mode, G.THREE, "style(column)")
+        assert lg.ncols == 1 and lg.nrows == 3
+        _f, lg, caught = G._fig_legend(mode, G.THREE, "style(default)")
+        assert lg.ncols == 2 and not caught
+        _f, lg, caught = G._fig_legend(mode, G.THREE, "style(bogus)")
+        assert lg.ncols == 2
+        assert any("named style bogus not found in class legendstyle"
+                   in w for w in caught), caught
+
+    def test_width_height(self, mode):
+        """width(60) and height(30): the box's least size is the size
+        plus its margins, the keys centred, in px at the 4-inch reference
+        times the width scale's factor."""
+        T = dr.OptionTranslator
+        _f, lg, caught = G._fig_legend(mode, G.THREE, "width(60) height(30)")
+        assert not [w for w in caught if "legend(" in w], caught
+        pad = lg.padding
+        w = 60 * T.PT_PER_RS * T.PX_PER_PT + 2 * pad
+        h = 30 * T.PT_PER_RS * T.PX_PER_PT + 2 * pad
+        assert _layout_decl(lg, "min-width") == \
+            "calc(%.4gpx * var(--dash-k, 1))" % w
+        assert _layout_decl(lg, "min-height") == \
+            "calc(%.4gpx * var(--dash-k, 1))" % h
+        assert _layout_decl(lg, "justify-content") == "center"
+        assert _layout_decl(lg, "box-sizing") == "border-box"
+
+    def test_offset(self, mode):
+        """xoffset(5) moves the box 5 units right, yoffset(5) 5 up."""
+        T = dr.OptionTranslator
+        u = 5 * T.PT_PER_RS * T.PX_PER_PT
+        _f, lg, _ = G._fig_legend(mode, G.THREE, "xoffset(5) yoffset(5)")
+        assert _layout_decl(lg, "translate") == (
+            "calc(%.4gpx * var(--dash-k, 1)) calc(%.4gpx * var(--dash-k, 1))"
+            % (u, -u))
+
+    def test_showindex(self, mode):
+        _f, lg, _ = G._fig_legend(mode, G.THREE, "showindex")
+        assert [G._text(i) for i in lg.items][:2] == ["1:mpg", "2:price"]
+
+    @pytest.mark.parametrize("case", ["none", "lstyle", "outside", "inside"])
+    def test_region_styles(self, mode, case):
+        T = dr.OptionTranslator
+        _f, ref, _ = G._fig_legend(mode, G.THREE, "region(lwidth(thick))")
+        opt = {"none": "region(style(none))",
+               "lstyle": "region(lstyle(p1))",
+               "outside": "region(lwidth(thick) lalign(outside))",
+               "inside": "region(lwidth(thick) lalign(inside))"}[case]
+        _f, lg, caught = G._fig_legend(mode, G.THREE, opt)
+        assert not [w for w in caught if "legend(" in w], caught
+        if case == "none":
+            assert lg.border_line_color is None
+            assert lg.background_fill_color is None
+        elif case == "lstyle":
+            assert lg.border_line_color == "#1a476f"
+            assert lg.border_line_width == pytest.approx(
+                T.translate_lwidth("medium", None, 4.0))
+        elif case == "outside":
+            assert lg.padding == ref.padding + round(lg.border_line_width)
+        else:
+            assert lg.padding == ref.padding
+
+    def test_by_cell(self, mode):
+        """by()'s legend cell carries the layout sheet."""
+        figs = G.tp._figures_in(mode, G.tp._spec(
+            G.THREE, {"scheme": "s2color"},
+            {"by": "foreign", "legend": "xoffset(5)"}))[0]
+        from bokeh.models import Legend
+        cells = [m for f in figs for m in f.select({"type": Legend})
+                 if str(m.name or "").endswith("_key")]
+        assert cells and all("translate" in _sheet(c, "dash_legend_layout")
+                             for c in cells)

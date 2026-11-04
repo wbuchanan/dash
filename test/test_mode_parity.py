@@ -2919,6 +2919,11 @@ CORPUS = [
           "(WP-43 LT-3)",
           [_sc(), plot_for("scatter", yvar="price")],
           go={"legend": "box margin(small) bcolor(gs14) alignment(top)"}),
+    _case("legend(cols(1) width(60) xoffset(5) showindex "
+          "region(lalign(outside))) (WP-43 LT-6)",
+          [_sc(), plot_for("scatter", yvar="price")],
+          go={"legend": "cols(1) width(60) xoffset(5) showindex "
+                        "region(lalign(outside))"}),
 
     # WP-31 D5/E11 (section 32): sizing
     _case("scale(1.5) (WP-31 D5)", [plot_for("scatter")],

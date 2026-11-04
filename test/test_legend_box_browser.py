@@ -69,7 +69,12 @@ addEventListener('load', () => setTimeout(() => {
                      lr.bottom - parseFloat(bs.bottom)],
                   pad: parseFloat(cs.paddingLeft)};
         });
-        out.push({name: m.name || '', items});
+        const h = rv.el.getBoundingClientRect();
+        const f = v.frame.bbox;
+        const c = v.el.getBoundingClientRect();
+        out.push({name: m.name || '', items, canvas: [c.left, c.top],
+                  host: [h.left, h.top, h.right, h.bottom],
+                  frame: [f.x0, f.y0, f.x1, f.y1]});
       }
     }
     for (const c of (v.child_views || [])) visit(c);
@@ -150,3 +155,43 @@ class TestKeyTextInChrome:
             f, t = it["frame"], it["text"]
             assert f is not None and abs(f[0] - t[0]) <= 1
             assert abs((f[3] - f[1]) - it["fs"]) <= 1
+
+
+#: twoway's SVG units of a text size (legend_box_truth.json: 99.99).
+_SIZE = 99.99
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestLayoutInChrome:
+
+    def test_width_height(self, mode):
+        """cols(1) width(60) and height(30): the box 60 (30) units plus
+        its margins (legend_box_truth.json width60, height30: 62.4 and
+        32.4 units), the keys centred in it, and the plot region gives
+        way to the taller box."""
+        base, wide, b2, tall = _legends(mode, "cols(1)", "cols(1) width(60)",
+                                        "", "height(30)")
+        u = 28.8 * wide["items"][0]["fs"] / _SIZE
+        w = wide["host"][2] - wide["host"][0]
+        assert abs(w - 62.4 * u) <= 2, (w, 62.4 * u)
+        mid = (wide["host"][0] + wide["host"][2]) / 2
+        its = wide["items"]
+        span = (min(i["item"][0] for i in its), max(i["item"][2] for i in its))
+        assert abs((span[0] + span[1]) / 2 - mid) <= 1
+        h = tall["host"][3] - tall["host"][1]
+        assert abs(h - 32.4 * u) <= 2, (h, 32.4 * u)
+        assert (tall["frame"][3] - tall["frame"][1]) < \
+            (b2["frame"][3] - b2["frame"][1]) - 50
+
+    def test_offset(self, mode):
+        """xoffset(5) yoffset(5): the box 5 units right and 5 up of where
+        it is without them, the plot region unmoved (xoff5, yoff5)."""
+        base, moved = _legends(mode, "", "xoffset(5) yoffset(5)")
+        u = 28.8 * moved["items"][0]["fs"] / _SIZE
+        bx, by = [base["host"][i] - base["canvas"][i] for i in (0, 1)]
+        mx, my = [moved["host"][i] - moved["canvas"][i] for i in (0, 1)]
+        assert abs((mx - bx) - 5 * u) <= 1, (mx - bx, 5 * u)
+        assert abs((by - my) - 5 * u) <= 1, (by - my, 5 * u)
+        assert [round(a - b, 1) for a, b in zip(base["frame"][1:],
+                                                moved["frame"][1:])] == \
+            [0.0, 0.0, 0.0]

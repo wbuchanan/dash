@@ -1012,6 +1012,7 @@ and now matches Stata.
 
 ### Fixed in WP-43
 
+- legend(style(column)), width(), height(), xoffset(), yoffset(), showindex and region(style() lstyle() lalign()) are drawn as twoway draws them, and legend(style(bogus)) is noted in twoway's words; they were named (style(zyx2) is still named) (WP-43, LT-6)
 - legend(box) frames each key text in the scheme's text box fill and line, bcolor(), fcolor(), lcolor(), lwidth() and lpattern() colour and line the frames, and margin(), alignment(), linegap() and tstyle() pad, move, spread and style the key texts, as twoway draws them; box was taken silently and the rest named (WP-43, LT-3)
 - Edge titles draw their box, justification(), margin(), tstyle() and placement(), and r1title() and r2title() read upward, by()'s own included, as twoway draws them; they took size() and color() only and the right ones read downward (WP-43, LT-19)
 - title(), subtitle(), note() and caption() draw orientation() (the text and its box turned), width() and height() (a fixed box), lstyle(), blstyle(), blcolor(), blwidth(), blpattern(), lalign(), blalign() and style() (as tstyle()), and a box at 2, 3 or 4 o'clock right of the plot and at 8, 9 or 10 left of it, level, as twoway draws them; they were named and ignored, and the side clocks drawn above or below; angle() with box keeps the text level (open in BUGS.md) (WP-43, LT-18)
