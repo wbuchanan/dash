@@ -466,14 +466,14 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-5 Tracked:** Closed in WP-43, BUGS.md "legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ", commit 0d12aaa.
 - **LT-6 Tracked:** Open (WP-43 section 43-03).
 - **LT-7 Tracked:** Open (WP-43 section 43-03).
-- **LT-8 Tracked:** Closed in WP-43, BUGS.md "A title box under stcolor is filled #d9e6eb (the added-text fill), not textbox white with a 6.48 line", commit pending.
-- **LT-9 Tracked:** Closed in WP-43, BUGS.md "A fractional ring() (7.5, 4.5) or ring(100) is dropped silently", commit pending.
+- **LT-8 Tracked:** Closed in WP-43, BUGS.md "A title box under stcolor is filled #d9e6eb (the added-text fill), not textbox white with a 6.48 line", commit edc071a.
+- **LT-9 Tracked:** Closed in WP-43, BUGS.md "A fractional ring() (7.5, 4.5) or ring(100) is dropped silently", commit d7aaa44.
 - **LT-10 Tracked:** Open (WP-43 section 43-03).
 - **LT-11 Tracked:** Closed in WP-43, BUGS.md "text(..., alignment()) is noted and not drawn, though the help, CHANGELOG and WP-32 say it is drawn", commit 884ebaa.
 - **LT-13 Tracked:** Closed in WP-43, BUGS.md "legend(t1title() ... b2title()) is accepted and named where twoway refuses r(198)", commit 900153e.
-- **LT-14 Tracked:** Closed in WP-43, BUGS.md "title(..., ring(x)) is accepted silently where twoway prints notes and refuses r(198)", commit pending.
+- **LT-14 Tracked:** Closed in WP-43, BUGS.md "title(..., ring(x)) is accepted silently where twoway prints notes and refuses r(198)", commit 12a9e8e.
 - **LT-15 Tracked:** Closed in WP-43, BUGS.md "legend title()/subtitle() sub-options (position(), box ...) are dropped silently; subtitle size()/color() are ignored", commit 3c3b781.
-- **LT-16 Tracked:** Closed in WP-43, BUGS.md "title/subtitle/note/caption placement() at ring(0) is drawn as a Label anchor (n lifts the box out of the plot) and long names, clocks and synonyms are ignored", commit pending.
+- **LT-16 Tracked:** Closed in WP-43, BUGS.md "title/subtitle/note/caption placement() at ring(0) is drawn as a Label anchor (n lifts the box out of the plot) and long names, clocks and synonyms are ignored", commit 6dc1209.
 - **LT-17 Tracked:** Closed in WP-43, BUGS.md "legend(holes()) with cols(1) inserts a full blank row", commit 5fc359a.
 - **LT-18 Tracked:** Open (WP-43 section 43-05).
 - **LT-19 Tracked:** Open (WP-43 section 43-05).
