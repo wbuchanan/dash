@@ -1205,8 +1205,14 @@ there, is an invalid point.  The literal is read as data and never run.
     ({cmd:legend(c(red))}: {cmd:cols() invalid -- invalid number},
     r(121)), a {cmd:label()} key that is no positive integer, and
     {cmd:ytitle("Y", prefix suffix)}.  {cmd:legend(position(13))}, a
-    non-numeric {cmd:ring()} and a non-integer {cmd:order()} word draw the
-    default with {cmd:twoway}'s note.  {cmd:legend()}'s words are read left
+    non-numeric {cmd:legend(ring())} and a non-integer {cmd:order()} word
+    draw the default with {cmd:twoway}'s note.  On {cmd:title()},
+    {cmd:subtitle()}, {cmd:note()} and {cmd:caption()} a {cmd:ring()} that
+    is no number, {cmd:inside} or {cmd:outside} is refused after
+    {cmd:twoway}'s two notes, {cmd:option ring() incorrectly specified},
+    r(198) (an abbreviation such as {cmd:ring(in)} with no note), and on an
+    edge title ({cmd:t1title()} .. {cmd:r2title()}) every word is, as
+    {cmd:twoway} refuses them.  {cmd:legend()}'s words are read left
     to right, as {cmd:twoway} reads them, so {cmd:legend(po(9) top)} is
     {cmd:option po() not allowed}; the words inside
     {cmd:legend(region())} and {cmd:legend(title())} are checked as

@@ -11783,6 +11783,27 @@ string scalar _dash_so_canon(string scalar name, string scalar fam)
     return("")
 }
 
+// _dash_ring_ok(v) -- how title(), subtitle(), note() and caption() take
+// ring(v) (WP-43 LT-14; title_box_truth.json ring_w_<w>, ring_x): 1 for a
+// real number or one of the words inside and outside (dash_render.py's
+// _DASH_RING_WORDS, the same two), drawn; -1 for another lowercase
+// abbreviation of inside or outside, which twoway refuses with no note;
+// 0 for anything else, refused after twoway's two gridringstyle notes.
+real scalar _dash_ring_ok(string scalar v)
+{
+    string scalar    t
+    string rowvector words
+
+    words = ("inside", "outside")
+    t = strtrim(v)
+    if (_dash_so_isnum(t, 0)) return(1)
+    if (anyof(words, t)) return(1)
+    if (t != "" & (strpos("inside", t) == 1 | strpos("outside", t) == 1)) {
+        return(-1)
+    }
+    return(0)
+}
+
 // _dash_so_isnum(s, isint) -- 1 when s, stripped, is twoway's integer
 // literal [+-]?digits (isint) or real literal [+-]?(d+.?d*|.d+)([eE][+-]?d+)?
 // and nothing else.  Byte by byte.
@@ -12127,7 +12148,7 @@ real scalar _dash_subreq_check(string scalar kind)
     string scalar    msg, f, arg, lastpos, lastring, lastorder, m, fam
     real rowvector   cid
     real colvector   o
-    real scalar      rc, at, i, j, k, c, q, hasp, hass
+    real scalar      rc, at, i, j, k, c, q, hasp, hass, edge
 
     if (rows(_dash_subreq) == 0 | cols(_dash_subreq) != 4) {
         _dash_subreq_clear()
@@ -12353,6 +12374,31 @@ real scalar _dash_subreq_check(string scalar kind)
                 _dash_say("err", "", msg, "")
                 _dash_subreq_clear()
                 return(198)
+            }
+            // A ring() twoway refuses (WP-43 LT-14; title_box_truth.json
+            // ring_x, ring_w_<w>, e_ring_*): on title(), subtitle(), note()
+            // and caption() a word other than inside and outside, after
+            // twoway's two notes unless it abbreviates one of them; on an
+            // edge title every word, with no note.
+            if (fam == "title") {
+                edge = ustrregexm(kinds[k], "^title:[tblr][12]title$")
+                for (i = 1; i <= cols(toks); i++) {
+                    if (names[i] != "ring") continue
+                    arg = strtrim(_dash_rep_value(toks[i]))
+                    q = _dash_ring_ok(arg)
+                    if (edge & q == 1 & !_dash_so_isnum(arg, 0)) q = -1
+                    if (edge & q == 0) q = -1
+                    if (q == 1) continue
+                    if (q == 0) {
+                        _dash_note("named style ", arg,
+                                   " not found in class gridringstyle, default attributes used")
+                        _dash_note("", "gridringstyle",
+                                   " not found in scheme, default attributes used")
+                    }
+                    _dash_say("err", "option ring() incorrectly specified", "", "")
+                    _dash_subreq_clear()
+                    return(198)
+                }
             }
         }
         _dash_subreq_clear()

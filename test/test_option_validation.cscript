@@ -4151,6 +4151,84 @@ foreach _q42k in E_allmiss E_allmiss_y E_empty_disc E_nodata_disc E_empty_ipre {
     _q4205 Q4205-4h `_q42k'
 }
 
+// ----------------------------------------------------------------
+// Q4305-4 (WP-43 section 43-05, LT-14): title(), subtitle(), note(),
+// caption() and t1title() with a ring() twoway refuses, and the ring
+// words on title() and legend(), run through twoway and dash live: the
+// same rc and the same printed lines (twoway's two gridringstyle notes
+// before "option ring() incorrectly specified", or none for an
+// abbreviation of inside or outside and on an edge title), and where
+// both draw, nothing printed by either.
+// ----------------------------------------------------------------
+capture program drop _q4305r
+program define _q4305r
+    version 16.0
+    args opt
+    quietly sysuse auto, clear
+    capture dash clear
+    capture log close _q5log
+    quietly log using "`c(tmpdir)'dash_q4305t.log", name(_q5log) text replace
+    capture noisily twoway (scatter mpg weight) (scatter trunk weight), `macval(opt)' name(q4305t, replace)
+    local trc = _rc
+    quietly log close _q5log
+    quietly log using "`c(tmpdir)'dash_q4305d.log", name(_q5log) text replace
+    capture noisily dash (scatter mpg weight) (scatter trunk weight), `macval(opt)' name(q4305d)
+    local drc = _rc
+    quietly log close _q5log
+    python: import __main__ as _q5m; _q5m._q4305_same(r"`c(tmpdir)'dash_q4305t.log", r"`c(tmpdir)'dash_q4305d.log")
+    _ov_assert Q4305-4 "(`trc' == `drc' & `q4305_same' == 1)" `"`macval(opt)': rc `trc' twoway, `drc' dash; twoway said: ${q4305_t}; dash said: ${q4305_d}"'
+    capture graph drop q4305t
+    capture dash clear
+end
+python:
+def _q4305_same(tlog, dlog):
+    from sfi import Macro
+
+    def lines(p):
+        # A line Stata's log wraps goes on after "> " where it broke
+        # (errprintf) or after an indent at a blank (twoway's notes): the
+        # words are read, not the wrap.
+        out = []
+        with open(p, encoding="utf-8", errors="replace") as fh:
+            for raw in fh:
+                raw = raw.rstrip("\n")
+                if raw.startswith("> ") and out:
+                    out[-1] = out[-1] + raw[2:]
+                else:
+                    out.append(raw)
+        out = [ln.strip() for ln in out]
+        return [ln for ln in out if ln and not ln.startswith(".")
+                and not ln.startswith(("name:", "log:", "log type:",
+                                       "opened on:", "closed on:"))
+                and not set(ln) <= set("-")
+                and not (ln.startswith("dash: graph '")
+                         and ln.endswith("' registered."))]
+    import re as _re
+
+    def said(ls):
+        # The log wraps a long line where it falls; read the words.  A
+        # note twoway prints twice on legend() is LT-26's (49-02): each
+        # note is compared once, in order.
+        txt = _re.sub(r"\s+", " ", " ".join(ls)).strip()
+        notes = []
+        for n in _re.findall(r"\(note: .*?\)", txt):
+            if n not in notes:
+                notes.append(n)
+        return notes, _re.sub(r"\(note: .*?\)", "", txt).strip()
+    t, d = lines(tlog), lines(dlog)
+    Macro.setLocal("q4305_same", "1" if said(t) == said(d) else "0")
+    Macro.setGlobal("q4305_t", " | ".join(t)[:300])
+    Macro.setGlobal("q4305_d", " | ".join(d)[:300])
+end
+foreach _q5o in `"title("T", ring(x))"' `"subtitle("S", ring(x))"' `"note("N", ring(x))"' `"caption("C", ring(x))"' `"t1title("E", ring(x))"' `"t1title("E", ring(inside))"' `"r2title("E", ring(Inside))"' `"title("T", ring(7.5))"' `"t1title("E", ring(-1))"' {
+    _q4305r `"`_q5o'"'
+}
+foreach _q5w in inside outside in out o i Inside OUTSIDE ins outs {
+    _q4305r `"title("T", ring(`_q5w'))"'
+    _q4305r `"legend(ring(`_q5w'))"'
+}
+macro drop q4305_t q4305_d
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

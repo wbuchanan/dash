@@ -873,6 +873,7 @@ COVERAGE = {
         "_dash_so_canon": ("test_suboption_reporting.cscript:SA-04",),
         "_dash_so_family": ("test_suboption_reporting.cscript:SA-04",),
         "_dash_so_isnum": ("test_suboption_reporting.cscript:SA-08",),
+        "_dash_ring_ok": ("test_option_validation.cscript:Q4305-4",),
         "_dash_so_resolve": ("test_suboption_reporting.cscript:SA-05", "test_suboption_reporting.cscript:SA-06"),
         "_dash_so_rows": ("test_suboption_reporting.cscript:SA-05", "test_suboption_reporting.cscript:SA-06"),
         "_dash_so_unsafe": ("test_suboption_reporting.cscript:SA-05",),

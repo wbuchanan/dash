@@ -255,6 +255,19 @@ class TestRings:
         for bad in ("ring=", "ring=x", "ring=nan", "rings=3", "dash"):
             assert dr._dash_ring_of_tag(bad) is None
 
+    def test_the_mata_twin(self):
+        """dash_parse.mata's _dash_ring_ok holds the same two words."""
+        import re
+        with open(os.path.join(_HERE, "..", "dash_parse.mata"),
+                  encoding="utf-8") as fh:
+            src = fh.read()
+        body = src[src.index("real scalar _dash_ring_ok("):]
+        body = body[:body.index("\n}\n")]
+        m = re.search(r"words = \(([^)]*)\)", body)
+        assert m
+        assert set(re.findall(r'"([^"]+)"', m.group(1))) == \
+            set(dr._DASH_RING_WORDS)
+
     def test_the_fixture_words(self):
         for w, v in dr._DASH_RING_WORDS.items():
             assert TRUTH["ring_w_" + w]["rc"] == 0
@@ -342,3 +355,4 @@ class TestRings:
         f, _c = _fig(mode, {"title": '"T"', "t1title": '"E", ring(7.5)'})
         above = list(f.above)
         assert _tagged(above, "t1title") > _tagged(above, "title")
+

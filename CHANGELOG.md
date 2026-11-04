@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- title(), subtitle(), note() and caption() with a ring() that is no number, inside or outside are refused, option ring() incorrectly specified, r(198), after twoway's notes, and an edge title's ring() word likewise, as twoway refuses them; dash drew the default ring (WP-43, LT-14)
 - legend(t1title()) .. legend(b2title()) are refused, option t1title() not allowed, r(198), as twoway refuses them; dash took them with a note (WP-43, LT-13)
 - zlabels(), zticks(), zmlabels() and zmticks() are taken as zlabel(), ztick(), zmlabel() and zmtick(), as twoway takes them (were refused r(198)) (WP-42, AX-12)
 - zlabels(), zticks(), zmlabels() and zmticks() are accepted (were refused) and ztick(), zmlabel(), zmtick() drawn (were noted) (WP-42, AX-12)
