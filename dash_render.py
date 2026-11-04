@@ -11799,7 +11799,11 @@ class SchemeParser:
         knows (WP-43 LT-1)."""
         name = str(self._props.get("textboxstyle leg_%s" % box, "")
                    or "").strip().strip('"')
-        return name if self.textbox_style(name) is not None else default
+        # Check the name only: reading its colour here would note a bad
+        # colour key a second time.
+        known = name in self._TEXTBOX_STYLES or re.fullmatch(
+            r"p([1-9]|1[0-5])(barlabel|boxlabel)?", name) is not None
+        return name if known else default
 
     _NOTE_TEXTBOXES: "dict[str, tuple]" = {
         "small_body":   ("small_body", "small_body", "textbox", "textbox"),
