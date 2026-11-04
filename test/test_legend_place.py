@@ -663,3 +663,17 @@ class TestByBplacement:
                                   "ring(0) bplacement(bogus)")
         assert got == _by_cell_sig(mode, "foreign", "")[0]
         assert len(notes) == 1 and "bogus" in notes[0], notes
+
+
+def test_cols_inside_by():
+    """by(, legend(cols(1))): twoway draws by()'s two keys in one row, as
+    without cols() (legend_place_truth.json by_scale_0 against by_default:
+    the same regions and key texts, nothing noted); dash's by() cell is
+    the same in both modes, two columns in one row."""
+    for k in ("regions", "key_texts", "log"):
+        assert TRUTH["by_scale_0"][k] == TRUTH["by_default"][k], k
+    for mode in MODES:
+        got, notes = _by_cell_sig(mode, "foreign, legend(cols(1))", "")
+        assert got == _by_cell_sig(mode, "foreign", "")[0]
+        assert got[4:6] == (2, 1), got[4:6]
+        assert notes == []
