@@ -6731,10 +6731,18 @@ def _u30_tw(path, case):
     if case == "clock":
         t = [e for e in texts if e[0] == "T"][0]
         clock = int(path.rsplit("_", 1)[1].split(".")[0])
+        # Flipped (WP-43 LT-18, 5b470814): a box twoway draws beside the
+        # plot region (2-4 or 8-10 o'clock) is read on its side, where it
+        # was dash's nearer horizontal side (_dash_textbox_place); dash
+        # draws it beside the plot too (title_box_truth.json t_pos<k>).
         if t[2] < py:
             side = "above"
         elif t[2] > py + ph:
             side = "below"
+        elif t[1] > px + pw:
+            side = "right"
+        elif t[1] < px:
+            side = "left"
         else:
             side = dr._dash_textbox_place(clock, "center")[0]
         return "%d:%s" % (clock, side)
@@ -6781,8 +6789,10 @@ def _u30_dash(figs, case):
     f = figs[0]
 
     def boxes(fig):
+        # Flipped (WP-43 LT-18, 5b470814): a box at 2-4 or 8-10 o'clock is
+        # a Label in the right or left panel, so those panels are read too.
         out = []
-        for side in ("center", "above", "below"):
+        for side in ("center", "above", "below", "left", "right"):
             for m in getattr(fig, side):
                 if "dash_textbox" in list(getattr(m, "tags", None) or []):
                     out.append((side, m))
@@ -6888,8 +6898,8 @@ if inlist("`only'", "", "S30") & `: list posof "S30" in w31_run' {
     set scheme s2color
     sysuse auto, clear
 
-    // U30-1: title(, position(k)) on twoway's side; beside the plot is
-    // dash's nearer horizontal side (the documented difference).
+    // U30-1: title(, position(k)) on twoway's side, beside the plot
+    // included (WP-43 LT-18).
     foreach k in 3 6 9 12 {
         _u30_reg "`u30d'" `k' clock scatter mpg weight, title("T", position(`k'))
         foreach m in s v {
