@@ -9,11 +9,10 @@ legend(subtitle()) is drawn centred above the keys, under the title.
 Drawn: colgap() is the Bokeh legend's spacing when its keys are in one
 row (when they are in one column, rowgap() is, as before; a grid of both
 has one Bokeh spacing, the row gap); subtitle() is a line of the legend's
-title.  Still named, because Bokeh's Legend cannot draw them (M17):
-stacked (twoway puts the text under the symbol), symplacement() (twoway
-moves the symbol inside a taller key: symplacement(n) raises it 28 SVG
-units), and the legend's own note() and caption() (twoway puts them under
-the keys, inside the box).
+title.  stacked, symplacement() and the legend's own note() and caption()
+were named here (M17) and are drawn since WP-43 LT-21
+(test_legend_keys.py); note() and caption() beside the legend's title()
+stay named.
 """
 import json
 import os
@@ -125,9 +124,10 @@ class TestStillNamed:
     # Flipped: stacked is drawn as twoway draws it (WP-43 LT-21,
     # test_legend_keys.py::TestKeyOrder).
     # Flipped (WP-43 LT-21): symplacement() is drawn (test_legend_keys.py::TestSymplacement).
+    # Flipped (WP-43 LT-21): the legend's note() and caption() are drawn (test_legend_keys.py::TestNoteAndCaption); beside its title() they stay named.
     @pytest.mark.parametrize("opt", ['note("Nt")', 'caption("Cap")'])
     def test_named(self, opt):
-        _, msgs = _legend("saved", opt)
+        _, msgs = _legend("saved", 'title("T") ' + opt)
         word = opt.split("(")[0]
         assert any("legend()" in m and word in m for m in msgs), msgs
 

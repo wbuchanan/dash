@@ -689,6 +689,79 @@ class TestSymplacement:
             _legend("saved", [_sc(), bk._p("line", y="headroom")], "")[0], 1)
 
 
+class TestNoteAndCaption:
+    """LT-21 residual: legend(note()) and legend(caption()) are written
+    under the keys inside the box, left-aligned, note in the scheme's
+    small_body (79.94 of 99.99 units), caption in body, each line a text
+    size apart (legend_keys_truth.json note, caption, note_caption,
+    note_two, note_size, textfirst_note); dash writes them in the Legend's
+    title slot below the keys (a DOM text node, never CSS), its stylesheet
+    tagged dash_legend_note placing and sizing it.  Beside the legend's
+    own title() or subtitle() twoway draws both (title_note,
+    subtitle_note); the title slot holds one, so note() and caption()
+    stay named there."""
+
+    def test_fixture(self):
+        for case, size in (("note", 79.94), ("caption", 99.99),
+                           ("note_size", 139.96)):
+            row = [e for e in _TRUTH[case]["els"] if e["tag"] == "text"
+                   and e["text"] in ("N", "C")]
+            assert len(row) == 1, case
+            a = row[0]["a"]
+            assert "text-anchor" not in a, case
+            assert ("font-size:%.2fpx" % size) in a["style"], case
+        # Left-aligned with the keys, under them.
+        n = _texts("note")["N"]
+        assert abs(n[0] - _key_marks("note")[0][0]) < 15
+        assert n[1] > _texts("note")["Price"][1]
+        n1, n2 = _texts("note_two")["N1"], _texts("note_two")["N2"]
+        assert abs(n2[1] - n1[1] - 79.94) < 0.1
+        assert _texts("textfirst_note")["N"][0] == n[0]
+        # Beside the legend's title(), twoway draws both.
+        t = _texts("title_note")
+        assert "T" in t and "N" in t and t["T"][1] < t["N"][1]
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("opt,text", [('note("N")', "N"),
+                                          ('caption("C")', "C"),
+                                          ('note("N1" "N2")', "N1\nN2"),
+                                          ('note("N") caption("C")',
+                                           "N\nC")])
+    def test_in_the_title_slot(self, mode, opt, text):
+        lg, notes = _legend(mode, [_sc(), bk._p("line", y="headroom")], opt)
+        assert lg.title == text
+        assert lg.title_location == "below"
+        assert lg.title_text_font_style == "normal"
+        assert not any("note(" in str(n) or "caption(" in str(n)
+                       for n in notes), notes
+        css = _sheet(lg, "dash_legend_note")
+        assert ".bk-title{" in css and "text-align:left" in css
+        key = dr.OptionTranslator.css_to_pt(lg.label_text_font_size)
+        box = dr.OptionTranslator.css_to_pt(lg.title_text_font_size)
+        want = 0.8 if opt.startswith("note") and "caption" not in opt \
+            else 1.0
+        assert abs(box / key - want) < 0.01, (box, key)
+        if "caption" in opt and "note" in opt:
+            assert "::first-line{font-size:0.8em" in css
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_size(self, mode):
+        lg, _n = _legend(mode, [_sc(), bk._p("line", y="headroom")],
+                         'note("N", size(large))')
+        key = dr.OptionTranslator.css_to_pt(lg.label_text_font_size)
+        box = dr.OptionTranslator.css_to_pt(lg.title_text_font_size)
+        assert abs(box / key - 139.96 / 99.99) < 0.02
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("opt", ['subtitle("S") caption("C")',
+                                     'note("N1" "N2") caption("C")'])
+    def test_still_named_beside_a_title(self, mode, opt):
+        lg, notes = _legend(mode, [_sc(), bk._p("line", y="headroom")], opt)
+        word = "caption(" if "caption" in opt else "note("
+        assert any(word in str(n) for n in notes), notes
+        assert _sheet(lg, "dash_legend_note") == "" or "N1" in opt
+
+
 class TestKeyPainter:
     """The painted key's proxy is 42-02's form: legend-only, on its
     layer's own source and view filter, out of every HoverTool and

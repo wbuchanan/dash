@@ -5166,9 +5166,13 @@ text, whichever is larger, centred on the text, a south value its
 bottom at the box's bottom, and {cmd:w} or {cmd:e} puts a key narrower
 than its column at the column's left or right; a name {cmd:twoway}
 does not know draws the default, with a note.
-The legend's own {cmd:note()} and {cmd:caption()} are named in the
-note: a {cmd:dash} legend writes nothing under the keys, where
-{cmd:twoway} writes them inside the box.
+The legend's own {cmd:note()} and {cmd:caption()} are written under
+the keys inside the box, left-aligned, the note in the scheme's small
+text and above the caption, each in its {cmd:size()} and {cmd:color()},
+as {cmd:twoway} writes them; beside the legend's own {cmd:title()} or
+{cmd:subtitle()}, which {cmd:twoway} draws as well, they are named in
+the note, and so is a {cmd:caption()} beside a {cmd:note()} when either
+has more than one line.
 
 {pstd}
 {ul:Axis labels.}  {cmd:xlabel()} and {cmd:ylabel()} take Stata's own

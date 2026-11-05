@@ -451,9 +451,10 @@ class TestNamedAndSilent:
     # Flipped: textfirst and stacked are drawn as twoway draws them
     # (WP-43 LT-21, test_legend_keys.py::TestKeyOrder).
     # Flipped (WP-43 LT-21): symplacement() is drawn (test_legend_keys.py::TestSymplacement).
+    # Flipped (WP-43 LT-21): the legend's note() and caption() are drawn (test_legend_keys.py::TestNoteAndCaption); beside its title() they stay named.
     @pytest.mark.parametrize("word", ['note("n")', 'caption("c")'])
     def test_named(self, mode, word):
-        _fig, _lg, caught = _fig_legend(mode, TWO, word)
+        _fig, _lg, caught = _fig_legend(mode, TWO, 'title("t") ' + word)
         msgs = [w for w in caught if "not implemented" in w]
         assert any(word in m for m in msgs), caught
 
