@@ -10489,7 +10489,10 @@ if inlist("`only'", "", "S40") & `: list posof "S40" in w31_run' {
 python:
 def _u41_glyphs(sp, dp, app, kind):
     """[(saved glyphs), (served glyphs)] of class *kind* in the first
-    figure, swatches left out, with the saved render's notes."""
+    figure, swatches left out, with the saved render's notes.  Flipped
+    (WP-43 LT-21, 097a8f7f): a marker layer's legend-only key proxy (tag
+    dash_key_proxy) is left out too; its Scatter doubled U41-02's and
+    U41-04's fills."""
     import __main__ as m
     import warnings
     import dash_render as dr
@@ -10498,7 +10501,8 @@ def _u41_glyphs(sp, dp, app, kind):
     for figs in (a, b):
         out.append([r.glyph for r in figs[0].renderers
                     if type(getattr(r, "glyph", None)).__name__ == kind
-                    and not dr._dash_is_swatch(r)])
+                    and not dr._dash_is_swatch(r)
+                    and "dash_key_proxy" not in (r.tags or [])])
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         dr.DashRenderer(sp, dp).render()
