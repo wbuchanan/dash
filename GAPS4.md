@@ -478,7 +478,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-18 Tracked:** Partly closed in WP-43 (section 43-05, commit 5b47081): orientation(), width(), height(), lstyle(), blstyle(), the bl* family, lalign(), blalign(), style() and the 2-4 and 8-10 o'clock boxes are drawn, and angle() without box; open: angle() with box (BUGS.md "title(..., angle() box) turns twoway's text inside its level box; dash keeps the title level").
 - **LT-19 Tracked:** Closed in WP-43, BUGS.md "Edge titles draw no box, justification(), margin() or tstyle()", commit 0dae9a3.
 - **LT-20 Tracked:** Documented in WP-43, BUGS.md "text() draws no width(), height(), linegap(), bexpand, bmargin(), lstyle(), lpattern(), lalign(); a `=exp' global is drawn literally", commit 065aace.
-- **LT-21 Tracked:** Documented in WP-43, BUGS.md "A legend's own note() and caption() are not drawn; dash names them and draws the graph's note() and caption()", commit pending.
+- **LT-21 Tracked:** Documented in WP-43, BUGS.md "A legend's own note() and caption() are not drawn; dash names them and draws the graph's note() and caption()", commit cbfadde.
 - **PIC-11 Tracked:** Closed in WP-43, BUGS.md "Legend key shapes of rcap, rcapsym, pccapsym, dropline, pcarrow, pcbarrow and rarea are wrong", commit d044a70.
 - **MS-10 Tracked:** Closed in WP-43, BUGS.md "Keys are merged when two different pstyles look alike (s1mono line v6/v14, v12/v15)", commit fdaa0f1.
 - **ST-14 Tracked:** Open (WP-43 section 43-07).
