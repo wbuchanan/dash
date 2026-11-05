@@ -407,6 +407,20 @@ class TestNoteInChrome:
             assert t[3] <= leg["box"][3] + 0.5
 
 
+@pytest.mark.parametrize("mode", ("saved", "served"))
+def test_weighted_marker_key(mode):
+    """A weighted marker layer's key is its unweighted marker (twoway
+    wt_large: msize(large)'s r 39.34, 0.787 of a text size across, as
+    mk_large's), beside a line key; BokehJS drew it at 0.4 of the key
+    box (about 0.5 of a text size, near medium's 0.527 by chance)."""
+    w = _sc(weight="aweight", wexp="headroom", msize="large")
+    legs, viol = _legends(mode, [([w, _ln()], "")])
+    assert viol == []
+    it = legs[0]["items"][0]
+    assert it["ink"] is not None, it
+    assert abs((it["ink"][2] - it["ink"][0]) / it["fs"] - 0.787) < 0.08, it
+
+
 def test_emptied_layer_draws_no_key():
     """Saved: after the dropdown move foreign == 0, which leaves the
     layer `scatter mpg weight if foreign == 1' no row, its painted key is

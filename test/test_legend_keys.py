@@ -762,6 +762,42 @@ class TestNoteAndCaption:
         assert _sheet(lg, "dash_legend_note") == "" or "N1" in opt
 
 
+class TestWeightedMarkerKey:
+    """LT-21 residual: twoway draws a weighted marker layer's key at the
+    layer's own msize(), whatever the weights (legend_keys_truth.json
+    wt_marker, wt_line, wt_trunk, wt_all: the key's circle r 26.35 as
+    mk_s2color's; wt_large: 39.34 as mk_large's), where BokehJS drew a
+    field-sized Scatter's key at 0.4 of the key box."""
+
+    def test_fixture(self):
+        for case, like in (("wt_marker", "mk_s2color"),
+                           ("wt_line", "mk_line"), ("wt_trunk", "mk_line"),
+                           ("wt_all", "mk_line"), ("wt_large", None)):
+            w = _key_marks(case)[0][1] - _key_marks(case)[0][0]
+            want = (_key_marks(like)[0][1] - _key_marks(like)[0][0]
+                    if like else 2 * 39.34)
+            assert abs(w - want) < 0.01, case
+        assert abs(_key_marks("mk_large")[0][1]
+                   - _key_marks("mk_large")[0][0] - 2 * 39.34) < 0.01
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("msize", ["", "large"])
+    def test_painted_at_the_unweighted_size(self, mode, msize):
+        o = {"weight": "aweight", "wexp": "headroom"}
+        if msize:
+            o["msize"] = msize
+        plain, _n = _legend(mode, [_sc(**({"msize": msize} if msize
+                                          else {})),
+                                   bk._p("line", y="headroom")], "")
+        lg, _n = _legend(mode, [_sc(**o), bk._p("line", y="headroom")], "")
+        [p] = lg.items[0].renderers
+        assert str(p.name) == "__dash_keyproxy"
+        [q] = plain.items[0].renderers
+        assert abs(p.glyph.size - q.glyph.size) < 1e-9
+        assert isinstance(p._dash_key_for.glyph.size, str) or \
+            "field" in str(p._dash_key_for.glyph.size)
+
+
 class TestKeyPainter:
     """The painted key's proxy is 42-02's form: legend-only, on its
     layer's own source and view filter, out of every HoverTool and

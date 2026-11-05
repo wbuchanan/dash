@@ -20018,6 +20018,9 @@ class GlyphMapper:
             col = f"{_DASH_RP}_wsize{k}"
         src.data[col] = sizes
         glyph.size = col
+        # The layer's own size, which twoway draws its legend key at
+        # (WP-43 LT-21, legend_keys_truth.json wt_*: _dash_key_painter).
+        renderer._dash_wsize_base = float(base)
         # A served move writes the kept rows into this source
         # (_dash_refresh_linked/_unlinked), and the sizes are rescaled from
         # them there (_dash_rescale_wsizes), as twoway would draw them.
@@ -66463,7 +66466,9 @@ def _dash_key_painter(fig, legend, ptypes=None):
     layer has two.  A legend whose keys are all painted markers is as wide
     as its widest marker (legend_keys_truth.json mk_*, mk_symx: twoway's
     marker key is its marker's width, whatever symxsize() says), and every
-    key box at least as tall as it.  WP-43 PIC-11: an item whose layer's
+    key box at least as tall as it; a weighted layer's key is its own
+    size (``_dash_wsize_base``: twoway draws it whatever the weights).
+    WP-43 PIC-11: an item whose layer's
     plot type (*ptypes*, ``{id(renderer): type}``) is one of
     ``_DASH_KEY_SHAPES`` is keyed in twoway's shape by
     :func:`_dash_key_shape`, in the legend's symxsize() box.  Returns the
@@ -66527,6 +66532,10 @@ def _dash_key_painter(fig, legend, ptypes=None):
                   and not _dash_is_swatch(r)
                   and str(getattr(g, "angle_units", "rad")) == "rad")
             size = _dash_spec_value(g.size) if ok else None
+            # A weighted layer's key is its own size, whatever the weights
+            # (legend_keys_truth.json wt_marker, wt_large).
+            if ok and (size is None or isinstance(size, str)):
+                size = getattr(real, "_dash_wsize_base", None)
             mk = _dash_spec_value(g.marker) if ok else None
             ang = _dash_spec_value(g.angle) if ok else None
             if not (ok and isinstance(size, (int, float))

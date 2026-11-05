@@ -5088,8 +5088,9 @@ all markers is only as wide as its widest marker, as in {cmd:twoway};
 each column of keys is as wide as its widest key, so a marker key in a
 column of its own is only as wide as its marker, with its text a key
 gap after it, and one in a line key's column is centred in the line
-key's width, as in {cmd:twoway}; a weighted marker layer's key is drawn
-at 0.4 of the box's smaller side.  The keys of {cmd:rcap}, {cmd:rcapsym},
+key's width, as in {cmd:twoway}; a weighted marker layer's key is its
+marker at the layer's own size, whatever the weights, as in
+{cmd:twoway}.  The keys of {cmd:rcap}, {cmd:rcapsym},
 {cmd:pccapsym}, {cmd:dropline}, {cmd:pcarrow}, {cmd:pcbarrow} and
 {cmd:rarea} are {cmd:twoway}'s shapes, except that an end marker is drawn
 inside the key, a marker's radius in from its end, where {cmd:twoway}
