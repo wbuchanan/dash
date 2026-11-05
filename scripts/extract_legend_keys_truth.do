@@ -115,6 +115,33 @@ _lk_run textfirst_cols1 s2color `"twoway (scatter mpg weight in 1/5) (line price
 _lk_run textfirst_box s2color `"`L', legend(textfirst box) `N'"'
 _lk_run textfirst_note s2color `"`L', legend(textfirst note("N")) `N'"'
 _lk_run econ3 economist `"twoway (scatter mpg weight in 1/5) (scatter price weight in 1/5) (scatter turn weight in 1/5), legend(cols(3)) `N'"'
+* A legend wider than twoway allows above or below the plot: its box at
+* the limit, its columns moved together; ten a's a text fit, twelve not.
+local E "twoway (scatter mpg weight in 1/5) (scatter headroom weight in 1/5) (scatter rep78 weight in 1/5), legend(cols(3))"
+_lk_run econ_long economist `"`E' `N'"'
+_lk_run econ_long_m0 economist `"`E' graphregion(margin(zero)) `N'"'
+_lk_run econ_long_ml economist `"`E' graphregion(margin(large)) `N'"'
+_lk_run econ_long_scale economist `"`E' scale(1.5) `N'"'
+_lk_run s2_long_scale s2color `"`E' scale(1.5) `N'"'
+local E "twoway (scatter mpg weight in 1/5) (scatter price weight in 1/5) (scatter turn weight in 1/5)"
+foreach n in 10 12 {
+    local a = `n' * "a"
+    _lk_run econ_a`n' economist `"`E', legend(cols(3) label(1 "`a'") label(2 "`a'") label(3 "`a'")) `N'"'
+}
+* twoway's text-width estimate: ten of each printable ASCII character
+* but ", \ and `, each an added text whose left end is at a column's
+* marker (placement(e) margin(zero)), drawn centred on its estimate.
+local T ""
+local row 0
+forvalues c = 32/126 {
+    if inlist(`c', 34, 92, 96) continue
+    local s = 10 * char(`c')
+    local y = 100 - mod(`row', 24) * 4
+    local x = 1 + floor(`row' / 24) * 25
+    local T `"`macval(T)' text(`y' `x' `"`macval(s)'"', placement(e) margin(zero))"'
+    local ++row
+}
+_lk_run tw_width s2color `"twoway scatteri 0 1 0 26 0 51 0 76, `macval(T)' `N'"'
 _lk_run by_textfirst s2color `"twoway (scatter mpg weight) (lfit mpg weight), by(foreign) legend(textfirst) `N'"'
 
 * ---- PIC-11: key shapes ----------------------------------------------------

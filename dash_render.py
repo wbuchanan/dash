@@ -42130,6 +42130,9 @@ def _dash_legend_key_boxes(legend, words, infos=None, symx=None,
     if symx is None and isinstance(gw, int):
         symx = float(gw)
     rec_symx = symx
+    # Each item's key column width in px (None: the whole canvas), for
+    # the legend's fit inside the graph (_dash_legend_fit).
+    legend._dash_key_cols = [None] * len(items)
     if any(infos) and fs > 0 and isinstance(gw, int) and gw > 0 and symx:
         symx = float(symx)
         if all(f is None or f[0] == "marker" for f in infos):
@@ -42167,6 +42170,8 @@ def _dash_legend_key_boxes(legend, words, infos=None, symx=None,
                 continue
             wc = width.get(c, b)
             d = G - wc
+            if d > 0.5 and not stacked:
+                legend._dash_key_cols[i] = wc
             tx = (d / 2 if first and not stacked else -d / 2)
             tx += hx * (wc - b) / 2
             ty = 0.0
@@ -42213,6 +42218,129 @@ def _dash_legend_key_boxes(legend, words, infos=None, symx=None,
 #: centre 22.03 of 28.8 SVG units per unit from the box's edge, whatever
 #: symysize() or the text size; scale(1.5) 1.5 times).
 _DASH_KEY_SYMBOL_HALF_RS = 22.03 / 28.8
+
+
+#: twoway's estimate of a text's width, per character, in steps of
+#: ``_DASH_TW_CHAR_STEP`` of the text's size (legend_keys_truth.json
+#: tw_width: ten of each printable ASCII character, each step 0.0105 of
+#: the size; a key text's column is as wide as this estimate, econ_*).
+#: A character not listed (", `, \, anything past ASCII) counts 54
+#: steps, a digit's.
+_DASH_TW_CHAR_STEPS = {ch: n for n, chars in (
+    (23, "Ii"), (24, "jl"), (28, "[]t"), (29, " ',./:;f"), (31, "|"),
+    (33, "!()-r{}"), (38, "*"), (47, "x"), (48, "kz"), (49, "^cv"),
+    (50, "Jsy"), (53, "abdeghn"), (54, "#$0123456789?L_opqu"),
+    (57, "+<=>~"), (61, "FZ"), (63, "T"), (65, "&ABEKPSVXY"),
+    (69, "NRU"), (71, "CDHw"), (77, "GOQ"), (80, "Mm"), (87, "%"),
+    (95, "@W")) for ch in chars}
+_DASH_TW_CHAR_STEP = 0.0105
+
+#: How far inside the graph region's margin twoway keeps the box of a
+#: legend above or below the plot, in relative units times scale()
+#: (legend_keys_truth.json econ_long: the box 4.7 units from each edge
+#: under economist's 3.5-unit margin; econ_long_m0 1.2 under
+#: graphregion(margin(zero)), econ_long_ml 9.2 under margin(large)'s 8;
+#: econ_long_scale and s2_long_scale 5.3 under scale(1.5)).
+_DASH_LEGEND_FIT_RS = 1.2
+
+
+def _dash_tw_text_em(text):
+    """twoway's estimate of *text*'s width in its size: its widest line's
+    characters' widths (``_DASH_TW_CHAR_STEPS``)."""
+    return max([sum(_DASH_TW_CHAR_STEPS.get(ch, 54) for ch in line)
+                for line in str(text or "").split("\n")] or [0]) \
+        * _DASH_TW_CHAR_STEP
+
+
+def _dash_legend_fit(fig, graph_opts=None):
+    """A legend above or below the plot kept inside the graph as twoway
+    keeps it (WP-43, ruling D69): twoway lays a legend's columns out by
+    its own estimate of each key text's width (``_dash_tw_text_em``), and
+    when the legend would be wider than the graph less the graph region's
+    margin and ``_DASH_LEGEND_FIT_RS`` on each side, it draws the box that
+    wide and moves the columns together in proportion, each text drawn
+    whole from its column's start, past the column (legend_keys_truth.json
+    econ_long: the box 0.906 of the graph's width, the column starts
+    0.813 of their spacing; econ_a10 fits, econ_a12 does not).  BokehJS
+    lays the columns out at the texts' drawn widths, so the Legend's own
+    stylesheet tagged ``dash_legend_fit`` sets the box's width (px times
+    the width scale's factor ``--dash-k``) and each column's share of it
+    (``fr``, from the estimate), only when twoway's estimate is over the
+    width; only numbers reach the CSS.  A legend inside the plot, beside
+    it, with holes, a width() or under by() is left as it is.  Run after
+    the figure's box is known (``_dash_apply_figure_size``).  Returns the
+    CSS ('' for none)."""
+    from bokeh.models import InlineStyleSheet, Legend
+    T = OptionTranslator
+    nom = getattr(fig, "_dash_nominal_px", None)
+    legs = [lg for side in ("above", "below")
+            for lg in list(getattr(fig, side, None) or ())
+            if isinstance(lg, Legend)
+            and str(lg.name or "") != "dash_colorvar_legend"]
+    out = ""
+    for lg in legs:
+        css = ""
+        items = list(lg.items or ())
+        fs = (T.css_to_pt(lg.label_text_font_size) or 0.0) * T.PX_PER_PT
+        gw = lg.glyph_width
+        sized = any("min-width" in str(getattr(ss, "css", "")) for ss in
+                    lg.stylesheets if "dash_legend_layout" in (
+                        getattr(ss, "tags", None) or []))
+        if (nom and items and fs > 0 and isinstance(gw, int) and gw > 0
+                and not getattr(lg, "_dash_hole_tracks", None)
+                and not sized):
+            unit = T.size_ref_of(fig) / 4.0
+            scale = _dash_scale_factor(graph_opts or {}) or 1.0
+            W, H = float(nom[0]), float(nom[1])
+            # The graph region's margin, graphregion(margin()) included,
+            # in relative units of min(W, H).
+            sides = _dash_span_sides(fig)
+            avail = (W - (float(sides[0]) + float(sides[1])
+                          + 2.0 * _DASH_LEGEND_FIT_RS * scale)
+                     * min(W, H) / 100.0) / unit
+            keyc = list(getattr(lg, "_dash_key_cols", None) or ())
+            keyc += [None] * (len(items) - len(keyc))
+            rec = getattr(lg, "_dash_key_boxes", None)
+            words = set(rec[1]) if rec else set()
+            stacked = "stacked" in words and "nostacked" not in words
+            gap = float(lg.label_standoff or 0.0)
+            sp = float(lg.spacing or 0.0)
+            cols = _dash_legend_grid_columns(lg, len(items))
+            track = {}
+            for it, c, k in zip(items, cols, keyc):
+                lab = it.label
+                text = lab.get("value") if isinstance(lab, dict) else \
+                    getattr(lab, "value", lab)
+                tw = _dash_tw_text_em(text if isinstance(text, str)
+                                      else "") * fs
+                k = float(k) if k is not None else float(gw)
+                w = max(k, tw) if stacked else k + gap + tw
+                track[c] = max(track.get(c, 0.0), w)
+            nc = max(track) + 1 if track else 0
+            tr = [track.get(c, 0.0) for c in range(nc)]
+            pad = lg.padding if lg.border_line_color is not None else 0
+            pw = (float(pad[0] + pad[1]) if isinstance(pad, (tuple, list))
+                  and len(pad) == 4 else 2.0 * float(pad or 0))
+            bw = (2.0 * float(lg.border_line_width or 0.0)
+                  if lg.border_line_color is not None else 0.0)
+            inner = sum(tr) + (nc - 1) * sp
+            if nc and avail > 0 and pw + bw + inner > avail + 0.5:
+                s = max(0.0, avail - pw - bw) / inner if inner > 0 else 0.0
+                share = [max(0.0, s * t + (s - 1.0) * sp) for t in tr[:-1]]
+                share.append(s * tr[-1])
+                css = (":host{box-sizing:border-box;"
+                       "width:calc(%.4gpx * var(--dash-k, 1));}"
+                       ":host .bk-grid{width:auto;grid-template-columns:%s;}"
+                       % (min(avail, 1e5), " ".join(
+                           "minmax(0,%.4gfr)" % max(1e-4, v / fs)
+                           for v in share)))
+        lg.stylesheets = [ss for ss in lg.stylesheets
+                          if "dash_legend_fit" not in (
+                              getattr(ss, "tags", None) or [])] + (
+            [InlineStyleSheet(css=css, tags=["dash_legend_fit"])]
+            if css else [])
+        out += css
+    return out
 
 
 #: alignment() of the key texts -> how far twoway moves each text, in its
@@ -73026,6 +73154,8 @@ class DashRenderer:
         _dash_apply_figure_size(
             fig, graph_opts, getattr(self.scheme, "graphsize_x", None),
             getattr(self.scheme, "graphsize_y", None))
+        # WP-43: a legend wider than twoway's limit kept inside the graph.
+        _dash_legend_fit(fig, graph_opts)
         return fig
 
     def _add_glyph(
@@ -76263,6 +76393,9 @@ class ServerAppBuilder:
                       # WP-43 LT-21: the key painter.
                       "_DASH_KEY_PAINT_JS", "_DASH_KEY_PAINT_MARKERS",
                       "_DASH_KEY_SYMBOL_HALF_RS",
+                      # WP-43: twoway's text-width estimate, the legend's fit.
+                      "_DASH_TW_CHAR_STEPS", "_DASH_TW_CHAR_STEP",
+                      "_DASH_LEGEND_FIT_RS",
                       "_DASH_LEGEND_NOTE_GAP_RS", "_DASH_LEGEND_NOTE_A",
                       "_DASH_LEGEND_NOTE_CAP_STEP",
                       # WP-43 PIC-11: twoway's key shapes.
@@ -76823,6 +76956,7 @@ class ServerAppBuilder:
                          "_dash_legend_key_text", "_dash_legend_layout",
                          "_dash_legend_key_order",
                          "_dash_legend_key_boxes",
+                         "_dash_tw_text_em", "_dash_legend_fit",
                          "_dash_legend_grid_columns",
                          "_dash_margin_px",
                          "_dash_legend_title_block",
@@ -80209,6 +80343,9 @@ class ServerAppBuilder:
             "        if _fac_label is None:",
             "            _dash_apply_figure_size(fig, go, _SCHEME_GRAPHSIZE_X,",
             "                                    _SCHEME_GRAPHSIZE_Y)",
+            "            # WP-43: a legend wider than twoway's limit kept",
+            "            # inside the graph, as the saved renderer does.",
+            "            _dash_legend_fit(fig, go)",
             "            # WP-31 H2t: the graph's data table, under its figure.",
             "            _tspec = _dash_table_spec(go, _dash_lim)",
             "            if _tspec and gname in linked_names:",

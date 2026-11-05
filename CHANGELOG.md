@@ -1038,6 +1038,7 @@ and now matches Stata.
 - legend(title()) and legend(subtitle()) are drawn in the scheme's legend-title and legend-subtitle styles, larger than the keys, as twoway draws them (WP-43, LT-1)
 - text(..., alignment()) is drawn as twoway draws it; it was named in a note and dropped before the drawing (WP-43, LT-11)
 - text()'s width(), height(), linegap(), lstyle(), lpattern() and lalign() are drawn, and a global's =exp of numbers, operators and listed functions in text() and in every graph text option is evaluated as twoway evaluates it (WP-43, LT-20)
+- A legend above or below the plot whose key texts are long is kept inside the graph as twoway keeps it: the box as wide as the graph less the graph region's margin and 1.2 relative units a side (times scale()), its columns moved together by twoway's estimate of each text's width; under economist, legend(cols(3)) with "Mileage (mpg)", "Headroom (in.)" and "Repair record 1978" drew a box 1.17 of the figure's width over both its edges, now 0.906 of the graph's as twoway's (WP-43, LT-21)
 
 ### Fixed in WP-42
 

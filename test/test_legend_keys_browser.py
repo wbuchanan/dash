@@ -473,6 +473,48 @@ def test_economist_three_columns_fit(mode):
                    for t in leg["texts"]), (w, leg)
 
 
+#: _FIT_JS with the graph's box: the figure's cell, which draws the
+#: graph region's margin round the figure.
+_FIT_CELL_JS = _FIT_JS.replace(
+    "box: R(rv.el.getBoundingClientRect()), texts}",
+    "box: R(rv.el.getBoundingClientRect()), texts,"
+    " cell: R(v.parent.el.getBoundingClientRect())}")
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+def test_economist_long_texts_fit(mode):
+    """BUGS.md "An economist 3-column legend whose key texts are long is
+    wider than its figure": twoway's box (econ_long, texts Mileage (mpg),
+    Headroom (in.), Repair record 1978) is 0.906 of the graph's width,
+    4.7 relative units in from each edge, where dash's was 1.17 of its
+    figure's and overflowed both edges.  At 1400, 768, 528 and 384 px
+    dash's box is twoway's share of the graph (the figure's cell, the
+    graph region's margin round it) within 0.01 -- the box's width is
+    set in the key text's size, so only the integer px of the padding
+    and the border round it -- inside the figure, its first text inside
+    it."""
+    row = _TRUTH["econ_long"]
+    W = row["viewbox"][2]
+    [box] = [e["a"] for e in row["els"] if e["tag"] == "rect"
+             and "fill:none" not in e["a"].get("style", "")
+             and float(e["a"]["y"]) < row["plot"]["bottom"]
+             and float(e["a"]["width"]) < 0.995 * W]
+    want = float(box["width"]) / W
+    assert abs(want - 0.906) < 0.001
+    spec = bk._spec([bk._graph(
+        "g0", [_sc(), _sc("headroom"), _sc("rep78")],
+        {"legend": "cols(3)"}, title=False)], scheme="economist")
+    got = kb._measure(mode, spec, _FIT_CELL_JS, (1400, 768, 528, 384))
+    for w, g in got.items():
+        [leg] = g["out"]
+        cv, bx, cell = leg["canvas"], leg["box"], leg["cell"]
+        share = (bx[2] - bx[0]) / (cell[2] - cell[0])
+        assert abs(share - want) < 0.01, (w, share, leg)
+        assert cv[0] - 0.5 <= bx[0] and bx[2] <= cv[2] + 0.5, (w, leg)
+        t0 = leg["texts"][0]
+        assert bx[0] <= t0[0] and t0[2] <= bx[2], (w, leg)
+
+
 @pytest.mark.parametrize("mode", ("saved", "served"))
 def test_end_markers_on_the_ends(mode):
     """rcapsym's end markers are centred on the key's ends (sh_rcapsym:

@@ -798,6 +798,159 @@ class TestWeightedMarkerKey:
             "field" in str(p._dash_key_for.glyph.size)
 
 
+def _tw_widths():
+    """twoway's width estimate of each character of tw_width, in its
+    text's size: ten of the character in an added text centred on its
+    estimate's middle (placement(e) margin(zero)), its left end at its
+    column's marker; ``{character: width}``."""
+    import html
+    row = _TRUTH["tw_width"]
+    anchors = sorted({float(e["a"]["cx"]) for e in row["els"]
+                      if e["tag"] == "circle"})
+    chars = [chr(c) for c in range(32, 127) if c not in (34, 92, 96)]
+    texts = []
+    for e in row["els"]:
+        t = html.unescape(e.get("text") or "")
+        if e["tag"] == "text" and e["a"].get("text-anchor") == "middle" \
+                and (t == "" or (len(t) == 10 and len(set(t)) == 1)):
+            texts.append((t, e["a"]))
+    texts = texts[:len(chars)]
+    out = {}
+    for ch, (t, a) in zip(chars, texts):
+        assert t.replace("\xa0", " ").strip() == ch.strip() * (10 if
+                                                                ch.strip()
+                                                                else 0)
+        x = float(a["x"])
+        fs = float(a["style"].split("font-size:")[1].split("px")[0])
+        out[ch] = 2 * (x - max(v for v in anchors if v < x)) / 10 / fs
+    return out
+
+
+def _tw_legend(case):
+    """twoway's legend of fixture *case*: ``(box left, box width, graph
+    width, graph height, [(text, start)], text size)``."""
+    row = _TRUTH[case]
+    W, H = row["viewbox"][2], row["viewbox"][3]
+    texts = [(e["text"], float(e["a"]["x"]), float(e["a"]["y"]),
+              float(e["a"]["style"].split("font-size:")[1].split("px")[0]))
+             for e in row["els"] if e["tag"] == "text"
+             and e["text"] in ("Mileage (mpg)", "Headroom (in.)",
+                               "Repair record 1978", "Price",
+                               "Turn circle (ft.)", "a" * 10, "a" * 12)]
+    y = texts[0][2]
+    [box] = [e["a"] for e in row["els"] if e["tag"] == "rect"
+             and "fill:none" not in e["a"].get("style", "")
+             and float(e["a"]["y"]) < y < float(e["a"]["y"])
+             + float(e["a"]["height"]) and float(e["a"]["width"]) < 0.995 * W]
+    return (float(box["x"]), float(box["width"]), W, H,
+            [(t, x) for t, x, _y, _f in texts], texts[0][3])
+
+
+class TestLegendFit:
+    """twoway keeps a legend above or below the plot inside the graph: it
+    lays the columns out by its own estimate of each text's width
+    (tw_width), and a legend wider than the graph less the graph region's
+    margin and 1.2 relative units (times scale()) a side is drawn that
+    wide, its columns moved together, each text drawn whole
+    (econ_long*, s2_long_scale, econ_a10, econ_a12).  dash sets the box's
+    width and the columns' shares by the Legend's own stylesheet tagged
+    ``dash_legend_fit`` (_dash_legend_fit); BokehJS would lay the columns
+    out at the drawn texts' widths and overflow the figure."""
+
+    def test_the_width_table(self):
+        got = _tw_widths()
+        assert len(got) == 92
+        for ch, w in got.items():
+            assert abs(w - dr._DASH_TW_CHAR_STEPS[ch]
+                       * dr._DASH_TW_CHAR_STEP) < 0.0015, (ch, w)
+        assert dr._dash_tw_text_em("") == 0
+        assert dr._dash_tw_text_em("ab\nM") == pytest.approx(
+            2 * 53 * dr._DASH_TW_CHAR_STEP)
+        # A character twoway's table was not read for: a digit's width.
+        assert dr._dash_tw_text_em("é") == pytest.approx(
+            dr._dash_tw_text_em("0"))
+
+    def test_the_estimate_is_the_columns_spacing(self):
+        """econ3 fits: its columns' spacings differ by the estimates'
+        difference of their texts (4.18 text sizes)."""
+        _x, _w, _W, _H, texts, fs = _tw_legend("econ3")
+        (t0, x0), (t1, x1), (_t2, x2) = texts
+        got = ((x1 - x0) - (x2 - x1)) / fs
+        want = dr._dash_tw_text_em(t0) - dr._dash_tw_text_em(t1)
+        assert abs(got - want) < 0.005, (got, want)
+
+    def test_the_limit(self):
+        """The box from each edge: the graph region's margin (medium,
+        zero, large) plus 1.2 units times scale(); s2color's legend,
+        centred under the plot, meets the limit on its right."""
+        M = dr._DASH_MARGIN_RS
+        for case, m, k in (("econ_long", M["medium"], 1.0),
+                           ("econ_long_m0", M["zero"], 1.0),
+                           ("econ_long_ml", M["large"], 1.0),
+                           ("econ_long_scale", M["medium"], 1.5)):
+            x, w, W, H, _t, _f = _tw_legend(case)
+            rs = min(W, H) / 100
+            want = m + dr._DASH_LEGEND_FIT_RS * k
+            assert abs(x / rs - want) < 0.01, case
+            assert abs((W - x - w) / rs - want) < 0.01, case
+        x, w, W, H, _t, _f = _tw_legend("s2_long_scale")
+        assert abs((W - x - w) / (min(W, H) / 100)
+                   - (M["medium"] + 1.5 * dr._DASH_LEGEND_FIT_RS)) < 0.01
+
+    def test_the_columns_move_together(self):
+        """econ_long: each column starts at the same share of its spacing
+        at the estimate (0.813): the starts moved in proportion."""
+        x, w, W, H, texts, fs = _tw_legend("econ_long")
+        (t0, x0), (t1, x1), (_t2, x2) = texts
+        _a, _b, _c, _d, ref, _f = _tw_legend("econ3")
+        # The fixed part of a column's spacing (key, gaps), from econ3.
+        fixed = (ref[1][1] - ref[0][1]) / fs - dr._dash_tw_text_em(ref[0][0])
+        s0 = (x1 - x0) / fs / (dr._dash_tw_text_em(t0) + fixed)
+        s1 = (x2 - x1) / fs / (dr._dash_tw_text_em(t1) + fixed)
+        assert abs(s0 - s1) < 0.002 and 0.8 < s0 < 0.82, (s0, s1)
+
+    def test_ten_fit_twelve_do_not(self):
+        x, w, W, H, _t, _f = _tw_legend("econ_a10")
+        lim = W - 2 * (dr._DASH_MARGIN_RS["medium"]
+                       + dr._DASH_LEGEND_FIT_RS) * min(W, H) / 100
+        assert w < lim - 5
+        x, w, W, H, _t, _f = _tw_legend("econ_a12")
+        assert abs(w - lim) < 0.05
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_the_fit_sheet(self, mode):
+        """The long-texted economist legend: the box twoway's width in
+        key text sizes (econ_long: 23.72), three columns' shares."""
+        import re
+        _x, w, _W, _H, _t, fs_tw = _tw_legend("econ_long")
+        lg, _n = _legend(mode, [_sc(), _sc("headroom"), _sc("rep78")],
+                         "cols(3)", scheme="economist")
+        css = _sheet(lg, "dash_legend_fit")
+        m = re.search(r"width:calc\(([0-9.e+]+)px \* var\(--dash-k, 1\)\)",
+                      css)
+        assert m, css
+        fs =dr.OptionTranslator.css_to_pt(lg.label_text_font_size) \
+            * dr.OptionTranslator.PX_PER_PT
+        assert abs(float(m.group(1)) / fs - w / fs_tw) < 0.05, (css, fs)
+        shares = re.findall(r"minmax\(0,([0-9.e+]+)fr\)", css)
+        assert len(shares) == 3 and all(float(v) > 0 for v in shares)
+        assert "box-sizing:border-box" in css
+        # Only numbers and fixed words reach the CSS.
+        assert "Mileage" not in css
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("plots, opt, scheme", [
+        ([_sc(), _sc("price"), _sc("turn")], "cols(3)", "economist"),
+        (_TWO, "", "s2color"),
+        ([_sc(), _sc("headroom"), _sc("rep78")], "cols(1)", "economist"),
+    ])
+    def test_no_sheet_when_it_fits(self, mode, plots, opt, scheme):
+        """econ3's texts fit (twoway's box 0.86 of the graph), as do a
+        two-key s2color legend and the long texts in one column."""
+        lg, _n = _legend(mode, plots, opt, scheme=scheme)
+        assert _sheet(lg, "dash_legend_fit") == ""
+
+
 class TestEndMarkersOnTheEnds:
     """PIC-11's documented difference, closed (WP-43 LT-21, batch 43.6):
     twoway centres rcapsym's, pccapsym's and dropline's end markers on

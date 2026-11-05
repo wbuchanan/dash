@@ -5173,6 +5173,11 @@ as {cmd:twoway} writes them; beside the legend's own {cmd:title()} or
 {cmd:subtitle()}, which {cmd:twoway} draws as well, they are named in
 the note, and so is a {cmd:caption()} beside a {cmd:note()} when either
 has more than one line.
+A legend above or below the plot that would be wider than the graph
+less its region's margin and a little more is drawn that wide, as
+{cmd:twoway} draws it: its columns are moved together in proportion to
+{cmd:twoway}'s estimate of each key text's width, each text drawn whole
+from its column's start.
 
 {pstd}
 {ul:Axis labels.}  {cmd:xlabel()} and {cmd:ylabel()} take Stata's own

@@ -414,6 +414,8 @@ FUNCTIONS = {
  '_dash_legend_note': 'test/test_legend_keys.py::TestNoteAndCaption::test_in_the_title_slot',
  '_dash_legend_key_boxes': 'test/test_legend_keys.py::TestKeyBoxes::test_marker_beside_a_line',
  '_dash_legend_grid_columns': 'test/test_legend_keys.py::TestKeyBoxes::test_column_shares_the_widest',
+ '_dash_legend_fit': 'test/test_legend_keys.py::TestLegendFit::test_the_fit_sheet',
+ '_dash_tw_text_em': 'test/test_legend_keys.py::TestLegendFit::test_the_width_table',
  '_dash_spec_value': 'test/test_legend_keys.py::TestKeyPainter::test_spec_value',
  '_dash_key_shape': 'test/test_legend_keys.py::TestKeyShapes::test_shape',
  '_dash_key_shape.<locals>.angle_of': 'test/test_legend_keys.py::TestKeyShapes::test_ends_carry_the_marker',
