@@ -421,6 +421,58 @@ def test_weighted_marker_key(mode):
     assert abs((it["ink"][2] - it["ink"][0]) / it["fs"] - 0.787) < 0.08, it
 
 
+#: Each series legend's box, its figure's canvas box and its key texts'
+#: boxes, per legend in page order.
+_FIT_JS = r"""
+<script>
+addEventListener('load', () => setTimeout(() => {
+  const out = [];
+  const R = (r) => [r.left, r.top, r.right, r.bottom];
+  const visit = (v) => { if (!v) return;
+    if (v.frame && v.renderer_views) {
+      for (const [m, rv] of v.renderer_views) {
+        if (m.type !== 'Legend' || !m.visible || !rv.grid_el) continue;
+        const texts = [...rv.grid_el.children].map(e => {
+          const rg = document.createRange();
+          rg.selectNodeContents(e.querySelector('.bk-label'));
+          return R(rg.getBoundingClientRect()); });
+        out.push({canvas: R(v.canvas_view.el.getBoundingClientRect()),
+                  box: R(rv.el.getBoundingClientRect()), texts});
+      } }
+    for (const c of (v.child_views || [])) visit(c); };
+  ((typeof Bokeh.index[Symbol.iterator] === 'function')
+    ? [...Bokeh.index] : Object.values(Bokeh.index)).forEach(visit);
+  parent.postMessage('DASHPROBE' + JSON.stringify({W: innerWidth, out}),
+                     '*');
+}, 3000));
+</script>"""
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+def test_economist_three_columns_fit(mode):
+    """The economist 3-column legend (econ3, twoway's key texts): twoway's
+    box is 0.86 of the graph's width, inside it; dash's stays inside its
+    figure with every text inside the box at 1400 px, at the scheme's
+    5.5-inch width (528 px) and at the 4-inch reference (384 px), where
+    an audit had seen its labels clipped."""
+    row = _TRUTH["econ3"]
+    box = [e["a"] for e in row["els"] if e["tag"] == "rect"
+           and float(e["a"]["y"]) < row["plot"]["bottom"]
+           and float(e["a"]["width"]) < 1500][0]
+    assert 0.8 < float(box["width"]) / row["viewbox"][2] < 0.9
+    spec = bk._spec([bk._graph(
+        "g0", [_sc(), _sc("headroom"), _sc("rep78")],
+        {"legend": 'cols(3) label(2 "Price") label(3 "Turn circle (ft.)")'},
+        title=False)], scheme="economist")
+    got = kb._measure(mode, spec, _FIT_JS, (1400, 528, 384))
+    for w, g in got.items():
+        [leg] = g["out"]
+        cv, bx = leg["canvas"], leg["box"]
+        assert cv[0] - 0.5 <= bx[0] and bx[2] <= cv[2] + 0.5, (w, leg)
+        assert all(bx[0] - 0.5 <= t[0] and t[2] <= bx[2] + 0.5
+                   for t in leg["texts"]), (w, leg)
+
+
 def test_emptied_layer_draws_no_key():
     """Saved: after the dropdown move foreign == 0, which leaves the
     layer `scatter mpg weight if foreign == 1' no row, its painted key is
