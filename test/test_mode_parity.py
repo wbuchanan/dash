@@ -1991,7 +1991,9 @@ CORPUS = [
           # in silence); stacked and colgap() are the words still named.
           # Flipped: stacked is drawn (WP-43 LT-21); symplacement() is
           # the word still named.
-          # Flipped (WP-43 LT-21): symplacement() is drawn (test_legend_keys.py::TestSymplacement), so orientation() is the word still named.
+          # Flipped (WP-43 LT-21): symplacement() is drawn
+          # (test_legend_keys.py::TestSymplacement), so orientation() is
+          # the word still named.
           {"legend": "position(6) orientation(vertical) colgap(1)"}),
     _case("xscale(range()) and yscale with an unimplemented sub-option",
           [_sc()], None, {"xscale": "range(1500 4500)",
@@ -3340,7 +3342,9 @@ _MUST_WARN = {
         "dash: title() sub-option(s) not implemented and ignored: astextbox",
     # Flipped: WP-31 D4b draws colgap(); stacked is still named.
     # Flipped: WP-43 LT-21 draws stacked; symplacement() is still named.
-    # Flipped (WP-43 LT-21): symplacement() is drawn (test_legend_keys.py::TestSymplacement); orientation() is still named.
+    # Flipped (WP-43 LT-21): symplacement() is drawn
+    # (test_legend_keys.py::TestSymplacement); orientation() is still
+    # named.
     "legend with an unimplemented sub-option":
         "dash: legend() sub-option(s) not implemented and ignored: "
         "orientation(vertical)",
@@ -4573,6 +4577,16 @@ MOVE_CORPUS.append(_move_case(
 MOVE_CORPUS.append(_move_case(
     "TR-13a: contour outlines, dropdown to Foreign", _MOVES[0],
     [plot_for("contour", {"outlines": "outlines"})]))
+
+# WP-43 PIC-11: a layer keyed in twoway's shape beside a scatter (the
+# legend's key proxies, their painter args and the keybox stylesheet),
+# after a move.
+MOVE_CORPUS.extend(
+    _move_case("%s beside a scatter, its key in twoway's shape, %s"
+               % (t, _MOVES[0][0]), _MOVES[0],
+               [plot_for(t), plot_for("scatter")])
+    for t in ("rcap", "rcapsym", "pccapsym", "dropline", "pcarrow",
+              "pcbarrow", "rarea"))
 
 _MOVE_CORPUS_NAMES = frozenset(p.values[0] for p in MOVE_CORPUS)
 

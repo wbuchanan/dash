@@ -525,6 +525,15 @@ def _shp(t, **o):
                 if isinstance(v, str) else v) for k, v in p.items()}
 
 
+#: Each series legend's keys' inked pixel counts, painted once more.
+_COUNT_JS = _MOVE_JS.split("const before = read();")[0] + r"""
+  find().forEach((rv) => rv._paint_glyphs());
+  setTimeout(() => parent.postMessage('DASHPROBE' + JSON.stringify(
+    {W: innerWidth, counts: read()}), '*'), 300);
+}, 3000));
+</script>"""
+
+
 @pytest.mark.parametrize("mode", ("saved", "served"))
 class TestKeyShapesInChrome:
 
@@ -555,11 +564,38 @@ class TestKeyShapesInChrome:
 
     def test_emptied_rcap_draws_no_key(self, mode):
         """A move that leaves an rcap layer no row blanks its painted key;
-        the other layer's key stays."""
-        if mode == "served":
-            pytest.skip("the served redraw is test_legend_keys.py's "
-                        "TestTheShapeScript::test_empty_view_draws_nothing")
+        the other layer's key stays.  Served, the app's own callback makes
+        the move in Python (test_mode_parity.py's _fire) and Chrome draws
+        the document it leaves."""
         lay = dict(_shp("rcap"), if_expr="foreign == 1")
+        if mode == "served":
+            from bokeh.embed import file_html
+            from bokeh.models import Select
+            from bokeh.resources import INLINE
+            from test_mode_parity import _fire
+            spec = bk._spec([bk._graph("g0", [lay, _sc("headroom")], {},
+                                       title=False)], scheme="s2color",
+                            filt="foreign")
+            counts = []
+            for move in (False, True):
+                _r, _n, doc = bk._build("served", spec)
+                if move:
+                    [sel] = [m for m in doc.models if isinstance(m, Select)]
+                    raw = [v for v, lab in sel.options if lab == "Domestic"]
+                    _fire(sel, raw[0])
+                mp = pytest.MonkeyPatch()
+                mp.setattr(responsive_probe, "PROBE_JS", _COUNT_JS)
+                try:
+                    got = responsive_probe.measure_many(
+                        file_html(doc, INLINE, "served"), (1400,))
+                finally:
+                    mp.undo()
+                counts.append(got[1400])
+            [before], [after] = counts[0]["counts"], counts[1]["counts"]
+            assert before[0] > 30 and before[1] > 30, counts
+            assert after[0] <= 0.05 * before[0], counts
+            assert after[1] >= 0.9 * before[1], counts
+            return
         spec = bk._spec([bk._graph("g0", [lay, _sc("headroom")], {},
                                    title=False)], scheme="s2color",
                         filt="foreign")

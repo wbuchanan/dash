@@ -1372,6 +1372,88 @@ program define _q4304_reg
     python: import __main__ as _q4304_m; _q4304_m._q4304_read("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
 end
 
+// _q4304_mk <dir>: the first key of the series legend a registered
+// graph draws, saved and served (_q4302_models): 1 in q4304_ps and
+// q4304_pv when it is a painted key proxy (__dash_keyproxy), and its
+// marker's width (size plus line width) over the key text's px size in
+// q4304_ws and q4304_wv.  _q4304_twmk <svg>: twoway's first legend key's
+// filled circle's width over its key text's size, into q4304_tww.
+python:
+def _q4304_mk(sp, dp, app):
+    import dash_render as dr
+    from sfi import Macro
+    from bokeh.models import Legend, Plot
+    for (models, _msgs), sfx in zip(_q4302_models(sp, dp, app), ("s", "v")):
+        painted, width = "0", "."
+        for p in models:
+            if not isinstance(p, Plot) or width != ".":
+                continue
+            for side in ("center", "above", "below", "left", "right"):
+                for lg in getattr(p, side):
+                    if (not isinstance(lg, Legend) or width != "."
+                            or str(lg.name or "")
+                            == dr._COLORVAR_LEGEND_NAME or not lg.items):
+                        continue
+                    r = lg.items[0].renderers[0]
+                    T = dr.OptionTranslator
+                    fs = T.css_to_pt(lg.label_text_font_size) * T.PX_PER_PT
+                    painted = "1" if str(r.name) == "__dash_keyproxy" else "0"
+                    g = r.glyph
+                    try:
+                        width = repr((float(g.size) + float(g.line_width))
+                                     / fs)
+                    except (TypeError, ValueError):
+                        width = "."
+        Macro.setGlobal("q4304_p" + sfx, painted)
+        Macro.setGlobal("q4304_w" + sfx, width)
+
+
+def _q4304_twmk(path):
+    import re
+    from sfi import Macro
+    with open(path, encoding="utf-8") as fh:
+        src = fh.read()
+    att = lambda s: dict(re.findall(r'([a-zA-Z0-9_:-]+)="([^"]*)"', s))
+    vb = [float(v) for v in re.search(r'viewBox="([-0-9. ]+)"',
+                                      src).group(1).split()]
+    frames = [att(a) for a in re.findall(r"<rect\b([^>]*)/?>", src)]
+    frames = [a for a in frames if "stroke:" in a.get("style", "")
+              and float(a.get("width", 0)) * float(a.get("height", 0))
+              < vb[2] * vb[3] / 4]
+    every = [att(a) for a, _b in re.findall(
+        r"<text\b([^>]*)>([^<]*)</text>", src)]
+    best, texts = None, []
+    for f in frames:
+        fx, fy = float(f["x"]), float(f["y"])
+        fw, fhh = float(f["width"]), float(f["height"])
+        inside = [a for a in every if fx <= float(a["x"]) <= fx + fw
+                  and fy <= float(a["y"]) <= fy + fhh]
+        if len(inside) > len(texts):
+            best, texts = f, inside
+    out = "."
+    if best is not None and texts:
+        fs = float(texts[0]["style"].split("font-size:")[1].split("px")[0])
+        fx, fy = float(best["x"]), float(best["y"])
+        dots = [att(a) for a in re.findall(r"<circle\b([^>]*)/?>", src)]
+        dots = [a for a in dots if "fill:none" not in a.get("style", "")
+                and fx <= float(a["cx"]) <= fx + float(best["width"])
+                and fy <= float(a["cy"]) <= fy + float(best["height"])]
+        dots.sort(key=lambda a: float(a["cx"]))
+        if dots:
+            out = repr(2 * float(dots[0]["r"]) / fs)
+    Macro.setGlobal("q4304_tww", out)
+end
+
+capture program drop _q4304_regmk
+program define _q4304_regmk
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4304_m; _q4304_m._q4304_mk("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
 * ==== S04 LT-21: textfirst and stacked ====
 local only : env WP43_ONLY
 if inlist("`only'", "", "S04") & `: list posof "S04" in w43_run' {
@@ -1409,6 +1491,31 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w43_run' {
     }
     _w43_done Q4304-1 "legend(textfirst), legend(stacked) and both drawn in twoway's key order, saved and served"
 
+    // ------------------------------------------------------------
+    // Q4304-2: a marker key at the plot's marker size -- live twoway
+    // draws the first key's filled circle 0.527 of its key text's size
+    // across (s2color), 0.787 under msize(large), beside a scatter or a
+    // line key; dash paints the key through a key proxy at the same
+    // share, saved and served.
+    // ------------------------------------------------------------
+    local k2 0
+    foreach o in "(scatter mpg weight) (scatter price weight)" "(scatter mpg weight, msize(large)) (line price weight, sort)" {
+        local ++k2
+        capture noisily twoway `o', scheme(s2color) name(q04m, replace)
+        _w43_expect Q4304-2 "(_rc == 0)" "twoway `o' rc `=_rc'"
+        capture erase "`q04d'/q04m`k2'.svg"
+        cert_svg_export, name(q04m) file("`q04d'/q04m`k2'.svg")
+        python: import __main__ as _q4304_m; _q4304_m._q4304_twmk("`q04d'/q04m`k2'.svg")
+        _w43_expect Q4304-2 `"("${q4304_tww}" != ".")"' "no key marker read from twoway's plot `k2'"
+        _q4304_regmk "`q04d'" `o', scheme(s2color) name(q04e)
+        foreach m in s v {
+            _w43_expect Q4304-2 "(${q4304_p`m'} == 1)" "plot `k2' `m': the first key is not a painted proxy"
+            _w43_expect Q4304-2 "(abs(${q4304_w`m'} - ${q4304_tww}) < 0.01)" "plot `k2' `m': key ${q4304_w`m'} vs twoway ${q4304_tww}"
+        }
+        capture erase "`q04d'/q04m`k2'.svg"
+    }
+    _w43_done Q4304-2 "a marker key at the plot's marker size beside live twoway, saved and served"
+
     forvalues j = 1/`k' {
         capture erase "`q04d'/q04t`j'.svg"
     }
@@ -1416,7 +1523,7 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w43_run' {
         capture erase "`q04d'/`f'"
     }
     capture rmdir "`q04d'"
-    macro drop q4304_cs q4304_cv q4304_ks q4304_kv q4304_ns q4304_nv q4304_tw q4304_anchor
+    macro drop q4304_cs q4304_cv q4304_ks q4304_kv q4304_ns q4304_nv q4304_tw q4304_anchor q4304_ps q4304_pv q4304_ws q4304_wv q4304_tww
     capture graph drop _all
     dash clear
     display as text "S04 end " c(current_date) " " c(current_time)
