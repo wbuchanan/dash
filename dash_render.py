@@ -61718,7 +61718,13 @@ def _dash_by_compass_location(clock, side):
 #: titles, legend, key and text rows -- is as tall as its width over the
 #: graph's width/height ratio *r*, the *nr* panel rows sharing what the
 #: other rows leave.  Stacked into one column, the panels take back their
-#: own proportion (*base*).
+#: own proportion (*base*).  Each panel is held half a pixel past a whole
+#: px tall (BUGS.md "Plot regions in one by() row can differ by 1 px in
+#: height; twoway draws them equal"): BokehJS floors a panel's laid-out
+#: height to whole px, and the browser splits the columns' width in
+#: 1/64 px, so a height on a whole px floored to two values in one row
+#: (at 1400 px, by(rep78)'s 419.547 and 419.562 px columns: 336.98 and
+#: 337.00 px, frames 265 and 266 px tall).
 _DASH_BY_FIT_JS = """
 const vs = [];
 for (const p of panels) {
@@ -61742,16 +61748,19 @@ if (vs.length > 1 && lefts.size === 1 && ncols > 1) {
   });
   return;
 }
+// A panel's height half way between two whole px, so the floor BokehJS
+// takes of it is the same for every panel of that height.
+const mid = (h) => Math.floor(h) + 0.5;
 if (frame_ar != null && frame_ar > 0) {
-  for (const [p, v] of vs) {
-    if (v.frame == null || v.frame.bbox == null || v.bbox == null) { continue; }
+  vs.forEach(([p, v], i) => {
+    if (v.frame == null || v.frame.bbox == null || v.bbox == null) { return; }
     const fw = v.frame.bbox.width, fh = v.frame.bbox.height;
-    if (!(fw > 0) || !(fh > 0) || !(v.bbox.width > 0)) { continue; }
-    const ar = v.bbox.width / (fw * frame_ar + (v.bbox.height - fh));
-    if (ar > 0 && !(Math.abs((p.aspect_ratio || 0) - ar) < 0.002)) {
-      p.aspect_ratio = ar;
-    }
-  }
+    if (!(fw > 0) || !(fh > 0) || !(rects[i].width > 0)) { return; }
+    const h = mid(fw * frame_ar + (v.bbox.height - fh));
+    if (Math.abs(rects[i].height - h) < 0.05) { return; }
+    const ar = rects[i].width / h;
+    if (ar > 0 && p.aspect_ratio !== ar) { p.aspect_ratio = ar; }
+  });
   return;
 }
 const ph = rects[0].height, pw = rects[0].width;
@@ -61765,9 +61774,14 @@ if (fx_px != null) {
 }
 const want = fy_px != null ? fy_px : basis / ratio;
 const ph2 = Math.max(40, ph + (want - g.height) / Math.max(1, nr));
-const ar = pw / ph2;
+// Kept while every panel is half a pixel past one whole px and the fit
+// wants less than 0.75 px more or less (the 0.002 in proportion it kept).
+const held = mid(ph);
+if (Math.abs(ph2 - ph) < 0.75
+    && rects.every((q) => Math.abs(q.height - held) < 0.25)) { return; }
+const ar = pw / mid(ph2);
 for (const [p, v] of vs) {
-  if (!(Math.abs((p.aspect_ratio || 0) - ar) < 0.002)) { p.aspect_ratio = ar; }
+  if (p.aspect_ratio !== ar) { p.aspect_ratio = ar; }
 }
 """
 

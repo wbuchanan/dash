@@ -834,11 +834,15 @@ def _key_row(st, c):
     fractional and Bokeh's whole-pixel frames in one row can end 1 px
     apart (both Bokeh versions; which panel varies with the version), where
     the reader took the row as one exact value: the frames must agree to
-    1 px and their mean is the row."""
+    1 px and their mean is the row.  Flipped back (BUGS.md "Plot regions
+    in one by() row can differ by 1 px in height; twoway draws them
+    equal"): each panel is held half a pixel past a whole px tall
+    (_DASH_BY_FIT_JS), so a row's frames agree exactly again under Bokeh
+    3.8 and 3.9."""
     rows = [r for r in st["prows"] if c[1] - 1 <= r[0] <= c[3]]
     assert rows, st
     for i in (0, 1):
-        assert max(r[i] for r in rows) - min(r[i] for r in rows) <= 1.0, st
+        assert max(r[i] for r in rows) - min(r[i] for r in rows) <= 0.01, st
     return tuple(sum(r[i] for r in rows) / len(rows) for i in (0, 1))
 
 

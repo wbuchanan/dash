@@ -1013,6 +1013,7 @@ and now matches Stata.
 
 ### Fixed in WP-43
 
+- The plot regions in one by() row are one height, and those in one column one width, as twoway lays them out; a panel's whole-pixel frame could end 1 px lower than its neighbours' at some widths (WP-43)
 - The legend keys of rcap, rcapsym, pccapsym, dropline, pcarrow, pcbarrow and rarea are twoway's shapes: a capped line, a line with its marker on each end (dropline's on the right), a line with its arrowhead, a filled outlined rect; each layer's glyphs drew their own pictures over one another (WP-43, PIC-11)
 - A legend's marker keys are drawn at the plot's marker size and msangle(), and a legend of markers only is as wide as its widest marker, as twoway draws them; the browser drew every marker at 0.4 of a symxsize()-wide key box and at no angle; a weighted layer's key is its marker at the layer's own size, whatever the weights, as twoway draws it (WP-43, LT-21)
 - rcapsym's, pccapsym's and dropline's legend end markers are centred on the key's ends, as twoway draws them; they were drawn a marker's radius inside the key (WP-43, PIC-11)
