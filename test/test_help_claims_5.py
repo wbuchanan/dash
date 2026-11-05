@@ -937,8 +937,10 @@ class TestTheSubOptionSplitterReadsStataQuotes:
         # stack, which twoway's legend_g draws and Bokeh cannot.
         # Flipped (WP-43 LT-21): stacked is drawn now (CSS on the Legend),
         # so the word after the apostrophe is symplacement(), still named.
+        # Flipped (WP-43 LT-21): symplacement() is drawn (test_legend_keys.py::TestSymplacement), so the word is orientation().
         assert dr._dash_legend_unsupported(
-            "label(1 Bob's) symplacement(e)") == ["symplacement(e)"]
+            "label(1 Bob's) orientation(vertical)") == [
+                "orientation(vertical)"]
 
     def test_in_both_modes(self):
         """Flipped (WP-30 P1.15a): title(Bob's cars) was named as not

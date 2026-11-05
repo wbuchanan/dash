@@ -595,6 +595,100 @@ class TestKeyBoxes:
             ".bk-grid .bk-item:nth-child", "").replace(".bk-", "")), css
 
 
+def _glyph_move(legend, n):
+    """``(x %, y %)`` of item *n*'s (1-based) canvas move, 0 for none."""
+    t = _box_rules(legend).get(n, {}).get("glyph", {}).get("translate")
+    if not t:
+        return (0.0, 0.0)
+    x, y = t.split()
+    return (float(x[:-1]), float(y[:-1]))
+
+
+#: symplacement()'s compass values: twoway's move of the keys in their row
+#: (legend_keys_truth.json symp_*: up, down or none).
+_SYMP = {"n": -1, "ne": -1, "nw": -1, "12": -1, "top": -1, "NE": -1,
+         "sw": 1, "s": 1, "se": 1, "6": 1, "bottom": 1,
+         "left": 0, "c": 0, "e": 0, "w": 0, "right": 0, "bogus": 0}
+
+
+def _symp_case(v):
+    return "symp_" + v if v in ("left", "n", "sw") else "symp_x" + v
+
+
+class TestSymplacement:
+    """LT-21 residual: symplacement() places each key in its row and its
+    column (legend_keys_truth.json symp_*, cols1_symp_*): a north value
+    puts the key's top -- a marker's size, a line's 44.06 units -- at the
+    top of a box max(symysize(), the text size) high centred on the text
+    (27.97 units up at s2color's sizes; symysize(6) 64.4; size(large)
+    47.9; scale(1.5) 41.9), a south value its bottom at the box's bottom;
+    in a column wider than the key, west and east put it at the column's
+    left or right (cols1_symp_w, _e); a name twoway does not know is
+    noted and drawn as the default."""
+
+    def test_fixture(self):
+        base = _key_marks("cell_ctl")
+        for v, sign in _SYMP.items():
+            got = _key_marks(_symp_case(v))
+            for m, b in zip(got, base):
+                assert abs(m[2] - b[2] - sign * 27.965) < 0.05, (v, m, b)
+            assert [m[:2] for m in got] == [b[:2] for b in base], v
+        assert "compass2dir" in _TRUTH["symp_xbogus"]["lines"][0]
+        # The box is max(symysize(), the text size) high: the marker's
+        # top (r 22.03) at its top.
+        t = _texts("symp_n_symy")["Price"][1] - 0.35 * 99.99
+        assert abs(_key_marks("symp_n_symy")[0][2] - (t - 172.8 / 2 + 22.03)) \
+            < 0.1
+        t = _texts("symp_n_size")["Price"][1] - 0.35 * 139.96
+        assert abs(_key_marks("symp_n_size")[0][2] - (t - 139.96 / 2 + 22.03)) \
+            < 0.1
+        col, w, e = (_key_marks(c) for c in ("cols1", "cols1_symp_w",
+                                             "cols1_symp_e"))
+        line = [m for m in col if 300 < m[1] - m[0] < 1000][0]
+        dots_w = [m for m in w if m[1] - m[0] < 100]
+        dots_e = [m for m in e if m[1] - m[0] < 100]
+        assert all(abs((d[0] + d[1]) / 2 - (line[0] + 22.03)) < 0.1
+                   for d in dots_w)
+        assert all(abs((d[0] + d[1]) / 2 - (line[1] - 22.03)) < 0.2
+                   for d in dots_e)
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("v", ["n", "sw", "c", "left", "12", "NE"])
+    def test_row_move(self, mode, v):
+        """Each key moves up or down by its share of its canvas: half the
+        box max(symysize(), text size) less its own half height."""
+        lg, notes = _legend(mode, [_sc(), bk._p("line", y="headroom")],
+                            "symplacement(%s)" % v)
+        assert not any("symplacement" in str(n) for n in notes), notes
+        fs = dr.OptionTranslator.css_to_pt(lg.label_text_font_size) * 4 / 3
+        symy = 3.4722 * 2.88 * 4 / 3
+        size = lg.items[0].renderers[0].glyph.size
+        line_half = 22.03 / 28.8 * 2.88 * 4 / 3
+        for n, half in ((1, size / 2), (2, line_half)):
+            want = _SYMP[v] * (max(symy, fs) / 2 - half) / lg.glyph_height
+            assert abs(_glyph_move(lg, n)[1] - 100 * want) < 1.5, (v, n)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_column_w_and_e(self, mode):
+        """cols(1): west puts the marker at the line's column's left, east
+        at its right; the line does not move."""
+        plots = [_sc(), bk._p("line", y="headroom"), _sc("turn")]
+        for v, sign in (("w", -1), ("e", 1), ("ne", 1)):
+            lg, _n = _legend(mode, plots, "cols(1) symplacement(%s)" % v)
+            size = lg.items[0].renderers[0].glyph.size
+            want = sign * (lg.glyph_width - size) / 2 / lg.glyph_width
+            assert abs(_glyph_move(lg, 1)[0] - 100 * want) < 0.5, v
+            assert _glyph_move(lg, 2)[0] == 0.0, v
+
+    def test_bogus_is_noted(self):
+        lg, notes = _legend("saved", [_sc(), bk._p("line", y="headroom")],
+                            "symplacement(bogus)")
+        assert any("bogus" in str(n) and "compass" in str(n)
+                   for n in notes), notes
+        assert _glyph_move(lg, 1) == _glyph_move(
+            _legend("saved", [_sc(), bk._p("line", y="headroom")], "")[0], 1)
+
+
 class TestKeyPainter:
     """The painted key's proxy is 42-02's form: legend-only, on its
     layer's own source and view filter, out of every HoverTool and

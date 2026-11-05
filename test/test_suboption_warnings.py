@@ -52,19 +52,20 @@ SUBOPTIONS = [
     # textfirst) beside the honoured ones.
     # Flipped (WP-43 LT-21): stacked and textfirst are drawn now, so these
     # two rows name symplacement(), which dash still does not draw.
-    ("legend span stack holes", {"legend": "span symplacement(n) holes(1)"
-                                           " position(6)"},
+    # Flipped (WP-43 LT-21): symplacement() is drawn (test_legend_keys.py::TestSymplacement), so they name orientation(), which dash does not draw.
+    ("legend span stack holes", {"legend": "span orientation(vertical)"
+                                           " holes(1) position(6)"},
      [plot_for("scatter"), plot_for("lfit")], "legend",
-     ["symplacement(n)"], ["position", "span", "holes"]),
+     ["orientation(vertical)"], ["position", "span", "holes"]),
     ("legend keygap symxsize textwidth bmargin",
      {"legend": "keygap(2) symxsize(3) textwidth(20) bmargin(small) cols(2)"
-                " colgap(2) symplacement(e)"},
+                " colgap(2) orientation(vertical)"},
      [plot_for("scatter"), plot_for("lfit")], "legend",
      # Flipped (WP-31 D4b): colgap() is drawn, so it is honoured.
-     ["symplacement(e)"],
+     ["orientation(vertical)"],
      ["cols", "keygap", "symxsize", "textwidth", "bmargin", "colgap"]),
-    ("legend colfirst", {"legend": "colfirst symplacement(n) on"}, None,
-     "legend", ["symplacement(n)"], ["on", "colfirst"]),
+    ("legend colfirst", {"legend": "colfirst orientation(vertical) on"},
+     None, "legend", ["orientation(vertical)"], ["on", "colfirst"]),
     # Flipped (WP-30 P1.18a): labcolor(), tlength(), noline, titlegap()
     # and off are drawn as twoway draws them, so each row names a word
     # dash still does not draw (labgap, outergap, extend).

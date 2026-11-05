@@ -5159,13 +5159,16 @@ key, the texts of a column ending one key gap before its keys, and
 {cmd:stacked} puts the text under its key, both at the left of the
 column ({cmd:textfirst stacked} the text above it), as {cmd:twoway} draws
 them; {cmd:notextfirst} and {cmd:nostacked} undo them.
-{cmd:symplacement()} and the legend's own
-{cmd:note()} and {cmd:caption()} are named in the note: a {cmd:dash}
-legend centres each key in its row, with nothing under the keys, so
-{cmd:legend(symplacement(n))}, which raises the symbol 28 of the graph's
-1,440 SVG units in its key, is drawn as the default, and the legend's
-{cmd:note()} and {cmd:caption()}, which {cmd:twoway} writes under the
-keys inside the box, are not drawn.
+{cmd:symplacement()} places each key as {cmd:twoway} does: a north
+value ({cmd:n}, {cmd:ne}, {cmd:nw}, {cmd:12}, {cmd:top}, ...) puts the
+key's top at the top of a box as high as {cmd:symysize()} or the key
+text, whichever is larger, centred on the text, a south value its
+bottom at the box's bottom, and {cmd:w} or {cmd:e} puts a key narrower
+than its column at the column's left or right; a name {cmd:twoway}
+does not know draws the default, with a note.
+The legend's own {cmd:note()} and {cmd:caption()} are named in the
+note: a {cmd:dash} legend writes nothing under the keys, where
+{cmd:twoway} writes them inside the box.
 
 {pstd}
 {ul:Axis labels.}  {cmd:xlabel()} and {cmd:ylabel()} take Stata's own

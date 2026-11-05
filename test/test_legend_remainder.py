@@ -124,8 +124,8 @@ class TestStillNamed:
 
     # Flipped: stacked is drawn as twoway draws it (WP-43 LT-21,
     # test_legend_keys.py::TestKeyOrder).
-    @pytest.mark.parametrize("opt", ["symplacement(n)",
-                                     'note("Nt")', 'caption("Cap")'])
+    # Flipped (WP-43 LT-21): symplacement() is drawn (test_legend_keys.py::TestSymplacement).
+    @pytest.mark.parametrize("opt", ['note("Nt")', 'caption("Cap")'])
     def test_named(self, opt):
         _, msgs = _legend("saved", opt)
         word = opt.split("(")[0]

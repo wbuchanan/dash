@@ -41971,7 +41971,8 @@ def _dash_legend_grid_columns(legend, n):
     return cols
 
 
-def _dash_legend_key_boxes(legend, words, infos=None, symx=None):
+def _dash_legend_key_boxes(legend, words, infos=None, symx=None,
+                           place=None, symy=None):
     """Each key in twoway's key column (WP-43 LT-21, ruling D69): twoway's
     key column is as wide as the widest key in it -- a marker key its
     marker's size (the outline's centre line; the outline overhangs), any
@@ -41988,8 +41989,16 @@ def _dash_legend_key_boxes(legend, words, infos=None, symx=None):
     told the box's share (``kw``), and a canvas BokehJS draws across
     (a line, an area) is clipped to its box.  *infos* are the items' keys
     (``_dash_key_info``, by item), else the legend's own; *symx* the
-    key box's width in px (symxsize()), else glyph_width.  Only numbers
-    reach the CSS.  Records the inputs for by()'s cell
+    key box's width in px (symxsize()), else glyph_width.
+    symplacement() (*place*, a full compass name, ``_dash_compass_dir``)
+    places each key in its row and its column (legend_keys_truth.json
+    symp_*, cols1_symp_*): a north value puts the key's top at the top of
+    a box max(symysize() (*symy*, px), the key text's size) high centred
+    on the text, a south value its bottom at the box's bottom -- a marker
+    key is its size high, any other key twoway's 44.06 units
+    (``_DASH_KEY_SYMBOL_HALF_RS``) -- moved in % of the canvas's height;
+    west and east put a key narrower than its column at the column's left
+    or right.  Only numbers reach the CSS.  Records the inputs for by()'s cell
     (``_dash_key_boxes``); returns the CSS ('' for none)."""
     from bokeh.models import InlineStyleSheet
     T = OptionTranslator
@@ -42025,17 +42034,32 @@ def _dash_legend_key_boxes(legend, words, infos=None, symx=None):
         for c, b in zip(cols, boxes):
             if b is not None:
                 width[c] = max(width.get(c, 0.0), b)
+        pl = str(place or "")
+        hx = (-1 if pl in ("west", "nwest", "swest")
+              else 1 if pl in ("east", "neast", "seast") else 0)
+        vy = (-1 if pl in ("north", "nwest", "neast")
+              else 1 if pl in ("south", "swest", "seast") else 0)
+        gh = legend.glyph_height
+        gh = float(gh) if isinstance(gh, int) and gh > 0 else 0.0
+        row = max(float(symy or 0.0), fs)
+        half_sym = (_DASH_KEY_SYMBOL_HALF_RS * T.PT_PER_RS * T.PX_PER_PT)
         for i, (f, b, c) in enumerate(zip(infos, boxes, cols)):
             if f is None:
                 continue
             wc = width.get(c, b)
             d = G - wc
             tx = (d / 2 if first and not stacked else -d / 2)
+            tx += hx * (wc - b) / 2
+            ty = 0.0
+            if vy and gh > 0:
+                half = b / 2 if f[0] == "marker" else half_sym
+                ty = vy * max(0.0, row / 2 - half)
             glyph = []
-            # Percentages of the canvas's own width.
-            if abs(tx) > 0.05:
-                glyph.append("translate:%.4g%% 0%%" % max(-500.0, min(
-                    500.0, 100.0 * tx / G)))
+            # Percentages of the canvas's own width and height.
+            if abs(tx) > 0.05 or abs(ty) > 0.05:
+                glyph.append("translate:%.4g%% %.4g%%" % (
+                    max(-500.0, min(500.0, 100.0 * tx / G)),
+                    max(-500.0, min(500.0, 100.0 * ty / gh)) if gh else 0))
             if f[0] == "other" and G - b > 0.5:
                 glyph.append("clip-path:inset(0 %.4g%%)" % min(
                     50.0, 100.0 * (G - b) / 2 / G))
@@ -42059,8 +42083,17 @@ def _dash_legend_key_boxes(legend, words, infos=None, symx=None):
         [InlineStyleSheet(css=css, tags=["dash_legend_keybox"])]
         if css else [])
     legend._dash_key_boxes = (infos, sorted(set(words) & {
-        "textfirst", "notextfirst", "stacked", "nostacked"}), rec_symx)
+        "textfirst", "notextfirst", "stacked", "nostacked"}), rec_symx,
+                              place, symy)
     return css
+
+
+#: Half the height twoway gives a key that is not a marker when
+#: symplacement() puts it at its box's top or bottom, in relative units
+#: (legend_keys_truth.json symp_n, symp_n_symy, symp_n_size: a line key's
+#: centre 22.03 of 28.8 SVG units per unit from the box's edge, whatever
+#: symysize() or the text size; scale(1.5) 1.5 times).
+_DASH_KEY_SYMBOL_HALF_RS = 22.03 / 28.8
 
 
 #: alignment() of the key texts -> how far twoway moves each text, in its
@@ -42937,7 +42970,18 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                             key=key)
         # WP-43 LT-21: textfirst and stacked; each key in its column.
         _dash_legend_key_order(legend, _words)
-        _dash_legend_key_boxes(legend, _words)
+        # symplacement() (WP-43 LT-21): a compass name twoway reads, else
+        # its note and the default.
+        _sp = _dash_legend_arg(_calls, ("symplacement",))
+        _spl = _dash_compass_dir(_sp) if _sp else None
+        if _sp and _spl is None:
+            _dash_style_note(
+                "legend(%s)" % next((t for n, _a, t in _calls
+                                     if n == "symplacement"),
+                                    "symplacement"), _sp,
+                "compass direction", "the default")
+        _dash_legend_key_boxes(legend, _words, place=_spl,
+                               symy=_geom["symysize"])
 
     # 7c. span (WP-32): legend(span), else the scheme's `yesno
     #     legend_span' unless legend(nospan) undoes it; span beside
@@ -58939,8 +58983,9 @@ _DASH_LEGEND_SUBOPTS = frozenset({
     "fcolor", "bfcolor", "lcolor", "lwidth", "lpattern",
     # WP-43 LT-6: the layout sub-options (_dash_legend_layout).
     "style", "width", "height", "xoffset", "yoffset", "showindex",
-    # WP-43 LT-21: textfirst and stacked (_dash_legend_key_order).
-    "textfirst", "notextfirst", "stacked", "nostacked"})
+    # WP-43 LT-21: textfirst and stacked (_dash_legend_key_order),
+    # symplacement() (_dash_legend_key_boxes).
+    "textfirst", "notextfirst", "stacked", "nostacked", "symplacement"})
 
 #: legend(label(# text)): the key's number, then its text, read by
 #: _textbox_lines.  The number is bounded so no label can make int() read
@@ -61747,7 +61792,7 @@ def _dash_by_legend_cell(scheme, name, side, legend, items, tag,
         if legend is not None else None
     if _kb and len(_kb[0]) == len(items):
         _dash_legend_key_boxes(leg, set(_kb[1]), [_kb[0][i] for i in kept],
-                               symx=_kb[2])
+                               symx=_kb[2], place=_kb[3], symy=_kb[4])
     facing = {"right": "left", "left": "right", "above": "below",
               "below": "above"}[side]
     cell.add_layout(leg, facing)
@@ -76076,6 +76121,7 @@ class ServerAppBuilder:
                       "_DASH_KEY_VIEW_TYPE",
                       # WP-43 LT-21: the key painter.
                       "_DASH_KEY_PAINT_JS", "_DASH_KEY_PAINT_MARKERS",
+                      "_DASH_KEY_SYMBOL_HALF_RS",
                       # WP-43 PIC-11: twoway's key shapes.
                       "_DASH_KEY_SHAPES", "_DASH_KEY_PROPS",
                       "_DASH_HIST_YTITLES",

@@ -284,6 +284,42 @@ class TestKeyBoxesInChrome:
         assert abs(got - tw) < 0.12, (got, tw, dot)
 
 
+def _ink_y(it):
+    """An item's drawn pixels' centre below its text's centre."""
+    ink, cv = it["ink"], it["canvas"]
+    return cv[1] + (ink[1] + ink[3]) / 2 - (it["text"][1] + it["text"][3]) / 2
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestSymplacementInChrome:
+
+    def test_moves(self, mode):
+        """symplacement(n) raises both keys by twoway's share of the text
+        size (symp_n: 27.97 of 99.99), sw lowers them (symp_sw), c moves
+        nothing; cols(1) symplacement(w) puts the marker at the line's
+        left (cols1_symp_w: the marker's box, r 22.03, at the line's left
+        end).  No CSP violation."""
+        legs, viol = _legends(mode, [([_sc(), _ln()], ""),
+                                     ([_sc(), _ln()], "symplacement(n)"),
+                                     ([_sc(), _ln()], "symplacement(sw)"),
+                                     ([_sc(), _ln()], "symplacement(c)"),
+                                     ([_sc(), _ln(), _sc("rep78")],
+                                      "cols(1) symplacement(w)")])
+        assert viol == []
+        plain, up, down, centre, west = legs
+        tw = 27.965 / 99.99
+        for leg, sign in ((up, -1), (down, 1), (centre, 0)):
+            for it, p in zip(leg["items"], plain["items"]):
+                got = (_ink_y(it) - _ink_y(p)) / it["fs"]
+                assert abs(got - sign * tw) < 0.08, (sign, got, it, p)
+        dot, line = west["items"][0], west["items"][1]
+        # The marker's box left (its ink left plus half its outline) at
+        # the line's left.
+        box_left = _ink_x(dot)[0] + 0.5 * (
+            (dot["ink"][2] - dot["ink"][0]) - 0.4406 * dot["fs"])
+        assert abs(box_left - _ink_x(line)[0]) <= 1.5, (dot, line)
+
+
 def test_emptied_layer_draws_no_key():
     """Saved: after the dropdown move foreign == 0, which leaves the
     layer `scatter mpg weight if foreign == 1' no row, its painted key is

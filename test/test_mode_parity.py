@@ -1991,7 +1991,8 @@ CORPUS = [
           # in silence); stacked and colgap() are the words still named.
           # Flipped: stacked is drawn (WP-43 LT-21); symplacement() is
           # the word still named.
-          {"legend": "position(6) symplacement(n) colgap(1)"}),
+          # Flipped (WP-43 LT-21): symplacement() is drawn (test_legend_keys.py::TestSymplacement), so orientation() is the word still named.
+          {"legend": "position(6) orientation(vertical) colgap(1)"}),
     _case("xscale(range()) and yscale with an unimplemented sub-option",
           [_sc()], None, {"xscale": "range(1500 4500)",
                           # Flipped (WP-31 D7): outergap() is drawn.
@@ -3339,9 +3340,10 @@ _MUST_WARN = {
         "dash: title() sub-option(s) not implemented and ignored: astextbox",
     # Flipped: WP-31 D4b draws colgap(); stacked is still named.
     # Flipped: WP-43 LT-21 draws stacked; symplacement() is still named.
+    # Flipped (WP-43 LT-21): symplacement() is drawn (test_legend_keys.py::TestSymplacement); orientation() is still named.
     "legend with an unimplemented sub-option":
         "dash: legend() sub-option(s) not implemented and ignored: "
-        "symplacement(n)",
+        "orientation(vertical)",
     "xscale(range()) and yscale with an unimplemented sub-option":
         "dash: yscale() sub-option(s) not implemented and ignored: "
         "logit",
