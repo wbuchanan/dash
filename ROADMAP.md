@@ -5334,6 +5334,28 @@ Summarised from .ultraplan/sections/index.md (WP-42) and .ultraplan/review/DECIS
 - **Left open:** a colorlist() shorter than the levels that starts with a quoted colour (BUGS.md "A colorlist() shorter than the levels that starts with a quoted colour repeats its last colour; twoway gives the unlisted levels the hue rule's colours", measured 03nov2026, S3).
 - **Gate (03nov2026):** `make test-all` on 0fdf722 -- pytest 41,412 passed (511 s), cert 68 of 75 (537 s), 1,057 s in all; the seven were readers that predated CV-3's key cell and d088459's graph region box (test_conformance, test_e2e_multi, test_gaps2_truth, test_wp34_truth, test_wp37_truth, test_wp41_truth, test_wp42_truth), fixed in 6757e2c, each passing under the runner. `make cert-all` -- first on 6757e2c, 75 of 78 (test_wp29_truth, test_wp30_truth and test_wp31_truth read the same old models; fixed in 4f51cf0); then on 4f51cf0, 78 of 78 registered scripts passed (3 sessions, all tier, 1,082 s). Before the gate, the full pytest suite on 1491225 had 22 failures, fixed in 9f4ab08.
 
+## WP-43 · Legend, titles and added text (P8) — DONE
+
+**GAPS4 closed:** LT-1, LT-13, LT-15, LT-4, LT-5, LT-17, LT-2, LT-3, PIC-11, MS-10, RH-13, LT-8, LT-9, LT-14, LT-16, LT-19, LT-24, LT-11 · **documented:** LT-7, LT-20, LT-21, ST-14 · **partly closed:** LT-6, LT-10, LT-18
+
+As a Stata user who titles, annotates and keys a graph, I want the legend, the title family and added text drawn as twoway draws them -- the legend's title, place, box, layout and keys, the title boxes and edge titles, and text() -- and every difference dash keeps named in its note and documented in the help, so that a dashboard's text and keys read as the graph twoway draws.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (WP-43) and .ultraplan/review/DECISIONS.md (D69, D70, D71, D72, M11), which hold them in full.
+
+- **The legend's title (43-01, D69).** legend(title()) and subtitle() are drawn in the scheme's leg_title and leg_subtitle styles with their position(), justification() and box through the Legend's own stylesheet (no overlay, D69); the edge titles inside legend() are refused as twoway refuses them.
+- **The legend's place (43-02).** ring(0) bplacement() and its abbreviations, legend(all), draw and nodraw, and holes() in a one-column or one-row legend are drawn as twoway draws them.
+- **The legend's box and layout (43-03).** nobox is the key texts' option; the key texts' textbox options, style(), width(), height(), xoffset(), yoffset(), showindex, region() styles and every marginstyle form are drawn; bexpand is named and documented (D72).
+- **The legend's keys (43-04).** Marker keys at the plot's marker size, angle and width, each key in its column's width, textfirst, stacked and symplacement() drawn, twoway's seven key shapes, keys merged by plot type and pstyle, a turned kdensity keyed by its grid; a long-texted legend kept inside the graph; a legend's own note() and caption() named, not drawn (D70).
+- **Title boxes (43-05).** Each scheme's textbox fill and line, real-valued rings, ring(x) refused as twoway refuses it, placement() at ring(0), orientation(), width(), height(), the frame styles, edge titles' boxes, and option text with a stray quote refused as twoway refuses it.
+- **Added text (43-06).** text()'s alignment(), fixed boxes, line gaps and frame styles drawn; a global's =exp evaluated only through the listed functions (documented).
+- **Markup on part of a text (43-07, D71).** No route ruling D69 allows draws twoway's runs, so a text keeps one style with one note per graph and kind of text, documented as Differences item 15.
+
+- **Entries.** 25 WP-43 entries; 18 closed, 4 documented, 3 partly closed; BUGS.md holds 97 open entries.
+- **Left open:** legend(style(zyx2)) (BUGS.md "legend(style(zyx2)) is named; twoway lays the keys in one column at the scheme's zyx2 gaps and key size", LT-6, S3); bmargin() per side (BUGS.md "legend(bmargin()) and a title's bmargin() keep only the largest side; twoway reserves each side", LT-10, S3); angle() with box (BUGS.md "title(..., angle() box) turns twoway's text inside its level box; dash keeps the title level", LT-18, S3); and eight S3 entries filed during the WP, among them the 1.13-text-size key rows, legend(title(, box)) height, by(, legend(pos(0))) and scale() on a title box's padding.
+- **Gate (05nov2026):** `make test-all` -- first on 776c193, pytest 2 failed of 42,827 (the help's split bold lead and the Differences items' order) and cert 69 of 76 (readers that predated the LT-21 key proxies, SR-01's stack, Q3307-5's digest after LT-8's scheme textbox colour, and the LT-24 sentence's literal braces), fixed in 1a11e90; then on 1a11e90, pytest 42,827 passed (553 s), cert 76 of 76 (620 s), 1,186 s in all. `make cert-all` -- first on 1a11e90, 77 of 79 (test_wp29_truth and test_wp30_truth read the key proxies as series; fixed in e34bf80 and 90452a8); then on 90452a8, 79 of 79 registered scripts passed (3 sessions, all tier, about 1,197 s).
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.
