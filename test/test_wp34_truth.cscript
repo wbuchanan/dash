@@ -732,6 +732,10 @@ def _w34s06_dash(path, p):
     doc = Document.from_json(docs[0])
     fills = []
     for m in doc.models:
+        # Flipped (WP-43 LT-21, 097a8f7): a legend-only key proxy draws
+        # the layer's key, not a scatter.
+        if (str(getattr(m, "name", "") or "") == "__dash_keyproxy" or "dash_key_proxy" in (getattr(m, "tags", None) or [])):
+            continue
         if isinstance(m, GlyphRenderer) and isinstance(m.glyph, Scatter):
             fc = m.glyph.fill_color
             if isinstance(fc, dict):

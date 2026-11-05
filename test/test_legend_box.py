@@ -497,7 +497,7 @@ class TestBexpandFixture:
 
 
 def test_bexpand_help_item():
-    """dash.sthlp documents LT-7 (D72) as item 17 of Differences from
+    """dash.sthlp documents LT-7 (D72) as item 16 of Differences from
     twoway, with the measured box (t_bexpand) and the stcolor legend's
     growth (bexpand_st against ctl_st: 1305.6 units)."""
     help_path = os.path.join(os.path.dirname(_HERE), "dash.sthlp")
@@ -506,7 +506,7 @@ def test_bexpand_help_item():
     a = text.index("{marker bexpand}")
     item = text[a:text.index("{marker subcommands}", a)]
     assert a > text.index("{marker differences}")
-    assert "{phang2}17.  {ul:bexpand is not drawn.}" in item
+    assert "{phang2}16.  {ul:bexpand is not drawn.}" in item
     pr = TRUTH["t_bexpand"]["plot"]
     assert "(%.1f\n    to %.1f units" % (pr["left"], pr["right"]) in item
     grow = TRUTH["ctl_st"]["plot"]["right"] - TRUTH["bexpand_st"]["plot"][

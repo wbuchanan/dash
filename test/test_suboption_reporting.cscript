@@ -15,7 +15,7 @@
 *!
 *!     dash: legend() sub-option(s) not implemented and ignored: stack
 *!
-*!   SR-01  legend(span stack holes(1) colgap(2)) names stack, once,
+*!   SR-01  legend(span stack bexpand holes(1) colgap(2)) names bexpand, once,
 *!          and not the honoured position(6), colgap(2), span and
 *!          holes(1) (flipped, WP-31 D4: span is taken in silence and
 *!          holes() drawn, as twoway's legend_g lays them out).
@@ -217,16 +217,18 @@ end
 // ----------------------------------------------------------------
 // SR-01 .. SR-06: one option each
 // ----------------------------------------------------------------
-_sr_render `"dash (scatter mpg weight) (lfit mpg weight), legend(span stack holes(1) colgap(2) position(6))"'
+_sr_render `"dash (scatter mpg weight) (lfit mpg weight), legend(span stack bexpand holes(1) colgap(2) position(6))"'
 local lg `"`r(logfile)'"'
 assert r(rc) == 0
 // Flipped (WP-31 D4b): colgap() is drawn, so only stack is named.
-_sr_check SR-01 "`lg'" legend "stack" "position span holes colgap"
+// Flipped (WP-43 LT-21, dd55143): stack (stacked) is drawn; bexpand is
+// named (WP-43 LT-7, D72), so only bexpand is named.
+_sr_check SR-01 "`lg'" legend "bexpand" "position span stack holes colgap"
 if r(bad) {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-01"
 }
-else display as text "SR-01 PASS: legend(stack) is named once; position(), span, holes() and colgap() are not"
+else display as text "SR-01 PASS: legend(bexpand) is named once; position(), span, stack, holes() and colgap() are not"
 
 _sr_render `"dash scatter mpg weight, xlabel(, valuelabel)"'
 local lg `"`r(logfile)'"'

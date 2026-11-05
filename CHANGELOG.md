@@ -1013,9 +1013,9 @@ and now matches Stata.
 
 ### Fixed in WP-43
 
-- bexpand on title(), subtitle(), note(), caption(), the edge titles and legend() is named in the note, where it was taken in silence; dash draws the box as without it, a documented difference from twoway (ruling D72): help dash, Differences from twoway, item 17 (WP-43, LT-7)
+- bexpand on title(), subtitle(), note(), caption(), the edge titles and legend() is named in the note, where it was taken in silence; dash draws the box as without it, a documented difference from twoway (ruling D72): help dash, Differences from twoway, item 16 (WP-43, LT-7)
 - An added text() with markup on part of it is noted as an added text; the note named it a title, subtitle, note or caption. The note says "an axis title", not "a axis title" (WP-43, ST-14)
-- Markup on part of a text ({bf:}, {it:}, a font tag, or a raised run with no Unicode form) is drawn in the text's own style, with one note per graph and kind of text, as a documented difference from twoway (ruling D71): help dash, Differences from twoway, item 16 (WP-43, ST-14)
+- Markup on part of a text ({bf:}, {it:}, a font tag, or a raised run with no Unicode form) is drawn in the text's own style, with one note per graph and kind of text, as a documented difference from twoway (ruling D71): help dash, Differences from twoway, item 15 (WP-43, ST-14)
 - The plot regions in one by() row are one height, and those in one column one width, as twoway lays them out; a panel's whole-pixel frame could end 1 px lower than its neighbours' at some widths (WP-43)
 - The legend keys of rcap, rcapsym, pccapsym, dropline, pcarrow, pcbarrow and rarea are twoway's shapes: a capped line, a line with its marker on each end (dropline's on the right), a line with its arrowhead, a filled outlined rect; each layer's glyphs drew their own pictures over one another (WP-43, PIC-11)
 - A legend's marker keys are drawn at the plot's marker size and msangle(), and a legend of markers only is as wide as its widest marker, as twoway draws them; the browser drew every marker at 0.4 of a symxsize()-wide key box and at no angle; a weighted layer's key is its marker at the layer's own size, whatever the weights, as twoway draws it (WP-43, LT-21)

@@ -434,7 +434,12 @@ python: _q37M.setLocal("dig", _q37_digest(_q37M.getLocal("q37s"), _q37M.getLocal
 // 11e9f17a... -> 6ee8200b...: each graph's JSON gains "n_obs":74, its
 // frame's _N (WP-40 plat:PT-7); with those three keys taken out the
 // digest is 11e9f17a..., byte for byte (measured 30oct2026).
-local base_digest "6ee8200b33edb1e5b91c0b71c5a86e0147867b5d649967aef5523922aa4c6617"
+// 6ee8200b... -> 171ce874...: the spec's build_options._stata_props
+// no longer carries stcolor's "color textbox" (white), which WP-43 LT-8
+// (edc071a) ships in dash-stcolor.scheme; with the tree paths masked
+// the spec differs from 49e75a3's by that key alone and the data not at
+// all (measured 05nov2026).
+local base_digest "171ce87436c83daeb51acf4cd363a21cc165ca228156d71758ed5f603aea0be0"
 display "Q3307-5 digest `dig'"
 assert "`dig'" == "`base_digest'"
 display "Q3307-5 PASS: a build whose graphs share its frame writes the same spec and data"

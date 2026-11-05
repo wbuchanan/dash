@@ -1225,8 +1225,8 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:twoway} refuses it, and nothing is stored: {cmd:twoway} reads the
     {cmd:"'} as the close of a compound quote never opened and stops on
     what follows.  When the first character outside quotes after the
-    apostrophe is a blank, a tab, a comma, {cmd:=}, {cmd:{c -(}} or
-    {cmd:{c )-}} ({cmd:title("'90s cars")}) the words are
+    apostrophe is a blank, a tab, a comma, {cmd:=} or a brace
+    ({cmd:title("'90s cars")}) the words are
     {cmd:type mismatch}, r(109); a {cmd:(} or {cmd:[}, {cmd:too few ')' or ']'},
     r(132); a {cmd:)} or {cmd:]}, {cmd:too many ')' or ']'}, r(132); with none,
     {cmd:) required}, r(100) ({cmd:title("'90s")}, and
@@ -1646,7 +1646,52 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:Working values in s().}  {cmd:dash} leaves its parsers' values in s(); see {help dash##graphintegration:Stata graph integration}.
 
-{phang2}15.  {ul:Resource limits.}  {cmd:twoway} draws any amount of data
+{marker partial_markup}{...}
+{phang2}15.  {ul:Markup on part of a text is drawn in one style.}
+    {cmd:twoway} styles each part of a text on its own: it draws
+    {cmd:title("a {c -(}bf:b{c )-} c")} with only the b bold,
+    {cmd:title("{c -(}it:p{c )-}-value")} with only the p in italics and
+    {cmd:title("a{c -(}sup:q{c )-} b{c -(}sub:k{c )-}")} with the q raised and the
+    k lowered, each at 0.58 of the text's size.  {cmd:dash} draws every
+    text on a graph -- titles, subtitles, notes and captions, edge titles,
+    axis titles, tick labels, legend keys and titles, added text,
+    {cmd:by()} panel titles and marker labels -- in one style, one font
+    and on one baseline.  So {cmd:{c -(}bf:{c )-}}, {cmd:{c -(}it:{c )-}} or a font tag on
+    part of a text is drawn in the text's own style and font, and a
+    raised or lowered run is drawn on the line unless each of its
+    characters has a Unicode superscript or subscript form (digits,
+    {cmd:+ - = ( )} and, raised, {cmd:n} and {cmd:i}:
+    {cmd:ytitle("m{c -(}sup:2{c )-}")} is drawn m²).  {cmd:dash} prints one
+    note for each graph and kind of text it draws so, for example
+    "{c -(}bf:{c )-}, {c -(}it:{c )-} or a font tag on part of a title, subtitle, note or
+    caption is drawn in that text's own style and font".  Markup around a
+    whole text is drawn as {cmd:twoway} draws it: {cmd:title("{c -(}bf:a b c{c )-}")}
+    is a bold title.  A page draws each text as one piece of text in the
+    browser, so styling part of it would need {cmd:dash} to place every
+    piece itself after the page is laid out; see
+    {help dash##graph_text:Text in graphs}.
+
+
+{marker bexpand}{...}
+{phang2}16.  {ul:bexpand is not drawn.}
+    {cmd:twoway}'s {cmd:bexpand} widens the box of a {cmd:title()},
+    {cmd:subtitle()}, {cmd:note()}, {cmd:caption()}, edge title or
+    {cmd:legend()} to the plot region: {cmd:title("T", box bexpand)} draws
+    the title's box from the plot region's left edge to its right (290.8
+    to 3859.0 units, where {cmd:title("T", box)} frames the text alone,
+    2011.3 to 2138.5), the text where it was;
+    {cmd:title("T", bexpand justification(left))} moves the text to the
+    plot region's left edge; {cmd:legend(bexpand)} widens a legend below
+    the plot to the plot region less 1.2 units a side, and a legend at 3
+    o'clock ({cmd:stcolor}) from 959 to 2265 units, the plot region
+    narrowing by as much.  {cmd:dash} does not draw {cmd:bexpand}: it
+    names it in the note and draws the box as without it.  The plot
+    region's width is known only after the page is laid out in the
+    browser.  {cmd:nobexpand}, the default, is drawn as {cmd:twoway} draws
+    it; {cmd:bexpand} on {cmd:text()}, on the legend's own {cmd:title()}
+    and on a {cmd:by()} panel's label is drawn as {cmd:twoway} draws it.
+
+{phang2}17.  {ul:Resource limits.}  {cmd:twoway} draws any amount of data
     and any number of plots, panels, lines and texts; {cmd:dash} also takes
     data of any size; it refuses, trims or rebins only beyond the limits in
     {help dash##limits:Resource limits} -- its count limits and its fixed
@@ -1673,52 +1718,6 @@ there, is an invalid point.  The literal is read as data and never run.
 {phang2}    {ul:Long text.}  A {cmd:text()} or text option whose globals expand past 4,000 characters is refused, {cmd:r(198)}, where {cmd:twoway} draws it; see {help dash##limits:Resource limits}.
 
 {phang2}    {ul:A global's =exp outside the listed functions is drawn as written.}  A {cmd:`=}{it:exp}{cmd:'} in a global's value in a graph's text is evaluated as {cmd:twoway} evaluates it when {it:exp} uses only the operators and functions listed there; one that names a variable, a scalar, a result or another function, and a macro reference, is drawn as written with a note; see {help dash##added_text:Added text}.
-
-
-{marker partial_markup}{...}
-{phang2}16.  {ul:Markup on part of a text is drawn in one style.}
-    {cmd:twoway} styles each part of a text on its own: it draws
-    {cmd:title("a {c -(}bf:b{c )-} c")} with only the b bold,
-    {cmd:title("{c -(}it:p{c )-}-value")} with only the p in italics and
-    {cmd:title("a{c -(}sup:q{c )-} b{c -(}sub:k{c )-}")} with the q raised and the
-    k lowered, each at 0.58 of the text's size.  {cmd:dash} draws every
-    text on a graph -- titles, subtitles, notes and captions, edge titles,
-    axis titles, tick labels, legend keys and titles, added text,
-    {cmd:by()} panel titles and marker labels -- in one style, one font
-    and on one baseline.  So {cmd:{c -(}bf:{c )-}}, {cmd:{c -(}it:{c )-}} or a font tag on
-    part of a text is drawn in the text's own style and font, and a
-    raised or lowered run is drawn on the line unless each of its
-    characters has a Unicode superscript or subscript form (digits,
-    {cmd:+ - = ( )} and, raised, {cmd:n} and {cmd:i}:
-    {cmd:ytitle("m{c -(}sup:2{c )-}")} is drawn m²).  {cmd:dash} prints one
-    note for each graph and kind of text it draws so, for example
-    "{c -(}bf:{c )-}, {c -(}it:{c )-} or a font tag on part of a title, subtitle, note or
-    caption is drawn in that text's own style and font".  Markup around a
-    whole text is drawn as {cmd:twoway} draws it: {cmd:title("{c -(}bf:a b c{c )-}")}
-    is a bold title.  A page draws each text as one piece of text in the
-    browser, so styling part of it would need {cmd:dash} to place every
-    piece itself after the page is laid out; see
-    {help dash##graph_text:Text in graphs}.
-
-
-{marker bexpand}{...}
-{phang2}17.  {ul:bexpand is not drawn.}
-    {cmd:twoway}'s {cmd:bexpand} widens the box of a {cmd:title()},
-    {cmd:subtitle()}, {cmd:note()}, {cmd:caption()}, edge title or
-    {cmd:legend()} to the plot region: {cmd:title("T", box bexpand)} draws
-    the title's box from the plot region's left edge to its right (290.8
-    to 3859.0 units, where {cmd:title("T", box)} frames the text alone,
-    2011.3 to 2138.5), the text where it was;
-    {cmd:title("T", bexpand justification(left))} moves the text to the
-    plot region's left edge; {cmd:legend(bexpand)} widens a legend below
-    the plot to the plot region less 1.2 units a side, and a legend at 3
-    o'clock ({cmd:stcolor}) from 959 to 2265 units, the plot region
-    narrowing by as much.  {cmd:dash} does not draw {cmd:bexpand}: it
-    names it in the note and draws the box as without it.  The plot
-    region's width is known only after the page is laid out in the
-    browser.  {cmd:nobexpand}, the default, is drawn as {cmd:twoway} draws
-    it; {cmd:bexpand} on {cmd:text()}, on the legend's own {cmd:title()}
-    and on a {cmd:by()} panel's label is drawn as {cmd:twoway} draws it.
 
 
 {marker subcommands}
@@ -5217,7 +5216,7 @@ least size with the keys centred, {cmd:xoffset()} and {cmd:yoffset()}
 move it right and up, and {cmd:showindex} numbers the key texts, as in
 {cmd:twoway}.
 {cmd:nobexpand} is taken; {cmd:bexpand} is named in the note and not
-drawn (see item 17,
+drawn (see item 16,
 {help dash##bexpand:bexpand is not drawn}, under Differences from
 twoway).  {cmd:textfirst} puts each text before its
 key, the texts of a column ending one key gap before its keys, and
@@ -5871,8 +5870,8 @@ as {cmd:twoway} writes them.
 
 {marker graph_text}{...}
 {pstd}
-{ul:Text in graphs.}  {bf:Markup on part of a text is drawn in the
-text's own style}; see item 16,
+{ul:Text in graphs.}  {bf:Markup on part of a text is drawn in its own style};
+see item 15,
 {help dash##partial_markup:Markup on part of a text is drawn in one style},
 under Differences from twoway.  Text {cmd:dash} draws on a graph -- a title,
 subtitle, note or caption, an axis title, a tick label, a legend key or
@@ -6114,7 +6113,7 @@ spanned {cmd:title()} or {cmd:note()} given outside {cmd:by()}, which is
 drawn on every panel, on that panel (from just left of its y labels to
 the scheme's {cmd:by()} panel margin past its plot region on the right), as
 {cmd:twoway} draws them.  {cmd:bexpand} is named in the note and not
-drawn (see item 17 under Differences from twoway).  {cmd:orientation()}
+drawn (see item 16 under Differences from twoway).  {cmd:orientation()}
 turns the text and its box together ({cmd:vertical} reads upward,
 {cmd:rvertical} downward, {cmd:rhorizontal} upside down), and
 {cmd:width()} and {cmd:height()} fix the box -- the size plus the box's

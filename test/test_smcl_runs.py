@@ -199,7 +199,7 @@ _HELP = os.path.join(os.path.dirname(_HERE), "dash.sthlp")
 
 
 class TestHelp:
-    """The documented difference (ruling D71): item 16 of Differences from
+    """The documented difference (ruling D71): item 15 of Differences from
     twoway, its example measured (title.bold, title.supsub), the note it
     quotes the one dash prints, and Text in graphs pointing to it."""
 
@@ -212,7 +212,7 @@ class TestHelp:
 
     def test_differences_line(self):
         text, item = self._item()
-        assert "{phang2}16.  {ul:Markup on part of a text is drawn in one " \
+        assert "{phang2}15.  {ul:Markup on part of a text is drawn in one " \
                "style.}" in item
         assert text.index("{marker partial_markup}") > text.index(
             "{marker differences}")
