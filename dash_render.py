@@ -59104,8 +59104,10 @@ def _dash_subopt_resolve(copies, table):
 
 #: legend() sub-options _dash_apply_legend honours.  WP-31 D4 added the
 #: key geometry, holes, colfirst, the box and its text; span, forcesize,
-#: bexpand and their no-forms are taken in silence (a side-panel legend
+#: their no-forms and nobexpand are taken in silence (a side-panel legend
 #: spans its side, a forced key is drawn at symxsize() x symysize()).
+#: bexpand is named (WP-43 LT-7, ruling D72): twoway widens the legend
+#: to the plot region, which is known only at layout (ruling D69).
 #: textfirst, stacked, symplacement(), colgap(), and the legend's own
 #: subtitle(), note() and caption() stay named: Bokeh's legend item is the
 #: key then its text in one row, with no property to swap or stack them.
@@ -59115,7 +59117,7 @@ _DASH_LEGEND_SUBOPTS = frozenset({
     "holes", "colfirst", "nocolfirst", "title", "region", "bplacement",
     "span", "nospan", "symxsize", "symysize", "keygap", "rowgap",
     "textwidth", "forcesize", "noforcesize", "nobox", "box", "color",
-    "bmargin", "bexpand", "nobexpand", "colgap", "subtitle",
+    "bmargin", "nobexpand", "colgap", "subtitle",
     # WP-43 LT-5: drawn as twoway draws them.
     "all", "draw", "nodraw",
     # WP-43 LT-3: the key texts' textbox options (_dash_legend_key_text).
@@ -59155,7 +59157,9 @@ _DASH_TEXTBOX_HONOURED = frozenset({"size", "color", "prefix", "suffix",
 #: The further sub-options title(), subtitle(), note() and caption() draw
 #: (WP-31 D3; :func:`_dash_textbox_position`, :func:`_dash_textbox_style`).
 #: span places a box above or below the plot on the whole graph
-#: (:func:`_dash_textbox_span`, WP-32); bexpand is taken; box colours
+#: (:func:`_dash_textbox_span`, WP-32); bexpand is named (WP-43 LT-7,
+#: ruling D72: twoway widens the box to the plot region, known only at
+#: layout), nobexpand taken; box colours
 #: without box draw nothing, as in twoway.  WP-43 LT-18: orientation(),
 #: width() and height() (a Label in the box's panel,
 #: :func:`_dash_textbox_label`), lstyle()/blstyle(), the bl* family,
@@ -59165,7 +59169,7 @@ _DASH_TEXTBOX_HONOURED = frozenset({"size", "color", "prefix", "suffix",
 _DASH_TEXTBOX_BOX_HONOURED = frozenset({
     "position", "ring", "span", "nospan", "justification", "alignment",
     "margin", "linegap", "box", "nobox", "bcolor", "bfcolor", "fcolor",
-    "lcolor", "lwidth", "lpattern", "bmargin", "bexpand", "nobexpand",
+    "lcolor", "lwidth", "lpattern", "bmargin", "nobexpand",
     "tstyle", "placement", "orientation", "width", "height", "angle",
     "lstyle", "blstyle", "blcolor", "blwidth", "blpattern", "blalign",
     "lalign", "style"})

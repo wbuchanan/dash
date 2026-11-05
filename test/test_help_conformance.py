@@ -1595,4 +1595,6 @@ class TestInternalLinksResolve:
         # old -> new: 186 -> 188 links, 52 -> 53 markers: Differences item
         # 16 links Text in graphs, which links item 16's new marker
         # partial_markup back (WP-43 ST-14, D71).
-        assert len(refs) == 188 and len(set(refs)) == 53
+        # old -> new: 188 -> 189 links, 53 -> 54 markers: the legend
+        # paragraph links item 17's new marker bexpand (WP-43 LT-7, D72).
+        assert len(refs) == 189 and len(set(refs)) == 54

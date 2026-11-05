@@ -440,7 +440,9 @@ class TestBoxAndText:
 @pytest.mark.parametrize("mode", MODES)
 class TestNamedAndSilent:
 
-    @pytest.mark.parametrize("word", ["span", "forcesize", "bexpand",
+    # Flipped (WP-43 LT-7, D72): bexpand is named, not taken in silence
+    # (test_legend_box.py::TestBexpandNamed).
+    @pytest.mark.parametrize("word", ["span", "forcesize",
                                       "nospan", "noforcesize", "nobexpand"])
     def test_silent(self, mode, word):
         _fig, _lg, caught = _fig_legend(mode, TWO, word)

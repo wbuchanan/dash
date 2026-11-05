@@ -1701,6 +1701,26 @@ there, is an invalid point.  The literal is read as data and never run.
     {help dash##graph_text:Text in graphs}.
 
 
+{marker bexpand}{...}
+{phang2}17.  {ul:bexpand is not drawn.}
+    {cmd:twoway}'s {cmd:bexpand} widens the box of a {cmd:title()},
+    {cmd:subtitle()}, {cmd:note()}, {cmd:caption()}, edge title or
+    {cmd:legend()} to the plot region: {cmd:title("T", box bexpand)} draws
+    the title's box from the plot region's left edge to its right (290.8
+    to 3859.0 units, where {cmd:title("T", box)} frames the text alone,
+    2011.3 to 2138.5), the text where it was;
+    {cmd:title("T", bexpand justification(left))} moves the text to the
+    plot region's left edge; {cmd:legend(bexpand)} widens a legend below
+    the plot to the plot region less 1.2 units a side, and a legend at 3
+    o'clock ({cmd:stcolor}) from 959 to 2265 units, the plot region
+    narrowing by as much.  {cmd:dash} does not draw {cmd:bexpand}: it
+    names it in the note and draws the box as without it.  The plot
+    region's width is known only after the page is laid out in the
+    browser.  {cmd:nobexpand}, the default, is drawn as {cmd:twoway} draws
+    it; {cmd:bexpand} on {cmd:text()}, on the legend's own {cmd:title()}
+    and on a {cmd:by()} panel's label is drawn as {cmd:twoway} draws it.
+
+
 {marker subcommands}
 {title:Subcommands}
 
@@ -5196,8 +5216,10 @@ named in the note), {cmd:width()} and {cmd:height()} give the box its
 least size with the keys centred, {cmd:xoffset()} and {cmd:yoffset()}
 move it right and up, and {cmd:showindex} numbers the key texts, as in
 {cmd:twoway}.
-{cmd:bexpand} and its
-{cmd:no} form are taken.  {cmd:textfirst} puts each text before its
+{cmd:nobexpand} is taken; {cmd:bexpand} is named in the note and not
+drawn (see item 17,
+{help dash##bexpand:bexpand is not drawn}, under Differences from
+twoway).  {cmd:textfirst} puts each text before its
 key, the texts of a column ending one key gap before its keys, and
 {cmd:stacked} puts the text under its key, both at the left of the
 column ({cmd:textfirst stacked} the text above it), as {cmd:twoway} draws
@@ -6037,7 +6059,7 @@ them, in both render modes, and nothing is printed for them:
 {cmd:alignment()}, {cmd:margin()}, {cmd:linegap()}, {cmd:box},
 {cmd:nobox}, {cmd:bcolor()}, {cmd:fcolor()}, {cmd:bfcolor()},
 {cmd:lcolor()}, {cmd:lwidth()}, {cmd:lpattern()}, {cmd:bmargin()},
-{cmd:bexpand}, {cmd:tstyle()}, {cmd:placement()}, {cmd:orientation()},
+{cmd:nobexpand}, {cmd:tstyle()}, {cmd:placement()}, {cmd:orientation()},
 {cmd:width()}, {cmd:height()}, {cmd:angle()}, {cmd:lstyle()},
 {cmd:blstyle()}, {cmd:blcolor()}, {cmd:blwidth()}, {cmd:blpattern()},
 {cmd:lalign()}, {cmd:blalign()} and {cmd:style()}.
@@ -6091,7 +6113,8 @@ and {cmd:caption()} are placed on the whole {cmd:by()} graph, and a
 spanned {cmd:title()} or {cmd:note()} given outside {cmd:by()}, which is
 drawn on every panel, on that panel (from just left of its y labels to
 the scheme's {cmd:by()} panel margin past its plot region on the right), as
-{cmd:twoway} draws them.  {cmd:bexpand} is taken.  {cmd:orientation()}
+{cmd:twoway} draws them.  {cmd:bexpand} is named in the note and not
+drawn (see item 17 under Differences from twoway).  {cmd:orientation()}
 turns the text and its box together ({cmd:vertical} reads upward,
 {cmd:rvertical} downward, {cmd:rhorizontal} upside down), and
 {cmd:width()} and {cmd:height()} fix the box -- the size plus the box's

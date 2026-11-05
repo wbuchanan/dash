@@ -496,6 +496,59 @@ class TestBexpandFixture:
             TRUTH["ctl_st"]["plot"]["right"] - 1000
 
 
+def test_bexpand_help_item():
+    """dash.sthlp documents LT-7 (D72) as item 17 of Differences from
+    twoway, with the measured box (t_bexpand) and the stcolor legend's
+    growth (bexpand_st against ctl_st: 1305.6 units)."""
+    help_path = os.path.join(os.path.dirname(_HERE), "dash.sthlp")
+    with open(help_path, encoding="utf-8") as fh:
+        text = fh.read()
+    a = text.index("{marker bexpand}")
+    item = text[a:text.index("{marker subcommands}", a)]
+    assert a > text.index("{marker differences}")
+    assert "{phang2}17.  {ul:bexpand is not drawn.}" in item
+    pr = TRUTH["t_bexpand"]["plot"]
+    assert "(%.1f\n    to %.1f units" % (pr["left"], pr["right"]) in item
+    grow = TRUTH["ctl_st"]["plot"]["right"] - TRUTH["bexpand_st"]["plot"][
+        "right"]
+    assert abs(grow - (2265 - 959)) < 1
+    assert "from 959 to 2265 units" in item
+
+
+@pytest.mark.parametrize("mode", G.MODES)
+class TestBexpandNamed:
+    """LT-7 documented (ruling D72, 05nov2026): dash does not draw bexpand
+    on title(), subtitle(), note(), caption() or legend() and names it in
+    the note, where it was taken in silence (twoway widens the box to the
+    plot region: t_bexpand, n_bexpand, bexpand, bexpand_st; and moves a
+    justified text to its edge: scratch probes, title("T", bexpand
+    justification(left)) at x 408 against 2078.6 without bexpand).
+    nobexpand, which draws twoway's default, stays silent."""
+
+    @pytest.mark.parametrize("opt", ["title", "subtitle", "note",
+                                     "caption", "t1title"])
+    @pytest.mark.parametrize("sub", ["box bexpand", "bexpand"])
+    def test_title_family(self, mode, opt, sub):
+        import test_textbox_placement as tp
+        _f, caught = tp._fig(mode, {opt: '"T", %s' % sub})
+        named = [str(w) for w in caught if "not implemented" in str(w)
+                 and "bexpand" in str(w)]
+        assert len(named) == 1 and ("%s()" % opt) in named[0], caught
+
+    def test_title_nobexpand_silent(self, mode):
+        import test_textbox_placement as tp
+        _f, caught = tp._fig(mode, {"title": '"T", box nobexpand'})
+        assert not [w for w in caught if "bexpand" in str(w)], caught
+
+    def test_legend(self, mode):
+        _fig, _lg, caught = G._fig_legend(mode, G.TWO, "bexpand")
+        named = [str(w) for w in caught if "not implemented" in str(w)
+                 and "bexpand" in str(w)]
+        assert len(named) == 1 and "legend()" in named[0], caught
+        _fig, _lg, caught = G._fig_legend(mode, G.TWO, "nobexpand")
+        assert not [w for w in caught if "bexpand" in str(w)], caught
+
+
 # ---------------------------------------------------------------------------
 # LT-10: every marginstyle form; the legend's region margin per side
 # ---------------------------------------------------------------------------

@@ -465,7 +465,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-3 Tracked:** Closed in WP-43, BUGS.md "Key-text textbox options are not drawn: box (silent), bcolor(), fcolor(), justification(), alignment(), margin(), linegap(), tstyle()", commit 4a9a371.
 - **LT-5 Tracked:** Closed in WP-43, BUGS.md "legend(all), draw and nodraw are named: whether a legend appears, and how keys merge, differ", commit 0d12aaa.
 - **LT-6 Tracked:** Partly closed in WP-43 (section 43-03, commit 627dc81): style(column), style() notes, width(), height(), xoffset(), yoffset(), showindex and region(style() lstyle() lalign()) are drawn; open: style(zyx2) (BUGS.md "legend(style(zyx2)) is named; twoway lays the keys in one column at the scheme's zyx2 gaps and key size").
-- **LT-7 Tracked:** Open (WP-43 section 43-03).
+- **LT-7 Tracked:** Documented in WP-43, BUGS.md "bexpand on legend() and on title/subtitle/note/caption is taken silently where twoway widens the box", commit pending.
 - **LT-8 Tracked:** Closed in WP-43, BUGS.md "A title box under stcolor is filled #d9e6eb (the added-text fill), not textbox white with a 6.48 line", commit edc071a.
 - **LT-9 Tracked:** Closed in WP-43, BUGS.md "A fractional ring() (7.5, 4.5) or ring(100) is dropped silently", commit d7aaa44.
 - **LT-10 Tracked:** Partly closed in WP-43 (section 43-03, commit 9f6dfe9): every marginstyle form on title-family boxes, text() and legend(region(margin())), four sides kept; open: bmargin() per side (BUGS.md "legend(bmargin()) and a title's bmargin() keep only the largest side; twoway reserves each side").

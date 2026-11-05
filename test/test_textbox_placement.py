@@ -458,8 +458,10 @@ class TestSilentWhenHonoured:
         "position(6)", "ring(5)", "span", "nospan", "justification(left)",
         "alignment(top)", "margin(small)", "linegap(2)", "box", "nobox",
         "bcolor(red)", "bfcolor(red)", "fcolor(red)", "lcolor(red)",
-        "lwidth(thin)", "lpattern(dash)", "bmargin(small)", "bexpand",
+        "lwidth(thin)", "lpattern(dash)", "bmargin(small)",
         "nobexpand", "tstyle(body)", "placement(ne)"])
+    # Flipped (WP-43 LT-7, D72): bexpand is named, not taken in silence
+    # (test_legend_box.py::TestBexpandNamed).
     def test_no_note(self, sub):
         _f, caught = _fig("saved", {"caption": '"C", %s' % sub})
         assert not [w for w in caught if "caption()" in w], caught
