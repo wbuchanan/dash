@@ -1297,6 +1297,23 @@ there, is an invalid point.  The literal is read as data and never run.
     line in its own style and its second in the subtitle's; {cmd:twoway}
     draws both lines of the title in the title's style.
 
+{phang2}
+    {ul:Notes and captions in a legend.}  {cmd:dash} does not place notes or
+    captions inside a legend.  {cmd:legend(note("N"))} and
+    {cmd:legend(caption("C"))} are not drawn and are named in the note;
+    {cmd:twoway} writes them under the keys inside the legend's box.  The
+    graph's own {cmd:note()} and {cmd:caption()} are drawn as
+    {cmd:twoway} draws them.
+
+{phang2}
+    {ul:A wide legend under the plot.}  A legend above or below the plot
+    that would be wider than the graph is drawn at {cmd:twoway}'s width
+    limit, centred on the plot region.  Under some schemes, such as
+    {cmd:s2color}, {cmd:twoway} instead puts it against the limit on one
+    side and draws it a little narrower (in one measured case 0.889 of
+    the graph's width, where {cmd:dash}'s is 0.931); every key text is
+    drawn in both.
+
 {marker validation}
 {phang2}    {ul:Option values.}  A value is refused where {cmd:twoway}
     refuses it, and a word is refused where a number-only option was given
@@ -5166,18 +5183,18 @@ text, whichever is larger, centred on the text, a south value its
 bottom at the box's bottom, and {cmd:w} or {cmd:e} puts a key narrower
 than its column at the column's left or right; a name {cmd:twoway}
 does not know draws the default, with a note.
-The legend's own {cmd:note()} and {cmd:caption()} are written under
-the keys inside the box, left-aligned, the note in the scheme's small
-text and above the caption, each in its {cmd:size()} and {cmd:color()},
-as {cmd:twoway} writes them; beside the legend's own {cmd:title()} or
-{cmd:subtitle()}, which {cmd:twoway} draws as well, they are named in
-the note, and so is a {cmd:caption()} beside a {cmd:note()} when either
-has more than one line.
+{cmd:dash} does not place notes or captions inside a legend: the
+legend's own {cmd:note()} and {cmd:caption()} are not drawn and are
+named in the note; a legend takes a {cmd:title()} and {cmd:subtitle()}
+only.  The graph's own {cmd:note()} and {cmd:caption()} are drawn as
+usual.
 A legend above or below the plot that would be wider than the graph
 less its region's margin and a little more is drawn that wide, as
 {cmd:twoway} draws it: its columns are moved together in proportion to
 {cmd:twoway}'s estimate of each key text's width, each text drawn whole
-from its column's start.
+from its column's start.  Such a legend is centred on the plot region
+(see {it:A wide legend under the plot} under
+{help dash##differences:Differences from twoway}).
 
 {pstd}
 {ul:Axis labels.}  {cmd:xlabel()} and {cmd:ylabel()} take Stata's own

@@ -41800,10 +41800,6 @@ def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
                                  seen=seen, key=key, ref=(
                                      T.size_ref_of(fig) if fig is not None
                                      else None))
-    # The legend's own note() and caption() (WP-43 LT-21).
-    _dash_legend_note(legend, calls, _style,
-                      titled=head is not None or tail is not None,
-                      seen=seen, key=key)
     if lalign in ("outside", "center") and legend.border_line_color \
             is not None and isinstance(legend.padding, int):
         legend.padding = legend.padding + int(round(
@@ -41816,114 +41812,6 @@ def _dash_legend_box(legend, calls, words, *, chrome=None, fig=None,
     _dash_legend_key_text(legend, calls, words, scheme, _colour,
                           ref=T.size_ref_of(fig) if fig is not None
                           else None)
-
-
-#: legend(note()) and legend(caption()) (WP-43 LT-21,
-#: legend_keys_truth.json note, caption, note_caption, note_two):
-#: the gap twoway leaves above each, in relative units (34.6 of 28.8 SVG
-#: units a unit, whatever the text's size: note_size), and how far below
-#: the key text's centre its first line's starts, in key text sizes
-#: (A: 0.277 of a 99.99-unit text, from note 103.8 and caption 110.8
-#: units between the centres less the gap and half the box's text).
-_DASH_LEGEND_NOTE_GAP_RS = 1.2
-_DASH_LEGEND_NOTE_A = 0.277
-#: note() beside caption(): twoway's step from the note's baseline to the
-#: caption's, in caption text sizes (note_caption: 128.51 of 99.99).
-_DASH_LEGEND_NOTE_CAP_STEP = 1.285
-
-
-def _dash_legend_note(legend, calls, style, *, titled=False, seen=None,
-                      key=""):
-    """legend(note()) and legend(caption()) on the series *legend* (WP-43
-    LT-21, ruling D69): twoway writes them under the keys inside the box,
-    left-aligned, the note in the scheme's leg_note text box (small_body:
-    79.94 of the keys' 99.99 units), the caption in leg_caption (body),
-    the note above the caption, each line one text size below the last,
-    each box a gap of 1.2 units above it (legend_keys_truth.json note,
-    caption, note_caption, note_two, note_size, textfirst_note).  dash
-    writes them as the Legend's title, below the keys (a DOM text node),
-    in the box's size and colour (*style*, ``(sub, box) -> (size,
-    colour)``: size(), color() and tstyle() drawn), and places it with
-    the Legend's own stylesheet tagged ``dash_legend_note``: left-aligned,
-    one text size a line, padded so its first line sits twoway's distance
-    under the key texts and the box twoway's height taller, in em of
-    its own text so scale() and the width scale carry it; beside the caption the note is the title's first line
-    in its own size (``::first-line``).  The title slot holds one block:
-    beside the legend's own title() or subtitle() (*titled*), which
-    twoway draws above the keys as well (title_note, subtitle_note),
-    note() and caption() are named, and so is the caption beside a note
-    when either has more than one line; other sub-options are named.
-    Only numbers and #rrggbb colours reach the CSS.  Returns the CSS ('' for
-    none)."""
-    from bokeh.models import InlineStyleSheet
-    T = OptionTranslator
-    legend.stylesheets = [ss for ss in legend.stylesheets
-                          if "dash_legend_note" not in (
-                              getattr(ss, "tags", None) or [])]
-    parts = {}
-    for name, arg, typed in calls:
-        if name in ("note", "caption"):
-            text, sub = _parse_textbox_opt(str(arg or ""))
-            lines = "\n".join(_textbox_lines(text)).split("\n")
-            parts[name] = (lines, sub or {}, "%s(%s)" % (typed, arg))
-    note, cap = parts.get("note"), parts.get("caption")
-    if titled:
-        _dash_report_suboptions("legend", [p[2] for p in (note, cap) if p],
-                                seen, key)
-        return ""
-    if note and cap and (len(note[0]) > 1 or len(cap[0]) > 1):
-        _dash_report_suboptions("legend", [cap[2]], seen, key)
-        cap = None
-    boxes = [(nm, p) for nm, p in (("note", note), ("caption", cap))
-             if p and any(str(ln).strip() for ln in p[0])]
-    if not boxes:
-        return ""
-    styled = []
-    for nm, (lines, sub, _typed) in boxes:
-        bad = [k if v == k else "%s(%s)" % (k, v) for k, v in sub.items()
-               if k not in ("size", "color", "tstyle")]
-        _dash_report_suboptions("legend(%s)" % nm, bad, seen, key)
-        sz, cl = style(sub, nm)
-        styled.append((lines, T.css_to_pt(sz) or 0.0, sz, cl))
-    key_px = (T.css_to_pt(legend.label_text_font_size) or 0.0) * T.PX_PER_PT
-    base = styled[-1]
-    if key_px <= 0 or base[1] <= 0 or styled[0][1] <= 0:
-        return ""
-    legend.title = "\n".join(ln for b in styled for ln in b[0])[:2000]
-    legend.title_location = "below"
-    legend.title_text_font_style = "normal"
-    legend.title_text_font_size = base[2]
-    legend.title_text_color = base[3]
-    legend.title_standoff = 0
-    base_px = base[1] * T.PX_PER_PT
-    first_px = styled[0][1] * T.PX_PER_PT
-    lh = _DASH_LEGEND_NOTE_CAP_STEP if len(styled) == 2 else 1.0
-    gh = legend.glyph_height if isinstance(legend.glyph_height, int) else 0
-    row = max(float(gh), 1.15 * key_px)
-    gap = _DASH_LEGEND_NOTE_GAP_RS * T.PT_PER_RS * T.PX_PER_PT
-    pad = (_DASH_LEGEND_NOTE_A * key_px + gap + first_px / 2 - row / 2
-           - lh * base_px / 2)
-    pad = max(0.0, pad)
-    # twoway's box grows by each box's gap and its lines (note: 114.6 =
-    # 34.6 + 79.94 units); the rest is padding under the text.
-    nlines = sum(len(b[0]) for b in styled)
-    grow = sum(gap + len(b[0]) * b[1] * T.PX_PER_PT for b in styled)
-    # The first line is the note's own size beside a caption
-    # (::first-line sizes its line box too).
-    lines_h = lh * (first_px + (nlines - 1) * base_px)
-    below = max(0.0, grow - pad - lines_h)
-    rules = ["text-align:left", "line-height:%.4g" % lh,
-             "padding-top:%.4gem" % min(50.0, pad / base_px),
-             "padding-bottom:%.4gem" % min(50.0, below / base_px)]
-    css = ".bk-title{%s;}" % ";".join(rules)
-    if len(styled) == 2:
-        first = ["font-size:%.4gem" % (styled[0][1] / base[1])]
-        if styled[0][3] and _DASH_HEX_RE.fullmatch(str(styled[0][3])):
-            first.append("color:%s" % str(styled[0][3]).lower())
-        css += ".bk-title::first-line{%s;}" % ";".join(first)
-    legend.stylesheets = list(legend.stylesheets) + [
-        InlineStyleSheet(css=css, tags=["dash_legend_note"])]
-    return css
 
 
 #: legend(style()) -> the grid twoway's legendstyle file sets
@@ -59231,10 +59119,9 @@ _DASH_LEGEND_SUBOPTS = frozenset({
     # WP-43 LT-6: the layout sub-options (_dash_legend_layout).
     "style", "width", "height", "xoffset", "yoffset", "showindex",
     # WP-43 LT-21: textfirst and stacked (_dash_legend_key_order),
-    # symplacement() (_dash_legend_key_boxes), the legend's own note()
-    # and caption() (_dash_legend_note, which names what it cannot draw).
-    "textfirst", "notextfirst", "stacked", "nostacked", "symplacement",
-    "note", "caption"})
+    # symplacement() (_dash_legend_key_boxes).  The legend's own note()
+    # and caption() are named, not drawn (ruling D70).
+    "textfirst", "notextfirst", "stacked", "nostacked", "symplacement"})
 
 #: legend(label(# text)): the key's number, then its text, read by
 #: _textbox_lines.  The number is bounded so no label can make int() read
@@ -76396,8 +76283,6 @@ class ServerAppBuilder:
                       # WP-43: twoway's text-width estimate, the legend's fit.
                       "_DASH_TW_CHAR_STEPS", "_DASH_TW_CHAR_STEP",
                       "_DASH_LEGEND_FIT_RS",
-                      "_DASH_LEGEND_NOTE_GAP_RS", "_DASH_LEGEND_NOTE_A",
-                      "_DASH_LEGEND_NOTE_CAP_STEP",
                       # WP-43 PIC-11: twoway's key shapes.
                       "_DASH_KEY_SHAPES", "_DASH_KEY_PROPS",
                       "_DASH_HIST_YTITLES",
@@ -76960,7 +76845,6 @@ class ServerAppBuilder:
                          "_dash_legend_grid_columns",
                          "_dash_margin_px",
                          "_dash_legend_title_block",
-                         "_dash_legend_note",
                          "_dash_legend_hole_sheet", "_dash_legend_holes",
                          "_dash_apply_legend",
                          # Axis titles, Stata's tick grammar, second axes.

@@ -411,7 +411,6 @@ FUNCTIONS = {
  '_dash_legend_key_text.<locals>.em': 'test/test_legend_box.py::TestKeyText::test_margin_reserved',
  '_dash_legend_key_order': 'test/test_legend_keys.py::TestKeyOrder::test_only_fixed_words',
  '_dash_key_painter': 'test/test_legend_keys.py::TestKeyPainter::test_unpaintable_glyphs_keep_their_key',
- '_dash_legend_note': 'test/test_legend_keys.py::TestNoteAndCaption::test_in_the_title_slot',
  '_dash_legend_key_boxes': 'test/test_legend_keys.py::TestKeyBoxes::test_marker_beside_a_line',
  '_dash_legend_grid_columns': 'test/test_legend_keys.py::TestKeyBoxes::test_column_shares_the_widest',
  '_dash_legend_fit': 'test/test_legend_keys.py::TestLegendFit::test_the_fit_sheet',

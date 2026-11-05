@@ -1590,4 +1590,6 @@ class TestInternalLinksResolve:
         # sentence links Differences from twoway (WP-43 LT-15).
         # old -> new: 184 -> 185 links: the Edge titles paragraph links
         # Textbox options for the sub-options it draws (WP-43 LT-19).
-        assert len(refs) == 185 and len(set(refs)) == 52
+        # old -> new: 185 -> 186 links: the legend paragraph links its wide
+        # legend under the plot to Differences from twoway (D70, 05nov2026).
+        assert len(refs) == 186 and len(set(refs)) == 52

@@ -690,16 +690,13 @@ class TestSymplacement:
 
 
 class TestNoteAndCaption:
-    """LT-21 residual: legend(note()) and legend(caption()) are written
-    under the keys inside the box, left-aligned, note in the scheme's
-    small_body (79.94 of 99.99 units), caption in body, each line a text
-    size apart (legend_keys_truth.json note, caption, note_caption,
-    note_two, note_size, textfirst_note); dash writes them in the Legend's
-    title slot below the keys (a DOM text node, never CSS), its stylesheet
-    tagged dash_legend_note placing and sizing it.  Beside the legend's
-    own title() or subtitle() twoway draws both (title_note,
-    subtitle_note); the title slot holds one, so note() and caption()
-    stay named there."""
+    """legend(note()) and legend(caption()) are not drawn (ruling D70,
+    05nov2026): twoway writes them under the keys inside the box (the
+    fixture, kept as the record of what is not drawn), but dash draws only
+    a title() and subtitle() in a legend and names a legend's own note()
+    and caption(), with or without its title().  The graph's note() and
+    caption() are drawn as before.  Flipped (D70): WP-43 LT-21 (efd66c2)
+    wrote them in the Legend's title slot below the keys."""
 
     def test_fixture(self):
         for case, size in (("note", 79.94), ("caption", 99.99),
@@ -722,44 +719,40 @@ class TestNoteAndCaption:
         assert "T" in t and "N" in t and t["T"][1] < t["N"][1]
 
     @pytest.mark.parametrize("mode", MODES)
-    @pytest.mark.parametrize("opt,text", [('note("N")', "N"),
-                                          ('caption("C")', "C"),
-                                          ('note("N1" "N2")', "N1\nN2"),
-                                          ('note("N") caption("C")',
-                                           "N\nC")])
-    def test_in_the_title_slot(self, mode, opt, text):
+    @pytest.mark.parametrize("opt", ['note("N")', 'caption("C")',
+                                     'note("N1" "N2")',
+                                     'note("N") caption("C")',
+                                     'note("N", size(large))',
+                                     'title("T") note("N")',
+                                     'subtitle("S") caption("C")'])
+    def test_named_not_drawn(self, mode, opt):
         lg, notes = _legend(mode, [_sc(), bk._p("line", y="headroom")], opt)
-        assert lg.title == text
-        assert lg.title_location == "below"
-        assert lg.title_text_font_style == "normal"
-        assert not any("note(" in str(n) or "caption(" in str(n)
-                       for n in notes), notes
-        css = _sheet(lg, "dash_legend_note")
-        assert ".bk-title{" in css and "text-align:left" in css
-        key = dr.OptionTranslator.css_to_pt(lg.label_text_font_size)
-        box = dr.OptionTranslator.css_to_pt(lg.title_text_font_size)
-        want = 0.8 if opt.startswith("note") and "caption" not in opt \
-            else 1.0
-        assert abs(box / key - want) < 0.01, (box, key)
-        if "caption" in opt and "note" in opt:
-            assert "::first-line{font-size:0.8em" in css
+        for word in ("note(", "caption("):
+            if word in opt:
+                assert any(word in str(n) and "legend" in str(n)
+                           for n in notes), notes
+        assert _sheet(lg, "dash_legend_note") == ""
+        assert lg.title_location != "below"
+        head = [w for w in ("T", "S") if '("%s")' % w in opt]
+        assert str(lg.title or "") == "\n".join(head)
+        assert not any(t in str(lg.title or "") for t in ("N", "C"))
 
     @pytest.mark.parametrize("mode", MODES)
-    def test_size(self, mode):
-        lg, _n = _legend(mode, [_sc(), bk._p("line", y="headroom")],
-                         'note("N", size(large))')
-        key = dr.OptionTranslator.css_to_pt(lg.label_text_font_size)
-        box = dr.OptionTranslator.css_to_pt(lg.title_text_font_size)
-        assert abs(box / key - 139.96 / 99.99) < 0.02
-
-    @pytest.mark.parametrize("mode", MODES)
-    @pytest.mark.parametrize("opt", ['subtitle("S") caption("C")',
-                                     'note("N1" "N2") caption("C")'])
-    def test_still_named_beside_a_title(self, mode, opt):
-        lg, notes = _legend(mode, [_sc(), bk._p("line", y="headroom")], opt)
-        word = "caption(" if "caption" in opt else "note("
-        assert any(word in str(n) for n in notes), notes
-        assert _sheet(lg, "dash_legend_note") == "" or "N1" in opt
+    def test_the_graphs_note_and_caption_are_drawn(self, mode):
+        """The graph's own note() and caption() beside a legend's: the
+        graph's are drawn, the legend's are not."""
+        from bokeh.models import Legend
+        g = {"legend": 'note("LN") caption("LC")', "note": "GN",
+             "caption": "GC"}
+        spec = bk._spec([bk._graph("g1", [_sc(), bk._p("line",
+                                                        y="headroom")],
+                                   g, title=False)], scheme="s2color")
+        roots, _notes, _owner = bk._build(mode, spec)
+        texts = [str(getattr(m, "text", "") or "") for r in roots
+                 for m in r.references()
+                 if not isinstance(m, Legend)]
+        assert "GN" in texts and "GC" in texts, texts
+        assert not any("LN" in t or "LC" in t for t in texts), texts
 
 
 class TestWeightedMarkerKey:
@@ -937,6 +930,30 @@ class TestLegendFit:
         assert "box-sizing:border-box" in css
         # Only numbers and fixed words reach the CSS.
         assert "Mileage" not in css
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_s2color_box_is_centred_at_the_limit(self, mode):
+        """The documented difference (BUGS.md "A legend under the plot
+        kept inside the graph is centred on the plot region, where
+        twoway's ends at its limit", ruling D70): under s2color dash draws
+        a too-wide legend the graph less the limit on both sides, centred
+        (no move in the sheet), whatever its texts' length; twoway's box
+        is against the limit on one side and grows a little with the texts
+        (scratch probes: 20 a's 3522.2, 40 a's 3595.4 of 3960 units)."""
+        import re
+        plots = [_sc(), _sc("headroom"), _sc("rep78")]
+        widths = []
+        for n in (20, 40):
+            labs = " ".join('label(%d "%s")' % (i, "a" * n)
+                            for i in (1, 2, 3))
+            lg, _n = _legend(mode, plots, "rows(1) " + labs,
+                             scheme="s2color")
+            css = _sheet(lg, "dash_legend_fit")
+            m = re.search(r"width:calc\(([0-9.e+]+)px", css)
+            assert m, css
+            assert "translate" not in css and "margin-left" not in css
+            widths.append(float(m.group(1)))
+        assert widths[0] == widths[1], widths
 
     @pytest.mark.parametrize("mode", MODES)
     @pytest.mark.parametrize("plots, opt, scheme", [
