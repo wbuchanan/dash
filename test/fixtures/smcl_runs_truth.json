@@ -1,0 +1,789 @@
+{
+  "_meta": {
+    "born_date": "14 Oct 2026",
+    "dash_commit": "da75e0548df6cf7f033047253fabac34a764a6d9",
+    "extracted": " 5 Nov 2026",
+    "source": "scripts/extract_smcl_runs_truth.do",
+    "stata_version": "19.5"
+  },
+  "by.title": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": true,
+            "level": "",
+            "s": 1.0,
+            "t": "t",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": " u",
+            "v": 0.0
+          }
+        ],
+        "size": 157.44,
+        "text": "t u"
+      }
+    ]
+  },
+  "help.caption": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": true,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "Source",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": ": ",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": true,
+            "level": "",
+            "s": 1.0,
+            "t": "Consumer Reports",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": ", used with permission",
+            "v": 0.0
+          }
+        ],
+        "size": 112.56,
+        "text": "Source: Consumer Reports, used with permission"
+      }
+    ]
+  },
+  "help.fontface": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "Text in ",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Century Schoolbook",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "a different font",
+            "v": 0.0
+          }
+        ],
+        "size": 157.44,
+        "text": "Text in a different font"
+      }
+    ]
+  },
+  "help.fonts": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "Here are ",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Times",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "serif",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": ", ",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "sans serif",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": ", and ",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Courier",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "monospace",
+            "v": 0.0
+          }
+        ],
+        "size": 157.44,
+        "text": "Here are serif, sans serif, and monospace"
+      }
+    ]
+  },
+  "help.funcsup1": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "\u0192(x)=2e",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "sup",
+            "s": 0.583,
+            "t": "-2x",
+            "v": 0.5238
+          }
+        ],
+        "size": 157.44,
+        "text": "\u0192(x)=2e-2x"
+      }
+    ]
+  },
+  "help.funcsup2": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "\u03c7",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "sup",
+            "s": 0.583,
+            "t": "2",
+            "v": 0.5238
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "(3) distribution",
+            "v": 0.0
+          }
+        ],
+        "size": 157.44,
+        "text": "\u03c72(3) distribution"
+      }
+    ]
+  },
+  "help.italics": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "This is ",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": true,
+            "level": "",
+            "s": 1.0,
+            "t": "italics",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": " in a graph title",
+            "v": 0.0
+          }
+        ],
+        "size": 157.44,
+        "text": "This is italics in a graph title"
+      }
+    ]
+  },
+  "legend.runs": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": true,
+            "level": "",
+            "s": 1.0,
+            "t": "Mileage",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": " (mpg)",
+            "v": 0.0
+          }
+        ],
+        "size": 112.56,
+        "text": "Mileage (mpg)"
+      },
+      {
+        "runs": [
+          {
+            "b": true,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "T",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": " t",
+            "v": 0.0
+          }
+        ],
+        "size": 157.44,
+        "text": "T t"
+      }
+    ]
+  },
+  "mlabel_part": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "a ",
+            "v": 0.0
+          },
+          {
+            "b": true,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "b",
+            "v": 0.0
+          }
+        ],
+        "size": 89.94,
+        "text": "a b"
+      }
+    ]
+  },
+  "note.mixed": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": true,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "Source",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": ": ",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": true,
+            "level": "",
+            "s": 1.0,
+            "t": "Consumer Reports",
+            "v": 0.0
+          }
+        ],
+        "size": 89.94,
+        "text": "Source: Consumer Reports"
+      }
+    ]
+  },
+  "r1title.italic": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "x ",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": true,
+            "level": "",
+            "s": 1.0,
+            "t": "y",
+            "v": 0.0
+          }
+        ],
+        "size": 123.69,
+        "text": "x y"
+      }
+    ]
+  },
+  "ratios": {
+    "sub_scale": 0.583,
+    "sub_shift": -0.1428,
+    "sup_scale": 0.583,
+    "sup_shift": 0.5238
+  },
+  "t1title.italic": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "x ",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": true,
+            "level": "",
+            "s": 1.0,
+            "t": "y",
+            "v": 0.0
+          }
+        ],
+        "size": 123.69,
+        "text": "x y"
+      }
+    ]
+  },
+  "text.bold": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "a ",
+            "v": 0.0
+          },
+          {
+            "b": true,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "b",
+            "v": 0.0
+          }
+        ],
+        "size": 112.56,
+        "text": "a b"
+      }
+    ]
+  },
+  "title.bold": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "a ",
+            "v": 0.0
+          },
+          {
+            "b": true,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "b",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": " c",
+            "v": 0.0
+          }
+        ],
+        "size": 157.44,
+        "text": "a b c"
+      }
+    ]
+  },
+  "title.italic": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": true,
+            "level": "",
+            "s": 1.0,
+            "t": "p",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "-value",
+            "v": 0.0
+          }
+        ],
+        "size": 157.44,
+        "text": "p-value"
+      }
+    ]
+  },
+  "title.scale15": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "a ",
+            "v": 0.0
+          },
+          {
+            "b": true,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "b",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": " c",
+            "v": 0.0
+          }
+        ],
+        "size": 236.25,
+        "text": "a b c"
+      }
+    ]
+  },
+  "title.supsub": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "a",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "sup",
+            "s": 0.583,
+            "t": "q",
+            "v": 0.5238
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": " b",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "sub",
+            "s": 0.583,
+            "t": "k",
+            "v": -0.1428
+          }
+        ],
+        "size": 157.44,
+        "text": "aq bk"
+      }
+    ]
+  },
+  "title.vertical": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": true,
+            "level": "",
+            "s": 1.0,
+            "t": "p",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": " q",
+            "v": 0.0
+          }
+        ],
+        "size": 157.44,
+        "text": "p q"
+      }
+    ]
+  },
+  "xlabel.runs": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": true,
+            "level": "",
+            "s": 1.0,
+            "t": "italic",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": " text",
+            "v": 0.0
+          }
+        ],
+        "size": 112.56,
+        "text": "italic text"
+      },
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "a",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "sup",
+            "s": 0.583,
+            "t": "q",
+            "v": 0.5238
+          }
+        ],
+        "size": 112.56,
+        "text": "aq"
+      }
+    ]
+  },
+  "xtitle.font": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Times",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "serif",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": " sans",
+            "v": 0.0
+          }
+        ],
+        "size": 112.56,
+        "text": "serif sans"
+      }
+    ]
+  },
+  "ytitle.unicode": {
+    "rc": 0,
+    "texts": [
+      {
+        "runs": [
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "",
+            "s": 1.0,
+            "t": "m",
+            "v": 0.0
+          },
+          {
+            "b": false,
+            "f": "Helvetica",
+            "i": false,
+            "level": "sup",
+            "s": 0.583,
+            "t": "2",
+            "v": 0.5238
+          }
+        ],
+        "size": 112.56,
+        "text": "m2"
+      }
+    ]
+  }
+}
