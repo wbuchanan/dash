@@ -5485,6 +5485,12 @@
   - Suggested fix: scale a dict padding (and a dict margin) in _dash_apply_scale and in the width scale, as their numeric forms are.
   - Resolution: Not fixed because it was found after WP-43's sections were planned; filed 04nov2026 from batch 43.3. Graded S3 (WP-43): about 1 px per side of a boxed title under scale().
 
+- [ ] Title: Plot regions in one by() row can differ by 1 px in height; twoway draws them equal
+  - File Names and Line Numbers: dash_render.py by() grid layout (WP-41 41-05, d536b03e: the rows follow the width scale); test/test_legend_span_browser.py _key_row
+  - Description: Noticed 05nov2026 while fixing test_legend_span_browser's TestByColourKeyInAHole under Bokeh 3.8. Since d536b03e the by() grid's row heights follow the width scale and are fractional, so Bokeh's whole-pixel frames in one row can end 1 px apart in headless Chrome (Bokeh 3.8: the middle column of the key's row; Bokeh 3.9: a panel in row 1); at 1ce34b02, before it, the frames in a row were identical. twoway lays a by() row's plot regions out equal.
+  - Suggested fix: round each by() row's height (and each column's width) to whole pixels once, in the grid's own sizes, so every panel in a row gets the same frame.
+  - Resolution: Not fixed because it was found after WP-43's sections were planned; filed 05nov2026. Graded S3 (WP-43): 1 px in one panel's height, inside the suites' 1.5 px tolerance.
+
 - [ ] Title: legend(ring(x)) prints twoway's two gridringstyle notes once; twoway prints them twice
   - File Names and Line Numbers: dash_parse.mata:12146 (_dash_subreq_check, the ring() notes at :12242 and :12398); test/fixtures/title_box_truth.json leg_ring_x, ring_x
   - Description: Noticed in WP-43 section 43-05 (LT-18), measured 04nov2026 (s2color): `twoway (scatter mpg weight) (scatter trunk weight), legend(ring(x)) nodraw` draws, rc 0, and prints "(note:  named style x not found in class gridringstyle, default attributes used)" and "(note:  gridringstyle not found in scheme, default attributes used)" twice, four lines (leg_ring_x). dash draws the same command and prints the two lines once. title("T", ring(x)) prints the pair once and refuses, r(198), in both (ring_x).
