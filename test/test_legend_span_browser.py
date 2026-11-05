@@ -827,6 +827,21 @@ def _key(st):
     return k
 
 
+def _key_row(st, c):
+    """The plot regions' row (page px, top and foot) of the panels beside
+    a key cell whose canvas is *c*.  Flipped (WP-41 41-05, d536b03e): the
+    by() grid's rows follow the width scale, so a row's height is
+    fractional and Bokeh's whole-pixel frames in one row can end 1 px
+    apart (both Bokeh versions; which panel varies with the version), where
+    the reader took the row as one exact value: the frames must agree to
+    1 px and their mean is the row."""
+    rows = [r for r in st["prows"] if c[1] - 1 <= r[0] <= c[3]]
+    assert rows, st
+    for i in (0, 1):
+        assert max(r[i] for r in rows) - min(r[i] for r in rows) <= 1.0, st
+    return tuple(sum(r[i] for r in rows) / len(rows) for i in (0, 1))
+
+
 @pytest.mark.parametrize("mode", ("saved", "served"))
 class TestByColourKeyUpright:
     """BUGS.md "by(, clegend(pos(6))) drew the colour key across the graph,
@@ -887,8 +902,7 @@ class TestByColourKeyInAHole:
             b, c, bar = key["key"], key["canvas"], key["bar"]
             g = st["grid"]
             u = min(g[2] - g[0], g[3] - g[1]) / 100.0
-            (row,) = {tuple(r) for r in st["prows"]
-                      if c[1] - 1 <= r[0] <= c[3]}
+            row = _key_row(st, c)
             assert key["orient"] == "vertical", st
             assert abs(key["len"] - (row[1] - row[0] + 3.895 * u)) <= 1.5, \
                 (key, row, u)
@@ -1025,7 +1039,7 @@ class TestByDiscreteColourKey:
         lg = _dkey(st)
         b, c, g = lg["box"], lg["canvas"], st["grid"]
         u = min(g[2] - g[0], g[3] - g[1]) / 100.0
-        (row,) = {tuple(r) for r in st["prows"] if c[1] - 1 <= r[0] <= c[3]}
+        row = _key_row(st, c)
         assert abs((b[3] - b[1]) - (row[1] - row[0] + 3.895 * u)) <= 2.5, \
             (b, row, u)
         assert abs(_centre(b)[0] - (c[0] + c[2]) / 2.0) <= 1.5, (b, c)
