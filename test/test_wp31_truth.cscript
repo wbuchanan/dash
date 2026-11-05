@@ -6094,24 +6094,38 @@ def _u27_tw(path, case):
 
 
 def _u27_dash(figs, case):
-    from bokeh.models import Axis, Legend, Title
+    # Flipped (WP-43 LT-19, 0dae9a37): r1title() and r2title() are Labels
+    # in the right panel reading upward, as twoway draws them
+    # (title_box_truth.json e_r1_dir), so an edge title's Label counts as
+    # its Title does, and "vert" reads each one's turn as SVG's rotate():
+    # a Label's angle (counter-clockwise, radians) negated; a Title BokehJS
+    # turns -90 on the left and 90 on the right, where every side title
+    # was read as -90.
+    import math
+    from bokeh.models import Axis, Label, Legend, Title
     edges = []
     for f in figs:
         for side in ("above", "below", "left", "right"):
             k = 0
             for m in getattr(f, side):
                 tags = list(getattr(m, "tags", None) or [])
-                if isinstance(m, Title) and "dash_edge_title" in tags:
+                if isinstance(m, (Title, Label)) \
+                        and "dash_edge_title" in tags:
                     k += 1
+                    if isinstance(m, Label):
+                        turn = -int(round(math.degrees(m.angle or 0)))
+                    else:
+                        turn = {"left": -90, "right": 90}.get(side, 0)
                     edges.append((m.text, side, k,
-                                  float(str(m.text_font_size).rstrip("ptx"))))
+                                  float(str(m.text_font_size).rstrip("ptx")),
+                                  turn))
     if case == "by":
         return " ".join("%s:%d" % (k, sum(1 for e in edges if e[0] == k))
                         for k in ("T1", "B1", "L1", "R1"))
     e = {x[0]: x for x in edges}
     if case == "vert":
-        return " ".join("%s:%d" % (k, -90 if e[k][1] in ("left", "right")
-                                   else 0) for k in _U27_LABS if k in e)
+        return " ".join("%s:%d" % (k, e[k][4]) for k in _U27_LABS
+                        if k in e)
     if case == "sizes":
         return _u27_rel({k: e[k][3] for k in e})
     if case == "sides":
