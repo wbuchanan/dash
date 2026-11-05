@@ -798,6 +798,43 @@ class TestWeightedMarkerKey:
             "field" in str(p._dash_key_for.glyph.size)
 
 
+class TestEndMarkersOnTheEnds:
+    """PIC-11's documented difference, closed (WP-43 LT-21, batch 43.6):
+    twoway centres rcapsym's, pccapsym's and dropline's end markers on
+    the key's ends, overhanging the symxsize() box (sh_rcapsym: circles
+    r 26.35 at the line's 730.37 and 1104.84, the text 59.9 after the
+    line's end as after rcap's; sh_rcapsym_cols1: a marker key in that
+    column centred on the line).  The canvas is the box plus the marker,
+    moved so the box sits in its column and the text one key gap after
+    the box; the painter draws no inset."""
+
+    def test_fixture(self):
+        for case in ("sh_rcapsym", "sh_pccapsym"):
+            marks = _key_marks(case)
+            line = [m for m in marks if 300 < m[1] - m[0] < 1000][0]
+            dots = sorted((m[0] + m[1]) / 2 for m in marks
+                          if m[1] - m[0] < 100 and m[0] < line[1] + 100)
+            assert abs(dots[0] - line[0]) < 0.01 and \
+                abs(dots[1] - line[1]) < 0.01, case
+        t, tr = _texts("sh_rcapsym"), _texts("sh_rcap")
+        assert t["Mileage (mpg)/Turn circle (ft.)"][0] == \
+            tr["Mileage (mpg)/Turn circle (ft.)"][0]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_canvas_and_moves(self, mode):
+        [fig] = _figs(mode, [_shape_plot("rcapsym"), _sc()])
+        [lg] = [l for l in fig.legend if l.items]
+        shaft, ends = lg.items[0].renderers
+        over = ends.glyph.size + ends.glyph.line_width
+        fs = dr.OptionTranslator.css_to_pt(lg.label_text_font_size) * 4 / 3
+        rules = _box_rules(lg)
+        # The shape's item: the canvas half the overhang left, its text
+        # back by the overhang.
+        assert abs(_em(rules[1]["label"]["margin-left"]) + over / fs) < 0.02
+        assert abs(_glyph_move(lg, 1)[0] + 100 * over / 2
+                   / lg.glyph_width) < 0.2
+
+
 class TestKeyPainter:
     """The painted key's proxy is 42-02's form: legend-only, on its
     layer's own source and view filter, out of every HoverTool and
@@ -1049,8 +1086,20 @@ class TestKeyShapes:
         lines, _c, rects = _twoway_shape("sh_" + ptype)
         span = max([abs(l[2] - l[0]) for l in lines]
                    + [r[2] for r in rects])
-        assert lg.glyph_width == int(round(span / _SVG_PER_UNIT
-                                           * _PX_PER_UNIT)) == 50
+        symx = int(round(span / _SVG_PER_UNIT * _PX_PER_UNIT))
+        assert symx == 50
+        # Flipped (WP-43 LT-21, batch 43.6): an end marker is centred on
+        # its end (TestEndMarkersOnTheEnds), so the canvas of a legend
+        # holding one is the key box plus the marker; the painter draws
+        # the shape in the box (kw).
+        ends = [p for p in it.renderers
+                if p.glyph.defs["@dash_key"].args.get("shape") == "ends"]
+        over = (ends[0].glyph.size + ends[0].glyph.line_width) if ends \
+            else 0.0
+        assert lg.glyph_width == int(round(symx + over))
+        for p in it.renderers:
+            kw = p.glyph.defs["@dash_key"].args.get("kw", 1.0)
+            assert abs(kw * lg.glyph_width - symx) < 1e-6
 
     @pytest.mark.parametrize("mode", MODES)
     def test_rcap_caps_are_the_cap_size(self, mode):

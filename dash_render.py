@@ -42143,6 +42143,10 @@ def _dash_legend_key_boxes(legend, words, infos=None, symx=None,
                 need.append(f[1] + f[2])
             else:
                 boxes.append(symx)
+                # An end marker centred on its end overhangs the box
+                # (legend_keys_truth.json sh_rcapsym).
+                if f[0] == "shape" and f[1] > 0:
+                    need.append(symx + 2 * f[1])
         G = float(max(gw, int(round(max(need)))))
         cols = _dash_legend_grid_columns(legend, len(items))
         width = {}

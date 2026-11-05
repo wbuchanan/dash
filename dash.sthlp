@@ -5092,9 +5092,8 @@ key's width, as in {cmd:twoway}; a weighted marker layer's key is its
 marker at the layer's own size, whatever the weights, as in
 {cmd:twoway}.  The keys of {cmd:rcap}, {cmd:rcapsym},
 {cmd:pccapsym}, {cmd:dropline}, {cmd:pcarrow}, {cmd:pcbarrow} and
-{cmd:rarea} are {cmd:twoway}'s shapes, except that an end marker is drawn
-inside the key, a marker's radius in from its end, where {cmd:twoway}
-centres it on the end.  {cmd:symxsize()}, {cmd:symysize()},
+{cmd:rarea} are {cmd:twoway}'s shapes, an end marker centred on its
+end.  {cmd:symxsize()}, {cmd:symysize()},
 {cmd:keygap()} and {cmd:rowgap()} change them, {cmd:forcesize} draws the
 same box, and an unknown size is
 {cmd:twoway}'s {cmd:medium}, with a note.  The keys fill a grid of

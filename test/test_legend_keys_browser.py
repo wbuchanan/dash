@@ -473,6 +473,31 @@ def test_economist_three_columns_fit(mode):
                    for t in leg["texts"]), (w, leg)
 
 
+@pytest.mark.parametrize("mode", ("saved", "served"))
+def test_end_markers_on_the_ends(mode):
+    """rcapsym's end markers are centred on the key's ends (sh_rcapsym:
+    the ink 427.2 units wide, the line's 374.47 and a marker, 4.27 text
+    sizes; the text 0.34 text sizes after the right marker's edge, 0.60
+    after the line's end), and dropline's on its right end.  No CSP
+    violation."""
+    marks, texts = _twoway_keys("sh_rcapsym")
+    line = [m for m in marks if 300 < m[1] - m[0] < 1000][0]
+    fs_tw = texts[0][2]
+    want_w = (line[1] - line[0] + 2 * 26.35) / fs_tw
+    want_gap = (texts[0][0] - (line[1] + 26.35)) / fs_tw
+    legs, viol = _legends(mode, [([_shp("rcapsym"), _sc()], ""),
+                                 ([_shp("rcap"), _sc()], "")])
+    assert viol == []
+    it, cap = legs[0]["items"][0], legs[1]["items"][0]
+    fs = it["fs"]
+    l, _c, r = _ink_x(it)
+    assert abs((r - l) / fs - want_w) < 0.12, (it, want_w)
+    assert abs((it["text"][0] - r) / fs - want_gap) < 0.12, (it, want_gap)
+    # Its text starts where rcap's does from the line's left end.
+    assert abs((it["text"][0] - (l + 0.2635 * fs))
+               - (cap["text"][0] - _ink_x(cap)[0])) < 1.5, (it, cap)
+
+
 def test_emptied_layer_draws_no_key():
     """Saved: after the dropdown move foreign == 0, which leaves the
     layer `scatter mpg weight if foreign == 1' no row, its painted key is
