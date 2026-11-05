@@ -3485,7 +3485,7 @@ GAPS4_CLOSED_WPS = ("WP-33", "WP-34", "WP-35", "WP-36", "WP-37", "WP-38", "WP-40
 
 #: WP -> the commit that recorded its closeout counts (WE.2's follow-up
 #: commit); test_the_gaps4_closeout_counts_are_computed recomputes them.
-GAPS4_CLOSEOUT = {"WP-33": "713636a", "WP-34": "5ce2605", "WP-35": "a519cce", "WP-36": "c186611", "WP-37": "88941ac", "WP-38": "eb8d5fc", "WP-40": "cf94d7c", "WP-41": "936f9de", "WP-42": "49e75a3"}
+GAPS4_CLOSEOUT = {"WP-33": "713636a", "WP-34": "5ce2605", "WP-35": "a519cce", "WP-36": "c186611", "WP-37": "88941ac", "WP-38": "eb8d5fc", "WP-40": "cf94d7c", "WP-41": "936f9de", "WP-42": "49e75a3", "WP-43": "05db2ea"}
 
 _GAPS4_WPS = ("WP-33", "WP-34", "WP-35", "WP-36", "WP-37", "WP-38",
               "WP-40", "WP-41", "WP-42", "WP-43", "WP-44", "WP-45",
