@@ -1592,4 +1592,7 @@ class TestInternalLinksResolve:
         # Textbox options for the sub-options it draws (WP-43 LT-19).
         # old -> new: 185 -> 186 links: the legend paragraph links its wide
         # legend under the plot to Differences from twoway (D70, 05nov2026).
-        assert len(refs) == 186 and len(set(refs)) == 52
+        # old -> new: 186 -> 188 links, 52 -> 53 markers: Differences item
+        # 16 links Text in graphs, which links item 16's new marker
+        # partial_markup back (WP-43 ST-14, D71).
+        assert len(refs) == 188 and len(set(refs)) == 53

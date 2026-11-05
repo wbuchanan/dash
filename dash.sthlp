@@ -1675,6 +1675,32 @@ there, is an invalid point.  The literal is read as data and never run.
 {phang2}    {ul:A global's =exp outside the listed functions is drawn as written.}  A {cmd:`=}{it:exp}{cmd:'} in a global's value in a graph's text is evaluated as {cmd:twoway} evaluates it when {it:exp} uses only the operators and functions listed there; one that names a variable, a scalar, a result or another function, and a macro reference, is drawn as written with a note; see {help dash##added_text:Added text}.
 
 
+{marker partial_markup}{...}
+{phang2}16.  {ul:Markup on part of a text is drawn in one style.}
+    {cmd:twoway} styles each part of a text on its own: it draws
+    {cmd:title("a {c -(}bf:b{c )-} c")} with only the b bold,
+    {cmd:title("{c -(}it:p{c )-}-value")} with only the p in italics and
+    {cmd:title("a{c -(}sup:q{c )-} b{c -(}sub:k{c )-}")} with the q raised and the
+    k lowered, each at 0.58 of the text's size.  {cmd:dash} draws every
+    text on a graph -- titles, subtitles, notes and captions, edge titles,
+    axis titles, tick labels, legend keys and titles, added text,
+    {cmd:by()} panel titles and marker labels -- in one style, one font
+    and on one baseline.  So {cmd:{c -(}bf:{c )-}}, {cmd:{c -(}it:{c )-}} or a font tag on
+    part of a text is drawn in the text's own style and font, and a
+    raised or lowered run is drawn on the line unless each of its
+    characters has a Unicode superscript or subscript form (digits,
+    {cmd:+ - = ( )} and, raised, {cmd:n} and {cmd:i}:
+    {cmd:ytitle("m{c -(}sup:2{c )-}")} is drawn m²).  {cmd:dash} prints one
+    note for each graph and kind of text it draws so, for example
+    "{c -(}bf:{c )-}, {c -(}it:{c )-} or a font tag on part of a title, subtitle, note or
+    caption is drawn in that text's own style and font".  Markup around a
+    whole text is drawn as {cmd:twoway} draws it: {cmd:title("{c -(}bf:a b c{c )-}")}
+    is a bold title.  A page draws each text as one piece of text in the
+    browser, so styling part of it would need {cmd:dash} to place every
+    piece itself after the page is laid out; see
+    {help dash##graph_text:Text in graphs}.
+
+
 {marker subcommands}
 {title:Subcommands}
 
@@ -5823,7 +5849,10 @@ as {cmd:twoway} writes them.
 
 {marker graph_text}{...}
 {pstd}
-{ul:Text in graphs.}  Text {cmd:dash} draws on a graph -- a title,
+{ul:Text in graphs.}  {bf:Markup on part of a text is drawn in the
+text's own style}; see item 16,
+{help dash##partial_markup:Markup on part of a text is drawn in one style},
+under Differences from twoway.  Text {cmd:dash} draws on a graph -- a title,
 subtitle, note or caption, an axis title, a tick label, a legend key or
 title, a {cmd:by()} panel title, the colour key and a marker label,
 typed in an option or taken from a variable label, a value label or a

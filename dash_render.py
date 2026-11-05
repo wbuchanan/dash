@@ -53355,6 +53355,10 @@ def _dash_graph_text_style(model, prop, results, fig, fonts=None):
     if row is None:
         return None, set(), False
     cls_name, sprop, fprop, kind = row
+    # An added text() is a Label too; its note names it as one.
+    if cls_name == "Label" and "dash_added_text" in (
+            getattr(model, "tags", None) or ()):
+        kind = "added text"
     flags = set()
     for r in results:
         flags.update(r[3])
@@ -53402,15 +53406,16 @@ def _dash_graph_text_note(where, kind, flags):
     """Say once per render, *where* and *kind*, what one Bokeh text could
     not draw as twoway does; the user's text is never echoed."""
     parts = []
+    a = "an" if str(kind)[:1] in "aeiou" else "a"
     if "inline" in flags:
-        parts.append(f"{{bf:}}, {{it:}} or a font tag on part of a {kind} "
+        parts.append(f"{{bf:}}, {{it:}} or a font tag on part of {a} {kind} "
                      f"is drawn in that text's own style and font")
     if "level" in flags:
         parts.append(f"{{sup:}} or {{sub:}} around a character with no "
-                     f"raised or lowered form in a {kind} is drawn on the "
+                     f"raised or lowered form in {a} {kind} is drawn on the "
                      f"line")
     if "cut" in flags:
-        parts.append(f"an SMCL expansion past 4,000 characters in a {kind} "
+        parts.append(f"an SMCL expansion past 4,000 characters in {a} {kind} "
                      f"was cut there")
     if not parts:
         return

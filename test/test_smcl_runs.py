@@ -11,16 +11,17 @@ Measured truth: test/fixtures/smcl_runs_truth.json
 (scripts/extract_smcl_runs_truth.do), each run's text, weight, slant,
 font, size and baseline shift read from twoway's own SVG.
 
-Known open.  Ruling D69 (04nov2026) withdrew the layout-time run placer
-section 43-07 planned, and the 43-07-02 spike found no route D69 allows
-that draws twoway's runs: Bokeh's TeX draws every run in MathJax's own
-faces and adds 1.79 MB to each saved page; a Legend's title and keys are
-DOM text that takes no TeX and no CSS on part of a text; Unicode
-mathematical letters miss twoway's advances by up to an em.  The tests of
-the drawn kinds are strict xfails until the maintainer rules; a kind that
-starts drawing its runs turns its xfail into a failure, so the test is
-flipped with the change that draws it.  The marker label's note and the
-Unicode raised digits are pinned as they are.
+Documented (ruling D71, 05nov2026).  Ruling D69 (04nov2026) withdrew the
+layout-time run placer section 43-07 planned, and the 43-07-02 spike found
+no route D69 allows that draws twoway's runs: Bokeh's TeX draws every run
+in MathJax's own faces and adds 1.79 MB to each saved page; a Legend's
+title and keys are DOM text that takes no TeX and no CSS on part of a
+text; Unicode mathematical letters miss twoway's advances by up to an em.
+The maintainer ruled the one-style drawing a documented difference
+(dash.sthlp, Differences from twoway, Markup on part of a text, and Text
+in graphs): each kind is pinned drawn in one style with one note that
+names its kind.  A raised run whose characters all have a Unicode form is
+drawn raised, as now.
 """
 import json
 import os
@@ -44,10 +45,15 @@ with open(_FIXTURE, encoding="utf-8") as _fh:
 #: The note dash prints for a text it draws in one style.
 _NOTE = "(help dash, Text in graphs)"
 
-_OPEN = pytest.mark.xfail(
-    strict=True,
-    reason="ST-14 open: no drawing route ruling D69 allows draws twoway's "
-           "runs (spike 43-07-02); the maintainer rules")
+#: The kind of text each probe kind's note names.
+_KIND_WORD = {
+    "titles": "title, subtitle, note or caption",
+    "axis titles": "axis title",
+    "tick labels": "tick label",
+    "legend": "legend key or title",
+    "added text": "added text",
+    "by titles": "title, subtitle, note or caption",
+}
 
 
 def _at(y, x, line):
@@ -147,15 +153,25 @@ class TestTheFixture:
 @pytest.mark.parametrize("mode", tg.MODES)
 class TestRunsDrawn:
 
-    @_OPEN
     @pytest.mark.parametrize("kind", sorted(_KINDS))
-    def test_no_note(self, mode, kind):
+    def test_one_style_with_a_note(self, mode, kind):
         """Every probe of the kind, whose runs twoway styles apart, is
-        drawn by dash with no one-style note."""
+        drawn by dash in one style with one note naming its kind of text
+        (the documented difference, ruling D71).  Flipped (D71): these were
+        strict xfails expecting no note while ST-14 awaited a ruling.  An
+        added text's note names "an added text" (it named a "title,
+        subtitle, note or caption", BUGS.md "A text() with markup on part
+        of it is noted as a title, subtitle, note or caption"), and an
+        axis title's reads "an axis title" (it read "a axis title")."""
         for key, (plots, go) in _KINDS[kind].items():
             assert TRUTH[key]["rc"] == 0
             assert len(_styles(key)) > 1, key
-            assert _notes(mode, plots, go) == [], key
+            notes = _notes(mode, plots, go)
+            assert len(notes) == 1, (key, notes)
+            word = _KIND_WORD[kind]
+            art = "an" if word[0] in "aeiou" else "a"
+            assert ("part of %s %s " % (art, word)) in notes[0] or (
+                "in %s %s " % (art, word)) in notes[0], (key, notes)
 
     def test_unicode_raised_stays(self, mode):
         """A raised run whose characters all have a Unicode form is drawn
@@ -177,3 +193,48 @@ class TestRunsDrawn:
         assert len(notes) == 1
         assert "part of a marker label is drawn in that text's own style" \
             in notes[0]
+
+
+_HELP = os.path.join(os.path.dirname(_HERE), "dash.sthlp")
+
+
+class TestHelp:
+    """The documented difference (ruling D71): item 16 of Differences from
+    twoway, its example measured (title.bold, title.supsub), the note it
+    quotes the one dash prints, and Text in graphs pointing to it."""
+
+    def _item(self):
+        with open(_HELP, encoding="utf-8") as fh:
+            text = fh.read()
+        a = text.index("{marker partial_markup}")
+        b = text.index("{marker subcommands}", a)
+        return text, text[a:b]
+
+    def test_differences_line(self):
+        text, item = self._item()
+        assert "{phang2}16.  {ul:Markup on part of a text is drawn in one " \
+               "style.}" in item
+        assert text.index("{marker partial_markup}") > text.index(
+            "{marker differences}")
+        # The example, measured: only the b bold; q raised, k lowered at
+        # 0.583 of the size.
+        assert 'title("a {c -(}bf:b{c )-} c")} with only the b bold' in item
+        assert [(r["t"], r["b"]) for r in
+                TRUTH["title.bold"]["texts"][0]["runs"]] == [
+            ("a ", False), ("b", True), (" c", False)]
+        runs = TRUTH["title.supsub"]["texts"][0]["runs"]
+        assert [r["s"] for r in runs if r["t"] in ("q", "k")] == [
+            pytest.approx(0.583, abs=1e-3)] * 2
+        assert "at 0.58 of the text's size" in item
+        # Text in graphs points to it.
+        g = text.index("{marker graph_text}")
+        assert "{help dash##partial_markup:" in text[g:g + 600]
+
+    @pytest.mark.parametrize("mode", tg.MODES)
+    def test_quoted_note_is_dashs(self, mode):
+        _text, item = self._item()
+        (note,) = _notes(mode, [_sc()], {"title": '"a {bf:b} c"'})
+        quoted = " ".join(item.split('"{c -(}bf:{c )-}, ', 1)[1]
+                          .split('".', 1)[0].split())
+        assert ("{bf:}, " + quoted.replace("{c -(}", "{")
+                .replace("{c )-}", "}")) in note, (quoted, note)
