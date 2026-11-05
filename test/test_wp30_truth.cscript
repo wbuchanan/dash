@@ -2283,7 +2283,13 @@ def _s11_page():
             r = ref(r)
             if not r or r["name"] != "GlyphRenderer":
                 continue
-            g = ref((r.get("attributes") or {}).get("glyph"))
+            # Flipped (WP-43 LT-21, 097a8f7): a legend-only key proxy
+            # (named __dash_keyproxy, tagged dash_key_proxy) draws a
+            # marker layer's key and nothing in the plot; it is not a series.
+            ra = r.get("attributes") or {}
+            if ra.get("name") == "__dash_keyproxy" or "dash_key_proxy" in (ra.get("tags") or []):
+                continue
+            g = ref(ra.get("glyph"))
             if not g:
                 continue
             at = g.get("attributes") or {}
@@ -2313,8 +2319,11 @@ def _s11_app():
             # swatch clones of panel 1's glyphs; it is not a panel.
             if not isinstance(p, Plot) or str(p.name or "").startswith("dash_by_"):
                 continue
+            # Flipped (WP-43 LT-21, 097a8f7): a legend-only key proxy is
+            # not a series (see _s11_page).
             items = [(type(r.glyph).__name__, lambda k, g=r.glyph: getattr(g, k, None))
-                     for r in p.renderers if isinstance(r, GlyphRenderer)]
+                     for r in p.renderers if isinstance(r, GlyphRenderer)
+                     and not (str(r.name or "") == "__dash_keyproxy" or "dash_key_proxy" in (r.tags or []))]
             s = _s11_fmt(items)
             if s:
                 figs.append(s)
@@ -5178,7 +5187,11 @@ def _s20_read(doc):
     for ls in [x for x in list(p.center) + list(p.above) + list(p.below) + list(p.left) + list(p.right) if isinstance(x, LabelSet)]:
         texts = [str(t) for t in ls.source.data[field(ls.text)]]
         labels.append([len(texts), texts[0] if texts else ""])
-    gl = [r for r in p.renderers if isinstance(r, GlyphRenderer)]
+    # Flipped (WP-43 LT-21, 097a8f7): a legend-only key proxy (named
+    # __dash_keyproxy, tagged dash_key_proxy, its x a NaN value) draws a
+    # marker layer's key, not a series.
+    gl = [r for r in p.renderers if isinstance(r, GlyphRenderer)
+          and not (str(r.name or "") == "__dash_keyproxy" or "dash_key_proxy" in (r.tags or []))]
     bars = [[resolved(r, "bottom"), resolved(r, "width")] for r in gl if type(r.glyph).__name__ == "VBar"]
     xs = [field(r.glyph.x) for r in gl if type(r.glyph).__name__ == "Scatter"]
     return _s20_json.dumps({"labels": labels, "bars": bars, "x": xs})
@@ -7195,6 +7208,11 @@ def _s30_read(doc):
     from bokeh.models import GlyphRenderer, Span, Plot
     g = []
     for r in doc.select({"type": GlyphRenderer}):
+        # Flipped (WP-43 LT-21, 097a8f7): a legend-only key proxy (named
+        # __dash_keyproxy, tagged dash_key_proxy) draws a layer's key, not
+        # a layer: its colours are the layer's, counted once.
+        if str(r.name or "") == "__dash_keyproxy" or "dash_key_proxy" in (r.tags or []):
+            continue
         gl = r.glyph
         g.append("%s:%s:%s:%s" % (type(gl).__name__, _s30_v(getattr(gl, "fill_color", "")),
                                   _s30_v(getattr(gl, "fill_alpha", "")),

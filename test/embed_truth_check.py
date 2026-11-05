@@ -128,6 +128,12 @@ def page_rows(path):
         if o.get("name") != "GlyphRenderer":
             continue
         a = o.get("attributes") or {}
+        # Flipped (WP-43 LT-21, 097a8f7): a legend-only key proxy (named
+        # __dash_keyproxy, tagged dash_key_proxy) shares its layer's source
+        # and view filter and draws only the layer's key; it is not a view.
+        if a.get("name") == "__dash_keyproxy" or "dash_key_proxy" in (
+                a.get("tags") or []):
+            continue
         glyph = _ref(objs, a.get("glyph"))
         if not isinstance(glyph, dict) or glyph.get("name") != "Scatter":
             continue
