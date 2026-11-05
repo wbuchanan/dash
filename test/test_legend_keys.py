@@ -486,6 +486,115 @@ class TestMarkerKeySize:
         assert mixed.glyph_height >= 13
 
 
+def _box_rules(legend):
+    """``{item index (1-based): {part: {prop: value}}}`` of *legend*'s
+    key-box stylesheet (``dash_legend_keybox``), each part ``glyph`` or
+    ``label``."""
+    import re
+    css = _sheet(legend, "dash_legend_keybox")
+    out = {}
+    for n, part, body in re.findall(
+            r"\.bk-item:nth-child\((\d+)\) \.bk-(glyph|label)\{([^}]*)\}",
+            css):
+        d = out.setdefault(int(n), {}).setdefault(part, {})
+        for decl in body.split(";"):
+            if ":" in decl:
+                k, v = decl.split(":", 1)
+                d[k.strip()] = v.strip()
+    return out
+
+
+def _em(v):
+    return float(v[:-2]) if v.endswith("em") else float("nan")
+
+
+class TestKeyBoxes:
+    """LT-21 residual: twoway's key column is as wide as its widest key
+    (legend_keys_truth.json cell_ctl: a marker key beside a line key in
+    another column only its marker's width, 44.06 units -- the marker's
+    size, its outline overhanging -- with its text one key gap after it,
+    as the line's text is after the line; cols1: a marker in the line's
+    column centred in the line's width, every text at one x).  Bokeh has
+    one glyph_width a legend: dash keeps each canvas that wide and moves
+    it and its text by the Legend's own stylesheet (dash_legend_keybox,
+    _dash_legend_key_boxes), numbers only."""
+
+    def test_fixture(self):
+        marks = _key_marks("cell_ctl")
+        t = _texts("cell_ctl")
+        dot, line = marks
+        # The marker's box is its size (the outline's centre line, r
+        # 22.03), its ink 26.35 a side: the text one key gap after the
+        # box, as the line's text is after the line.
+        box_right = (dot[0] + dot[1]) / 2 + 22.03
+        gap_dot = t["Mileage (mpg)"][0] - box_right
+        gap_line = t["Price"][0] - line[1]
+        assert abs(gap_dot - gap_line) < 0.5
+        col = _key_marks("cols1")
+        lines = [m for m in col if 300 < m[1] - m[0] < 1000]
+        dots = [m for m in col if m[1] - m[0] < 100]
+        assert len(lines) == 1 and len(dots) == 2
+        for d in dots:
+            assert abs((d[0] + d[1]) / 2 - (lines[0][0] + lines[0][1]) / 2) \
+                < 0.2
+        assert len({v[0] for k, v in _texts("cols1").items()
+                    if k in ("Mileage (mpg)", "Price",
+                             "Turn circle (ft.)")}) == 1
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_marker_beside_a_line(self, mode):
+        """The marker's column is its size wide: its text moves back by
+        the canvas's width less the marker's size; the line's item keeps
+        its place; the canvas stays glyph_width wide, moved so the marker
+        sits at the column's centre."""
+        lg, _n = _legend(mode, [_sc(), bk._p("line", y="headroom")], "")
+        fs = dr.OptionTranslator.css_to_pt(lg.label_text_font_size) * 4 / 3
+        size = lg.items[0].renderers[0].glyph.size
+        rules = _box_rules(lg)
+        d = lg.glyph_width - size
+        assert d > 20
+        assert abs(_em(rules[1]["label"]["margin-left"]) + d / fs) < 0.01
+        tx = rules[1]["glyph"]["translate"].split()[0]
+        assert abs(float(tx[:-1]) + 100 * d / 2 / lg.glyph_width) < 0.1
+        assert 2 not in rules
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_column_shares_the_widest(self, mode):
+        """cols(1): one key column, the line's width: no item moves."""
+        lg, _n = _legend(mode, [_sc(), bk._p("line", y="headroom"),
+                                _sc("turn")], "cols(1)")
+        assert _box_rules(lg) == {}
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_textfirst_moves_the_other_side(self, mode):
+        lg, _n = _legend(mode, [_sc(), bk._p("line", y="headroom")],
+                         "textfirst")
+        rules = _box_rules(lg)
+        assert "margin-right" in rules[1]["label"]
+        assert float(rules[1]["glyph"]["translate"].split()[0][:-1]) > 0
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_markers_only_each_column_its_own(self, mode):
+        """Two columns of markers, one large: the small marker's column is
+        its own size wide (each column twoway's own width)."""
+        lg, _n = _legend(mode, [_sc(msize="large"), _sc("headroom")], "")
+        rules = _box_rules(lg)
+        small = lg.items[1].renderers[0].glyph.size
+        assert abs(_em(rules[2]["label"]["margin-left"])
+                   + (lg.glyph_width - small) / (
+                       dr.OptionTranslator.css_to_pt(
+                           lg.label_text_font_size) * 4 / 3)) < 0.01
+
+    def test_only_numbers_reach_the_css(self):
+        import re
+        lg, _n = _legend("saved", [_sc(), bk._p("line", y="headroom")],
+                         'textfirst label(1 "a{}<b>;x")')
+        css = _sheet(lg, "dash_legend_keybox")
+        assert css
+        assert re.fullmatch(r"[a-z0-9.%: ;{}()\-]+", css.replace(
+            ".bk-grid .bk-item:nth-child", "").replace(".bk-", "")), css
+
+
 class TestKeyPainter:
     """The painted key's proxy is 42-02's form: legend-only, on its
     layer's own source and view filter, out of every HoverTool and

@@ -146,6 +146,33 @@ _lk_run merge_cross s2color `"twoway (kdensity mpg, pstyle(p1)) (line mpg weight
 _lk_run merge_cross_lfit s2color `"twoway (lfit mpg weight, pstyle(p1)) (line mpg weight, sort pstyle(p1)), `N'"'
 _lk_run merge_cross_sc s2color `"twoway (scatter mpg weight, pstyle(p1)) (line mpg weight, sort pstyle(p1)), `N'"'
 _lk_run merge_recast s2color `"twoway (scatter mpg weight, pstyle(p1) recast(line) sort) (line price weight, sort pstyle(p1)), `N'"'
+* ---- LT-21 residual (batch 43.6): a key column, symplacement()'s
+* compass values, the legend's note() beside its title() and a weighted
+* marker layer's key.
+sysuse auto, clear
+local L "twoway (scatter mpg weight in 1/5) (line price weight in 1/5)"
+local L3 "twoway (scatter mpg weight in 1/5) (line price weight in 1/5) (scatter turn weight in 1/5)"
+_lk_run cols1 s2color `"`L3', legend(cols(1)) `N'"'
+_lk_run cols1_symp_w s2color `"`L3', legend(cols(1) symplacement(w)) `N'"'
+_lk_run cols1_symp_e s2color `"`L3', legend(cols(1) symplacement(e)) `N'"'
+_lk_run cols1_symp_ne s2color `"`L3', legend(cols(1) symplacement(ne)) `N'"'
+foreach d in c ne e se s w nw 12 6 top bottom right NE bogus {
+    _lk_run symp_x`d' s2color `"`L', legend(symplacement(`d')) `N'"'
+}
+_lk_run symp_n_symy s2color `"`L', legend(symplacement(n) symysize(6)) `N'"'
+_lk_run symp_n_size s2color `"`L', legend(symplacement(n) size(large)) `N'"'
+_lk_run symp_n_scale s2color `"`L', legend(symplacement(n)) scale(1.5) `N'"'
+_lk_run title_note s2color `"`L', legend(title("T") note("N")) `N'"'
+_lk_run subtitle_note s2color `"`L', legend(subtitle("S") note("N")) `N'"'
+_lk_run note_size s2color `"`L', legend(note("N", size(large))) `N'"'
+_lk_run note_two s2color `"`L', legend(note("N1" "N2")) `N'"'
+_lk_run note_cols1 s2color `"`L3', legend(cols(1) note("Note")) `N'"'
+_lk_run wt_marker s2color `"twoway (scatter mpg weight in 1/5 [aw=turn]) (scatter price weight in 1/5), `N'"'
+_lk_run wt_line s2color `"twoway (scatter mpg weight in 1/5 [aw=turn]) (line price weight in 1/5), `N'"'
+_lk_run wt_trunk s2color `"twoway (scatter mpg weight in 1/5 [aw=trunk]) (line price weight in 1/5), `N'"'
+_lk_run wt_large s2color `"twoway (scatter mpg weight in 1/5 [aw=turn], msize(large)) (line price weight in 1/5), `N'"'
+_lk_run wt_all s2color `"twoway (scatter mpg weight [aw=turn]) (line price weight in 1/5), `N'"'
+_lk_run sh_rcapsym_cols1 s2color `"twoway (rcapsym mpg turn weight in 1/5) (scatter mpg weight in 1/5), legend(cols(1)) `N'"'
 clear
 set obs 10
 generate x = _n

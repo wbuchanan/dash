@@ -696,7 +696,13 @@ _SAVED_DIGEST = (
     # 73854c60... -> d0f8d8ce...: WP-43 PIC-11, the painter's code gains
     # twoway's key shapes (code only: LT-21's _DASH_KEY_PAINT_JS gives the
     # old digest on the new tree); the same under both Pythons.
-    "d0f8d8ceec25d2b0a280ad210a830adb1edd673c233386c54c37541c2bd5d941")
+    # d0f8d8ce... -> 92f23360...: WP-43 LT-21, each key in twoway's key
+    # column: the scatter's key gets the legend's keybox stylesheet (its
+    # canvas moved, its text pulled back) and the painter's code the key
+    # box's share (with _dash_legend_key_boxes stubbed out and the base's
+    # _DASH_KEY_PAINT_JS the tree gives the old digest); the same under
+    # both Pythons.
+    "92f233606f7303b1b9e9575836d979a5776f532be5e20cc896ee91ada157e359")
 
 
 # ===========================================================================

@@ -5085,10 +5085,11 @@ scheme's size -- under {cmd:s2color} a line key 13 units long and
 {cmd:tiny} gap apart, where a unit is 2.88 points.  A marker key is
 drawn at the plot's marker size and angle, and a legend whose keys are
 all markers is only as wide as its widest marker, as in {cmd:twoway};
-beside a line key a marker key takes the line key's box,
-{cmd:symxsize()} by {cmd:symysize()}, where {cmd:twoway} draws it only
-as wide as its marker, and a weighted marker layer's key is drawn at
-0.4 of the box's smaller side.  The keys of {cmd:rcap}, {cmd:rcapsym},
+each column of keys is as wide as its widest key, so a marker key in a
+column of its own is only as wide as its marker, with its text a key
+gap after it, and one in a line key's column is centred in the line
+key's width, as in {cmd:twoway}; a weighted marker layer's key is drawn
+at 0.4 of the box's smaller side.  The keys of {cmd:rcap}, {cmd:rcapsym},
 {cmd:pccapsym}, {cmd:dropline}, {cmd:pcarrow}, {cmd:pcbarrow} and
 {cmd:rarea} are {cmd:twoway}'s shapes, except that an end marker is drawn
 inside the key, a marker's radius in from its end, where {cmd:twoway}

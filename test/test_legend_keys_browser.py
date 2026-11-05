@@ -131,6 +131,12 @@ def _twoway_keys(case):
     return sorted(marks), [t for t in texts if t[1] > top]
 
 
+def _ink_x(it):
+    """``(left, centre, right)`` of an item's drawn pixels on the page."""
+    ink, cv = it["ink"], it["canvas"]
+    return (cv[0] + ink[0], cv[0] + (ink[0] + ink[2]) / 2, cv[0] + ink[2])
+
+
 @pytest.mark.parametrize("mode", ("saved", "served"))
 class TestKeyOrderInChrome:
 
@@ -147,23 +153,25 @@ class TestKeyOrderInChrome:
                                       "textfirst cols(1)")])
         assert viol == []
         plain, first, stacked, above, col = legs
+        # The key's left edge is its drawn pixels' (a marker key's canvas
+        # is moved into its column, wider than the key: TestKeyBoxes).
         for it in first["items"]:
-            gap = (it["canvas"][0] - it["text"][2]) / it["fs"]
+            gap = (_ink_x(it)[0] - it["text"][2]) / it["fs"]
             assert 0.35 < gap < 0.8, it
         for it in plain["items"]:
-            assert it["text"][0] > it["canvas"][2], it
+            assert it["text"][0] > _ink_x(it)[2], it
         marks, texts = _twoway_keys("stacked")
         fs = texts[0][2]
         twoway_rise = (texts[0][1] - 0.35 * fs - marks[0][2]) / fs
         for it in stacked["items"]:
-            assert abs(it["text"][0] - it["canvas"][0]) <= 1.5, it
+            assert abs(it["text"][0] - _ink_x(it)[0]) <= 1.5, it
             kc = (it["canvas"][1] + it["canvas"][3]) / 2
             tc = (it["text"][1] + it["text"][3]) / 2
             assert abs((tc - kc) / it["fs"] - twoway_rise) < 0.25, (
                 it, twoway_rise)
         # textfirst stacked: the text above its key, both at the left.
         for it in above["items"]:
-            assert abs(it["text"][0] - it["canvas"][0]) <= 1.5, it
+            assert abs(it["text"][0] - _ink_x(it)[0]) <= 1.5, it
             assert it["text"][3] <= it["canvas"][1] + 1, it
         # textfirst cols(1): the texts end at one x, one keygap before
         # the keys' one column (twoway's anchor-end texts at 2195.82).
@@ -229,6 +237,51 @@ class TestMarkerKeysInChrome:
         m = mixed["items"][0]
         assert (m["canvas"][2] - m["canvas"][0]) / m["fs"] > 3, m
         assert abs((m["ink"][2] - m["ink"][0]) / m["fs"] - 0.527) < 0.08
+
+
+def _twoway_after(case):
+    """twoway's (text start - key centre) of *case*'s keys, in text
+    sizes, by key text."""
+    marks, texts = _twoway_keys(case)
+    out = []
+    for m, t in zip(marks, sorted(texts)):
+        out.append(((t[0] - (m[0] + m[1]) / 2) / t[2], (t[0] - m[1]) / t[2]))
+    return out
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestKeyBoxesInChrome:
+
+    def test_marker_beside_a_line(self, mode):
+        """A marker key beside a line key: the marker's text starts where
+        twoway's does from the marker's centre (cell_ctl: 0.82 of a text
+        size) and the line's where it did (0.60 after the line's end);
+        under cols(1) one key column, the marker centred in the line's
+        width and every text at one x (cols1); textfirst's marker text
+        ends where twoway's does before the marker (textfirst).  No CSP
+        violation."""
+        legs, viol = _legends(mode, [([_sc(), _ln()], ""),
+                                     ([_sc(), _ln(), _sc("rep78")],
+                                      "cols(1)"),
+                                     ([_sc(), _ln()], "textfirst")])
+        assert viol == []
+        mixed, col, first = legs
+        (dot_c, _dr), (_lc, line_r) = _twoway_after("cell_ctl")
+        dot, line = mixed["items"]
+        got = (dot["text"][0] - _ink_x(dot)[1]) / dot["fs"]
+        assert abs(got - dot_c) < 0.12, (got, dot_c, dot)
+        got = (line["text"][0] - _ink_x(line)[2]) / line["fs"]
+        assert abs(got - line_r) < 0.12, (got, line_r, line)
+        lefts = {round(it["text"][0]) for it in col["items"]}
+        assert max(lefts) - min(lefts) <= 1, col
+        centres = [_ink_x(it)[1] for it in col["items"]]
+        assert max(centres) - min(centres) <= 1.5, col
+        # textfirst: the marker's text ends one key gap before its box.
+        marks, texts = _twoway_keys("textfirst")
+        tw = ((marks[0][0] + marks[0][1]) / 2 - texts[0][0]) / texts[0][2]
+        dot = first["items"][0]
+        got = (_ink_x(dot)[1] - dot["text"][2]) / dot["fs"]
+        assert abs(got - tw) < 0.12, (got, tw, dot)
 
 
 def test_emptied_layer_draws_no_key():

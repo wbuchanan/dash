@@ -41937,6 +41937,132 @@ def _dash_legend_key_order(legend, words):
     return css
 
 
+def _dash_legend_grid_columns(legend, n):
+    """The grid column (0-based) of each of *legend*'s first *n* items as
+    BokehJS's LegendView lays them out (``_render_items``: row by row, or
+    column by column when vertical, in ``ncols`` by ``nrows``, "auto"
+    read as BokehJS reads it), or each in a track of its own under a
+    one-row holes sheet (``_dash_hole_tracks``, WP-43 LT-17)."""
+    ht = getattr(legend, "_dash_hole_tracks", None)
+    if ht and len(ht[0]) == n:
+        return ([max(0, int(t) - 1) for t in ht[0]] if ht[2] == "column"
+                else [0] * n)
+    nc, nr = legend.ncols, legend.nrows
+    vertical = legend.orientation == "vertical"
+    nc = nc if isinstance(nc, int) and nc > 0 else None
+    nr = nr if isinstance(nr, int) and nr > 0 else None
+    if nc is None and nr is None:
+        nc, nr = (1, max(1, n)) if vertical else (max(1, n), 1)
+    elif nc is None:
+        nc = max(1, -(-n // nr))
+    elif nr is None:
+        nr = max(1, -(-n // nc))
+    cols, row, col = [], 0, 0
+    for _i in range(n):
+        cols.append(col)
+        if vertical:
+            row += 1
+            if row >= nr:
+                row, col = 0, col + 1
+        else:
+            col += 1
+            if col >= nc:
+                col, row = 0, row + 1
+    return cols
+
+
+def _dash_legend_key_boxes(legend, words, infos=None, symx=None):
+    """Each key in twoway's key column (WP-43 LT-21, ruling D69): twoway's
+    key column is as wide as the widest key in it -- a marker key its
+    marker's size (the outline's centre line; the outline overhangs), any
+    other key symxsize() -- the key centred in it and the text one key gap
+    after the column (legend_keys_truth.json cell_ctl, cols1).  BokehJS
+    gives every key one canvas, glyph_width wide; the Legend's own
+    stylesheet tagged ``dash_legend_keybox`` moves each canvas so its key
+    sits at its column's centre (``translate``, in % of the canvas) and
+    pulls the text back over the canvas's spare width (a negative margin
+    on the canvas's side of the ``.bk-label``, in em of the key text), so
+    scale() and the width scale, which multiply both, carry it.  A
+    PIC-11 end marker is centred on the key's end (legend_keys_truth.json
+    sh_rcapsym): its canvas is the key box plus the marker, the painter
+    told the box's share (``kw``), and a canvas BokehJS draws across
+    (a line, an area) is clipped to its box.  *infos* are the items' keys
+    (``_dash_key_info``, by item), else the legend's own; *symx* the
+    key box's width in px (symxsize()), else glyph_width.  Only numbers
+    reach the CSS.  Records the inputs for by()'s cell
+    (``_dash_key_boxes``); returns the CSS ('' for none)."""
+    from bokeh.models import InlineStyleSheet
+    T = OptionTranslator
+    items = list(getattr(legend, "items", None) or ())
+    if infos is None:
+        rec = getattr(legend, "_dash_key_info", None) or {}
+        infos = [rec.get(id(it)) for it in items]
+    infos = list(infos)[:len(items)] + [None] * (len(items) - len(infos))
+    first = "textfirst" in words and "notextfirst" not in words
+    stacked = "stacked" in words and "nostacked" not in words
+    fs = (T.css_to_pt(legend.label_text_font_size) or 0.0) * T.PX_PER_PT
+    gw = legend.glyph_width
+    rules = []
+    if symx is None and isinstance(gw, int):
+        symx = float(gw)
+    rec_symx = symx
+    if any(infos) and fs > 0 and isinstance(gw, int) and gw > 0 and symx:
+        symx = float(symx)
+        if all(f is None or f[0] == "marker" for f in infos):
+            symx = 0.0
+        boxes, need = [], [float(gw)]
+        for f in infos:
+            if f is None:
+                boxes.append(None)
+            elif f[0] == "marker":
+                boxes.append(f[1])
+                need.append(f[1] + f[2])
+            else:
+                boxes.append(symx)
+        G = float(max(gw, int(round(max(need)))))
+        cols = _dash_legend_grid_columns(legend, len(items))
+        width = {}
+        for c, b in zip(cols, boxes):
+            if b is not None:
+                width[c] = max(width.get(c, 0.0), b)
+        for i, (f, b, c) in enumerate(zip(infos, boxes, cols)):
+            if f is None:
+                continue
+            wc = width.get(c, b)
+            d = G - wc
+            tx = (d / 2 if first and not stacked else -d / 2)
+            glyph = []
+            # Percentages of the canvas's own width.
+            if abs(tx) > 0.05:
+                glyph.append("translate:%.4g%% 0%%" % max(-500.0, min(
+                    500.0, 100.0 * tx / G)))
+            if f[0] == "other" and G - b > 0.5:
+                glyph.append("clip-path:inset(0 %.4g%%)" % min(
+                    50.0, 100.0 * (G - b) / 2 / G))
+            sel = ".bk-grid .bk-item:nth-child(%d) " % (i + 1)
+            if glyph:
+                rules.append(sel + ".bk-glyph{%s;}" % ";".join(glyph))
+            if d > 0.5 and not stacked:
+                rules.append(sel + ".bk-label{margin-%s:%.4gem;}" % (
+                    "right" if first else "left", -min(500.0, d / fs)))
+        if G != gw:
+            legend.glyph_width = int(G)
+        for f in infos:
+            if f is not None and f[0] == "shape":
+                for cb in f[2]:
+                    cb.args = dict(cb.args or {}, kw=float(
+                        min(1.0, symx / G if G > 0 else 1.0)))
+    css = "".join(rules)
+    legend.stylesheets = [ss for ss in legend.stylesheets
+                          if "dash_legend_keybox" not in (
+                              getattr(ss, "tags", None) or [])] + (
+        [InlineStyleSheet(css=css, tags=["dash_legend_keybox"])]
+        if css else [])
+    legend._dash_key_boxes = (infos, sorted(set(words) & {
+        "textfirst", "notextfirst", "stacked", "nostacked"}), rec_symx)
+    return css
+
+
 #: alignment() of the key texts -> how far twoway moves each text, in its
 #: size, downward (legend_box_truth.json align_top, align_bottom: up
 #: 15.09 of a 99.99 text; align_baseline down 14.97; middle is the
@@ -42809,8 +42935,9 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         # and yoffset().
         _dash_legend_layout(fig, legend, _calls, _words, seen=seen,
                             key=key)
-        # WP-43 LT-21: textfirst and stacked.
+        # WP-43 LT-21: textfirst and stacked; each key in its column.
         _dash_legend_key_order(legend, _words)
+        _dash_legend_key_boxes(legend, _words)
 
     # 7c. span (WP-32): legend(span), else the scheme's `yesno
     #     legend_span' unless legend(nospan) undoes it; span beside
@@ -61615,6 +61742,12 @@ def _dash_by_legend_cell(scheme, name, side, legend, items, tag,
     if _ht and len(_ht[0]) == len(items):
         _dash_legend_hole_sheet(leg, [_ht[0][i] for i in kept], _ht[1],
                                 _ht[2])
+    # WP-43 LT-21: each key in its column, for the items the cell keeps.
+    _kb = getattr(legend, "_dash_key_boxes", None) \
+        if legend is not None else None
+    if _kb and len(_kb[0]) == len(items):
+        _dash_legend_key_boxes(leg, set(_kb[1]), [_kb[0][i] for i in kept],
+                               symx=_kb[2])
     facing = {"right": "left", "left": "right", "above": "below",
               "below": "above"}[side]
     cell.add_layout(leg, facing)
@@ -65848,25 +65981,30 @@ const SH = typeof shape === "string" ? shape : "marker";
 const EN = typeof ends === "number" ? ends : 0;
 const BB = typeof barb === "number" && ok(barb) ? barb : 0;
 const LG = typeof legend === "undefined" ? null : legend;
+// The key box's share of the canvas (WP-43 LT-21): a legend whose canvas
+// is wider than its key box (_dash_legend_key_boxes) passes kw < 1.
+const KW = typeof kw === "number" && kw > 0 && kw <= 1 ? kw : 1;
 const MK = typeof mark !== "undefined" && mark != null ? mark
   : (SH === "ends" ? cb_obj : null);
 const lwv = num(cb_obj.line_width);
 const lw = ok(lwv) ? lwv : 0;
 // The key box's half width and half height, read at paint time: scale()
 // and the width scale multiply the legend's glyph_width and glyph_height.
-let hw = 0, hh = 0;
+let hw = 0, hh = 0, room = 0;
 if (SH !== "marker" && LG != null) {
   const gw = num(LG.glyph_width), gh = num(LG.glyph_height);
-  if (ok(gw)) hw = gw / 2;
+  if (ok(gw)) { hw = KW * gw / 2; room = (1 - KW) * gw / 2; }
   if (ok(gh)) hh = gh / 2;
 }
 if (SH !== "marker" && !(hw > 0)) return;
-// The end markers' outer half size: the ends move in by it, so a marker
-// centred on an end is drawn whole inside the key box.
+// The end markers' outer half size: the ends move in by what the canvas
+// has no room for beyond the key box, so a marker centred on an end is
+// drawn whole (twoway centres it on the end: with the room, it is).
 let inset = 0;
 if (MK != null) {
   const ms = num(MK.size), ml = num(MK.line_width);
-  if (ok(ms)) inset = Math.min(hw, ms / 2 + (ok(ml) ? ml / 2 : 0));
+  if (ok(ms)) inset = Math.max(0, Math.min(
+    hw, ms / 2 + (ok(ml) ? ml / 2 : 0) - room));
 }
 const paint = (fill) => {
   if (fill) { visuals.fill.apply(ctx, i); visuals.hatch.apply(ctx, i); }
@@ -66174,12 +66312,18 @@ def _dash_key_painter(fig, legend, ptypes=None):
     from bokeh.core.properties import value
     from bokeh.models import CustomJS, Scatter
     painted, widths, marker_only, seen = 0, [], True, set()
+    # Each item's key for _dash_legend_key_boxes (WP-43 LT-21): a painted
+    # marker's ("marker", size, line width), a shape's ("shape", the end
+    # markers' outer half size, its painters), else ("other",).
+    info = {}
+    legend._dash_key_info = info
     for it in list(getattr(legend, "items", None) or ()):
         rends = list(it.renderers or ())
         # order(1 2 1) shares one item between its rows: painted once.
         if not rends or id(it) in seen:
             continue
         seen.add(id(it))
+        info[id(it)] = ("other",)
         reals = [getattr(r, "_dash_key_for", None) or r for r in rends]
         kinds = {(ptypes or {}).get(id(x)) for x in reals}
         if len(kinds) == 1 and next(iter(kinds)) in _DASH_KEY_SHAPES:
@@ -66188,8 +66332,21 @@ def _dash_key_painter(fig, legend, ptypes=None):
                 it.renderers = shaped
                 painted += len(shaped)
                 marker_only = False
+                ov, cbs = 0.0, []
+                for p in shaped:
+                    cb = (getattr(p.glyph, "defs", None) or {}).get(
+                        "@dash_key")
+                    if cb is None:
+                        continue
+                    cbs.append(cb)
+                    if (cb.args or {}).get("shape") == "ends":
+                        lw = _dash_spec_value(p.glyph.line_width)
+                        ov = max(ov, (float(p.glyph.size) + (
+                            float(lw) if isinstance(lw, (int, float))
+                            and math.isfinite(lw) else 0.0)) / 2)
+                info[id(it)] = ("shape", ov, cbs)
                 continue
-        out, item_markers = [], True
+        out, item_markers, item_sizes = [], True, []
         for r in rends:
             real = getattr(r, "_dash_key_for", None) or r
             # A layer painted in this legend already (lastlabel()'s fresh
@@ -66199,8 +66356,10 @@ def _dash_key_painter(fig, legend, ptypes=None):
                                             False):
                 dg = done.glyph
                 lw = _dash_spec_value(dg.line_width)
-                widths.append(float(dg.size) + (float(lw) if isinstance(
-                    lw, (int, float)) and math.isfinite(lw) else 0.0))
+                lw = float(lw) if isinstance(lw, (int, float)) and \
+                    math.isfinite(lw) else 0.0
+                widths.append(float(dg.size) + lw)
+                item_sizes.append((float(dg.size), lw))
                 out.append(done)
                 continue
             g = getattr(r, "glyph", None)
@@ -66230,12 +66389,17 @@ def _dash_key_painter(fig, legend, ptypes=None):
             # 42-02 chose: props read from it), its glyph swapped.
             proxy = _dash_key_proxy(fig, real, glyph)
             lw = props.get("line_width", 0.0)
-            widths.append(float(size) + (float(lw) if isinstance(
-                lw, (int, float)) and math.isfinite(lw) else 0.0))
+            lw = float(lw) if isinstance(lw, (int, float)) and \
+                math.isfinite(lw) else 0.0
+            widths.append(float(size) + lw)
+            item_sizes.append((float(size), lw))
             painted += 1
             out.append(proxy)
         it.renderers = out
         marker_only = marker_only and item_markers
+        if item_markers and item_sizes:
+            info[id(it)] = ("marker", max(z for z, _w in item_sizes),
+                            max(w for _z, w in item_sizes))
     if painted and marker_only:
         w = max(1, int(round(max(widths))))
         legend.glyph_width = w
@@ -76469,6 +76633,8 @@ class ServerAppBuilder:
                          "_dash_legend_margin_px", "_dash_legend_box",
                          "_dash_legend_key_text", "_dash_legend_layout",
                          "_dash_legend_key_order",
+                         "_dash_legend_key_boxes",
+                         "_dash_legend_grid_columns",
                          "_dash_margin_px",
                          "_dash_legend_title_block",
                          "_dash_legend_hole_sheet", "_dash_legend_holes",
