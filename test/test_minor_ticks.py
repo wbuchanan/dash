@@ -285,9 +285,15 @@ class TestMinorLength:
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_shared_slot_takes_the_major_length(self, mode):
+        # Flipped (WP-44 AX-15): beside xmtick() the xtick() positions are
+        # the axis's major ticks at the major length and the minor slot
+        # keeps the minor length, as twoway draws them
+        # (test_tick_label_options_p9.py::TestTickLengths); the one slot
+        # at the major length was a Bokeh limit.
         f = _figs(mode, {"xmtick": "1500", "xtick": "2500"})[0]
         ax = _axis(f, "x")
-        assert ax.minor_tick_out == ax.major_tick_out == 5
+        assert ax.major_tick_out == 5 and ax.minor_tick_out == 3
+        assert ax.ticker.major_code == dr._DASH_TICK_UNION_JS
         assert _minor(f, "x") == [1500.0, 2500.0]
 
 

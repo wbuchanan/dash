@@ -157,6 +157,9 @@ _ts_run ax14_grid_gextend auto stcolor `"`S', ylabel(, grid) `N'"'
 
 * AX-15: tick lengths, reference lines, formats, past dates, margins.
 _ts_run ax15_ticklens auto stcolor `"`S', xtick(2000 4000) xmtick(3000) `N'"'
+* Tick-only and minor positions away from the labels, on x and on y.
+_ts_run ax15_ticklens_x auto stcolor `"`S', xtick(2500 4500) xmtick(3500) `N'"'
+_ts_run ax15_ticklens_y auto stcolor `"`S', ytick(15 25) ymtick(35) `N'"'
 _ts_run ax15_refl_out auto stcolor `"`S', xline(5100) yline(45) `N'"'
 _ts_run ax15_refl_out_log auto stcolor `"`S', xscale(log) xline(5100) `N'"'
 _ts_run ax15_refl_far auto stcolor `"`S', xline(10000) `N'"'

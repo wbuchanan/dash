@@ -576,3 +576,150 @@ class TestFormats:
                    for v in (10, 20, 30, 40)]
             assert got == _ylabel_texts(row), key
             assert not [m for m in msgs if "format(" in m], msgs
+
+
+# ---------------------------------------------------------------------------
+# AX-15: xtick() and xmtick() at their own lengths
+# ---------------------------------------------------------------------------
+
+_TICK_STUBS_JS = r"""
+function build(d) {
+    if (d && d.kind === "fixed")
+        return {ticks: d.ticks, get_ticks() {
+            return {major: d.ticks.slice(), minor: []}; }};
+    if (d && d.kind === "cjs") {
+        const args = {};
+        for (const k of Object.keys(d.args)) args[k] = build(d.args[k]);
+        const o = {args: args};
+        o.get_ticks = (s, e, r, c) => {
+            const cb = {start: s, end: e, range: r, cross_loc: c};
+            const names = Object.keys(args), vals = names.map((n) => args[n]);
+            const maj = new Function("cb_data", ...names, d.major)(cb, ...vals);
+            const mn = new Function("cb_data", ...names, d.minor)(
+                Object.assign({major_ticks: maj}, cb), ...vals);
+            return {major: maj, minor: mn};
+        };
+        return o;
+    }
+    if (d && d.kind === "text")
+        return {doFormat: (ts) => ts.map((t) => String(t))};
+    return d;
+}
+"""
+
+
+def _stub(m):
+    """A model as the node stubs above build it: FixedTicker and
+    CustomJSTicker by their ticks and code, a formatter as String()."""
+    from bokeh.models import CustomJSTicker, FixedTicker, TickFormatter
+    if isinstance(m, FixedTicker):
+        return {"kind": "fixed", "ticks": [float(v) for v in m.ticks]}
+    if isinstance(m, CustomJSTicker):
+        return {"kind": "cjs", "major": m.major_code, "minor": m.minor_code,
+                "args": {k: _stub(v) for k, v in dict(m.args).items()}}
+    if isinstance(m, TickFormatter):
+        return {"kind": "text"}
+    return m
+
+
+def _drawn_ticks(f, letter):
+    """``(majors, minors, labels)`` the axis draws over its range: its
+    ticker's code and its formatter's code run under node (labels: the
+    position's text, "" where none is written)."""
+    import js_runner
+    ax = tda._axis(f, letter)
+    rng = f.x_range if letter == "x" else f.y_range
+    fm = ax.formatter
+    fdesc = {"code": getattr(fm, "code", ""),
+             "args": {k: _stub(v) for k, v in dict(
+                 getattr(fm, "args", None) or {}).items()}}
+    src = (_TICK_STUBS_JS
+           + "const t = build(%s); const fd = %s;\n"
+             "const r = t.get_ticks(%r, %r, null, null);\n"
+             "const lo = Math.min(%r, %r), hi = Math.max(%r, %r);\n"
+             "const maj = r.major.filter((v) => v >= lo && v <= hi);\n"
+             "const names = Object.keys(fd.args);\n"
+             "const vals = names.map((n) => build(fd.args[n]));\n"
+             "let labs = maj.map(String);\n"
+             "if (fd.code) { const fn = new Function('tick', 'index', "
+             "'ticks', ...names, fd.code).bind({});\n"
+             "  labs = maj.map((v, i) => String(fn(v, i, maj, ...vals))); }\n"
+             "console.log(JSON.stringify([maj, r.minor, labs]));\n") % (
+        json.dumps(_stub(ax.ticker)), json.dumps(fdesc),
+        rng.start, rng.end, rng.start, rng.end, rng.start, rng.end)
+    return js_runner.run_js(src)
+
+
+def _tw_tick_lengths(row, letter, values):
+    """twoway's tick length at each of *values* (sorted along the axis
+    against the ticks it draws outside the plot region)."""
+    pr = row["plotregion"]
+    if letter == "x":
+        ts = sorted((ln["x1"], abs(ln["y2"] - ln["y1"]))
+                    for ln in row["vlines"]
+                    if min(ln["y1"], ln["y2"]) >= pr["bottom"] - 1)
+    else:
+        ts = sorted(((ln["y1"], abs(ln["x2"] - ln["x1"]))
+                     for ln in row["hlines"]
+                     if max(ln["x1"], ln["x2"]) <= pr["left"] + 1),
+                    reverse=True)
+    assert len(ts) == len(values), ts
+    return dict(zip(sorted(values), [round(n, 2) for _p, n in ts]))
+
+
+class TestTickLengths:
+
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("letter,only,minor", [
+        ("x", [2500.0, 4500.0], [3500.0]), ("y", [15.0, 25.0], [35.0])])
+    def test_two_lengths(self, mode, letter, only, minor):
+        row = _T["ax15_ticklens_" + letter]
+        labels = ([2000.0, 3000.0, 4000.0, 5000.0] if letter == "x"
+                  else [10.0, 20.0, 30.0, 40.0])
+        tw = _tw_tick_lengths(row, letter, labels + only + minor)
+        long_ = tw[labels[0]]
+        # twoway: the xtick() positions as long as a labelled tick, the
+        # xmtick() one half as long, and only the label positions written.
+        assert all(tw[v] == long_ for v in labels + only)
+        assert all(abs(tw[v] / long_ - 0.5) < 0.02 for v in minor)
+        assert len(_ylabel_texts(row)) == 4
+        go = {letter + "tick": " ".join("%g" % v for v in only),
+              letter + "mtick": " ".join("%g" % v for v in minor)}
+        f, _msgs = _figs(mode, go)
+        ax = tda._axis(f, letter)
+        maj, mnr, labs = _drawn_ticks(f, letter)
+        assert sorted(maj) == sorted(labels + only)
+        assert sorted(mnr) == minor
+        written = sorted(v for v, s in zip(maj, labs) if s)
+        assert written == labels
+        sp = dr.SchemeParser("stcolor")
+        assert ax.major_tick_out == int(round(sp.tick_length_px))
+        assert ax.minor_tick_out == int(round(sp.minortick_length_px))
+        assert sp.minortick_length_px / sp.tick_length_px == \
+            pytest.approx(tw[minor[0]] / long_, abs=0.02)
+        # The gridlines stay at the labels: twoway draws none at the tick
+        # positions (no grid sub-option).
+        pr = row["plotregion"]
+        if letter == "x":
+            gl = {round(ln["x1"]) for ln in row["vlines"]
+                  if ln["stroke"] not in (None, "#000000")
+                  and max(ln["y1"], ln["y2"]) < pr["bottom"] - 1}
+        else:
+            gl = {round(ln["y1"]) for ln in row["hlines"]
+                  if ln["stroke"] not in (None, "#000000")
+                  and min(ln["x1"], ln["x2"]) > pr["left"] + 1}
+        assert len(gl) == len(labels)
+        import js_runner
+        from bokeh.models import Grid
+        g = [m for m in f.renderers + f.center if isinstance(m, Grid)
+             and m.dimension == (0 if letter == "x" else 1)]
+        rng = f.x_range if letter == "x" else f.y_range
+        for m in g:
+            if m.ticker is None:
+                continue
+            gmaj = js_runner.run_js(
+                _TICK_STUBS_JS + "console.log(JSON.stringify(build(%s)"
+                ".get_ticks(%r, %r, null, null).major));"
+                % (json.dumps(_stub(m.ticker)), rng.start, rng.end))
+            lo, hi = sorted((rng.start, rng.end))
+            assert sorted(v for v in gmaj if lo <= v <= hi) == labels

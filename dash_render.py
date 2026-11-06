@@ -47383,6 +47383,66 @@ _DASH_MTICK_JS = (
     "if (typeof every !== 'undefined') v = v.concat(every.get_ticks("
     "cb_data.start, cb_data.end, cb_data.range, cb_data.cross_loc).major); "
     "return v.filter((x) => x >= lo && x <= hi);")
+#: WP-44 AX-15: xtick() beside xmtick() or xmlabel() draws its positions
+#: as MAJOR ticks, at the major length, and the minor ones at the minor
+#: length, as twoway draws them (measured: test/fixtures/
+#: tick_style_truth.json ``ax15_ticklens_x``: 44.9 against 22.4 units).
+#: The axis's ticker: majors are its base's and the xtick() positions
+#: (``efix`` placed, else ``extra``, and ``every``'s), within 1e-9 of the
+#: span; minors the xmtick()/xmlabel() positions alone.  Constant text.
+_DASH_TICK_UNION_JS = (
+    "const lo = Math.min(cb_data.start, cb_data.end); "
+    "const hi = Math.max(cb_data.start, cb_data.end); "
+    "const m = Array.from(base.get_ticks(cb_data.start, cb_data.end, "
+    "cb_data.range, cb_data.cross_loc).major); "
+    "let x = []; "
+    "if (typeof efix !== 'undefined') x = Array.from(efix.ticks); "
+    "else if (typeof extra !== 'undefined') x = Array.from(extra); "
+    "if (typeof every !== 'undefined') x = x.concat(every.get_ticks("
+    "cb_data.start, cb_data.end, cb_data.range, cb_data.cross_loc).major); "
+    "const tol = (hi - lo) * 1e-9; "
+    "for (const v of x) if (v >= lo && v <= hi "
+    "&& !m.some((u) => Math.abs(u - v) <= tol)) m.push(v); "
+    "return m.sort((p, q) => p - q);")
+_DASH_MTICK_OWN_JS = (
+    "const lo = Math.min(cb_data.start, cb_data.end); "
+    "const hi = Math.max(cb_data.start, cb_data.end); "
+    "const v = Array.from(mextra || [])"
+    ".concat(Array.from((mfixed && mfixed.ticks) || [])); "
+    "return v.filter((x) => x >= lo && x <= hi);")
+#: The union axis's label writer: a position that is not one of the base
+#: ticker's majors (a FixedTicker's ``ticks``; else the xtick() positions)
+#: is written "", the others by the axis's own formatter *base* over the
+#: labelled ones.  *ticker* is the axis's CustomJSTicker, read when drawn,
+#: so a refit's new base is the one read.  Constant text.
+_DASH_TICK_BLANK_JS = (
+    "if (!this.m) { "
+    "const a = ticker.args; "
+    "const g = (k) => (a instanceof Map ? a.get(k) : a[k]); "
+    "const own = g('base'), ef = g('efix'), ex = g('extra'); "
+    "let lo = Infinity, hi = -Infinity; "
+    "for (const t of ticks) { if (t < lo) lo = t; if (t > hi) hi = t; } "
+    "const near = (vs, t) => Array.from(vs || []).some((u) => "
+    "Math.abs(u - t) <= Math.max(hi - lo, Math.abs(t)) * 1e-9); "
+    "const only = (t) => (own && own.ticks) ? !near(own.ticks, t) "
+    ": near(ef ? ef.ticks : ex, t); "
+    "const keep = ticks.filter((t) => !only(t)); "
+    "const out = base.doFormat(keep, {loc: 0}); "
+    "this.m = new Map(keep.map((t, i) => [t, String(out[i])])); } "
+    "return this.m.has(tick) ? this.m.get(tick) : '';")
+#: The gridlines of a union axis: majors at the base's majors, minors at
+#: every other position the axis draws, as before the union.
+_DASH_TICK_GRID_MAJOR_JS = (
+    "const a = t.args; "
+    "const own = a instanceof Map ? a.get('base') : a.base; "
+    "return own.get_ticks(cb_data.start, cb_data.end, cb_data.range, "
+    "cb_data.cross_loc).major;")
+_DASH_TICK_GRID_MINOR_JS = (
+    "const r = t.get_ticks(cb_data.start, cb_data.end, cb_data.range, "
+    "cb_data.cross_loc); "
+    "const m = cb_data.major_ticks; "
+    "return Array.from(r.minor).concat(Array.from(r.major)"
+    ".filter((v) => !m.includes(v)));")
 
 
 #: WP-30 P1.3a (TR-21.11): the saved page's twin of the finisher chain --
@@ -49370,12 +49430,24 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
         # option's noticks/tlength()/tposition(), which twoway keeps off
         # these positions -- unless this option gives its own (WP-30
         # P1.18a; measured: ylabel(, noticks) ytick(25) draws the 25 tick).
+        # WP-44 AX-15: the minor look before it, which a union axis
+        # (_dash_tick_union) gives back to xmtick()'s positions.
+        ax._dash_minor_look0 = {k: getattr(ax, k) for k in (
+            "minor_tick_line_color", "minor_tick_line_width",
+            "minor_tick_line_alpha", "minor_tick_line_dash")}
         ax.minor_tick_line_color = ax.major_tick_line_color
         ax.minor_tick_line_width = ax.major_tick_line_width
         ax.minor_tick_line_alpha = ax.major_tick_line_alpha
         ax.minor_tick_line_dash = ax.major_tick_line_dash
         _dash_tick_look(ax, spec, True, by_graph, option, ref_in)
         _dash_tick_line_look(ax, spec, True, option, ref_in)
+        # The positions look like the major ticks: a union axis may draw
+        # them as majors.
+        ax._dash_xtick_plain = all(
+            getattr(ax, "minor_" + k) == getattr(ax, "major_" + k)
+            for k in ("tick_in", "tick_out", "tick_line_color",
+                      "tick_line_width", "tick_line_alpha",
+                      "tick_line_dash"))
     if spec.get("grid"):
         look = next((getattr(a, "_dash_scheme_look", None) for a in axes
                      if getattr(a, "_dash_scheme_look", None)), None) or {}
@@ -49671,6 +49743,44 @@ def _dash_minor_label_model(fig, ax, which, axis_no, pos, texts, look,
     return models, None
 
 
+def _dash_tick_union(ax, grids=()):
+    """xtick() beside xmtick() or xmlabel() on *ax* as twoway draws them
+    (WP-44 AX-15; measured: test/fixtures/tick_style_truth.json
+    ``ax15_ticklens_x``/``_y``): the xtick() positions join the axis's
+    major ticks (:data:`_DASH_TICK_UNION_JS`), unlabelled
+    (:data:`_DASH_TICK_BLANK_JS`, the axis's formatter as ``base``, its
+    args kept beside), and the minor slot holds the minor positions alone
+    (:data:`_DASH_MTICK_OWN_JS`), at the minor length; the gridlines of
+    *grids* stay where they were (:data:`_DASH_TICK_GRID_MAJOR_JS`).
+    Only when the xtick() positions look like the major ticks (no
+    tlength(), tposition(), tlcolor() or noticks of their own, and the
+    major ticks drawn): False and nothing changed otherwise, the one minor
+    slot then keeping the xtick() look."""
+    from bokeh.models import CustomJSTicker, CustomJSTickFormatter
+    t = ax.ticker
+    f = getattr(ax, "formatter", None)
+    if not (isinstance(t, CustomJSTicker) and getattr(
+            ax, "_dash_xtick_plain", False) and f is not None
+            and ax.major_tick_out):
+        return False
+    t.major_code = _DASH_TICK_UNION_JS
+    t.minor_code = _DASH_MTICK_OWN_JS
+    fargs = dict(getattr(f, "args", None) or {})
+    ax.formatter = CustomJSTickFormatter(
+        args=dict(fargs, base=f, ticker=t), code=_DASH_TICK_BLANK_JS)
+    for g in grids or ():
+        gt = CustomJSTicker(args={"t": t}, major_code=_DASH_TICK_GRID_MAJOR_JS,
+                            minor_code=_DASH_TICK_GRID_MINOR_JS)
+        cur = getattr(g, "ticker", None)
+        if cur is None or cur is t:
+            g.ticker = gt
+        elif isinstance(cur, CustomJSTicker) and \
+                dict(cur.args or {}).get("base") is t:
+            cur.args = dict(cur.args, base=gt)
+    ax._dash_tick_union = True
+    return True
+
+
 #: WP-31 D10c: the ticksetstyles of xmtick()/ymtick() style() that draw
 #: the minor ticks as long as the majors (ticksetstyle-major_*_nolabel
 #: .style: tickstyle major_nolabel; measured).
@@ -49840,6 +49950,12 @@ def _dash_apply_minor_ticks(fig, axes, grids, which, axis_no, mtick_raw,
             ax._dash_hull_tick_extra = list(
                 getattr(ax, "_dash_hull_tick_extra", None) or []) + own
         look = getattr(ax, "_dash_scheme_look", None) or {}
+        if shared and date_kind is None and not by_graph \
+                and _dash_tick_union(ax, grids):
+            shared = False
+            for k, v in (getattr(ax, "_dash_minor_look0", None)
+                         or {}).items():
+                setattr(ax, k, v)
         if not shared:
             # The minor ticks' own look: gsize minortick long, linewidth
             # minortick wide, on the scheme's side, unless the option
@@ -49966,7 +50082,7 @@ def _dash_finish_minor_ticks(fig):
             continue
         t = ax.ticker
         if isinstance(t, CustomJSTicker) and "mfixed" in dict(t.args or {}) \
-                and t.minor_code != _DASH_MTICK_JS:
+                and t.minor_code not in (_DASH_MTICK_JS, _DASH_MTICK_OWN_JS):
             # _dash_place_count_ticks set xtick(#N)'s code; the slot is
             # shared (D-24.a).
             t.minor_code = _DASH_MTICK_JS
@@ -77603,6 +77719,9 @@ class ServerAppBuilder:
                       "_DASH_SCALE_RANGE_RE",
                       # xtick()/ytick()'s constant CustomJSTicker code.
                       "_DASH_TICK_MAJOR_JS", "_DASH_TICK_EXTRA_JS",
+                      "_DASH_TICK_UNION_JS", "_DASH_MTICK_OWN_JS",
+                      "_DASH_TICK_BLANK_JS", "_DASH_TICK_GRID_MAJOR_JS",
+                      "_DASH_TICK_GRID_MINOR_JS",
                       "_DASH_TICK_EVERY_JS",
                       # WP-31 D10: a by() panel label's box words.
                       "_DASH_BY_LABEL_BOX_WORDS",
@@ -78098,6 +78217,7 @@ class ServerAppBuilder:
                          "_dash_tick_grid_look",
                          # WP-44 AX-8.
                          "_dash_label_minlen",
+                         "_dash_tick_union",
                          # WP-44 AX-14.
                          "_dash_axis_style_text", "_dash_axis_styles_expand",
                          "_dash_grid_nogextend", "_dash_nogextend_grids",

@@ -536,8 +536,9 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
 // "ygridall" -- the colours of the y gridlines, black included;
 // "gxext" -- the x values the y gridlines run between; "ytext:<values>"
 // -- the y label texts at <values> (twoway's in the order written, dash's
-// from its y axis writer's format).  Legend key proxies are never read
-// (only axes and grids are).
+// from its y axis writer's format); "xlens" -- along the x axis, L for
+// each tick drawn at the major length and S for one drawn shorter.
+// Legend key proxies are never read (only axes and grids are).
 // ----------------------------------------------------------------
 python:
 def _q4402_dash(figs, case):
@@ -569,6 +570,29 @@ def _q4402_dash(figs, case):
               and g.dimension == 1 and g.grid_line_color is not None]
         return " ".join(sorted({str(g.grid_line_color).lower()
                                 for g in gs})) or "none"
+    if kind == "xlens":
+        import dash_render as dr
+        from bokeh.models import CustomJSTicker
+        ax = [m for m in f.below if isinstance(m, Axis)][0]
+        t = ax.ticker
+        a = dict(t.args or {}) if isinstance(t, CustomJSTicker) else {}
+        lo, hi = sorted((f.x_range.start, f.x_range.end))
+        base = list(getattr(a.get("base", t), "ticks", None) or [])
+        extra = list(a.get("extra") or [])
+        own = list(a.get("mextra") or [])
+        if getattr(t, "major_code", "") == getattr(
+                dr, "_DASH_TICK_UNION_JS", None):
+            major, minor = base + extra, own
+        else:
+            major, minor = base, extra + own
+        drawn = {}
+        for v in minor:
+            drawn[float(v)] = ax.minor_tick_out
+        for v in major:
+            drawn[float(v)] = ax.major_tick_out
+        top = max(drawn.values())
+        return " ".join("L" if drawn[v] == top else "S"
+                        for v in sorted(drawn) if lo <= v <= hi)
     if kind == "ytext":
         import dash_render as dr
         ax = [m for m in f.left if isinstance(m, Axis)][0]
@@ -603,6 +627,12 @@ def _q4402_tw(case, svg):
         left = [t for t in doc["texts"]
                 if t["x"] is not None and t["x"] < pr["left"]]
         return "labels" if len(left) > 1 else "none"
+    if kind == "xlens":
+        ts = sorted((ln["x1"], abs(ln["y2"] - ln["y1"]))
+                    for ln in doc["vlines"]
+                    if min(ln["y1"], ln["y2"]) >= pr["bottom"] - 1)
+        top = max(n for _x, n in ts) if ts else 0
+        return " ".join("L" if n > 0.75 * top else "S" for _x, n in ts)
     if kind == "ytext":
         # In the order written, the outermost text (the axis title) left
         # out, whichever way the scheme turns them.
@@ -812,7 +842,7 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w44_run' {
 }
 * ==== end S02 ====
 
-* ==== S02 AX-15: hexadecimal, IEEE-byte and string axis formats ====
+* ==== S02 AX-15: string and hex formats, two tick lengths ====
 local only : env WP44_ONLY
 if inlist("`only'", "", "S02") & `: list posof "S02" in w44_run' {
     display as text "S02 start " c(current_date) " " c(current_time)
@@ -831,6 +861,14 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w44_run' {
         _q4402_same Q4402-6 "ylabel(, format(`f'))"
     }
     _w44_done Q4402-6 "the hexadecimal, IEEE-byte and string axis formats written as twoway writes them"
+
+    // Q4402-9: xtick() beside xmtick() draws its positions as long as the
+    // labelled ticks and the xmtick() ones shorter, as twoway draws them,
+    // saved and served.
+    local ++k
+    _q4402_reg "`q02'" `k' "xlens" scatter mpg weight, xtick(2500 4500) xmtick(3500)
+    _q4402_same Q4402-9 "xtick(2500 4500) xmtick(3500)"
+    _w44_done Q4402-9 "xtick() and xmtick() drawn at their own lengths"
 
     capture graph drop _all
     dash clear

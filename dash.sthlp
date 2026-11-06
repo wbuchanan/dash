@@ -5692,10 +5692,16 @@ ticks is refused, {cmd:r(198)}, as on the first axis.  {cmd:grid} on
 {cmd:xtick()}, {cmd:xmtick()} and their kin draws gridlines at their
 positions in the scheme's {cmd:gridstyle minor}, which is {cmd:major} in
 every shipped scheme: the major grid's colour, width and pattern, as in
-{cmd:twoway}.  Bokeh draws one set of minor ticks per axis, so
-an axis with both {cmd:xtick()} and {cmd:xmtick()} draws all of them at
-the major ticks' length: {cmd:xtick(10 20) xmtick(15)} draws 15 as long
-as 10 and 20.  With {cmd:axis(2)} the ticks and labels are on the second
+{cmd:twoway}.  On an axis with both {cmd:xtick()} and {cmd:xmtick()}
+(or {cmd:xmlabel()}) the {cmd:xtick()} positions are drawn as long as
+the labelled ticks, without a label, and the minor ones half as long, as
+{cmd:twoway} draws them: {cmd:xtick(2500 4500) xmtick(3500)} draws 3500
+at half the length of 2500.  {it:Difference from twoway:} when the
+{cmd:xtick()} positions take a look of their own ({cmd:tlength()},
+{cmd:tposition()}, {cmd:tlcolor()}, {cmd:tlwidth()}, {cmd:noticks}), when
+the labelled ticks are hidden, on a date axis and in a {cmd:by()} graph,
+Bokeh's one set of minor ticks draws both at the {cmd:xtick()}'s length.
+With {cmd:axis(2)} the ticks and labels are on the second
 axis, and with {cmd:axis(3)} to
 {cmd:axis(9)} on that axis, each label beside its own axis; labels placed
 by {cmd:##}{it:N} follow every filter move on every axis, in the saved
