@@ -20,8 +20,8 @@ units are 10 per point):
   are accepted in silence.  custom (custom_with equals custom_without),
   gmin, gmax and gextend (gx_gextend equals gx_default) are no-ops.
 * nogextend stops the grid at the scale's ends, not the plot region's
-  margin (gx_nogextend); a Bokeh grid line spans the frame, so dash still
-  names it (residual D6b).
+  margin (gx_nogextend); dash draws it through Grid.cross_bounds (WP-44
+  AX-14; residual D6b closed).
 * nogmin drops the grid line at the lowest major tick, nogmax the one at
   the highest; on a typed list of values nogmax drops every grid line
   (ge_list_nogmax, ge_nogmin_nogmax), on a rule only the end
@@ -241,14 +241,17 @@ console.log(JSON.stringify(out));
                                          [20, 30], []]
 
     @pytest.mark.parametrize("mode", _MODES)
-    def test_nogextend_stays_named(self, mode):
-        # twoway stops the lines at the scale (gx_nogextend); a Bokeh grid
-        # line spans the frame, so dash names it (residual D6b).
+    def test_nogextend_is_drawn(self, mode):
+        # twoway stops the lines at the scale (gx_nogextend).
+        # Flipped (WP-44 AX-14): Grid.cross_bounds ends them at the x
+        # scale, so dash draws nogextend and no longer names it
+        # (test_tick_label_options_p9.py::TestNogextend measures where).
         assert _T["gx_gextend"]["hlines"] == _T["gx_default"]["hlines"]
         assert _T["gx_nogextend"]["hlines"][0]["x1"] > \
             _T["gx_default"]["hlines"][0]["x1"]
-        _f, msgs = _figs(mode, {"ylabel": ", grid nogextend"})
-        assert [m for m in msgs if "nogextend" in m], msgs
+        f, msgs = _figs(mode, {"ylabel": ", grid nogextend"})
+        assert not [m for m in msgs if "nogextend" in m], msgs
+        assert [g.cross_bounds for g in f.ygrid] != ["auto"]
         _f, msgs = _figs(mode, {"ylabel": ", grid gextend"})
         assert not [m for m in msgs if "not implemented" in m], msgs
 
@@ -395,13 +398,12 @@ class TestTheHonouredSet:
                  "gextend", "custom",
                  # WP-44 AX-8: the label words.
                  "showlabels", "noshowlabels", "pgmgrid", "nopgmgrid",
-                 "labelminlen"}
+                 "labelminlen",
+                 # Flipped (WP-44 AX-8/AX-14): the style names are read
+                 # from their style files and nogextend is drawn.
+                 "style", "labstyle", "tstyle", "gstyle", "tlstyle",
+                 "glstyle", "nogextend"}
         assert drawn <= dr._DASH_AXLABEL_HONOURED
-        # WP-44 AX-8: style() names a ticksetstyle file dash does not read.
-        assert "style" not in dr._DASH_AXLABEL_HONOURED
-        for style in ("labstyle", "tstyle", "gstyle", "tlstyle", "glstyle",
-                      "nogextend"):
-            assert style not in dr._DASH_AXLABEL_HONOURED
 
 
 class TestTheBoundsFinisher:

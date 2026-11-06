@@ -5369,12 +5369,19 @@ per axis.  {cmd:showlabels} and {cmd:noshowlabels} are {cmd:labels} and
 {cmd:grid} and {cmd:nogrid} winning over them; and
 {cmd:labelminlen(}{it:#}{cmd:)} gives a y axis's labels room for at least
 {it:#} characters, the x labels keeping their place, as in {cmd:twoway}.
-{it:Difference from twoway:} {cmd:style()}, which names a ticksetstyle
-file, is named in a note.  {it:Difference from twoway:} {cmd:nogextend}, which stops
-the gridlines at the scale's ends, is named in a note (a Bokeh gridline
-spans the plot), and so are {cmd:labstyle()}, {cmd:tstyle()},
-{cmd:gstyle()}, {cmd:tlstyle()} and {cmd:glstyle()}, which name Stata
-style files {cmd:dash} does not read.  {cmd:alternate} draws on every
+{cmd:style()}, {cmd:tstyle()}, {cmd:gstyle()}, {cmd:tlstyle()},
+{cmd:glstyle()} and {cmd:labstyle()} are read as {cmd:twoway} reads them,
+from the ticksetstyle, tickstyle, gridstyle and linestyle files on the
+ado-path and the scheme's text styles, the option's own edits winning:
+{cmd:ylabel(, tstyle(major_notick))} draws no ticks with the labels half
+a tick nearer the axis, {cmd:style(major_vert_nolabel)} no labels,
+{cmd:gstyle(dot)} black dotted gridlines and {cmd:labstyle(heading)} the
+labels large and centred; a name with no file notes
+{cmd:named style bogus not found in class tickstyle, default attributes used}
+and draws the default.  {cmd:nogextend} stops the gridlines at the other
+axis's scale: {cmd:ylabel(, grid nogextend)} draws them from 1,760, the
+least weight, to 5,000, the last tick, as {cmd:twoway} does; on a tick
+option it is named in a note.  {cmd:alternate} draws on every
 axis, {cmd:axis(2)} to {cmd:axis(9)} included, the lowest label on the row
 nearest the plot, as {cmd:twoway} draws it.  {cmd:##}{it:#} on a label or tick
 option is for minor ticks only: {cmd:twoway} notes

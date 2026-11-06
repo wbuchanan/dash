@@ -10662,8 +10662,11 @@ class SchemeParser:
     #: (``style/<class>-<name>.style``), and the reader's bounds: at most
     #: 200 lines of at most 400 bytes from a file (Stata's longest of the
     #: 161 option-class files has 21 lines), 400 files in the memo.
+    #: WP-44 AX-14/AX-8: the axis option's tickstyle, ticksetstyle and
+    #: gridstyle files too (SchemeParser.axis_style_tokens).
     _STYLE_FILE_CLASSES: "tuple[str, ...]" = (
-        "seriesstyle", "markerstyle", "areastyle", "linestyle", "shadestyle")
+        "seriesstyle", "markerstyle", "areastyle", "linestyle", "shadestyle",
+        "tickstyle", "ticksetstyle", "gridstyle")
     _STYLE_FILE_MAX_LINES: int = 200
     _STYLE_FILE_MAX_LINE_BYTES: int = 400
     _STYLE_FILE_MEMO_MAX: int = 400
@@ -13325,7 +13328,10 @@ class SchemeParser:
     _STYLE_STATA_KEYS: frozenset = frozenset((
         "color", "symbol", "symbolsize", "linewidth", "linepattern",
         "intensity", "linestyle", "markerstyle", "areastyle",
-        "seriesstyle", "shadestyle", "zyx2rule"))
+        "seriesstyle", "shadestyle", "zyx2rule",
+        # WP-44 AX-14/AX-8: what the axis style reader compares.
+        "gsize", "yesno", "anglestyle", "horizontal", "tickstyle",
+        "ticksetstyle", "gridstyle"))
 
     def _stata_scheme_props(self, name: str, depth: int = 0,
                             seen: "set | None" = None) -> dict:
@@ -13574,6 +13580,13 @@ class SchemeParser:
                     for role in cls._P_DIRECTIVE_ROLES:
                         for i in range(15):
                             sp._p_directive(role, i)
+                    # WP-44 AX-14/AX-8: the files the axis options' style
+                    # names reach, against each axis's default tickset.
+                    for g in spec.get("graphs") or []:
+                        go = (g.get("graph_options")
+                              if isinstance(g, dict) else None)
+                        if isinstance(go, dict):
+                            _dash_axis_styles_expand(go, sp, note=False)
                 finally:
                     sp.__dict__.pop("_style_record", None)
                 for k, rows in rec.items():
@@ -13905,6 +13918,208 @@ class SchemeParser:
             text = (f"dash: named style {shown} not found in class "
                     f"{stata_class}, default attributes used")
         _dash_warn_once(("named-style", stata_class, shown), text)
+
+    # ------------------------------------------------------------------
+    # The axis style names (WP-44 AX-14, AX-8)
+    # ------------------------------------------------------------------
+
+    #: An axis label or tick option's style sub-option and the class its
+    #: name is read in (twoway's note names that class; measured 06nov2026:
+    #: labstyle(bogus) "not found in class textstyle", tlstyle()/glstyle()
+    #: "linestyle", gstyle() "gridstyle", tstyle() "tickstyle", style()
+    #: "ticksetstyle").
+    _AXIS_STYLE_OPTS: "dict[str, str]" = {
+        "style": "ticksetstyle", "tstyle": "tickstyle",
+        "gstyle": "gridstyle", "tlstyle": "linestyle",
+        "glstyle": "linestyle", "labstyle": "textstyle"}
+    #: A value written into a sub-option token: a name, a number, a hex or
+    #: an RGB colour -- never a parenthesis, quote or comma.
+    _AXIS_STYLE_VAL_RE = re.compile(r"[A-Za-z0-9_#.*% -]{1,60}")
+
+    def _axis_leaf(self, leaf_class: str, key: str) -> "str | None":
+        """The raw value of ``<leaf_class> <key>``: the scheme's, Stata's
+        own (``@stata``), else s2color's; None when none declares it.  No
+        note: the axis style reader compares two styles' values."""
+        k = f"{leaf_class} {key}"
+        v = (self._props.get(k, "") or self._props.get("@stata " + k, "")
+             or self._FALLBACK_PROPS.get(k, ""))
+        v = str(v).strip().strip('"').strip()
+        return v if v and self._AXIS_STYLE_VAL_RE.fullmatch(v) else None
+
+    def _axis_rows(self, stata_class: str, name: Any) -> "dict | None":
+        """``{attr: (kind, value)}`` of style file *name* of *stata_class*
+        (the later ``set`` of an attr wins, as Stata reads a file), or None
+        when there is none."""
+        s = str(name or "").strip()
+        if not s:
+            return None
+        rows = self._style_rows(stata_class, s)
+        if rows is None:
+            return None
+        return {attr: (kind, val) for attr, kind, val in rows}
+
+    def _axis_val(self, rows: "dict | None", attr: str, leaf_class: str,
+                  hop: bool = False) -> "str | None":
+        """*attr*'s value in *rows*: a literal as written; a ``scheme``
+        key through the scheme -- for a style class (*hop*) the name it
+        declares, else the key itself when its file exists."""
+        r = (rows or {}).get(attr)
+        if r is None:
+            return None
+        kind, val = r
+        if kind == "literal":
+            return val
+        got = self._axis_leaf(leaf_class, val)
+        if got is None and hop and \
+                self._style_rows(leaf_class, val) is not None:
+            got = val
+        return got
+
+    def _axis_line_tokens(self, name: str, default: "str | None",
+                          prefix: str) -> "list | None":
+        """``<prefix>width()``, ``color()`` and ``pattern()`` of linestyle
+        *name* where it differs from *default*'s; None with no file."""
+        a = self._axis_rows("linestyle", name)
+        if a is None:
+            return None
+        b = self._axis_rows("linestyle", default) or {}
+        out = []
+        for attr, leaf in (("width", "linewidth"), ("color", "color"),
+                           ("pattern", "linepattern")):
+            v = self._axis_val(a, attr, leaf)
+            if v is not None and v != self._axis_val(b, attr, leaf):
+                out.append(f"{prefix}{attr}({v})")
+        return out
+
+    def _axis_tick_tokens(self, name: str, default: str) -> "list | None":
+        """The sub-options tickstyle *name* stands for where it differs
+        from *default*: ``nolabels``/``labels``, ``noticks``/``ticks``,
+        ``tlength()``, ``labgap()`` (its textgap) and the tick line's
+        ``tl*()``; None with no file."""
+        a = self._axis_rows("tickstyle", name)
+        if a is None:
+            return None
+        b = self._axis_rows("tickstyle", default) or {}
+        out = []
+        for attr, word in (("show_labels", "labels"), ("show_ticks", "ticks")):
+            v, d = (self._axis_val(r, attr, "yesno") for r in (a, b))
+            if v in ("yes", "no") and v != (d or "yes"):
+                out.append(word if v == "yes" else "no" + word)
+        for attr, opt in (("length", "tlength"), ("textgap", "labgap")):
+            v, d = (self._axis_val(r, attr, "gsize") for r in (a, b))
+            if v is not None and v != d:
+                out.append(f"{opt}({v})")
+        v, d = (self._axis_val(r, "linestyle", "linestyle", hop=True)
+                for r in (a, b))
+        if v is not None and v != d:
+            out += self._axis_line_tokens(v, d, "tl") or []
+        return out
+
+    def _axis_grid_tokens(self, name: str, default: str) -> "list | None":
+        """gridstyle *name*'s sub-options where it differs from *default*:
+        the grid line's ``gl*()`` and ``nogextend`` (both ends' extend
+        ``no``); None with no file.  draw_min/draw_max are not read:
+        gstyle(dot) (both no) draws the lines at the end ticks
+        (tick_style_truth.json ``ax14_gstyle_dot``)."""
+        a = self._axis_rows("gridstyle", name)
+        if a is None:
+            return None
+        b = self._axis_rows("gridstyle", default) or {}
+        out = []
+        v, d = (self._axis_val(r, "linestyle", "linestyle", hop=True)
+                for r in (a, b))
+        if v is not None and v != d:
+            out += self._axis_line_tokens(v, d, "gl") or []
+        ext = [self._axis_val(a, k, "yesno")
+               for k in ("extend_low", "extend_high")]
+        dext = [self._axis_val(b, k, "yesno")
+                for k in ("extend_low", "extend_high")]
+        if ext == ["no", "no"] and dext != ext:
+            out.append("nogextend")
+        return out
+
+    def _axis_text_tokens(self, name: str, default: str) -> "list | None":
+        """``labsize()``, ``labcolor()`` and ``labjustification()`` of
+        textstyle *name* -- the scheme's ``gsize``, ``color`` and
+        ``horizontal`` of that name (textboxstyle-heading.style: ``set size
+        scheme heading``) -- where they differ from *default*'s; None when
+        the scheme declares no size or colour of that name."""
+        size, col = (self._axis_leaf("gsize", name),
+                     self._axis_leaf("color", name))
+        if size is None and col is None:
+            return None
+        out = []
+        for leaf, opt, v in (("gsize", "labsize", size),
+                             ("color", "labcolor", col),
+                             ("horizontal", "labjustification",
+                              self._axis_leaf("horizontal", name))):
+            if v is not None and v != self._axis_leaf(leaf, default):
+                out.append(f"{opt}({v})")
+        return out
+
+    def axis_style_tokens(self, option: str, name: Any, letter: str = "y",
+                          minor: bool = False, note: bool = True) -> list:
+        """The sub-option tokens an axis option's style name stands for
+        (WP-44 AX-14, AX-8; D-44-02.e): *option* is ``style``, ``tstyle``,
+        ``gstyle``, ``tlstyle``, ``glstyle`` or ``labstyle``, read against
+        the axis's own default tickset (``major_vert_default`` on a y
+        axis, ``major_horiz_default`` on x, ``minor_*`` for *minor*), so
+        only what the name changes is returned.  A name with no style
+        file (no scheme key for labstyle) prints twoway's note, unless not
+        *note*, and adds nothing.  Values come from style files and the
+        scheme only, matched by ``_AXIS_STYLE_VAL_RE``; *name* is matched
+        and shown through ``_dash_display`` only."""
+        cls = self._AXIS_STYLE_OPTS.get(option)
+        if cls is None:
+            return []
+        s = str(name or "").strip()
+        if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
+            s = s[1:-1].strip()
+        if not s:
+            return []
+        got = None
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,63}", s):
+            o = "minor" if minor else "major"
+            dset = "%s_%s_default" % (o, "horiz" if letter == "x" else "vert")
+            drows = self._axis_rows("ticksetstyle", dset)
+            dtick = (self._axis_val(drows, "tickstyle", "tickstyle", hop=True)
+                     or ("minor" if minor else "default"))
+            dgrid = (self._axis_val(drows, "gridstyle", "gridstyle", hop=True)
+                     or "major")
+            if cls == "ticksetstyle":
+                a = self._axis_rows("ticksetstyle", s)
+                if a is not None:
+                    got = []
+                    v = self._axis_val(a, "tickstyle", "tickstyle", hop=True)
+                    if v is not None and v != dtick:
+                        got += self._axis_tick_tokens(v, dtick) or []
+                    v = self._axis_val(a, "gridstyle", "gridstyle", hop=True)
+                    if v is not None and v != dgrid:
+                        got += self._axis_grid_tokens(v, dgrid) or []
+                    v, d = (self._axis_val(r, "tickangle", "anglestyle")
+                            for r in (a, drows))
+                    if v is not None and v != d:
+                        got.append(f"angle({v})")
+            elif cls == "tickstyle":
+                got = self._axis_tick_tokens(s, dtick)
+            elif cls == "gridstyle":
+                got = self._axis_grid_tokens(s, dgrid)
+            elif cls == "linestyle":
+                if option == "tlstyle":
+                    d = self._axis_val(self._axis_rows("tickstyle", dtick),
+                                       "linestyle", "linestyle", hop=True)
+                else:
+                    d = self._axis_val(self._axis_rows("gridstyle", dgrid),
+                                       "linestyle", "linestyle", hop=True)
+                got = self._axis_line_tokens(s, d, option[:2])
+            else:
+                got = self._axis_text_tokens(
+                    s, "minortick_label" if minor else "tick_label")
+        if got is None:
+            if note:
+                self._style_note(cls, s, "unknown")
+            return []
+        return got
 
     def _style_named(self, cls: str, stata_class: str, s: str,
                      kind: str) -> dict:
@@ -37745,7 +37960,9 @@ _DASH_MAX_SCHEME_DIRS = 64
 
 
 _DASH_STYLE_ROW_KEY_RE = re.compile(
-    r"(seriesstyle|markerstyle|areastyle|linestyle|shadestyle) "
+    r"(seriesstyle|markerstyle|areastyle|linestyle|shadestyle|"
+    # WP-44 AX-14/AX-8: the axis style reader's classes.
+    r"tickstyle|ticksetstyle|gridstyle) "
     r"([A-Za-z_][A-Za-z0-9_]{0,63}|p#[a-z_]{0,40})")
 _DASH_STYLE_ROW_TOKEN_RE = re.compile(
     r"[A-Za-z_][A-Za-z0-9_#]{0,40}|[0-9]{0,8}\.?[0-9]{1,8}|")
@@ -37754,7 +37971,7 @@ _DASH_STYLE_ROW_TOKEN_RE = re.compile(
 def _dash_style_rows_of(build_options: dict) -> dict:
     """``build_options["_style_rows"]`` (WP-31 E10, DECISIONS A24) as
     ``{"<class> <file>": ((attr, kind, value), ...)}``: at most 400 keys of
-    at most 200 rows, each key a class of the five and a style name, each
+    at most 200 rows, each key a class of the eight and a style name, each
     row three tokens a style file's ``set`` line could hold and kind
     ``scheme`` or ``literal``.  Anything else is dropped; never raises."""
     try:
@@ -37785,7 +38002,9 @@ def _dash_style_rows_of(build_options: dict) -> dict:
 
 _DASH_STATA_PROP_KEY_RE = re.compile(
     r"(color|symbol|symbolsize|linewidth|linepattern|intensity|linestyle|"
-    r"markerstyle|areastyle|seriesstyle|shadestyle|zyx2rule)"
+    r"markerstyle|areastyle|seriesstyle|shadestyle|zyx2rule|"
+    # WP-44 AX-14/AX-8: SchemeParser._STYLE_STATA_KEYS's axis classes.
+    r"gsize|yesno|anglestyle|horizontal|tickstyle|ticksetstyle|gridstyle)"
     r"( [A-Za-z0-9_#]{1,64})?")
 _DASH_STATA_PROP_VAL_RE = re.compile(r"[A-Za-z0-9_#.*%+\- ]{1,64}")
 
@@ -45983,6 +46202,105 @@ def _dash_axis_custom(out, tick=False):
                 out["unsupported"].append(typed.pop(nm))
 
 
+#: WP-44 AX-14/AX-8: the style sub-options an axis option's text is
+#: expanded for, in the order their sub-options are spliced (a tickset
+#: first, as twoway applies a style before the option's own edits).
+_DASH_AXIS_STYLE_ORDER = ("style", "tstyle", "gstyle", "tlstyle", "glstyle",
+                          "labstyle")
+#: The label look a tick option draws no label for: a style's label edits
+#: are not spliced into xtick()/xmtick() (a typed one is named there).
+_DASH_AXIS_STYLE_LABEL_WORDS = frozenset((
+    "labels", "nolabels", "labgap", "labsize", "labcolor",
+    "labjustification", "angle"))
+#: Text that may name a style sub-option (style() from sty, gstyle() from
+#: gs, glstyle() from gls): only such text is tokenised.
+_DASH_AXIS_STYLE_HINT = re.compile(r"sty|gs|gls")
+
+
+def _dash_axis_style_text(text, scheme, letter="y", minor=False, tick=False,
+                          note=True):
+    """One axis label or tick option's *text* with the sub-options its
+    style names stand for (:meth:`SchemeParser.axis_style_tokens`) spliced
+    before its own, so an explicit edit wins (WP-44 AX-14, AX-8; D-44-02.e):
+    ``", tstyle(major_notick)"`` is ``", noticks labgap(tiny)
+    tstyle(major_notick)"``.  *text* itself when it names no style or
+    *scheme* is None."""
+    if not isinstance(text, str) or scheme is None \
+            or not _DASH_AXIS_STYLE_HINT.search(text):
+        return text
+    head, tail = _dash_axis_head_split(text)
+    if not tail:
+        return text
+    toks = _dash_by_tokens(tail.lstrip(",").strip())
+    names, _ = _dash_subopt_resolve([toks], _DASH_AXLABEL_SUBOPT_TABLE)
+    found = {}
+    for tok, nm in zip(toks, names[0] if names else []):
+        if nm in _DASH_AXIS_STYLE_ORDER and "(" in tok:
+            found[nm] = _dash_subopt_arg(tok)
+    add = []
+    for nm in _DASH_AXIS_STYLE_ORDER:
+        if nm in found and not (tick and nm == "labstyle"):
+            add += scheme.axis_style_tokens(nm, found[nm], letter, minor,
+                                            note=note)
+    if tick:
+        add = [t for t in add
+               if t.split("(", 1)[0] not in _DASH_AXIS_STYLE_LABEL_WORDS]
+    if not add:
+        return text
+    return head + ", " + " ".join(add + toks)
+
+
+def _dash_axis_styles_expand(graph_opts, scheme, note=True):
+    """*graph_opts* with every axis label and tick option's style names
+    expanded (:func:`_dash_axis_style_text`): ``xlabel``, ``xtick``,
+    ``xmlabel``, ``xmtick``, their ``2`` forms and the ``axisn`` entries,
+    for x and y.  The same dict when nothing changes, else a copy (the
+    spec is never written).  Run once per figure in both modes, before
+    any option is read."""
+    if not isinstance(graph_opts, dict) or scheme is None:
+        return graph_opts
+    out = None
+    for letter in ("x", "y"):
+        for fam in ("label", "tick", "mlabel", "mtick"):
+            for k in (letter + fam, letter + fam + "2"):
+                v = graph_opts.get(k)
+                if not isinstance(v, str) or \
+                        not _DASH_AXIS_STYLE_HINT.search(v):
+                    continue
+                nv = _dash_axis_style_text(v, scheme, letter,
+                                           fam.startswith("m"),
+                                           fam.endswith("tick"), note)
+                if nv != v:
+                    out = dict(graph_opts) if out is None else out
+                    out[k] = nv
+    axisn = graph_opts.get("axisn")
+    if isinstance(axisn, dict):
+        new_n = None
+        for an, entry in axisn.items():
+            letter = str(an)[:1]
+            if not isinstance(entry, dict) or letter not in ("x", "y"):
+                continue
+            new_e = None
+            for fam in ("label", "tick", "mlab", "mlabel", "mtick"):
+                v = entry.get(fam)
+                if not isinstance(v, str) or \
+                        not _DASH_AXIS_STYLE_HINT.search(v):
+                    continue
+                nv = _dash_axis_style_text(v, scheme, letter,
+                                           fam.startswith("m"),
+                                           fam.endswith("tick"), note)
+                if nv != v:
+                    new_e = dict(entry) if new_e is None else new_e
+                    new_e[fam] = nv
+            if new_e is not None:
+                new_n = dict(axisn) if new_n is None else new_n
+                new_n[an] = new_e
+        if new_n is not None:
+            out = dict(graph_opts) if out is None else out
+            out["axisn"] = new_n
+    return graph_opts if out is None else out
+
+
 def _dash_parse_axis_spec(raw, minor=False, tick=False):
     """Parse Stata's full ``axis_label`` grammar.
 
@@ -46723,13 +47041,14 @@ def _dash_grid_look(axis_obj, grid_obj, spec, option="axis", ref_in=4.0,
     line at the lowest major tick and nogmax the one at the highest --
     every line when the labels are a typed list, whose maximum twoway
     leaves unset (``ge_list_nogmax``).  gmin, gmax, gextend and custom are
-    twoway's default look.  nogextend (twoway stops the lines at the
-    scale's ends, ``gx_nogextend``) is not drawn: a Bokeh grid line always
-    spans the frame, so it stays named."""
+    twoway's default look.  nogextend tags the grid (WP-44 AX-14): its
+    lines end at the other axis's scale (:func:`_dash_grid_nogextend`)."""
     from bokeh.models.tickers import CustomJSTicker
     T = OptionTranslator
     axes = list(axis_obj) if isinstance(axis_obj, list) else [axis_obj]
     for g in grid_obj:
+        if spec.get("gextend") is not None:
+            g._dash_nogextend = spec["gextend"] is False
         v = spec.get("glwidth")
         if v is not None:
             try:
@@ -47674,6 +47993,21 @@ function dash_axis_bounds(a, models, lo, hi) {
         set(models[a.noext], t.length ? [Math.min(...t), Math.max(...t)] : "auto");
     }
 }
+// WP-44 AX-14: the twin of _dash_grid_nogextend -- each nogextend grid
+// whose lines run along this axis ends at its scale.
+function dash_grid_nogextend(a, models, lo, hi) {
+    if (!a || !Array.isArray(a.nogx) || lo === null || hi === null
+            || !isFinite(lo) || !isFinite(hi)) return;
+    const v = [Math.min(lo, hi), Math.max(lo, hi)];
+    for (const gi of a.nogx) {
+        const g = models[gi];
+        if (!g) continue;
+        const cur = g.cross_bounds;
+        if (Array.isArray(cur) && cur[0] === v[0] && cur[1] === v[1]) continue;
+        if (typeof g.setv === "function") g.setv({cross_bounds: v});
+        else g.cross_bounds = v;
+    }
+}
 function dash_axis_same(a, b) {
     if (!a || !b || a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
@@ -47721,6 +48055,8 @@ function dash_axis_finish(plan, models) {
     for (const f of tg.fills) dash_minor_place(f[0], models, f[1], f[2]);
     // WP-31 D7: noextend axes end at their first and last tick.
     for (const f of tg.fills) dash_axis_bounds(f[0], models, f[1], f[2]);
+    // WP-44 AX-14: nogextend grids end at their axis's scale.
+    for (const f of tg.fills) dash_grid_nogextend(f[0], models, f[1], f[2]);
     // WP-30 P1.20b: each panel's inner box follows its axes' hulls.
     for (const b of tg.boxes) {
         const box = models[b[0]];
@@ -48873,7 +49209,9 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
                  "nolabels",
                  # WP-31 D6: the label look of a label option.
                  "labgap", "labjustification", "labalignment", "alternate",
-                 "altgap"):
+                 "altgap",
+                 # WP-44 AX-14: drawn on a label option's own grid only.
+                 "nogextend"):
         if _sub in spec.get("typed", {}):
             bad.append(spec["typed"][_sub])
     _dash_report_suboptions(option, bad, seen, key)
@@ -49299,6 +49637,17 @@ def _dash_apply_minor_ticks(fig, axes, grids, which, axis_no, mtick_raw,
                 else:
                     _keep.append(_t)
             bad = _keep
+            # WP-44 AX-8: style() is honoured now (its tickset read by
+            # _dash_axis_styles_expand), so it is no longer in bad.
+            _st = sp.get("typed", {}).get("style")
+            if _st and "(" in _st and \
+                    _dash_subopt_arg(_st) in _DASH_MTICK_MAJOR_STYLES:
+                major_look = True
+        # WP-44 AX-14: nogextend is drawn on a label option's own grid
+        # only (Grid.cross_bounds); a minor grid shares its Grid with the
+        # major one, so here it stays named.
+        if "nogextend" in sp.get("typed", {}):
+            bad.append(sp["typed"]["nogextend"])
         _dash_report_suboptions(opt, bad, seen, key)
         if date_kind:
             sp = _dash_date_axis_spec(sp, date_kind, opt)
@@ -51262,6 +51611,17 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                             bi_ = index[id(_bt)] = len(models)
                             models.append(_bt)
                         ent["noext_ticks"] = bi_
+                # WP-44 AX-14: the nogextend grids along this axis
+                # (dash_grid_nogextend).
+                _ng = []
+                for _g in _dash_nogextend_grids(f, letter, name):
+                    gi_ = index.get(id(_g))
+                    if gi_ is None:
+                        gi_ = index[id(_g)] = len(models)
+                        models.append(_g)
+                    _ng.append(gi_)
+                if _ng:
+                    ent["nogx"] = _ng
                 # WP-31 D1: the ##N minor ticks and labels the page places
                 # again (dash_minor_place): numbers and model indexes only.
                 mn = getattr(ax, "_dash_minor", None)
@@ -52372,6 +52732,56 @@ def _dash_finish_count_ticks(fig, refinish=False, skip=()):
     _dash_finish_minor_ticks(fig)
     # WP-31 D7: a noextend axis ends at its first and last tick.
     _dash_axis_bounds(fig, entries)
+    # WP-44 AX-14: a nogextend grid ends at the other axis's scale.
+    _dash_grid_nogextend(fig, entries)
+
+
+def _dash_nogextend_grids(fig, letter, name="default"):
+    """The grids of *fig* tagged nogextend whose lines run along axis
+    *letter* of range *name*: a y grid's (horizontal lines) run along x
+    (WP-44 AX-14)."""
+    from bokeh.models import Grid
+    out = []
+    for g in list(getattr(fig, "center", None) or ()):
+        if not isinstance(g, Grid) or not getattr(g, "_dash_nogextend",
+                                                   False):
+            continue
+        along = "x" if g.dimension == 1 else "y"
+        rn = g.x_range_name if along == "x" else g.y_range_name
+        if along == letter and str(rn or "default") == str(name):
+            out.append(g)
+    return out
+
+
+def _dash_grid_nogextend(fig, entries=None):
+    """End each grid tagged nogextend at the scale of the axis its lines
+    run along -- the hull of its layers and ticks before the plot-region
+    margin -- as twoway draws ``ylabel(, grid nogextend)`` (measured:
+    test/fixtures/tick_style_truth.json ``ax14_grid_nogextend``: the y
+    gridlines run from the x data minimum, 1760, to the last x tick, 5000,
+    not to the plot region's edges), through ``Grid.cross_bounds``, in
+    data units (WP-44 AX-14).  Run after every finish in both modes; the
+    saved page's twin is ``dash_grid_nogextend`` in
+    ``_DASH_AXIS_FINISH_JS``."""
+    margins = getattr(fig, "_dash_margin", None) or {}
+    for e in (entries if entries is not None
+              else getattr(fig, "_dash_hull_axes", None) or ()):
+        letter, name = e.get("letter"), e.get("name", "default")
+        grids = _dash_nogextend_grids(fig, letter, name)
+        if not grids:
+            continue
+        rng = (getattr(fig, letter + "_range", None) if name == "default"
+               else getattr(fig, "extra_%s_ranges" % letter, {}).get(name))
+        try:
+            lo, hi = _dash_range_hull(
+                rng, "log" if e.get("kind") == "log" else None,
+                margin=margins.get(letter))
+        except (AttributeError, TypeError, ValueError):
+            continue
+        if not (math.isfinite(lo) and math.isfinite(hi)):
+            continue
+        for g in grids:
+            g.cross_bounds = (min(lo, hi), max(lo, hi))
 
 
 def _dash_axis_major_ticks(ax):
@@ -59397,7 +59807,11 @@ _DASH_AXLABEL_HONOURED = frozenset({
     "tlwidth", "tlcolor", "tlpattern", "glwidth", "glcolor", "glpattern",
     "gmin", "nogmin", "gmax", "nogmax", "gextend", "custom",
     # WP-44 AX-8: drawn.
-    "showlabels", "noshowlabels", "pgmgrid", "nopgmgrid", "labelminlen"})
+    "showlabels", "noshowlabels", "pgmgrid", "nopgmgrid", "labelminlen",
+    # WP-44 AX-8/AX-14: drawn (the style names through
+    # _dash_axis_styles_expand).
+    "style", "tstyle", "labstyle", "gstyle", "tlstyle", "glstyle",
+    "nogextend"})
 
 #: twoway's real and integer literals, fullmatched on the stripped argument
 #: (float() would take 1_0, inf and nan).
@@ -73084,6 +73498,8 @@ class DashRenderer:
         *rescale*: the letters a by() panel draws on its own scale
         (``_dash_by_rescale``)."""
         graph_opts = graph_spec.get("graph_options", {})
+        # WP-44 AX-14/AX-8: the axis options' style names, read once.
+        graph_opts = _dash_axis_styles_expand(graph_opts, self.scheme)
         plots = graph_spec.get("plots", [])
 
         # Determine axis variables from the first plot layer
@@ -77061,6 +77477,10 @@ class ServerAppBuilder:
                       "_DASH_CUSTOM_GRID_KEYS", "_DASH_CUSTOM_TICK_EDITS",
                       # WP-44 AX-8: labelminlen()'s formatter.
                       "_DASH_LABEL_MINLEN_JS",
+                      # WP-44 AX-14: the axis style names.
+                      "_DASH_AXIS_STYLE_ORDER",
+                      "_DASH_AXIS_STYLE_LABEL_WORDS",
+                      "_DASH_AXIS_STYLE_HINT",
                       # WP-31 D10c: the major-length minor tick styles.
                       "_DASH_MTICK_MAJOR_STYLES",
                       "_DASH_SUBOPT_REAL_RE", "_DASH_SUBOPT_INT_RE",
@@ -77567,6 +77987,9 @@ class ServerAppBuilder:
                          "_dash_tick_grid_look",
                          # WP-44 AX-8.
                          "_dash_label_minlen",
+                         # WP-44 AX-14.
+                         "_dash_axis_style_text", "_dash_axis_styles_expand",
+                         "_dash_grid_nogextend", "_dash_nogextend_grids",
                          # WP-28 S14 (B1): the quote-aware tokenizer and
                          # numlist expander _dash_parse_axis_label_opt is
                          # rebuilt on, and the too-many pre-check
@@ -80469,6 +80892,8 @@ class ServerAppBuilder:
             "        can be the graph.",
             '        """',
             "        go = g.get('graph_options', {})",
+            "        # WP-44 AX-14/AX-8: the axis options' style names.",
+            "        go = _dash_axis_styles_expand(go, _dash_cur_scheme())",
             "        # zlabel()/ztitle()/zscale() (GAPS2 X2): read once per",
             "        # figure so _apply_colorvar draws them on this graph's",
             "        # colour key; reset after the layer loop below.",

@@ -708,7 +708,10 @@ _SAVED_DIGEST = (
     # c171a548... -> b42e1910...: WP-44 DG-6, the finish code's leap-second
     # pair (_DASH_LEAP_SECONDS_JS) and its %tC tick branch (finish JS text
     # only); the same under both Pythons.
-    "b42e1910fb5bc89a990b7fdc67c1bdf8a476641453790ad348817d052256569b")
+    # b42e1910... -> b8c07992...: WP-44 AX-14, the finish code's
+    # dash_grid_nogextend (finish JS text only); the same under Bokeh 3.8
+    # and 3.9.
+    "b8c079928528b9c5dbb9b08fa01ef71e923af2f7f45bf2c96443b059e418bee5")
 
 
 # ===========================================================================

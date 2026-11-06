@@ -676,6 +676,12 @@ def _digest(model):
 # (hidden) legend takes the scheme's key geometry, its grid and its
 # panel location from twoway's clock table.
 _PLAIN_DIGESTS = {
+    # WP-44 AX-14: the finish code's dash_grid_nogextend moves every row:
+    # plain 37b69e60... -> ff506fe8... (saved) and f9f5be2d... ->
+    # d88403ed... (served); yaxis2 39f4cfe4... -> 1f466c9b... and
+    # 3dbe9efa... -> 7e08caa5....  A model diff with the finish code
+    # masked equals the tree before AX-14 in all four, under Bokeh 3.8
+    # and 3.9.
     # WP-44 batch 44.1 merged (44-01, 44-04, 44-05): 44-04's finish and
     # zoom JS (AX-18's log date ticks, DG-6's _DASH_LEAP_SECONDS_JS) moves
     # every row: plain 6ede92b7... -> 37b69e60... (saved) and 08dea935...
@@ -684,13 +690,13 @@ _PLAIN_DIGESTS = {
     # null y grid).  A masked model diff against the tree before 44-04
     # differs in the x range's finish callback code alone, in both cases.
     ("saved", "plain"):
-        "37b69e60d5d793f82033c33d73cf258a25bda161a7847f477c0378af5d507964",
+        "ff506fe8aec1da1f9e157b34bf8b566d70166caad081eb30559c204aa8186206",
     ("saved", "yaxis2"):
-        "39f4cfe4aaca2922e35d8e61d810fa21039b75569ef097e452a4244c0849dfa7",
+        "1f466c9bd39f53230326291d9f122121b628c446095d0e44639a3720772b7e00",
     ("served", "plain"):
-        "f9f5be2d4baeb11321bca1c41745d455f1e6518bd338d7d48a867c794da6d07a",
+        "d88403edb32f6837f44a1b57ceebcdd0ae5d690fa3c98e3f9e0a44dc87efadf1",
     ("served", "yaxis2"):
-        "3dbe9efa4b7f654e41985418e227cb02d09fee7d6c88ff5726124d8e4af8fcc4",
+        "7e08caa55571fb96c795079257d4cd95def9e4210642424480da62c0b7164fce",
 }
 
 

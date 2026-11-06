@@ -532,7 +532,9 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
 // $q4402_v.  Cases: "ycol:<text>" -- the colours of the y labels other
 // than <text>; "ylabs" -- whether the y labels are drawn; "ygrid" --
 // the colours of the y gridlines; "xtgrid" -- the colour of the x
-// tick-option gridlines.  Legend key
+// tick-option gridlines; "yticks" -- whether the y ticks are drawn;
+// "ygridall" -- the colours of the y gridlines, black included;
+// "gxext" -- the x values the y gridlines run between.  Legend key
 // proxies are never read (only axes and grids are).
 // ----------------------------------------------------------------
 python:
@@ -556,6 +558,21 @@ def _q4402_dash(figs, case):
               and g.dimension == 0 and g.minor_grid_line_color is not None]
         return " ".join(sorted({str(g.minor_grid_line_color).lower()
                                 for g in gs})) or "none"
+    if kind == "yticks":
+        ax = [m for m in f.left if isinstance(m, Axis)][0]
+        drawn = ax.major_tick_out or ax.major_tick_in
+        return "ticks" if drawn else "none"
+    if kind == "ygridall":
+        gs = [g for g in f.renderers + f.center if isinstance(g, Grid)
+              and g.dimension == 1 and g.grid_line_color is not None]
+        return " ".join(sorted({str(g.grid_line_color).lower()
+                                for g in gs})) or "none"
+    if kind == "gxext":
+        gs = [g for g in f.renderers + f.center if isinstance(g, Grid)
+              and g.dimension == 1 and g.grid_line_color is not None]
+        b = gs[0].cross_bounds if gs else "auto"
+        return "full" if b == "auto" else "%d %d" % (round(b[0]),
+                                                     round(b[1]))
     return "?"
 
 
@@ -588,6 +605,25 @@ def _q4402_tw(case, svg):
         got = sorted({ln["stroke"] for ln in doc["vlines"]
                       if ln["stroke"] not in (None, "#000000")})
         return " ".join(got) or "none"
+    if kind == "yticks":
+        ticks = [ln for ln in doc["hlines"]
+                 if min(ln["x1"], ln["x2"]) < pr["left"] - 1]
+        return "ticks" if ticks else "none"
+    grid = [ln for ln in doc["hlines"] if ln["y1"] < pr["bottom"] - 1
+            and max(ln["x1"], ln["x2"]) > pr["left"] + 100]
+    if kind == "ygridall":
+        return " ".join(sorted({ln["stroke"] for ln in grid})) or "none"
+    if kind == "gxext":
+        # The x labels 2,000 and 5,000 give the x scale's mapping.
+        at = {t["text"]: t["x"] for t in doc["texts"]
+              if t["text"] in ("2,000", "5,000")}
+        k = 3000.0 / (at["5,000"] - at["2,000"])
+        lo = min(min(ln["x1"], ln["x2"]) for ln in grid)
+        hi = max(max(ln["x1"], ln["x2"]) for ln in grid)
+        if lo <= pr["left"] + 1 and hi >= pr["right"] - 1:
+            return "full"
+        return "%d %d" % (round(2000 + (lo - at["2,000"]) * k),
+                          round(2000 + (hi - at["2,000"]) * k))
     return "?"
 
 
@@ -713,6 +749,47 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w44_run' {
         _q4402_same Q4402-4 "ylabel(, `o')"
     }
     _w44_done Q4402-4 "showlabels, noshowlabels, pgmgrid and nopgmgrid drawn as twoway draws them"
+
+    capture graph drop _all
+    dash clear
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
+* ==== S02 AX-14: the style names and nogextend ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w44_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local q02 "`w44_work'/s02d"
+    capture mkdir "`q02'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4402-5: tstyle(), style(), gstyle() and glstyle() read Stata's
+    // style files and nogextend ends the y gridlines at the x scale, as
+    // twoway draws them, saved and served (AX-14, and AX-8's style()).
+    local k 0
+    foreach o in "tstyle(major_notick)" "style(major_vert_notick)" {
+        local ++k
+        _q4402_reg "`q02'" `k' "yticks" scatter mpg weight, ylabel(, `o')
+        _q4402_same Q4402-5 "ylabel(, `o'): the ticks"
+    }
+    foreach o in "tstyle(major_nolabel)" "style(major_vert_nolabel)" {
+        local ++k
+        _q4402_reg "`q02'" `k' "ylabs" scatter mpg weight, ylabel(, `o')
+        _q4402_same Q4402-5 "ylabel(, `o'): the labels"
+    }
+    foreach o in "grid gstyle(dot)" "grid glstyle(refline)" {
+        local ++k
+        _q4402_reg "`q02'" `k' "ygridall" scatter mpg weight, ylabel(, `o')
+        _q4402_same Q4402-5 "ylabel(, `o'): the gridlines"
+    }
+    foreach o in "grid nogextend" "grid" {
+        local ++k
+        _q4402_reg "`q02'" `k' "gxext" scatter mpg weight, ylabel(, `o')
+        _q4402_same Q4402-5 "ylabel(, `o'): the gridlines' ends"
+    }
+    _w44_done Q4402-5 "the axis style names and nogextend drawn as twoway draws them"
 
     capture graph drop _all
     dash clear

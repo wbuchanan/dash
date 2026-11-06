@@ -3246,6 +3246,15 @@ CORPUS = [
     _case("ylabel labelminlen noshowlabels (WP-44 44-02)", [_sc()],
           go={"ylabel": ", labelminlen(8) nopgmgrid",
               "xlabel": ", noshowlabels pgmgrid"}),
+    # WP-44 AX-14: the style names, read from Stata's files on the
+    # ado-path (as dash.ado passes it), and nogextend.
+    _case("ylabel tstyle major_notick (WP-44 44-02)", [_sc()],
+          bo={"scheme_dirs": ["/Applications/StataNow/ado/base"]},
+          go={"ylabel": ", tstyle(major_notick) gstyle(dot) "
+                        "labstyle(heading)",
+              "xlabel": ", style(major_horiz_nolabel) tstyle(bogus)"}),
+    _case("ylabel grid nogextend (WP-44 44-02)", [_sc()],
+          go={"ylabel": ", grid nogextend", "xlabel": ", grid nogextend"}),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair
@@ -3402,9 +3411,12 @@ _MUST_WARN = {
     "xscale(range()) and yscale with an unimplemented sub-option":
         "dash: yscale() sub-option(s) not implemented and ignored: "
         "logit",
+    # Flipped (WP-44 AX-14): labstyle() is read from the scheme's text
+    # styles; a name it has not got prints twoway's note (measured
+    # 06nov2026: "named style bogus not found in class textstyle").
     "xlabel with an unimplemented sub-option":
-        "dash: xlabel() sub-option(s) not implemented and ignored: "
-        "labstyle(x)",
+        "dash: named style x not found in class textstyle, default "
+        "attributes used",
     # Flipped (WP-31 D10c): style(econ) is drawn as its options, named in
     # its own line; bgcolor(red) is the sub-option still ignored.
     "by() with an unimplemented sub-option":
@@ -4617,6 +4629,9 @@ MOVE_CORPUS.append(_move_case("area outline after a range move", _MOVES[1],
 # WP-34 AX-1: the default ticks stay over the kept data after a move.
 MOVE_CORPUS.append(_move_case("yscale range 0 after a move", _MOVES[1],
                               [_sc()], go={"yscale": "range(0)"}))
+# WP-44 AX-14: nogextend gridlines follow the x scale after a move.
+MOVE_CORPUS.append(_move_case("ylabel grid nogextend, dropdown", _MOVES[0],
+                              [_sc()], go={"ylabel": ", grid nogextend"}))
 # WP-37 TR-13 (A-26): a contour drawn from Stata's polygons, moved: both
 # modes draw dash's own fit of the kept rows and the same cue.
 MOVE_CORPUS.append(_move_case(

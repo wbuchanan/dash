@@ -260,3 +260,256 @@ class TestLabelMinlenJS:
         assert js_runner.run_js(src) == [
             [fs * 4 + "10", fs * 2 + "2000", "123456789012"],
             ["10" + fs * 4, "2000" + fs * 2, "123456789012"]]
+
+
+# ---------------------------------------------------------------------------
+# AX-14: the style names and nogextend (and AX-8's style())
+# ---------------------------------------------------------------------------
+
+#: Stata's own style files, on the ado-path dash.ado passes (scheme_dirs).
+_BASE = "/Applications/StataNow/ado/base"
+_needs_base = pytest.mark.skipif(
+    not os.path.isdir(os.path.join(_BASE, "style")),
+    reason="Stata's style files are not here")
+
+
+def _sfigs(mode, go):
+    """The first figure and notes, under stcolor (the fixture's scheme)
+    with Stata's style files on the ado-path, as dash.ado passes them."""
+    orig = tda._spec
+
+    def spec(*a, **k):
+        s = orig(*a, **k)
+        s["build_options"]["scheme_dirs"] = [_BASE]
+        return s
+    tda._spec = spec
+    try:
+        return _figs(mode, go, scheme="stcolor")
+    finally:
+        tda._spec = orig
+
+
+def _grid_looks(row):
+    """{(stroke, width)} of a fixture row's y gridlines (not the black
+    axis and tick lines, unless every line is black)."""
+    pr = row["plotregion"]
+    ls = [ln for ln in row["hlines"] if ln["x2"] > pr["left"] + 100
+          and ln["y1"] < pr["bottom"] - 1]
+    return {(ln["stroke"], ln["width"]) for ln in ls}
+
+
+def _note_of(row):
+    """twoway's note as dash words it."""
+    (line,) = row["log"]
+    return "dash: " + " ".join(line.strip("()").split()).replace(
+        "note: ", "", 1)
+
+
+@_needs_base
+@pytest.mark.parametrize("mode", _MODES)
+class TestStyleNames:
+    """tstyle(), labstyle(), gstyle(), tlstyle(), glstyle() and style()
+    draw what their style files say (tick_style_truth.json ``ax14_*``,
+    ``ax8_style_*``), with no note."""
+
+    def test_each(self, mode):
+        T0 = _T["plain_stcolor"]
+        plain, _m = _sfigs(mode, {})
+        ay0 = tda._axis(plain, "y")
+        # major_notick: no tick, the labels half a tick nearer (twoway's
+        # notickgap tiny for tickgap half_tiny: the region moves 22.6 of
+        # the 45.1-unit tick).
+        tick_len = T0["plotregion"]["left"] - min(
+            min(ln["x1"], ln["x2"]) for ln in T0["hlines"])
+        for key, go in (("ax14_tstyle_notick", "tstyle(major_notick)"),
+                        ("ax8_style_notick", "style(major_vert_notick)")):
+            shift = T0["plotregion"]["left"] - _T[key]["plotregion"]["left"]
+            assert shift / tick_len == pytest.approx(0.5, abs=0.02), key
+            f, msgs = _sfigs(mode, {"ylabel": ", " + go})
+            ay = tda._axis(f, "y")
+            assert ay.major_tick_out == 0 and ay.major_tick_in == 0, go
+            d0 = ay0.major_tick_out + ay0.major_label_standoff
+            d1 = ay.major_tick_out + ay.major_label_standoff
+            assert (d0 - d1) / ay0.major_tick_out == \
+                pytest.approx(0.5, abs=0.15), go
+            assert not [m for m in msgs if "dash:" in m], (go, msgs)
+        # major_nolabel: no labels.
+        for key, go in (("ax14_tstyle_nolabel", "tstyle(major_nolabel)"),
+                        ("ax8_style_nolabel", "style(major_vert_nolabel)")):
+            assert not _ylabel_fills(_T[key]), key
+            f, msgs = _sfigs(mode, {"ylabel": ", " + go})
+            assert not _shows_labels(tda._axis(f, "y")), go
+            assert not [m for m in msgs if "dash:" in m], (go, msgs)
+
+    def test_grid_and_line_styles(self, mode):
+        plain, _m = _sfigs(mode, {"ylabel": ", grid"})
+        g0 = plain.ygrid[0]
+        w0 = _grid_looks(_T["plain_stcolor"])
+        ((_c0, wd0),) = w0
+        # gstyle(dot): black dots at two thirds of the grid's width.
+        ((c, wd),) = _grid_looks(_T["ax14_gstyle_dot"])
+        f, msgs = _sfigs(mode, {"ylabel": ", grid gstyle(dot)"})
+        g = f.ygrid[0]
+        assert (c, g.grid_line_color) == ("#000000", "#000000")
+        assert g.grid_line_width / g0.grid_line_width == \
+            pytest.approx(wd / wd0, abs=0.01)
+        assert list(g.grid_line_dash), g.grid_line_dash
+        assert not [m for m in msgs if "dash:" in m], msgs
+        # glstyle(refline): black, the grid's width.
+        ((c, wd),) = _grid_looks(_T["ax14_glstyle_refline"])
+        f, msgs = _sfigs(mode, {"ylabel": ", grid glstyle(refline)"})
+        g = f.ygrid[0]
+        assert (c, g.grid_line_color) == ("#000000", "#000000")
+        assert g.grid_line_width == pytest.approx(g0.grid_line_width) \
+            and wd == wd0
+        assert not [m for m in msgs if "dash:" in m], msgs
+        # tlstyle(foreground): the default tick look.
+        t0, t1 = ({(ln["stroke"], ln["width"]) for ln in _T[k]["hlines"]
+                   if min(ln["x1"], ln["x2"]) < _T[k]["plotregion"]["left"]
+                   - 1} for k in ("plain_stcolor",
+                                  "ax14_tlstyle_foreground"))
+        assert t0 == t1
+        f, msgs = _sfigs(mode, {"ylabel": ", tlstyle(foreground)"})
+        ay, ay0 = tda._axis(f, "y"), tda._axis(plain, "y")
+        assert (ay.major_tick_line_color, ay.major_tick_line_width) == \
+            (ay0.major_tick_line_color, ay0.major_tick_line_width)
+        assert not [m for m in msgs if "dash:" in m], msgs
+
+    def test_labstyle(self, mode):
+        plain, _m = _sfigs(mode, {})
+        s0 = float(tda._axis(plain, "y").major_label_text_font_size[:-2])
+        for key, name in (("ax14_labstyle_heading", "heading"),
+                          ("ax14_labstyle_small_body", "small_body")):
+            row = _T[key]
+            labs = [t for t in row["texts"] if t["rotate"] is None
+                    and t["x"] < row["plotregion"]["left"]]
+            assert {t["anchor"] for t in labs} == {"middle"}
+            ratio = labs[0]["size"] / 112.56
+            f, msgs = _sfigs(mode, {"ylabel": ", labstyle(%s)" % name})
+            ay = tda._axis(f, "y")
+            s1 = float(ay.major_label_text_font_size[:-2])
+            assert s1 / s0 == pytest.approx(ratio, abs=0.03), name
+            assert ay.major_label_text_align == "center", name
+            assert not [m for m in msgs if "dash:" in m], (name, msgs)
+
+    def test_unknown_name_notes(self, mode):
+        for key, go in (("ax14_tstyle_bogus", "tstyle(bogus)"),
+                        ("ax8_style_bogus", "style(bogus)")):
+            assert _T[key]["rc"] == 0
+            assert _T[key]["plotregion"] == _T["plain_stcolor"]["plotregion"]
+            f, msgs = _sfigs(mode, {"ylabel": ", " + go})
+            assert _note_of(_T[key]) in msgs, (go, msgs)
+            assert not [m for m in msgs if "not implemented" in m], msgs
+            assert _shows_labels(tda._axis(f, "y"))
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestNogextend:
+    """nogextend ends the y gridlines at the x axis's scale: twoway draws
+    them from the x data minimum (1760) to the last x tick (5000)."""
+
+    def test_bounds(self, mode):
+        row = _T["ax14_grid_nogextend"]
+        lines = [ln for ln in row["hlines"] if ln["stroke"] == "#f0f0f0"]
+        ticks = {t["raw"]: t["x"] for t in row["texts"]
+                 if t["raw"] in ("2,000", "5,000")}
+        k = 3000.0 / (ticks["5,000"] - ticks["2,000"])
+        lo = 2000 + (min(ln["x1"] for ln in lines) - ticks["2,000"]) * k
+        hi = 2000 + (max(ln["x2"] for ln in lines) - ticks["2,000"]) * k
+        assert (lo, hi) == (pytest.approx(1760, abs=2),
+                            pytest.approx(5000, abs=2))
+        f, msgs = _figs(mode, {"ylabel": ", grid nogextend"})
+        assert [tuple(g.cross_bounds) for g in f.ygrid] == \
+            [(pytest.approx(1760), pytest.approx(5000))]
+        assert not [m for m in msgs if "nogextend" in m], msgs
+        f, _m = _figs(mode, {"ylabel": ", grid"})
+        assert [g.cross_bounds for g in f.ygrid] == ["auto"]
+
+    def test_js_twin(self, mode):
+        import js_runner
+        if mode == "served":
+            # The served app re-finishes in Python (test_bounds).
+            f, _m = _figs(mode, {"ylabel": ", grid nogextend"})
+            assert dr._dash_nogextend_grids(f, "x") == list(f.ygrid)
+            return
+        src = (dr._DASH_AXIS_FINISH_JS + """
+const g = {cross_bounds: "auto"};
+dash_grid_nogextend({nogx: [0]}, [g], 1500, 4800);
+const h = {cross_bounds: "auto"};
+dash_grid_nogextend({}, [h], 1500, 4800);
+console.log(JSON.stringify([g.cross_bounds, h.cross_bounds]));
+""")
+        assert js_runner.run_js(src) == [[1500, 4800], "auto"]
+
+
+@_needs_base
+class TestAxisStyleTokens:
+    """SchemeParser.axis_style_tokens and the text expansion: only what a
+    style name changes from the axis's default tickset, from Stata's
+    files (StataNow 19.5's ado/base/style)."""
+
+    def _sp(self, scheme="stcolor"):
+        return dr.SchemeParser(scheme, ado_dirs=(_BASE,))
+
+    def test_the_readers(self):
+        sp = self._sp()
+        rows = sp._axis_rows("tickstyle", "major_notick")
+        assert rows["show_ticks"] == ("literal", "no")
+        assert rows["textgap"] == ("scheme", "notickgap")
+        assert sp._axis_rows("tickstyle", "bogus") is None
+        # s2color's gsize notickgap tiny, read from Stata's own scheme.
+        assert sp._axis_leaf("gsize", "notickgap") == "tiny"
+        assert sp._axis_val(rows, "textgap", "gsize") == "tiny"
+        assert sp._axis_val(rows, "show_ticks", "yesno") == "no"
+        # A style hop: the file of that name.
+        assert sp._axis_val({"x": ("scheme", "major_nolabel")}, "x",
+                            "tickstyle", hop=True) == "major_nolabel"
+
+    def test_each_class(self):
+        sp = self._sp()
+        assert sp._axis_tick_tokens("major_notick", "default") == \
+            ["noticks", "labgap(tiny)"]
+        assert sp._axis_tick_tokens("minor", "default") == \
+            ["tlength(half_tiny)"]
+        assert sp._axis_grid_tokens("dot", "major") == \
+            ["glwidth(thin)", "glcolor(#000000)", "glpattern(dot)"]
+        assert sp._axis_line_tokens("foreground", "tick", "tl") == []
+        assert sp._axis_line_tokens("bogus", "tick", "tl") is None
+        assert sp._axis_text_tokens("heading", "tick_label") == \
+            ["labsize(large)", "labjustification(center)"]
+        assert sp._axis_text_tokens("bogus", "tick_label") is None
+        assert sp.axis_style_tokens("style", "major_vert_nolabel") == \
+            ["nolabels"]
+        assert sp.axis_style_tokens("style", "major_vert_default") == []
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            dr._DASH_NOTED.discard(("named-style", "textstyle", "zq1"))
+            assert sp.axis_style_tokens("labstyle", "zq1") == []
+            assert sp.axis_style_tokens("tlstyle", "zq1",
+                                        note=False) == []
+        assert [str(x.message) for x in w] == [
+            "dash: named style zq1 not found in class textstyle, default "
+            "attributes used"]
+
+    def test_the_text(self):
+        sp = self._sp()
+        assert dr._dash_axis_style_text(", tstyle(major_notick) noticks",
+                                        sp) == \
+            ", noticks labgap(tiny) tstyle(major_notick) noticks"
+        # The minimum abbreviations, gs() and gls(); a tick option takes
+        # no label edit.
+        assert dr._dash_axis_style_text("10 20, gs(dot)", sp) == \
+            "10 20, glwidth(thin) glcolor(#000000) glpattern(dot) gs(dot)"
+        assert dr._dash_axis_style_text(", tsty(major_notick)", sp,
+                                        tick=True) == \
+            ", noticks tsty(major_notick)"
+        assert dr._dash_axis_style_text(", grid", sp) == ", grid"
+        go = {"ylabel": ", grid", "name": "g"}
+        assert dr._dash_axis_styles_expand(go, sp) is go
+        go2 = {"ylabel": ", tstyle(major_nolabel)",
+               "axisn": {"y3": {"label": ", style(major_vert_notick)"}}}
+        got = dr._dash_axis_styles_expand(go2, sp)
+        assert got is not go2 and go2["ylabel"] == ", tstyle(major_nolabel)"
+        assert got["ylabel"] == ", nolabels tstyle(major_nolabel)"
+        assert got["axisn"]["y3"]["label"] == \
+            ", noticks labgap(tiny) style(major_vert_notick)"
