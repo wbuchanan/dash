@@ -251,8 +251,11 @@ class TestSubOptionsKeepTheDefault:
     @pytest.mark.parametrize("mode", MODES)
     def test_unhonoured_suboption_keeps_title_and_is_named(self, mode,
                                                            tmp_path):
-        for raw, name in ((", orientation(horizontal)", "orientation"),
-                          (", lcolor(red) box", "lcolor")):
+        # Flipped (WP-44 AX-13): orientation() and lcolor() are drawn on
+        # an axis title now (test_axis_titles_p9.py), so each row adds
+        # bexpand, which stays named (D72), beside the drawn word.
+        for raw, name in ((", orientation(horizontal) bexpand", "bexpand"),
+                          (", lcolor(red) bexp", "bexp")):
             fig, caught = _fig(mode, tmp_path, _ONE, {"ytitle": raw})
             assert _y(fig).axis_label == "y1", raw
             # One note.  The served app is built (Stata's process) and then

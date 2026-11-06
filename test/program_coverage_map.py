@@ -771,6 +771,7 @@ COVERAGE = {
         "_dash_rep_subs": ("test_twoway_option_parity.cscript:TP-14",),
         "_dash_rep_merge": ("test_twoway_option_parity.cscript:TP-14",),
         "_dash_rep_merge_locals": ("test_twoway_option_parity.cscript:TP-14",),
+        "_dash_rep_lines": ("test_wp44_truth.cscript:Q4401-5",),
         "_dash_rep_reduce": ("test_twoway_option_parity.cscript:TP-14",),
         # direct and e2e: TP-14f asks twoway for each row's verdict and
         # calls the scan and the cross check on their own.

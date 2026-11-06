@@ -5652,11 +5652,11 @@
   - Suggested fix: Measure and apply the rule in both modes
   - Resolution: Not fixed because WP-44 section 44-01 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
 
-- [ ] Title: ytitle(A) ytitle(B, suffix) is joined on one line; twoway draws two lines for axis titles
+- [x] Title: ytitle(A) ytitle(B, suffix) is joined on one line; twoway draws two lines for axis titles
   - File Names and Line Numbers: dash_parse.mata:11170; E08, B17
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids MS-13; confirmed; tracked: untracked. Registered as GAPS4 MS-13 (WP-44, section 44-01, Fix).
   - Suggested fix: Join axis-title suffix/prefix copies as separate lines
-  - Resolution: Not fixed because WP-44 section 44-01 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+  - Resolution: Fixed 06nov2026 (WP-44, MS-13). Measured first (scripts/extract_axis_title_truth.do, test/fixtures/axis_title_truth.json ms13_*): twoway draws <key>(A) <key>(B, suffix) -- and the prefix form, B first -- on two lines for xtitle(), ytitle(), ttitle() and their axis(2) forms, and joins them on one line, "A B", for title() and the eight edge titles; ztitle() draws nothing on a scatter. dash joined every copy with a blank. _dash_rep_cat gives the axis-title keys (xtitle ytitle ttitle and the routed xtitle2 ytitle2 ttitle2) the new category TA, which _dash_rep_merge reads as T except that a suffix/prefix copy joins the two bodies as separate lines through the new _dash_rep_lines (each body not already quoted wrapped in compound quotes). Pinned by test_wp44_truth.cscript Q4401-5 (live twoway beside both modes, every key and its prefix form; title() one line) and test/test_axis_titles_p9.py::TestTwoLines (the renderer half). Closes GAPS4 MS-13 (WP-44, MS-13).
 
 - [x] Title: A right-hand y title reads top to bottom; twoway's reads upward (every economist graph, any yaxis(2))
   - File Names and Line Numbers: tw rotate(-90); axis_label_orientation never set

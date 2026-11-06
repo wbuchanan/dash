@@ -8713,10 +8713,15 @@ string scalar _dash_rep_cat(string scalar key)
     string scalar k
 
     k = _dash_rep_bare(key)
-    if (anyof(("title", "subtitle", "note", "caption", "xtitle", "ytitle",
-               "xtitle2", "ytitle2", "t1title", "t2title", "b1title",
-               "b2title", "l1title", "l2title", "r1title", "r2title",
-               "ztitle", "ttitle", "ttitle2"), k)) return("T")
+    // An axis title's suffix/prefix copy is a line of its own (WP-44
+    // MS-13; axis_title_truth.json ms13_*: xtitle, ytitle, ttitle and
+    // their axis(2) forms draw A and B on two lines, the edge titles and
+    // title() "A B" on one).
+    if (anyof(("xtitle", "ytitle", "ttitle", "xtitle2", "ytitle2",
+               "ttitle2"), k)) return("TA")
+    if (anyof(("title", "subtitle", "note", "caption", "t1title",
+               "t2title", "b1title", "b2title", "l1title", "l2title",
+               "r1title", "r2title", "ztitle"), k)) return("T")
     if (anyof(("xlabel", "ylabel", "xlabel2", "ylabel2", "xtick", "ytick",
                "xtick2", "ytick2", "xmtick", "ymtick", "xmlabel", "ymlabel",
                "xmtick2", "ymtick2", "xmlabel2", "ymlabel2",
@@ -12062,7 +12067,7 @@ string scalar _dash_so_family(string scalar key)
     cat = _dash_rep_cat(key)
     if (cat == "L") return("axlabel")
     if (cat == "S") return("axscale")
-    if (cat == "T") return("textbox")
+    if (cat == "T" | cat == "TA") return("textbox")
     return("")
 }
 
@@ -13235,9 +13240,13 @@ string scalar _dash_rep_merge(string scalar key, string scalar v1,
 {
     string scalar    cat, b1, s1, b2, s2, body, sub
     string rowvector w2, drop
-    real scalar      c1, c2, has2, suf, pre, add, a1, keep
+    real scalar      c1, c2, has2, suf, pre, add, a1, keep, lines
 
     cat = _dash_rep_cat(key)
+    // An axis title (TA) merges as a title (T), its suffix/prefix copy
+    // on a line of its own (WP-44 MS-13).
+    lines = (cat == "TA")
+    if (lines) cat = "T"
     if (cat == "F") return(strtrim(v1) != "" ? v1 : v2)
     if (cat == "R" | strtrim(v1) == "") return(v2)
     if (strtrim(v2) == "") return(v1)
@@ -13261,7 +13270,9 @@ string scalar _dash_rep_merge(string scalar key, string scalar v1,
     add  = (cat == "L" & anyof(w2, "add"))
     drop = ("suffix", "prefix")
     if (cat == "L") drop = ("add")
-    if (suf & has2)       body = strtrim(b1) + " " + strtrim(b2)
+    if (suf & has2 & lines)      body = _dash_rep_lines(b1, b2)
+    else if (pre & has2 & lines) body = _dash_rep_lines(b2, b1)
+    else if (suf & has2)  body = strtrim(b1) + " " + strtrim(b2)
     else if (pre & has2)  body = strtrim(b2) + " " + strtrim(b1)
     else if (add & has2)  body = strtrim(b1) + " " + strtrim(b2)
     else                  body = (has2 ? strtrim(b2) : strtrim(b1))
@@ -13272,6 +13283,26 @@ string scalar _dash_rep_merge(string scalar key, string scalar v1,
         if (keep) sub = sub + (sub != "" ? " " : "") + "add"
     }
     return(body + (sub != "" ? ", " + sub : ""))
+}
+
+// _dash_rep_lines(a, b) -- the bodies a and b as two lines of one title
+// (WP-44 MS-13): each body not already a run of quoted strings (its
+// first non-blank character a double quote or a backtick) is wrapped in
+// compound quotes, so _parse_textbox_opt reads a line per body; joined
+// by one blank.
+string scalar _dash_rep_lines(string scalar a, string scalar b)
+{
+    string scalar x, y
+
+    x = strtrim(a)
+    y = strtrim(b)
+    if (!anyof((char(34), char(96)), substr(x, 1, 1))) {
+        x = char(96) + char(34) + x + char(34) + char(39)
+    }
+    if (!anyof((char(34), char(96)), substr(y, 1, 1))) {
+        y = char(96) + char(34) + y + char(34) + char(39)
+    }
+    return(x + " " + y)
 }
 
 // _dash_rep_alt(v1, v2, merged) -- merged with alt as twoway reads two

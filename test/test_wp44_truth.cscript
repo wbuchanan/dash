@@ -551,6 +551,51 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
 }
 * ==== end S01 ====
 
+* ==== S01 MS-13: axis title copies on two lines ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+    local q01 "`w44_work'/s01"
+    capture mkdir "`q01'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4401-5: <key>(A) <key>(B, suffix) -- and prefix -- draws two
+    // lines on xtitle(), ytitle(), ttitle() and their axis(2) forms, in
+    // twoway and in both modes; title(A) title(B, suffix) draws one.
+    local i 10
+    foreach k in xtitle ytitle {
+        foreach w in suffix prefix {
+            local ++i
+            _q4401_reg "`q01'" `i' "lines" auto scatter mpg weight, `k'(A) `k'(B, `w')
+            _q4401_same Q4401-5 "`k' `w'" "two"
+        }
+    }
+    foreach w in suffix prefix {
+        local ++i
+        _q4401_reg "`q01'" `i' "lines" sp500 line close date, ttitle(A) ttitle(B, `w')
+        _q4401_same Q4401-5 "ttitle `w'" "two"
+        local ++i
+        _q4401_reg "`q01'" `i' "lines" auto (scatter mpg weight) (scatter price weight, yaxis(2)), ytitle(A, axis(2)) ytitle(B, `w' axis(2))
+        _q4401_same Q4401-5 "ytitle axis(2) `w'" "two"
+        local ++i
+        _q4401_reg "`q01'" `i' "lines" auto (scatter mpg weight) (scatter mpg length, xaxis(2)), xtitle(A, axis(2)) xtitle(B, `w' axis(2))
+        _q4401_same Q4401-5 "xtitle axis(2) `w'" "two"
+        local ++i
+        _q4401_reg "`q01'" `i' "lines" sp500 line close date, xaxis(1 2) ttitle(A, axis(2)) ttitle(B, `w' axis(2))
+        _q4401_same Q4401-5 "ttitle axis(2) `w'" "two"
+    }
+    local ++i
+    _q4401_reg "`q01'" `i' "lines" auto scatter mpg weight, title(A) title(B, suffix)
+    _q4401_same Q4401-5 "title suffix" "one"
+    _w44_done Q4401-5 "axis-title copies on two lines; title() on one"
+
+    capture graph drop _all
+    dash clear
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

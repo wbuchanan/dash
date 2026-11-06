@@ -1284,7 +1284,10 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {pmore2}
     A lone {cmd:suffix} on an axis title adds its lines after the
-    default title, {cmd:prefix} before it.
+    default title, {cmd:prefix} before it.  A suffix or prefix copy of
+    an axis title -- {cmd:ytitle(A) ytitle(B, suffix)} -- adds a line, as
+    {cmd:twoway} draws it; on {cmd:title()}, {cmd:subtitle()},
+    {cmd:note()}, {cmd:caption()} and the edge titles it joins the line.
     An axis title given with empty text -- {cmd:xtitle("")},
     {cmd:ytitle("")} or {cmd:ytitle("", axis(2))} --
     removes that title, as in {cmd:twoway}; an option not given at all

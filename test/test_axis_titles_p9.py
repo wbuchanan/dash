@@ -464,3 +464,18 @@ class TestRightTitles:
         assert not _notes(w), w
         (a,) = _right_y_axes(f)
         assert a.axis_label_orientation == 0.0
+
+
+class TestTwoLines:
+    """MS-13: the merged form the Mata merge writes for ytitle(A)
+    ytitle(B, suffix) -- two quoted strings -- draws two lines, as twoway
+    draws them (ms13_ytitle_suf); the merge itself is pinned by
+    test_wp44_truth.cscript Q4401-5."""
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_the_merged_form_draws_two_lines(self, mode):
+        assert _text("ms13_ytitle_suf", "A")["x"] != \
+            _text("ms13_ytitle_suf", "B")["x"]
+        f, w = _figs(mode, {"ytitle": '`"A"\' `"B"\''})
+        assert not _notes(w), w
+        assert tda._axis(f, "y").axis_label == "A\nB"
