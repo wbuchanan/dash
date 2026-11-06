@@ -488,11 +488,11 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-5 Tracked:** Open (WP-44 section 44-02).
 - **AX-6 Tracked:** Closed in WP-44, BUGS.md "Gridlines of xtick()/xmtick() are drawn in the minor style (dotted); twoway uses the major gridstyle", commit a122c3c.
 - **AX-7 Tracked:** Open (WP-44 section 44-03).
-- **AX-8 Tracked:** Closed in WP-44, BUGS.md "Label sub-options twoway draws are named: labelminlen(), noshowlabels/showlabels, nopgmgrid/pgmgrid, style(); showlabels nolabels hides labels", commit pending.
+- **AX-8 Tracked:** Closed in WP-44, BUGS.md "Label sub-options twoway draws are named: labelminlen(), noshowlabels/showlabels, nopgmgrid/pgmgrid, style(); showlabels nolabels hides labels", commit 7567150.
 - **AX-9 Tracked:** Open (WP-44 section 44-03).
 - **AX-10 Tracked:** Open (WP-44 section 44-03).
 - **AX-11 Tracked:** Open (WP-44 section 44-03).
-- **AX-14 Tracked:** Closed in WP-44, BUGS.md "tstyle(), labstyle(), gstyle(), tlstyle(), glstyle() and nogextend are named", commit pending.
+- **AX-14 Tracked:** Closed in WP-44, BUGS.md "tstyle(), labstyle(), gstyle(), tlstyle(), glstyle() and nogextend are named", commit fb75e9a.
 - **AX-15 Tracked:** Open (WP-44 section 44-02).
 - **AX-18 Tracked:** Closed in WP-44, BUGS.md "A date axis is kept where twoway labels Stata numbers (first layer lfit/qfit/ci/kdensity/lpoly/function/immediates); xscale(log) on a date axis is drawn linear", commit 5432452.
 - **AX-19 Tracked:** Open (WP-44 section 44-03).
