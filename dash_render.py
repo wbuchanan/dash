@@ -45922,7 +45922,51 @@ _DASH_AXIS_RULE_RE = re.compile(r"\A#{1,2}\s*(\d+)\s*(.*)\Z", re.S)
 _DASH_MINOR_RULE_RE = re.compile(r"\A\s*##\s*(\d{1,9})(?=\s|\Z)")
 
 
-def _dash_parse_axis_spec(raw, minor=False):
+#: WP-44 AX-5: the parts of a custom option twoway logs nowhere (its
+#: gridstyle edits) and those it gives to the custom ticks alone (the
+#: ticksetstyle and tickstyle edits), as spec keys and the typed names
+#: that set them (_gs_parse_and_log_tickset.ado, "log the edit").
+_DASH_CUSTOM_GRID_KEYS = ("glwidth", "glcolor", "glpattern", "gmin", "gmax",
+                          "gextend")
+_DASH_CUSTOM_TICK_EDITS = (
+    ("angle", ("angle",)), ("angle_bad", ()), ("alternate", ("alternate",)),
+    ("altgap", ("altgap",)), ("tlength", ("tlength",)),
+    ("tposition", ("tposition",)), ("labgap", ("labgap",)),
+    ("show_ticks", ("ticks", "noticks")),
+    ("show_labels", ("labels", "nolabels")),
+    ("labsize", ("labsize",)), ("labcolor", ("labcolor",)),
+    ("labjust", ("labjustification",)), ("labalign", ("labalignment",)),
+    ("tlwidth", ("tlwidth",)), ("tlcolor", ("tlcolor",)),
+    ("tlpattern", ("tlpattern",)))
+
+
+def _dash_axis_custom(out, tick=False):
+    """A label or tick option's ``custom`` as twoway reads it (WP-44 AX-5;
+    measured: test/fixtures/tick_style_truth.json ``ax5_*``).  twoway
+    logs no gridstyle edit of a custom option, so ``glcolor()`` and the
+    other grid-line words change nothing (``ax5_add_custom_grid``;
+    ``grid``/``nogrid`` still turn the grid on and off).  Its label and
+    tick edits style the option's own ticks only: on a tick option
+    (*tick*) those are the option's positions, drawn with their own look;
+    on a label option without ``add`` they are the axis's labels, all
+    styled (``ax5_custom_full``); with ``add`` the axis's other labels
+    keep their look (``ax5_add_custom_lab``) and, as Bokeh draws one
+    label and tick look per axis, the custom ticks' edits are named in
+    the note instead of drawn on every label.  Edits *out* in place."""
+    out["custom"] = True
+    for k in _DASH_CUSTOM_GRID_KEYS:
+        out[k] = None
+    if tick or not out.get("add"):
+        return
+    typed = out.get("typed") or {}
+    for k, names in _DASH_CUSTOM_TICK_EDITS:
+        out[k] = False if k == "alternate" else None
+        for nm in names:
+            if nm in typed:
+                out["unsupported"].append(typed.pop(nm))
+
+
+def _dash_parse_axis_spec(raw, minor=False, tick=False):
     """Parse Stata's full ``axis_label`` grammar.
 
     Handles a numlist (every form of TR-14.1/BR-14.4, including the
@@ -46054,6 +46098,8 @@ def _dash_parse_axis_spec(raw, minor=False):
                 or _DASH_AXIS_RULE_RE.match(head)
                 or _DASH_AXIS_INCR_RE.match(_first)):
             out["add"] = False
+    if "custom" in out["typed"]:
+        _dash_axis_custom(out, tick)
 
     _mb = _DASH_MINOR_RULE_RE.match(head)
     if _mb:
@@ -48784,7 +48830,7 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
     """
     from bokeh.models.tickers import BasicTicker, CustomJSTicker, FixedTicker  # noqa: F401  # kept: a lint pass removes no import (S60 baseline)
     text = str(raw or "")
-    spec = _dash_parse_axis_spec(text)
+    spec = _dash_parse_axis_spec(text, tick=True)
     _dash_note_major_between(spec)
     bad = list(spec.get("unsupported", []))
     # A tick draws no label: its format/labsize/angle and its label look
@@ -76910,6 +76956,8 @@ class ServerAppBuilder:
                       "_DASH_REFLINE_SUBOPT_TABLE", "_DASH_AXLABEL_HONOURED",
                       # WP-31 D1: minor ticks and minor labels.
                       "_DASH_MINOR_RULE_RE", "_DASH_MTICK_JS",
+                      # WP-44 AX-5: a custom option's edits.
+                      "_DASH_CUSTOM_GRID_KEYS", "_DASH_CUSTOM_TICK_EDITS",
                       # WP-31 D10c: the major-length minor tick styles.
                       "_DASH_MTICK_MAJOR_STYLES",
                       "_DASH_SUBOPT_REAL_RE", "_DASH_SUBOPT_INT_RE",
@@ -77410,6 +77458,8 @@ class ServerAppBuilder:
                          "_dash_axis_default_titles",
                          "_dash_parse_axis_label_opt",
                          "_dash_parse_axis_spec", "_dash_apply_axis_spec",
+                         # WP-44 AX-5.
+                         "_dash_axis_custom",
                          # WP-28 S14 (B1): the quote-aware tokenizer and
                          # numlist expander _dash_parse_axis_label_opt is
                          # rebuilt on, and the too-many pre-check

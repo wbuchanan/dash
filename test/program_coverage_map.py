@@ -569,6 +569,9 @@ COVERAGE = {
         "_dash_axlabel_head": ("test_option_validation.cscript:Q4405-2",),
         "_dash_axlabel_lead": ("test_option_validation.cscript:Q4405-2",),
         "_dash_axlabel_runs": ("test_option_validation.cscript:Q4405-2",),
+        # WP-44 AX-5: custom with an edit and no value list.
+        "_dash_axlabel_custom_refusal": (
+            "test_option_validation.cscript:Q4402-2",),
         # WP-31 D7: two scale copies' alt toggles.
         "_dash_rep_alt": ("test_wp31_truth.cscript:U33-06",),
         "_dash_rep_has_alt": ("test_wp31_truth.cscript:U33-06",),

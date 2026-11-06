@@ -5350,9 +5350,20 @@ height further out plus {cmd:altgap()}, the axis title outside both;
 {cmd:glcolor()} styles a grid that is drawn and does not turn one on;
 {cmd:nogmin} drops the gridline at the lowest major tick and {cmd:nogmax}
 the one at the highest, every gridline when the labels are a typed list,
-as in {cmd:twoway}.  {cmd:tlpattern()}, {cmd:gmin}, {cmd:gmax},
-{cmd:gextend} and {cmd:custom} are accepted and change nothing, as in
-{cmd:twoway}.  {it:Difference from twoway:} {cmd:nogextend}, which stops
+as in {cmd:twoway}.  {cmd:tlpattern()}, {cmd:gmin}, {cmd:gmax} and
+{cmd:gextend} are accepted and change nothing, as in {cmd:twoway}.
+{cmd:custom} gives the option's label and tick edits to its own listed
+ticks: without {cmd:add} those are the axis's labels, all styled; a
+custom option's {cmd:glcolor()} and other grid-line edits change nothing,
+as in {cmd:twoway}; and {cmd:custom} with a label or tick edit but no
+listed value ({cmd:ylabel(, custom labcolor(red))}, or after a rule,
+{cmd:#}{it:#}, {cmd:minmax} or {cmd:none}) is refused, {cmd:r(198)}, with
+{cmd:twoway}'s {cmd:tick_styles[-1] invalid name}.
+{it:Difference from twoway:} with {cmd:add}, {cmd:twoway} draws the
+custom ticks alone in their own look ({cmd:ylabel(25 "x", add custom labcolor(red))}
+draws only {cmd:x} red); {cmd:dash} draws them in the axis's look and
+names their edits in a note, because Bokeh draws one label and tick look
+per axis.  {it:Difference from twoway:} {cmd:nogextend}, which stops
 the gridlines at the scale's ends, is named in a note (a Bokeh gridline
 spans the plot), and so are {cmd:labstyle()}, {cmd:tstyle()},
 {cmd:gstyle()}, {cmd:tlstyle()} and {cmd:glstyle()}, which name Stata

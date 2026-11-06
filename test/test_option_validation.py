@@ -474,6 +474,9 @@ class TestTheNewProgramsKeepTheirConstraints:
         # entry for them because the check ran after the runs were expanded,
         # which read 10(10)40 "a" as a list twoway refuses.
         "_dash_axlabel_refusal", "_dash_axlabel_runs",
+        # WP-44 AX-5: custom with an edit and no value list, refused in
+        # twoway's line (a test of the value, set as a local by value).
+        "_dash_axlabel_custom_refusal",
     })
 
     @staticmethod

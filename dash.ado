@@ -489,7 +489,7 @@ program define _dash_require_mata
         _dash_kpi_pctile _dash_json_escape _dash_dp_format _dash_path_badchar _dash_cmd_metachar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal _dash_tabs_refusal _dash_tabs_unwrap ///
         _dash_legend_first_refusal _dash_bare_string_refusal _dash_stray_quote_refusal ///
-        _dash_axlabel_refusal _dash_axlabel_runs ///
+        _dash_axlabel_refusal _dash_axlabel_runs _dash_axlabel_custom_refusal ///
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
         _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
@@ -4692,6 +4692,13 @@ program define _dash_validate_value, rclass
         }
         if `"`macval(_alr)'"' != "" {
             mata: _dash_say("err", "invalid label specifier, :  ", st_local("_alr"), ":")
+            exit 198
+        }
+        // WP-44 AX-5: custom with a label or tick edit and no value list,
+        // as twoway refuses it (measured, tick_style_truth.json ax5_*).
+        mata: st_local("_alr", _dash_axlabel_custom_refusal(st_local("value")))
+        if `"`macval(_alr)'"' != "" {
+            mata: _dash_say("err", "", st_local("_alr"), "")
             exit 198
         }
         // WP-28 S14 (GAPS2 B1): every numlist run of an axis-label option

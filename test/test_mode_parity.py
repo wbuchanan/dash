@@ -3237,6 +3237,10 @@ CORPUS = [
     _case("two y groups x title dots (WP-44 44-01)",
           [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price",
                            xvar="length")]),
+    # WP-44 44-02: label and tick sub-options.
+    _case("ylabel add custom labcolor (WP-44 44-02)", [_sc()],
+          go={"ylabel": '25 "x", add custom labcolor(red) grid '
+                        'glcolor(red)'}),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

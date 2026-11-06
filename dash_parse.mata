@@ -191,6 +191,9 @@
 *!   _dash_axlabel_runs(text)
 *!       An axis label value's runs of values, for numlist (WP-44 DG-9).
 *!
+*!   _dash_axlabel_custom_refusal(text)
+*!       twoway's line for custom with an edit and no values, or "" (WP-44 AX-5).
+*!
 *!   _dash_expand_plottype(abbrev, out_macro)
 *!       The plot type abbrev names, abbreviated as twoway allows, into
 *!       out_macro; "" when it names no type dash draws.
@@ -2589,6 +2592,42 @@ string scalar _dash_axlabel_refusal(string scalar text)
         if (bad) return(rest)
     }
     return("")
+}
+
+// _dash_axlabel_custom_refusal(text) -- twoway's line for an axis label or
+// tick value whose sub-options hold custom and a label or tick edit
+// (style(), angle(), labcolor(), tlcolor(), nolabels ... : the ticksetstyle
+// and tickstyle edits of _gs_parse_and_log_tickset.ado) but whose list
+// holds no value after its leading rule -- an empty list, a lone a(b)c,
+// #N, minmax or none -- which twoway refuses r(198) "tick_styles[-1]
+// invalid name" (set_custom has no listed tick to style), or "" (WP-44
+// AX-5; measured, test/fixtures/tick_style_truth.json ax5_*: custom alone,
+// with grid edits only or with format() is drawn).
+string scalar _dash_axlabel_custom_refusal(string scalar text)
+{
+    string rowvector w, edits
+    string scalar    body, sub, head, nm
+    real scalar      i, p, cust, ed
+
+    if (!_dash_rep_split(text, body, sub)) return("")
+    edits = ("angle", "alternate", "altgap", "style", "novaluelabels",
+             "valuelabels", "tlength", "tposition", "labgap", "noticks",
+             "ticks", "noshowlabels", "nolabels", "showlabels", "labels",
+             "tstyle", "labstyle", "labsize", "labcolor", "labjustification",
+             "labalignment", "tlstyle", "tlwidth", "tlcolor", "tlpattern")
+    w = _dash_rep_toks(sub, 0)
+    cust = 0
+    ed = 0
+    for (i = 1; i <= cols(w); i++) {
+        p = strpos(w[i], "(")
+        nm = _dash_so_canon(p ? substr(w[i], 1, p - 1) : w[i], "axlabel")
+        if (nm == "custom") cust = 1
+        else if (anyof(edits, nm)) ed = 1
+    }
+    if (!cust | !ed) return("")
+    head = strtrim(body)
+    if (strtrim(substr(head, _dash_axlabel_lead(head) + 1, .)) != "") return("")
+    return("tick_styles[-1] invalid name")
 }
 
 // _dash_axlabel_head(text) -- an axis label value's list, trimmed: the

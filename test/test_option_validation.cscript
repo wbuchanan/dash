@@ -4306,6 +4306,66 @@ sysuse auto, clear
 _u05_judge Q4405-2 `"`q4405_bad2'"' "a word twoway's numlist refuses in a label or tick list is refused r(198) in twoway's line"
 _u05_judge Q4405-3 `"`q4405_bad3'"' "every label and tick list twoway draws is drawn, and the ref_* forms keep twoway's rc"
 
+// Q4402-2 (WP-44 section 44-02, AX-5): custom on an axis label or tick
+// option.  twoway refuses custom with a label or tick edit and no value
+// list -- ylabel(, custom labcolor(red)), a lone 10(10)40, #5, minmax or
+// none -- r(198) "tick_styles[-1] invalid name", and draws custom alone,
+// with grid edits only, with format() or with a list.  Every ax5_* probe
+// of test/fixtures/tick_style_truth.json (scripts/
+// extract_tick_style_truth.do) is run through dash with twoway's rc and,
+// when refused, its line.
+// ----------------------------------------------------------------
+python:
+def _q4402_rows():
+    import json, os
+    from sfi import Macro
+    with open(os.path.join("fixtures", "tick_style_truth.json"),
+              encoding="utf-8") as fh:
+        t = json.load(fh)
+    rows = []
+    for k in sorted(t):
+        if not k.startswith("ax5_"):
+            continue
+        r = t[k]
+        cmd = r["command"]
+        if cmd.endswith(" name(u442k, replace)"):
+            cmd = cmd[:-len(" name(u442k, replace)")]
+        if cmd.startswith("twoway "):
+            cmd = cmd[len("twoway "):]
+        rows.append((k, cmd, str(r["rc"]),
+                     r["log"][0] if r["rc"] and r["log"] else ""))
+    Macro.setGlobal("q4402_n", str(len(rows)))
+    for i, (k, c, rc, m) in enumerate(rows, 1):
+        for name, v in (("k", k), ("c", c), ("r", rc), ("m", m)):
+            Macro.setGlobal("q4402_%s%d" % (name, i), v)
+end
+python: import __main__ as _q4402m; _q4402m._q4402_rows()
+local q4402_bad ""
+local q4402_ls = c(linesize)
+set linesize 255
+local q4402_n $q4402_n
+forvalues i = 1/`q4402_n' {
+    quietly sysuse auto, clear
+    capture dash clear
+    capture log close _q42log
+    quietly log using "`c(tmpdir)'dash_q4402.log", name(_q42log) text replace
+    capture noisily dash ${q4402_c`i'} name(q4402)
+    local drc = _rc
+    quietly log close _q42log
+    local q4405_has 1
+    if ${q4402_r`i'} {
+        python: import __main__ as _q4405m; _q4405m._q4405_said(r"`c(tmpdir)'dash_q4402.log", __import__("sfi").Macro.getGlobal("q4402_m`i'"))
+    }
+    if `drc' != ${q4402_r`i'} | `q4405_has' != 1 local q4402_bad `"`q4402_bad' [${q4402_k`i'}: twoway ${q4402_r`i'}, dash `drc', line `q4405_has']"'
+    macro drop q4402_k`i' q4402_c`i' q4402_r`i' q4402_m`i'
+}
+set linesize `q4402_ls'
+capture dash clear
+capture erase "`c(tmpdir)'dash_q4402.log"
+macro drop q4402_n
+sysuse auto, clear
+_u05_judge Q4402-2 `"`q4402_bad'"' "custom with a label or tick edit and no value list is refused r(198) in twoway's line; the custom forms twoway draws are drawn"
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

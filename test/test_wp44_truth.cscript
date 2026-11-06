@@ -523,6 +523,138 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
 }
 * ==== end S01 ====
 
+// ----------------------------------------------------------------
+// S02 helpers (WP-44 44-02, label and tick sub-options).  _q4402_reg
+// <dir> <k> <case> <command...> draws the command on auto with twoway
+// (SVG) and registers it with dash; the python helper _q4402_check
+// builds both modes from the spec (S01's _q4401_docs) and puts twoway's
+// answer in $q4402_tw and the saved and served answers in $q4402_s and
+// $q4402_v.  Cases: "ycol:<text>" -- the colours of the y labels other
+// than <text>; "ygrid" -- the colours of the y gridlines; "xtgrid" --
+// the colour and pattern of the x tick-option gridlines.  Legend key
+// proxies are never read (only axes and grids are).
+// ----------------------------------------------------------------
+python:
+def _q4402_dash(figs, case):
+    from bokeh.models import Axis, Grid
+    f = [g for g in figs if getattr(g, "left", None) is not None][0]
+    kind, _, arg = case.partition(":")
+    if kind == "ycol":
+        ax = [m for m in f.left if isinstance(m, Axis)][0]
+        return str(ax.major_label_text_color).lower()
+    if kind == "ygrid":
+        gs = [g for g in f.renderers + f.center if isinstance(g, Grid)
+              and g.dimension == 1 and g.grid_line_color is not None]
+        return " ".join(sorted({str(g.grid_line_color).lower()
+                                for g in gs})) or "none"
+    if kind == "xtgrid":
+        gs = [g for g in f.renderers + f.center if isinstance(g, Grid)
+              and g.dimension == 0 and g.minor_grid_line_color is not None]
+        return " ".join(sorted({"%s %s" % (str(g.minor_grid_line_color)
+                                           .lower(),
+                                           "solid" if not list(
+                                               g.minor_grid_line_dash)
+                                           else "dashed")
+                                for g in gs})) or "none"
+    return "?"
+
+
+def _q4402_tw(case, svg):
+    import svg_truth
+    doc = svg_truth.svg_document(svg)
+    kind, _, arg = case.partition(":")
+    pr = doc["plotregion"]
+    if kind == "ycol":
+        # The texts left of the plot region but the outermost (the axis
+        # title), whichever way the scheme turns them.
+        left = [t for t in doc["texts"]
+                if t["x"] is not None and t["x"] < pr["left"]]
+        if left:
+            far = min(t["x"] for t in left)
+            left = [t for t in left if t["x"] > far]
+        fills = {t["fill"] for t in left if t["text"] != arg}
+        return " ".join(sorted(fills)) or "none"
+    if kind == "ygrid":
+        got = sorted({ln["stroke"] for ln in doc["hlines"]
+                      if ln["stroke"] not in (None, "#000000")})
+        return " ".join(got) or "none"
+    if kind == "xtgrid":
+        got = sorted({"%s %s" % (ln["stroke"], "dashed" if ln["dasharray"]
+                                 else "solid")
+                      for ln in doc["vlines"]
+                      if ln["stroke"] not in (None, "#000000")})
+        return " ".join(got) or "none"
+    return "?"
+
+
+def _q4402_check(sp, dp, app, svg, case):
+    import os
+    import sys
+    from sfi import Macro
+    repo = os.path.abspath(Macro.getGlobal("q4401_repo"))
+    for d in (repo, os.path.join(repo, "scripts")):
+        if d not in sys.path:
+            sys.path.insert(0, d)
+    a, b, _na, _nb = _q4401_docs(sp, dp, app)
+    Macro.setGlobal("q4402_tw", _q4402_tw(case, svg))
+    Macro.setGlobal("q4402_s", _q4402_dash(a, case))
+    Macro.setGlobal("q4402_v", _q4402_dash(b, case))
+end
+
+capture program drop _q4402_reg
+program define _q4402_reg
+    // _q4402_reg <dir> <k> <case> <command with options...>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken case 0 : 0
+    sysuse auto, clear
+    capture graph drop q4402t
+    quietly twoway `0' name(q4402t, replace)
+    capture erase "`dir'/t`k'.svg"
+    quietly graph export "`dir'/t`k'.svg", replace
+    graph drop q4402t
+    dash clear
+    quietly dash `0' name(zq4402`k')
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _q4402_m; _q4402_m._q4402_check("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg", "`case'")
+end
+
+capture program drop _q4402_same
+program define _q4402_same
+    // _q4402_same <id> <label>: saved and served equal twoway.
+    version 19
+    args id label
+    _w44_expect `id' `"("${q4402_s}" == "${q4402_tw}")"' `"`label': saved ${q4402_s}, twoway ${q4402_tw}"'
+    _w44_expect `id' `"("${q4402_v}" == "${q4402_tw}")"' `"`label': served ${q4402_v}, twoway ${q4402_tw}"'
+end
+
+* ==== S02 AX-5: custom ticks styled alone ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w44_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local q02 "`w44_work'/s02"
+    capture mkdir "`q02'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4402-1: ylabel(25 "x", add custom labcolor(red)) leaves the other
+    // y labels in the axis's colour and a custom option's glcolor()
+    // changes no gridline, as twoway draws them, saved and served.
+    _q4402_reg "`q02'" 1 "ycol:x" scatter mpg weight, ylabel(25 "x", add custom labcolor(red) labsize(large))
+    _q4402_same Q4402-1 "add custom labcolor(red): the other labels"
+    _q4402_reg "`q02'" 2 "ygrid" scatter mpg weight, ylabel(25, add custom labcolor(red) grid glcolor(red))
+    _q4402_same Q4402-1 "add custom glcolor(red): the gridlines"
+    _q4402_reg "`q02'" 3 "ygrid" scatter mpg weight, ylabel(, custom grid glcolor(red))
+    _q4402_same Q4402-1 "custom grid glcolor(red): the gridlines"
+    _w44_done Q4402-1 "custom styles its own ticks only and its grid edits change nothing"
+
+    capture graph drop _all
+    dash clear
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 // S04 helpers (WP-44 44-04).  _q4404_reg <dir> <k> <key> <axis> <dash
 // command...>: registers the dash graph, builds it saved and served, and
 // writes each mode's <axis> axis as "<axis type>|<label texts>"

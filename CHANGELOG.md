@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- custom on an axis label or tick option with a label or tick edit and no listed value -- ylabel(, custom labcolor(red)), ylabel(10(10)40, custom labcolor(red)), ylabel(#5, custom angle(45)), ytick(, custom tlcolor(red)) -- is refused, r(198), tick_styles[-1] invalid name, as twoway refuses it; dash drew the edits on every label (WP-44, AX-5)
 - A word that is no number in an axis label or tick list -- ylabel(abc), xlabel(1/5 .a), ylabel(10 . 30), ylabel(abc(1)), xlabel(td(1jan2001)), ylabel(10(10)40 "a") -- is refused, r(198), "invalid label specifier, :  <the list>:", as twoway refuses it, on every x and y label and tick option, the minor ones included; dash named the word in a note and drew the graph (WP-44, DG-9)
 - A date in parentheses holding blanks is read in tlabel(), ttick(), tmlabel(), tmtick(), tline() and tscale(range()), as twoway reads it: tlabel((1 jan 2001) (1 jul 2001)), tline((15 jun 2001)) and tscale(range((1 dec 2000) (31 jan 2002))) were refused r(198) or r(121) and are now drawn (WP-44, DG-4)
 - Two legend keys are one only when their plots are the same kind of plot in the same pstyle() with no style option of their own, as twoway merges them: under s1mono line v1-v14 x draws 14 keys (dash drew 13, merging the look-alike p6 and p14 lines), and a kdensity beside a line, both pstyle(p1), is one key (WP-43, MS-10)
@@ -1015,6 +1016,7 @@ and now matches Stata.
 
 ### Fixed in WP-44
 
+- A custom option's glcolor() and other grid-line edits change no gridline, and with add its label and tick edits no longer reach the axis's other labels (ylabel(25 "x", add custom labcolor(red)) keeps 10 20 30 40 in the axis's colour), as twoway draws them; the custom ticks' own look is named in a note (WP-44, AX-5, partly)
 - A graph whose every layer is on yaxis(2) (or xaxis(2), or a third to ninth axis) draws that axis without gridlines, as twoway draws a second axis; dash drew the first axis's grid. ylabel(, grid axis(2)) still draws it (WP-44, MS-12)
 - An axis shared by plot regions titled differently is titled as twoway titles it, the first region's title and "..." -- (scatter mpg weight) (scatter price length, yaxis(2)) titles its x axis "Weight (lbs.)..."; it was untitled or took one layer's label (WP-44, MS-11)
 - A suffix or prefix copy of an axis title -- ytitle(A) ytitle(B, suffix), and the axis(2) forms -- draws a second line, as twoway draws it; it was joined to the first (WP-44, MS-13)
