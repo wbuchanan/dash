@@ -484,7 +484,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **ST-14 Tracked:** Documented in WP-43, BUGS.md "Partial SMCL markup ({bf:}, {it:}, {sup:} on letters, fonts) in titles, labels and keys is drawn in one plain style", commit 87e1f6d.
 - **LT-24 Tracked:** Closed in WP-43, BUGS.md "title() whose text is an apostrophe and 90s inside double quotes is drawn where twoway gives r(100)", commit 40e9946.
 - **RH-13 Tracked:** Closed in WP-43, BUGS.md "A horizontal kdensity (and function) is keyed by its name; twoway keys it by the grid variable 'x'", commit 4a20773.
-- **AX-13 Tracked:** Closed in WP-44, BUGS.md "Axis title textbox sub-options other than size/color are named: orientation() (Bokeh axis_label_orientation never set), justification(), placement(), box, margin() ...", commit pending.
+- **AX-13 Tracked:** Closed in WP-44, BUGS.md "Axis title textbox sub-options other than size/color are named: orientation() (Bokeh axis_label_orientation never set), justification(), placement(), box, margin() ...", commit c139429.
 - **AX-5 Tracked:** Open (WP-44 section 44-02).
 - **AX-6 Tracked:** Open (WP-44 section 44-02).
 - **AX-7 Tracked:** Open (WP-44 section 44-03).
@@ -499,9 +499,9 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-20 Tracked:** Open (WP-44 section 44-04).
 - **MS-14 Tracked:** Open (WP-44 section 44-03).
 - **MS-12 Tracked:** Closed in WP-44, BUGS.md "A graph whose only plot is on yaxis(2) is drawn with y gridlines; twoway draws none", commit de3e00e.
-- **MS-11 Tracked:** Closed in WP-44, BUGS.md "twoway's '<first title>...' x title (different x across y-axis groups, or upright plus turned layers) is not drawn", commit pending.
-- **MS-13 Tracked:** Closed in WP-44, BUGS.md "ytitle(A) ytitle(B, suffix) is joined on one line; twoway draws two lines for axis titles", commit pending.
-- **PIC-12 Tracked:** Closed in WP-44, BUGS.md "A right-hand y title reads top to bottom; twoway's reads upward (every economist graph, any yaxis(2))", commit pending.
+- **MS-11 Tracked:** Closed in WP-44, BUGS.md "twoway's '<first title>...' x title (different x across y-axis groups, or upright plus turned layers) is not drawn", commit ef8dc01.
+- **MS-13 Tracked:** Closed in WP-44, BUGS.md "ytitle(A) ytitle(B, suffix) is joined on one line; twoway draws two lines for axis titles", commit c1a4a93.
+- **PIC-12 Tracked:** Closed in WP-44, BUGS.md "A right-hand y title reads top to bottom; twoway's reads upward (every economist graph, any yaxis(2))", commit 382b26b.
 - **DG-6 Tracked:** Open (WP-44 section 44-04).
 - **DG-4 Tracked:** Open (WP-44 section 44-04).
 - **DG-9 Tracked:** Closed in WP-44, BUGS.md "A non-number in a label list (.a, a bare word) is noted and drawn; twoway refuses 'invalid label specifier'", commit fd34f03.
