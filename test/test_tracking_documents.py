@@ -2924,7 +2924,6 @@ class TestTheCountsAreTrue:
 GAPS4_OPEN = {
     'AX-5': 'custom on xlabel()/ylabel() is ignored: its styles reach every label and the grid; custom with no list is accepted (twoway r(198))',
     'AX-7': "yscale(off fill) is drawn as off; twoway keeps the axis's space",
-    'AX-8': 'Label sub-options twoway draws are named: labelminlen(), noshowlabels/showlabels, nopgmgrid/pgmgrid, style(); showlabels nolabels hides labels',
     'AX-9': 'xscale/yscale atanh, logit, log1m and style() are named and drawn linear',
     'AX-10': 'Contradictory transforms in one copy (log nolog, atanh log) are accepted; twoway refuses r(198)',
     'AX-11': "A log axis over data with non-positive values is ticked over positive values only (twoway's whole drawing is degenerate there)",

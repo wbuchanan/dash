@@ -1016,6 +1016,7 @@ and now matches Stata.
 
 ### Fixed in WP-44
 
+- style() on axis label and tick options reads its ticksetstyle file as twoway does -- ylabel(, style(major_vert_nolabel)) draws no labels, style(major_vert_notick) no ticks -- where it was named in a note (WP-44, AX-8)
 - tstyle(), labstyle(), gstyle(), tlstyle() and glstyle() on axis label and tick options are read from Stata's style files and the scheme as twoway reads them -- ylabel(, tstyle(major_notick)) draws no ticks with the labels half a tick nearer, gstyle(dot) black dotted gridlines, labstyle(heading) large centred labels -- and nogextend ends the gridlines at the other axis's scale (from 1,760 to 5,000 for ylabel(, grid nogextend) on auto); an unknown name notes twoway's "named style ... not found"; all six were named in a note (WP-44, AX-14)
 - showlabels, noshowlabels, pgmgrid, nopgmgrid and labelminlen() on axis label options are drawn as twoway draws them -- noshowlabels hides the labels, nogrid wins over pgmgrid, labelminlen(10) gives the y labels ten characters' room; they were named in a note (WP-44, AX-8, partly: style() is still named)
 - The gridlines of xtick(, grid), xmtick(, grid) and their kin are drawn in the major grid's colour, width and pattern, as twoway draws them (gridstyle minor is major in every shipped scheme); dash drew them in the minor grid's darker look (#505050) (WP-44, AX-6)

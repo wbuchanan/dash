@@ -488,7 +488,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-5 Tracked:** Open (WP-44 section 44-02).
 - **AX-6 Tracked:** Closed in WP-44, BUGS.md "Gridlines of xtick()/xmtick() are drawn in the minor style (dotted); twoway uses the major gridstyle", commit a122c3c.
 - **AX-7 Tracked:** Open (WP-44 section 44-03).
-- **AX-8 Tracked:** Open (WP-44 section 44-02).
+- **AX-8 Tracked:** Closed in WP-44, BUGS.md "Label sub-options twoway draws are named: labelminlen(), noshowlabels/showlabels, nopgmgrid/pgmgrid, style(); showlabels nolabels hides labels", commit pending.
 - **AX-9 Tracked:** Open (WP-44 section 44-03).
 - **AX-10 Tracked:** Open (WP-44 section 44-03).
 - **AX-11 Tracked:** Open (WP-44 section 44-03).
