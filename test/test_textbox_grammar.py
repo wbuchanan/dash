@@ -280,6 +280,12 @@ class TestEverySpellingOnEveryOption:
                     full in dr._DASH_TEXTBOX_BOX_HONOURED:
                 assert not hits, (opt, spelling, hits)
                 continue
+            # Flipped (WP-44 AX-13): the axis titles draw these too
+            # (_DASH_AXTITLE_HONOURED; test_axis_titles_p9.py).
+            if opt in ("xtitle", "ytitle") and \
+                    full in dr._DASH_AXTITLE_HONOURED:
+                assert not hits, (opt, spelling, hits)
+                continue
             assert len(hits) == 1, (opt, spelling, hits)
             assert f"{spelling}(x)" in next(iter(hits))
 

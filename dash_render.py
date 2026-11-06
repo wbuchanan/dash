@@ -49535,6 +49535,10 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
         if raw.strip() and "alt" in raw:
             _dash_alt_axes(fig, list(_dash_primary_axes(axes, rattr)),
                            _dash_parse_axis_spec(raw), ref_in, ax_key)
+    # WP-44 AX-13: every axis title's look, once every axis is on its
+    # final side in both modes.
+    _dash_axis_title_look(fig, graph_opts, getattr(fig, "_dash_scheme", None),
+                          seen, key)
 
 
 #: WP-31 D6: alternate's label formatter.  Constant text: the parity and
@@ -49609,6 +49613,9 @@ def _dash_alt_axes(fig, axis_obj, spec, ref_in=4.0, option="label"):
             setattr(twin, prop, getattr(ax, prop))
         for attr in ("x_range_name", "y_range_name"):
             setattr(twin, attr, getattr(ax, attr))
+        # The title's sub-options travel with the title (WP-44 AX-13).
+        for a in ("_dash_title_opts", "_dash_title_option"):
+            setattr(twin, a, getattr(ax, a, None))
         ax.axis_label = None
         ax.axis_label_standoff = 0
         # The twin goes directly outside its axis (a second axis on the
@@ -49828,6 +49835,10 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
                 ax.axis_label_text_color = colour
             if alpha is not None:
                 ax.axis_label_text_alpha = alpha
+            # The rest of the title's sub-options, for _dash_axis_title_look
+            # (WP-44 AX-13; Python attributes, never serialised).
+            ax._dash_title_opts = dict(opts or {})
+            ax._dash_title_option = opt2
             fig.add_layout(ax, side)
     # Every extra axis made, for a caller that needs more than the two
     # flags (WP-31 C10c; a Python attribute, never serialised).
@@ -59226,6 +59237,33 @@ _DASH_TEXTBOX_BOX_HONOURED = frozenset({
     "lstyle", "blstyle", "blcolor", "blwidth", "blpattern", "blalign",
     "lalign", "style"})
 
+#: WP-44 AX-13: the sub-options an axis title draws -- xtitle(), ytitle()
+#: and the axis-2..9 forms -- beside size(), color(), prefix, suffix and
+#: axis() (:func:`_dash_axis_title_look`; axis_title_truth.json ax13_*).
+#: bexpand stays named (ruling D72), as on title().
+_DASH_AXTITLE_HONOURED = _DASH_TEXTBOX_HONOURED | frozenset({
+    "orientation", "justification", "alignment", "placement", "margin",
+    "bmargin", "linegap", "tstyle", "box", "nobox", "bcolor", "bfcolor",
+    "fcolor", "lcolor", "lwidth", "lpattern", "nobexpand", "width",
+    "height"})
+
+#: WP-44 AX-13: the axis-title sub-options drawn by a side-panel Label in
+#: place of the axis's own title (:func:`_dash_axis_title_label`): the
+#: box words (box colours without box draw nothing, as on title()) and
+#: the two sizes; margin() takes the same route.
+_DASH_AXTITLE_BOX_WORDS = frozenset({
+    "box", "bcolor", "bfcolor", "fcolor", "lcolor", "lwidth", "lpattern",
+    "width", "height"})
+
+
+def _dash_is_axis_title_option(option):
+    """True for the option names an axis title is read under: xtitle(),
+    ytitle(), dash's internal axis-2 keys and the axis-3..9 forms
+    (WP-44 AX-13)."""
+    o = str(option)
+    return o in ("xtitle", "ytitle", "xtitle2", "ytitle2") or bool(
+        re.fullmatch(r"[xy]title\(axis\([3-9]\)\)", o))
+
 
 def _dash_textbox(raw, option, seen=None, key="", placed=True, extra=()):
     """``(text, sub-options)`` of a textbox option, the rest named.
@@ -59271,6 +59309,10 @@ def _dash_textbox(raw, option, seen=None, key="", placed=True, extra=()):
                         and arg in ("1", "2")):
                     continue
             elif nm in _DASH_TEXTBOX_HONOURED or nm in extra:
+                continue
+            elif nm in _DASH_AXTITLE_HONOURED and \
+                    _dash_is_axis_title_option(option):
+                # WP-44 AX-13: drawn by _dash_axis_title_look.
                 continue
             elif placed and nm in _DASH_TEXTBOX_BOX_HONOURED and option in (
                     "title", "subtitle", "note", "caption"):
@@ -59375,6 +59417,12 @@ def _dash_style_axis_titles(fig, graph_opts, seen=None, key=""):
         _, opts = _parse_textbox_opt(raw)
         if not opts:
             continue
+        # The sub-options for _dash_axis_title_look, which draws the rest
+        # once every axis is on its final side (Python attributes, never
+        # serialised; WP-44 AX-13).
+        for ax in _dash_primary_axes(axes, rattr):
+            ax._dash_title_opts = dict(opts)
+            ax._dash_title_option = opt
         # Resolved once, so a refused value is named once; None keeps the
         # scheme's axis title, as _dash_figure_title keeps its heading (it
         # fell back on 13px and #000000).  The figure's own axis only: a
@@ -59395,6 +59443,246 @@ def _dash_style_axis_titles(fig, graph_opts, seen=None, key=""):
                 ax.axis_label_text_color = colour
             if alpha is not None:
                 ax.axis_label_text_alpha = alpha
+
+
+def _dash_tb_orient(word):
+    """The counter-clockwise angle (radians) twoway's tb_orientstyle
+    *word* turns a text by -- horizontal 0, vertical (reads upward, SVG
+    rotate(-90)) pi/2, rvertical -pi/2, rhorizontal pi
+    (axis_title_truth.json ax13_or_*) -- or None for a word twoway does
+    not read.  The one lookup of :data:`_DASH_ADDED_TEXT_ORIENT` an axis
+    title makes (WP-44 AX-13)."""
+    return _DASH_ADDED_TEXT_ORIENT.get(str(word if word is not None
+                                           else "").strip())
+
+
+#: placement() of an axis title: the compass letters that move it along
+#: its axis, as Bokeh's ``axis_label_align`` (WP-44 AX-13; measured,
+#: axis_title_truth.json ax13_place_*, ax13_xplace_*: on a y title n and
+#: ne put its top end at the plot region's top, s and sw its bottom end
+#: at the bottom, e and w leave it; on an x title e and w move it to the
+#: right and left ends, n leaves it).
+_DASH_AXTITLE_PLACE = {
+    "y": {"n": "end", "ne": "end", "nw": "end", "s": "start",
+          "se": "start", "sw": "start"},
+    "x": {"e": "end", "ne": "end", "se": "end", "w": "start",
+          "nw": "start", "sw": "start"},
+}
+
+
+def _dash_axis_title_screen_pad(padding, angle):
+    """A Label's *padding* (its own frame: left, right, top, bottom) as the
+    screen sides it lies on once BokehJS turns the Label by *angle* (a
+    multiple of a right angle; BokehJS rotates the canvas by -angle and
+    draws the box in the turned frame).  Returns a dict of the four
+    screen sides (WP-44 AX-13)."""
+    if isinstance(padding, dict):
+        p = {k: padding.get(k, 0) for k in ("left", "right", "top",
+                                             "bottom")}
+    else:
+        p = dict.fromkeys(("left", "right", "top", "bottom"),
+                          int(padding or 0))
+    t = -float(angle or 0.0)
+    c, s = int(round(math.cos(t))), int(round(math.sin(t)))
+    # Canvas directions (y down) of the frame's sides, turned by t.
+    dirs = {"left": (-1, 0), "right": (1, 0), "top": (0, -1),
+            "bottom": (0, 1)}
+    names = {(-1, 0): "left", (1, 0): "right", (0, -1): "top",
+             (0, 1): "bottom"}
+    out = {}
+    for side, (x, y) in dirs.items():
+        out[names[(c * x - s * y, s * x + c * y)]] = p[side]
+    return out
+
+
+def _dash_axis_title_label_pad(screen, angle):
+    """The inverse of :func:`_dash_axis_title_screen_pad`: the Label
+    padding that puts *screen*'s sides on the screen at *angle*."""
+    probe = _dash_axis_title_screen_pad(
+        {"left": "left", "right": "right", "top": "top",
+         "bottom": "bottom"}, angle)
+    return {own: int(round(float(screen.get(scr, 0) or 0)))
+            for scr, own in probe.items()}
+
+
+def _dash_axis_title_label(fig, ax, side, opts, scheme, option, angle,
+                           scale=1.0):
+    """Draw axis *ax*'s title as a ``Label`` in its side panel, directly
+    outside the axis (WP-44 AX-13): the way an axis title draws a box,
+    fixed width()/height() or margin(), none of which a Bokeh axis title
+    has.  A Label in a side panel gets that panel's slot, sized to its box
+    turned by its angle, and is drawn unclipped (WP-43 LT-18,
+    :func:`_dash_textbox_label`), so the right-hand title reads upward
+    with its box.  margin() is in screen sides, as twoway draws it
+    (ax13_margin_l5: the title and the plot region move 144 units right),
+    turned into the Label's own frame.  Styled by
+    :func:`_dash_textbox_style` from the axis's look; the axis keeps no
+    title; an explicit margin() also grows the figure's border on that
+    side by the margin times *scale* (scale()).  Tagged
+    ``["dash_axis_title_box", <option>]``.  The text is
+    raw: the canvas-text pass finishes it.  Returns the Label."""
+    from bokeh.models import Label, Node
+    T = OptionTranslator
+    o = opts or {}
+    if angle is None:
+        angle = math.pi / 2 if side in ("left", "right") else 0.0
+    angle = float(angle)
+    dim = "y" if side in ("left", "right") else "x"
+    along = _DASH_AXTITLE_PLACE[dim].get(
+        str(o.get("placement") or "").strip())
+    if dim == "y":
+        v = {"end": "top", "start": "bottom"}.get(along, "center")
+        h = "left"
+        x, y = 0, Node(target="frame", symbol=v)
+    else:
+        v = "bottom"
+        h = {"end": "right", "start": "left"}.get(along, "center")
+        x, y = Node(target="frame", symbol=h), 0
+    m = Label(x=x, y=y, x_units="screen", y_units="screen",
+              text=str(ax.axis_label), angle=angle,
+              text_font=ax.axis_label_text_font,
+              text_font_style=ax.axis_label_text_font_style,
+              tags=["dash_axis_title_box", str(option)])
+    if ax.axis_label_text_alpha is not None:
+        m.text_alpha = ax.axis_label_text_alpha
+    # The look the axis title has now (scheme, size(), color(), tstyle()
+    # applied): size() and color() read again to the same values.
+    _dash_textbox_style(m, {k: v2 for k, v2 in o.items() if k != "tstyle"},
+                        fig, scheme, option,
+                        base_size=ax.axis_label_text_font_size,
+                        base_color=ax.axis_label_text_color)
+    m.anchor = _dash_textbox_turned_anchor(angle, v, h)
+    m.padding = _dash_axis_title_label_pad(
+        _dash_axis_title_screen_pad(m.padding, 0.0), angle)
+    fixed = {}
+    for name in ("width", "height"):
+        if o.get(name):
+            try:
+                fixed[name] = float(T.resolve_size(
+                    str(o[name]), "gap", 0.0, T.size_ref_of(fig))) \
+                    * T.PX_PER_PT
+            except (ValueError, TypeError):
+                _dash_style_note(f"{option}({name})", o[name], "size")
+    if fixed:
+        pad = m.padding
+        w, hgt = fixed.get("width"), fixed.get("height")
+        _dash_text_box_fit(
+            fig, m,
+            None if w is None else w + pad["left"] + pad["right"],
+            None if hgt is None else hgt + pad["top"] + pad["bottom"],
+            {"top": "top", "bottom": "bottom", "baseline": "bottom"}.get(
+                str(o.get("alignment", "")), "middle"))
+    if o.get("margin"):
+        # The margin moves the plot region as twoway moves it, also where
+        # the figure's border, not the panel, sets the frame's edge
+        # (BokehJS takes the larger): the border grows by the margin, only
+        # ever added to, times scale() -- the post-pass scales the Label's
+        # padding and not the border.
+        scr = _dash_axis_title_screen_pad(m.padding, angle)
+        grow = (scr["left"] + scr["right"] if dim == "y"
+                else scr["top"] + scr["bottom"])
+        attr = "min_border_" + {"above": "top", "below": "bottom"}.get(
+            side, side)
+        cur_b = getattr(fig, attr)
+        if cur_b is None:
+            cur_b = fig.min_border or 0
+        setattr(fig, attr, int(round(cur_b + grow * float(scale or 1.0))))
+    cur = list(getattr(fig, side))
+    at = next(i for i, a in enumerate(cur) if a is ax)
+    setattr(fig, side, cur[:at + 1] + [m] + cur[at + 1:])
+    ax.axis_label = None
+    return m
+
+
+def _dash_axis_title_look(fig, graph_opts, scheme=None, seen=None, key=""):
+    """Draw every axis title's textbox sub-options (WP-44 AX-13), last in
+    :func:`_dash_apply_axis_options`, when every axis -- the figure's own,
+    axes 2-9 and an alternate twin, which carries the title -- is on its
+    final side in both modes.  Each Axis carries the options it was
+    titled with (``_dash_title_opts``, stamped by
+    :func:`_dash_style_axis_titles` and :func:`_dash_add_secondary_axes`).
+
+    Measured (test/fixtures/axis_title_truth.json): ``orientation()``
+    turns the title (:func:`_dash_tb_orient`; a word twoway does not read
+    prints its note and draws upright, ax13_or_bogus); ``placement()``
+    moves it to an end of its axis (:data:`_DASH_AXTITLE_PLACE`);
+    ``linegap()`` widens the line step by the gap; ``tstyle()`` takes the
+    text box style's size and colour, under an explicit size()/color();
+    ``justification()``, ``alignment()`` and, without a box, ``bmargin()``
+    draw what the plain title draws and are taken in silence; the box
+    words and ``margin()`` draw the title as a side-panel Label
+    (:func:`_dash_axis_title_label`).  *seen*/*key* are the render's
+    note set and the graph's name."""
+    from bokeh.models import Axis
+    T = OptionTranslator
+    ref = T.size_ref_of(fig)
+    for side in ("left", "right", "below", "above"):
+        for ax in list(getattr(fig, side)):
+            if not isinstance(ax, Axis):
+                continue
+            text = ax.axis_label
+            if text is None or str(text) == "":
+                continue
+            o = getattr(ax, "_dash_title_opts", None) or {}
+            if not o:
+                continue
+            dim = "y" if side in ("left", "right") else "x"
+            option = getattr(ax, "_dash_title_option", None) or (
+                dim + "title")
+            name = o.get("tstyle")
+            if name:
+                st = (scheme.textbox_style(str(name)) if scheme is not None
+                      else None)
+                if st is None:
+                    _dash_warn_once(
+                        ("textboxstyle", str(name)),
+                        "dash: named style %s not found in class "
+                        "textboxstyle, default attributes used"
+                        % _dash_display(str(name)))
+                    st = (scheme.textbox_style("body") if scheme is not None
+                          else None)
+                if st is not None:
+                    if not o.get("size"):
+                        ax.axis_label_text_font_size = st[0]
+                    if not o.get("color"):
+                        ax.axis_label_text_color = st[1]
+            angle = None
+            word = o.get("orientation")
+            if word not in (None, ""):
+                angle = _dash_tb_orient(word)
+                if angle is None:
+                    # twoway notes the word and draws the default,
+                    # horizontal (ax13_or_bogus).
+                    _dash_warn_once(
+                        ("tb_orientstyle", str(word)),
+                        "dash: named style %s not found in class "
+                        "tb_orientstyle, default attributes used"
+                        % _dash_display(str(word)))
+                    angle = 0.0
+                ax.axis_label_orientation = float(angle)
+            along = _DASH_AXTITLE_PLACE[dim].get(
+                str(o.get("placement") or "").strip())
+            if along is not None:
+                ax.axis_label_align = along
+            if o.get("linegap"):
+                try:
+                    gap = T.resolve_size(str(o["linegap"]), "line", 0.0, ref)
+                except (ValueError, TypeError):
+                    gap = None
+                    _dash_style_note(f"{option}(linegap)", o["linegap"],
+                                     "size")
+                size_pt = T.css_to_pt(ax.axis_label_text_font_size)
+                if gap is not None and size_pt:
+                    ax.axis_label_text_line_height = \
+                        1.0 + max(0.0, gap) / size_pt
+            boxed = "box" in o and "nobox" not in o
+            if boxed or o.get("width") or o.get("height") or \
+                    o.get("margin"):
+                _dash_axis_title_label(fig, ax, side, o if boxed else {
+                    k: v for k, v in o.items()
+                    if k not in _DASH_AXTITLE_BOX_WORDS or k in (
+                        "width", "height")}, scheme, option, angle,
+                    _dash_scale_factor(graph_opts) or 1.0)
 
 
 #: Where the note, the caption and the subtitle sit, and their defaults.
@@ -76397,6 +76685,8 @@ class ServerAppBuilder:
                       "_DASH_LEGEND_SUBOPTS", "_DASH_LEGEND_LABEL_RE",
                       "_DASH_ORDER_WORD_RE", "_DASH_ORDER_BLANK_RE",
                       "_DASH_TEXTBOX_HONOURED", "_DASH_TEXTBOX_BOX_HONOURED",
+                      "_DASH_AXTITLE_HONOURED", "_DASH_AXTITLE_BOX_WORDS",
+                      "_DASH_AXTITLE_PLACE",
                       "_DASH_RING_WORDS", "_DASH_RING_NUMBER_RE",
                       "_DASH_TEXTBOX_PLACEMENT", "_DASH_TEXTBOX_SIDE_CLOCK",
                       "_DASH_GRAPH_MARGIN_JS",
@@ -77198,6 +77488,11 @@ class ServerAppBuilder:
                          "_dash_textbox_insert", "_dash_textbox_draw",
                          "_textbox_canon", "_dash_route_axis_titles",
                          "_dash_figure_title", "_dash_style_axis_titles",
+                         "_dash_axis_title_look", "_dash_tb_orient",
+                         "_dash_axis_title_label",
+                         "_dash_axis_title_screen_pad",
+                         "_dash_axis_title_label_pad",
+                         "_dash_is_axis_title_option",
                          "_dash_text_annotations", "_dash_edge_titles",
                          "_dash_edge_title_up",
                          "_dash_scale_spec",

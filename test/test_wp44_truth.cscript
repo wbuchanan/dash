@@ -203,6 +203,222 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w44_run' {
 }
 * ==== end S00 ====
 
+// ----------------------------------------------------------------
+// S01 helpers (WP-44 44-01, axis titles).  _q4401_reg draws one
+// command with twoway (log, SVG) and registers it with dash; the
+// python helper _q4401_check builds both modes from the spec and puts
+// twoway's answer in $q4401_tw, the saved and served answers in
+// $q4401_s and $q4401_v, and whether a "not implemented" note was
+// printed in $q4401_noted.  Legend key proxies are never read (only
+// axes, titles and side-panel Labels are).
+// ----------------------------------------------------------------
+python:
+def _q4401_docs(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings(record=True) as w1:
+        warnings.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_q4401_app")
+    with warnings.catch_warnings(record=True) as w2:
+        warnings.simplefilter("always")
+        exec(compile(src.replace(attach, "pass"), "dash_q4401_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+    return (list(r.figures.values()), sv,
+            "\n".join(str(x.message) for x in w1),
+            "\n".join(str(x.message) for x in w2))
+
+
+def _q4401_deg(v):
+    import math
+    if v == "parallel":
+        return "parallel"
+    try:
+        return "%d" % int(round(math.degrees(float(v))))
+    except (TypeError, ValueError):
+        return str(v)
+
+
+def _q4401_texts(f):
+    """Every axis title, Title and side-panel Label text of figure *f*."""
+    out = []
+    for side in ("left", "right", "below", "above"):
+        for m in getattr(f, side):
+            t = getattr(m, "axis_label", None) if hasattr(
+                m, "axis_label") else getattr(m, "text", None)
+            if t:
+                out.append((side, type(m).__name__, str(t), m))
+    if f.title is not None and getattr(f.title, "text", None):
+        out.append(("above", "Title", str(f.title.text), f.title))
+    return out
+
+
+def _q4401_dash(figs, case):
+    f = [g for g in figs if getattr(g, "left", None) is not None][0]
+    kind, _, arg = case.partition(":")
+    if kind in ("orient", "right"):
+        side = "left" if kind == "orient" else "right"
+        axs = [m for m in getattr(f, side)
+               if type(m).__name__.endswith("Axis") and m.axis_label]
+        return _q4401_deg(axs[0].axis_label_orientation) if axs else "none"
+    if kind == "box":
+        labs = [m for s in ("left", "right", "below", "above")
+                for m in getattr(f, s)
+                if "dash_axis_title_box" in (m.tags or [])]
+        if not labs:
+            return "none"
+        side = next(s for s in ("left", "right", "below", "above")
+                    if any(m is labs[0] for m in getattr(f, s)))
+        return "box %s %s" % (side, _q4401_deg(labs[0].angle))
+    if kind == "lines":
+        ts = [t for _s, _k, t, _m in _q4401_texts(f)]
+        if any(t in ("A\nB", "B\nA") for t in ts):
+            return "two"
+        if any(t in ("A B", "B A") for t in ts):
+            return "one"
+        return "none"
+    if kind == "xt":
+        ts = [t for s, _k, t, _m in _q4401_texts(f) if s == "below"]
+        return arg if arg in ts else "|".join(ts) or "none"
+    return "?"
+
+
+def _q4401_tw(case, svg):
+    import svg_truth
+    texts = svg_truth.svg_document(svg)["texts"]
+    kind, _, arg = case.partition(":")
+    if kind in ("orient", "right"):
+        t = [x for x in texts if x["text"] == arg]
+        if not t:
+            return "none"
+        return "%d" % int(round(-(t[0]["rotate"] or 0.0)))
+    if kind == "box":
+        # A small filled rect round the title's text, whatever the scheme.
+        doc = svg_truth.svg_document(svg)
+        t = [x for x in texts if x["text"] == arg]
+        if not t:
+            return "none"
+        tx, ty = t[0]["x"], t[0]["y"]
+        drawn = any(r["fill"] not in (None, "none") and r["w"] and r["h"]
+                    and r["x"] <= tx <= r["x"] + r["w"]
+                    and r["y"] <= ty <= r["y"] + r["h"]
+                    and r["w"] < 0.25 * doc["canvas"]["w"]
+                    and r["h"] < 0.5 * doc["canvas"]["h"]
+                    for r in doc["rects"])
+        return "box" if drawn else "none"
+    if kind == "lines":
+        ts = [x["text"] for x in texts]
+        if "A B" in ts or "B A" in ts:
+            return "one"
+        if "A" in ts and "B" in ts:
+            return "two"
+        return "none"
+    if kind == "xt":
+        ts = [x["text"] for x in texts]
+        return arg if arg in ts else "none"
+    return "?"
+
+
+def _q4401_check(sp, dp, app, svg, case):
+    import os
+    import sys
+    from sfi import Macro
+    repo = os.path.abspath(Macro.getGlobal("q4401_repo"))
+    for d in (repo, os.path.join(repo, "scripts")):
+        if d not in sys.path:
+            sys.path.insert(0, d)
+    a, b, na, nb = _q4401_docs(sp, dp, app)
+    Macro.setGlobal("q4401_tw", _q4401_tw(case, svg))
+    Macro.setGlobal("q4401_s", _q4401_dash(a, case))
+    Macro.setGlobal("q4401_v", _q4401_dash(b, case))
+    Macro.setGlobal("q4401_noted", "1" if "not implemented" in na + nb
+                    else "0")
+end
+
+capture program drop _q4401_reg
+program define _q4401_reg
+    // _q4401_reg <dir> <k> <case> <data> <command with options...>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken case 0 : 0
+    gettoken data 0 : 0
+    sysuse `data', clear
+    capture graph drop q4401t
+    capture noisily twoway `0' name(q4401t, replace)
+    capture erase "`dir'/t`k'.svg"
+    quietly graph export "`dir'/t`k'.svg", replace
+    graph drop q4401t
+    dash clear
+    capture noisily dash `0' name(zq4401`k')
+    local drc = _rc
+    if `drc' {
+        global q4401_tw "(twoway drawn)"
+        global q4401_s "rc `drc'"
+        global q4401_v "rc `drc'"
+        global q4401_noted 0
+        exit
+    }
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _q4401_m; _q4401_m._q4401_check("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg", "`case'")
+end
+
+capture program drop _q4401_same
+program define _q4401_same
+    // _q4401_same <id> <label> <want>: twoway, saved and served all <want>,
+    // with no note.
+    version 19
+    args id label want
+    _w44_expect `id' `"("${q4401_tw}" == "`want'")"' `"`label': twoway drew ${q4401_tw}, expected `want'"'
+    _w44_expect `id' `"("${q4401_s}" == "`want'")"' `"`label': saved ${q4401_s}, twoway `want'"'
+    _w44_expect `id' `"("${q4401_v}" == "`want'")"' `"`label': served ${q4401_v}, twoway `want'"'
+    _w44_expect `id' "(${q4401_noted} == 0)" `"`label': a not-implemented note was printed"'
+end
+
+* ==== S01 AX-13: axis title sub-options drawn ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+    local q01 "`w44_work'/s01"
+    capture mkdir "`q01'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4401-1: ytitle("Y", orientation(horizontal)) draws the title
+    // upright in twoway and in both modes, with no note.
+    _q4401_reg "`q01'" 1 "orient:Y" auto scatter mpg weight, ytitle("Y", orientation(horizontal))
+    _q4401_same Q4401-1 "orientation(horizontal)" "0"
+    _w44_done Q4401-1 "orientation(horizontal): twoway ${q4401_tw}, saved ${q4401_s}, served ${q4401_v}"
+
+    // Q4401-2: a boxed y title, left and on axis 2: twoway frames it;
+    // dash draws it as a side-panel Label beside its axis, reading
+    // upward, with no note.
+    _q4401_reg "`q01'" 2 "box:Y" auto scatter mpg weight, ytitle("Y", box)
+    _w44_expect Q4401-2 `"("${q4401_tw}" == "box")"' "left: twoway drew no box"
+    _w44_expect Q4401-2 `"("${q4401_s}" == "box left 90" & "${q4401_v}" == "box left 90")"' "left: saved ${q4401_s}, served ${q4401_v}"
+    _w44_expect Q4401-2 "(${q4401_noted} == 0)" "left: a note was printed"
+    _q4401_reg "`q01'" 3 "box:Y" auto (scatter mpg weight) (scatter price weight, yaxis(2)), ytitle("Y", box axis(2))
+    _w44_expect Q4401-2 `"("${q4401_tw}" == "box")"' "axis 2: twoway drew no box"
+    _w44_expect Q4401-2 `"("${q4401_s}" == "box right 90" & "${q4401_v}" == "box right 90")"' "axis 2: saved ${q4401_s}, served ${q4401_v}"
+    _w44_expect Q4401-2 "(${q4401_noted} == 0)" "axis 2: a note was printed"
+    _w44_done Q4401-2 "boxed y titles drawn left and on axis 2"
+
+    capture graph drop _all
+    dash clear
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
 // S05 helpers (WP-44 44-05).  _q4405_reg <dir> <dash command...>:
 // register one graph and count the drawn y and x grids (a Grid whose
 // line colour is set) both modes draw, into q4405_<y|x><s|v>;

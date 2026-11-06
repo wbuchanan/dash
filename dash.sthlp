@@ -1255,8 +1255,33 @@ there, is an invalid point.  The literal is read as data and never run.
     (minimum {cmd:ax()}, in lower case) are applied; on {cmd:title()},
     {cmd:subtitle()}, {cmd:note()} and {cmd:caption()} the placement,
     box and style sub-options are drawn too (see
-    {help dash##textbox_options:Textbox options}); every other
-    sub-option is named, never drawn as text.  A lone {cmd:suffix} on an axis title adds its lines after the
+    {help dash##textbox_options:Textbox options}); on an axis title
+    {cmd:orientation()}, {cmd:justification()}, {cmd:alignment()},
+    {cmd:placement()}, {cmd:margin()}, {cmd:bmargin()},
+    {cmd:linegap()}, {cmd:tstyle()}, {cmd:box}, {cmd:nobox},
+    {cmd:bcolor()}, {cmd:fcolor()}, {cmd:lcolor()}, {cmd:lwidth()},
+    {cmd:lpattern()}, {cmd:width()} and {cmd:height()} are drawn too;
+    every other sub-option, {cmd:bexpand} included, is named, never
+    drawn as text.
+
+{pmore2}
+    An axis title is drawn as {cmd:twoway} draws it:
+    {cmd:orientation(horizontal)} sets a y title upright,
+    {cmd:rvertical} turns it to read downward and {cmd:rhorizontal}
+    upside down, and a word {cmd:twoway} does not read prints its note
+    and draws the title upright; {cmd:placement(n)} or {cmd:placement(s)}
+    moves a y title to the top or bottom end of its axis, and
+    {cmd:placement(e)} or {cmd:placement(w)} an x title to its right or
+    left end; {cmd:linegap()} widens the step between its lines;
+    {cmd:tstyle()} takes the text box style's size and colour.
+    {cmd:justification()}, {cmd:alignment()} and, without a box,
+    {cmd:bmargin()} draw what the plain title draws, as in
+    {cmd:twoway}.  A boxed title, one with {cmd:width()} or
+    {cmd:height()}, and one with {cmd:margin()} are drawn beside their
+    axis in the box, on every side of the plot.
+
+{pmore2}
+    A lone {cmd:suffix} on an axis title adds its lines after the
     default title, {cmd:prefix} before it.
     An axis title given with empty text -- {cmd:xtitle("")},
     {cmd:ytitle("")} or {cmd:ytitle("", axis(2))} --

@@ -3220,6 +3220,14 @@ CORPUS = [
     _case("44-05 lone yaxis(2) ylabel axis(2) grid", [_sc(yaxis="2")],
           go={"ylabel2": ", grid"}),
     _case("44-05 pci lone yaxis(2)", [plot_for("pci", {"yaxis": "2"})]),
+    # WP-44 44-01: axis titles.
+    _case("ytitle orientation horizontal (WP-44 44-01)", [_sc()],
+          go={"ytitle": '"Y", orientation(horizontal)'}),
+    _case("ytitle box (WP-44 44-01)", [_sc()],
+          go={"ytitle": '"Y", box margin(l+5)'}),
+    _case("ytitle box on axis 2 (WP-44 44-01)",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
+          go={"ytitle2": '"Y", box'}),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

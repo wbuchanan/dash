@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'AX-13': 'Axis title textbox sub-options other than size/color are named: orientation() (Bokeh axis_label_orientation never set), justification(), placement(), box, margin() ...',
     'AX-5': 'custom on xlabel()/ylabel() is ignored: its styles reach every label and the grid; custom with no list is accepted (twoway r(198))',
     'AX-6': 'Gridlines of xtick()/xmtick() are drawn in the minor style (dotted); twoway uses the major gridstyle',
     'AX-7': "yscale(off fill) is drawn as off; twoway keeps the axis's space",

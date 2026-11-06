@@ -82,11 +82,15 @@ SUBOPTIONS = [
     ("xscale log range and off",
      {"xscale": "log range(1000 5000) off extend log1m"},
      None, "xscale", ["log1m"], ["log", "range", "off", "extend"]),
-    ("xtitle orientation", {"xtitle": "Weight, orientation(vertical)"}, None,
-     "xtitle", ["orientation(vertical)"], []),
+    # Flipped (WP-44 AX-13): orientation() and justification() on an axis
+    # title are drawn now (test_axis_titles_p9.py::TestOrientation,
+    # ::TestPlacement), so the rows name bexpand, which stays named (D72).
+    ("xtitle orientation",
+     {"xtitle": "Weight, orientation(vertical) bexpand"}, None,
+     "xtitle", ["bexpand"], ["orientation"]),
     ("ytitle size and justification",
-     {"ytitle": "Miles, size(large) justification(left)"}, None, "ytitle",
-     ["justification(left)"], ["size"]),
+     {"ytitle": "Miles, size(large) justification(left) bexpand"}, None,
+     "ytitle", ["bexpand"], ["size", "justification"]),
     # Flipped (WP-30 P1.21b): the "xline lstyle noextend" row named
     # noextend; that was wrong because twoway draws it
     # (refline_extent_truth.json E02).  The row is in
@@ -105,8 +109,10 @@ SUBOPTIONS = [
     # the row names astextbox, which dash does not draw.
     ("title c and bc", {"title": "T, c(red) bc(red) astextbox"},
      None, "title", ["astextbox"], ["c", "bc"]),
-    ("xtitle orient", {"xtitle": "Weight, orient(vertical)"}, None,
-     "xtitle", ["orient(vertical)"], []),
+    # Flipped (WP-44 AX-13): orient() is drawn on an axis title now; the
+    # row names bexp (bexpand), which stays named (D72).
+    ("xtitle orient", {"xtitle": "Weight, orient(vertical) bexp"}, None,
+     "xtitle", ["bexp"], ["orient"]),
     ("ytitle axis 3", {"ytitle": "M, axis(3)"}, None, "ytitle",
      ["axis(3)"], []),
 ]

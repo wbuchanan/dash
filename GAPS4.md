@@ -484,7 +484,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **ST-14 Tracked:** Documented in WP-43, BUGS.md "Partial SMCL markup ({bf:}, {it:}, {sup:} on letters, fonts) in titles, labels and keys is drawn in one plain style", commit 87e1f6d.
 - **LT-24 Tracked:** Closed in WP-43, BUGS.md "title() whose text is an apostrophe and 90s inside double quotes is drawn where twoway gives r(100)", commit 40e9946.
 - **RH-13 Tracked:** Closed in WP-43, BUGS.md "A horizontal kdensity (and function) is keyed by its name; twoway keys it by the grid variable 'x'", commit 4a20773.
-- **AX-13 Tracked:** Open (WP-44 section 44-01).
+- **AX-13 Tracked:** Closed in WP-44, BUGS.md "Axis title textbox sub-options other than size/color are named: orientation() (Bokeh axis_label_orientation never set), justification(), placement(), box, margin() ...", commit pending.
 - **AX-5 Tracked:** Open (WP-44 section 44-02).
 - **AX-6 Tracked:** Open (WP-44 section 44-02).
 - **AX-7 Tracked:** Open (WP-44 section 44-03).
