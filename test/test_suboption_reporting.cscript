@@ -22,13 +22,17 @@
 *!   SR-02  xlabel(, valuelabel) is drawn (WP-28 S14, G16), not named.
 *!   SR-03  ylabel(, labgap(2) labstyle(x)) names labstyle(x) (flipped,
 *!          WP-30 P1.18a: labcolor() is drawn; WP-31 D6: labgap() is
-*!          drawn, a style name is named).
+*!          drawn, a style name is named; WP-44 AX-14: labstyle() is
+*!          read from the scheme, so the check names labelkeepleadingzero,
+*!          the label sub-option still not drawn).
 *!   SR-04  yscale(reverse noline titlegap(2) outergap(1) logit) names
 *!          logit, not the drawn reverse, noline, titlegap() and
 *!          outergap() (flipped, WP-30 P1.18a; WP-31 D7: outergap()
 *!          is drawn).
-*!   SR-05  xtitle("Weight", orientation(vertical)) names orientation() and
-*!          titles the axis "Weight" -- not "Weight, orientation(vertical)".
+*!   SR-05  xtitle("Weight", orientation(vertical) bexpand) names bexpand
+*!          and titles the axis "Weight" -- not "Weight, orientation(...)"
+*!          (flipped, WP-44 AX-13: orientation() is drawn; bexpand stays
+*!          named, D72).
 *!   SR-06  xline(3000, lcolor(red) lstyle(foreground) noextend) names
 *!          nothing (flipped, WP-30 P1.21a: lstyle() is drawn; WP-30
 *!          P1.21b: noextend is drawn).
@@ -240,15 +244,15 @@ if r(bad) {
 }
 else display as text "SR-02 PASS: xlabel(, valuelabel) is drawn and not named"
 
-_sr_render `"dash scatter mpg weight, ylabel(, labgap(2) labstyle(x))"'
+_sr_render `"dash scatter mpg weight, ylabel(, labgap(2) labelkeepleadingzero)"'
 local lg `"`r(logfile)'"'
 assert r(rc) == 0
-_sr_check SR-03 "`lg'" ylabel "labstyle(x)" "labgap"
+_sr_check SR-03 "`lg'" ylabel "labelkeepleadingzero" "labgap"
 if r(bad) {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-03"
 }
-else display as text "SR-03 PASS: ylabel(, labstyle(x)) is named, the drawn labgap() is not"
+else display as text "SR-03 PASS: ylabel(, labelkeepleadingzero) is named, the drawn labgap() is not"
 
 _sr_render `"dash scatter mpg weight, yscale(reverse noline titlegap(2) outergap(1) logit)"'
 local lg `"`r(logfile)'"'
@@ -260,11 +264,11 @@ if r(bad) {
 }
 else display as text "SR-04 PASS: yscale(logit) is named, reverse noline titlegap outergap are not"
 
-_sr_render `"dash scatter mpg weight, xtitle("Weight", orientation(vertical))"'
+_sr_render `"dash scatter mpg weight, xtitle("Weight", orientation(vertical) bexpand)"'
 local lg `"`r(logfile)'"'
 local html `"`r(html)'"'
 assert r(rc) == 0
-_sr_check SR-05 "`lg'" xtitle "orientation(vertical)" ""
+_sr_check SR-05 "`lg'" xtitle "bexpand" "orientation"
 local bad = r(bad)
 cert_file_has "`html'", needle(`""axis_label":"Weight""')
 if r(found) != 1 {
@@ -280,7 +284,7 @@ if `bad' {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-05"
 }
-else display as text "SR-05 PASS: xtitle() names orientation() and titles the axis Weight"
+else display as text "SR-05 PASS: xtitle() names bexpand, not the drawn orientation(), and titles the axis Weight"
 
 // Flipped (WP-30 P1.21a): lstyle(foreground) was named; twoway draws it
 // (refline_truth.json S probes).  Flipped (WP-30 P1.21b): noextend was

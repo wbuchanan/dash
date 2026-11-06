@@ -2023,9 +2023,11 @@ if inlist("`only'", "", "S10") & `: list posof "S10" in w31_run' {
     _w31_done U10-04 "one kept row: the saved line is empty; twoway draws none (rc `trc', note ${u10_said})"
 
     // ------------------------------------------------------------
-    // U10-05: a %td x refits in days and is drawn in axis milliseconds:
-    // the saved points after the slider to 4, read back in days
-    // (_dash_date_units), are twoway's serset to its float precision.
+    // U10-05: a %td x refits in days: the saved points after the slider
+    // to 4 are twoway's serset to its float precision.  Flipped (WP-44
+    // AX-18): a lone lfit labels the variable's numbers as twoway does,
+    // so its axis is numeric and the saved x is in days, not axis
+    // milliseconds (test/fixtures/date_axis_rule_truth.json).
     // ------------------------------------------------------------
     clear
     quietly set obs 10
@@ -2039,9 +2041,9 @@ if inlist("`only'", "", "S10") & `: list posof "S10" in w31_run' {
     _dash_serve_spec, specpath("`u10d'/s5.json") datapath("`u10d'/d5.json") filter(x, type(slider))
     python: _u10_move("`u10d'/s5.json", "`u10d'/d5.json", "Slider", "4", "`u10d'/g5.json")
     _u10_ss "`u10d'/t5.json" "`u10d'/t5.gph" lfit y d if x >= 4, n(100)
-    python: _u10_close("`u10d'/t5.json", "`u10d'/g5.json", "td", 3e-7, 0, 1)
+    python: _u10_close("`u10d'/t5.json", "`u10d'/g5.json", "", 3e-7, 0, 1)
     _w31_expect U10-05 "(${u10_ok} == 1)" "dash lfit y d (%td) after the slider to 4: ${u10_msg}"
-    _w31_done U10-05 "a %td x refits in days and draws in ms (${u10_msg})"
+    _w31_done U10-05 "a %td x refits and draws in days (${u10_msg})"
 
     forvalues k = 1/5 {
         foreach p in s d g t {
@@ -14466,11 +14468,13 @@ if inlist("`only'", "", "S60") & `: list posof "S60" in w31_run' {
     quietly dash lfit mpg day, name(g1)
     _dash_serve_spec, specpath("`u60d'/s2.json") datapath("`u60d'/d2.json")
     python: __import__("__main__")._u60_compare("`u60d'/s2.json", "`u60d'/d2.json", "`u60d'/a2.py")
-    // Drawn on a datetime axis: milliseconds since 1jan1970 (day 3653).
-    local dlo = (`dmin' - 3653) * 86400000
-    local dhi = (`dmax' - 3653) * 86400000
+    // Flipped (WP-44 AX-18): a lone lfit labels the variable's numbers as
+    // twoway does, so its axis is numeric, in days; it was a datetime
+    // axis in milliseconds since 1jan1970.
+    local dlo = `dmin'
+    local dhi = `dmax'
     foreach m in s v {
-        _w31_expect U60-2 "(abs(${u60_lo_`m'} - `dlo') < 1 & abs(${u60_hi_`m'} - `dhi') < 1)" "`m': lfit x ${u60_lo_`m'}..${u60_hi_`m'} ms, summarize `dmin'..`dmax' days"
+        _w31_expect U60-2 "(abs(${u60_lo_`m'} - `dlo') < 1e-6 & abs(${u60_hi_`m'} - `dhi') < 1e-6)" "`m': lfit x ${u60_lo_`m'}..${u60_hi_`m'} days, summarize `dmin'..`dmax' days"
     }
     _w31_done U60-2 "an lfit on a %td x spans the dates' range, saved and served"
 
