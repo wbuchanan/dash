@@ -676,131 +676,23 @@ def _digest(model):
 # (hidden) legend takes the scheme's key geometry, its grid and its
 # panel location from twoway's clock table.
 _PLAIN_DIGESTS = {
-    # 932c85bd... -> b8c27bfa...: WP-31 D6/D7 the axis finisher's
-    # dash_axis_bounds (noextend) joins the page's finish code.
-    # b8c27bfa... -> def54a8f...: WP-31 D7 the axis title gap is the
-    # scheme's axis_title_gap (1 px, was Bokeh's 5).
-    # def54a8f... -> 2e3fd291...: WP-31 D1c the finish code reads a
-    # typed list as no ##N rule (finish JS text only).
-    # 2e3fd291... -> 83ddae14...: WP-31 B5c the axis plan carries each
-    # axis's dot rows (an empty "dots" list here) and the finish code
-    # dash_fill_dots.
-    # 83ddae14... -> dee5b397...: WP-31 D1b the finish code re-places a
-    # far-side or outer axis's minor-label pool (finish JS text only).
-    # dee5b397... -> 2e569732...: WP-31 D12 the zoom code ends with the
-    # reference lines' dash_refline_extent statement (zoom JS text only).
-    # 2e569732... -> 0d452f74...: WP-31 E2 the minor grid's dot is Stata's
-    # .1 .7 rs ([1, 3] px; [2, 4] before), merged on D12.
-    # 0d452f74... -> 02665fa0...: WP-31 G1/G2 the filter mask's code
-    # branch and each Stata writer's args and code carry the page's dp.
-    # 02665fa0... -> 5777f9c1...: WP-31 D15 the finish code reads Stata's
-    # own ticks (dash_stata_pick) and re-places xtick(#N) (finish JS text
-    # only).
-    # 5777f9c1... -> 1735f74a...: WP-31 D15 follow-up, a shared by()
-    # letter's xtick(#N) in the finish code (finish JS text only).
-    # 02665fa0... -> 425a7065...: WP-31 G7 the Stata writer reads %d as
-    # %td (writer JS text only); 425a7065... -> aea1fee4...: WP-31 G7 the
-    # writer's %tb (writer JS text only).
-    # Merged batch 15 (D15, D15 follow-up, G7, C11 degree): 4f04a250...
-    # saved, 7533995b... served, re-derived on the merged tree.
-    # 4f04a250... -> 913aa1ee... saved, 7533995b... -> e69103bd... served:
-    # WP-31 H2x the grid's Save dashboard action and the composite SVG
-    # code and ids, the print hide stylesheet on the toolbar (and, served,
-    # the root's print hook args); the same under both Pythons.
-    # 4f04a250... -> bff51822... saved, 7533995b... -> aee4df70... served:
-    # WP-31 K6 the figure's role="img" and aria-label html_attributes,
-    # the same under bokeh 3.8 (Stata's Python) and 3.9.
-    # Merged batch 18 (H2x, K6): e8b7082b... saved, 9b7c416f... served.
-    # e8b7082b... -> 758304bd... saved, 9b7c416f... -> e975974d... served:
-    # the batch-18 gate, the composite code's entity table keyed by name
-    # (finish JS text only); the same under both Pythons.
-    # 758304bd... -> bbe2bc2f... saved, e975974d... -> 9935c1c8... served:
-    # WP-31 K6 follow-up, a figure with a toolbar is role="group", not
-    # "img" (axe nested-interactive); the same under both Pythons.
-    # bbe2bc2f... -> ac6ee365... saved, 9935c1c8... -> 0710df1c... served:
-    # WP-32 D-31.a the (hidden) legend's key box is symxsize() by
-    # symysize(), 50 x 13 (was 15 x 15); masked model diff, the same under
-    # both Pythons.
-    # bbe2bc2f... -> fba98ea5... saved, 9935c1c8... -> 7f8f4187... served:
-    # WP-32, the finish code gives an axis whose layers draw nothing the
-    # empty form (DASH_EMPTY_SCALE; finish JS text only).
-    # bbe2bc2f... -> 41fbfc2a... saved, 9935c1c8... -> ecb180dc... served:
-    # WP-32 D-53d, the composite actions' toggle_ids arg is table_ids and
-    # the composite code draws open tables (masked model diff: nothing
-    # else differs); the same under both Pythons.
-    # ac6ee365... -> d68dfa44... saved, 0710df1c... -> 35cb03e3... served:
-    # the WP-32 merge of D-31.a, D-53d/e, the empty-axis finish and the fit
-    # extents (each confirmed by its masked model diff); the same under both
-    # Pythons.
-    # d68dfa44... -> 9653c56a... saved, 35cb03e3... -> 4fd310cb... served:
-    # WP-34 AX-4, every axis-plan layer carries hfields and the finish and
-    # filter code read a histogram's midpoint and span columns; the same
-    # under both Pythons.
-    # 9653c56a... -> a4bad736... saved, 4fd310cb... -> 8d1ef2de... served:
-    # WP-34 AX-1, the axis plan's byg key and the finish code's
-    # default-axis condition (plan key and finish JS text only); the same
-    # under both Pythons.
-    # a4bad736... -> 7b91a824... saved, 8d1ef2de... -> 945ef1ea... served:
-    # WP-45 VF-4 (brought into WP-41 41-05), the figure loses its
-    # 160-560 px height band (max_height and min_height None) and carries
-    # its nominal box; twoway draws its graph's shape at any size
-    # (DECISIONS A-1); the same under both Pythons.
-    # 7b91a824... -> 5b51f15b... saved, 945ef1ea... -> 28fb7ffe... served:
-    # WP-45 VF-4 with DECISIONS D66/D67 (the graph drawn as one picture, its width-scale callback on every figure; one toolbar per page, laid over it); the same under both Pythons.
-    # 5b51f15b... -> 14933864... saved, 28fb7ffe... -> d46d95fa... served:
-    # WP-45 GW-6, the figure's graph-region box (its margin padding, fill
-    # and tag in its styles) and the span hook's graph box; the same under
-    # both Pythons.
-    # 14933864... -> f7c8dba6... saved, d46d95fa... -> cf6d2d71... served:
-    # WP-41 41-05, the plot region's outline in the width scale's table;
-    # the same under both Pythons.
-    # f7c8dba6... -> 36f06f41... saved, cf6d2d71... -> d5a72d60... served:
-    # WP-41 41-05, the width scale's by() grid spacing pair and its --dash-by-k length (width-scale JS text only); the same under both Pythons.
-    # 36f06f41... -> 9299b510... saved, d5a72d60... -> 2ff9cd13... served:
-    # BUGS.md "A graph's canvas ended before its own x axis, x title and
-    # colour key labels", the graph region box a column of its own round
-    # the figure (the figure keeps the margin's inside ratio) and the
-    # width-scale and span JS's graph box; the same under both Pythons.
-    # 9299b510... -> d03b126c... saved, 2ff9cd13... -> 8d93b119... served:
-    # WP-43 LT-6, the width scale writes its factor as --dash-k on each
-    # plot (width-scale JS text only); the same under both Pythons.
-    # d03b126c... -> 6ede92b7... saved, 8d93b119... -> 08dea935... served:
-    # WP-43 LT-10, the width scale's pair kind takes a legend's four-sided
-    # padding (width-scale JS text only); the same under both Pythons.
-    # 6ede92b7... -> a1befad1... saved, 08dea935... -> 104fc2fd... served:
-    # WP-44 AX-18, the finish and zoom code ticks a log axis of dates on
-    # their calendar (dash_axis_ticks_of; finish JS text only); the same
-    # under both Pythons.
-    # a1befad1... -> 37b69e60... saved, 104fc2fd... -> f9f5be2d... served:
-    # WP-44 DG-6, the finish code's leap-second pair and its %tC tick
-    # branch (finish JS text only); the same under both Pythons.
+    # WP-44 batch 44.1 merged (44-01, 44-04, 44-05): 44-04's finish and
+    # zoom JS (AX-18's log date ticks, DG-6's _DASH_LEAP_SECONDS_JS) moves
+    # every row: plain 6ede92b7... -> 37b69e60... (saved) and 08dea935...
+    # -> f9f5be2d... (served), as 44-04's own tree gives; yaxis2 215296e3...
+    # -> 39f4cfe4... and 2e684a6b... -> 3dbe9efa... (on top of MS-12's
+    # null y grid).  A masked model diff against the tree before 44-04
+    # differs in the x range's finish callback code alone, in both cases.
     ("saved", "plain"):
-        "6ede92b7a0a9c78b3439cff787b173d286269fb8c4b17dff0bbae772b19a2b8e",
-    # 6ede92b7... -> 215296e3... (yaxis2 only): WP-44 MS-12, a lone
-    # yaxis(2) draws no y grid (grid_line_color null; masked model diff
-    # against "plain": that one property); the same under both Pythons.
+        "37b69e60d5d793f82033c33d73cf258a25bda161a7847f477c0378af5d507964",
     ("saved", "yaxis2"):
-        "215296e380d47e7e3a451cc30c65b8cdc25044fcf59bc56745a8eac0f8c3e312",
-    # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
-    # the same under bokeh 3.8 (Stata's Python) and 3.9.
-    # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
-    # D6/D7/D1c, as the saved page's; 0440b3d9... -> 5a0efbf6...: WP-31
-    # B5c, as the saved page's; 5a0efbf6... -> 8af4b99f...: WP-31 D1b,
-    # as the saved page's; 8af4b99f... -> c6afee47...: WP-31 D12, as the
-    # saved page's; c6afee47... -> 0a83753e...: WP-31 E2, as the saved
-    # page's; 0a83753e... -> 1fc4cc55...: WP-31 G1/G2, as the saved
-    # page's; 1fc4cc55... -> 1d5c76fb...: WP-31 D15, as the saved page's;
-    # 1d5c76fb... -> f2fa6195...: the D15 follow-up, as the saved page's.
-    # page's; 1fc4cc55... -> 6b1271a5...: WP-31 G7, as the saved page's.
-    # page's; 1fc4cc55... -> 6b1271a5... -> 86688a59...: WP-31 G7 (%d, %tb),
-    # as the saved page's.
+        "39f4cfe4aaca2922e35d8e61d810fa21039b75569ef097e452a4244c0849dfa7",
     ("served", "plain"):
-        "08dea9359c18f1a721003c6df225ac6cd0ca2e557156bd4fa1bc3547b0c0c94e",
-    # 08dea935... -> 2e684a6b... (yaxis2 only): WP-44 MS-12, as the
-    # saved page's; the same under both Pythons.
+        "f9f5be2d4baeb11321bca1c41745d455f1e6518bd338d7d48a867c794da6d07a",
     ("served", "yaxis2"):
-        "2e684a6b28c1fad42126d7860cc1624e87cc3bb38efca3fa41d719dd7076e54c",
+        "3dbe9efa4b7f654e41985418e227cb02d09fee7d6c88ff5726124d8e4af8fcc4",
 }
+
 
 
 class TestANonKeyFigureIsUnchanged:
