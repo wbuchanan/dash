@@ -3214,6 +3214,12 @@ CORPUS = [
     # WP-41 VF-6: each row's outer y axis cell, in both modes.
     _case("by() equal panels", [_sc()],
           go={"by": "rep78", "ylabel": ", format(%15.2fc)"}),
+    # WP-44 44-05 (MS-12): a lone second axis draws no gridline unless
+    # asked (ylabel(, grid axis(2)) is dash's internal ylabel2), both modes.
+    _case("44-05 lone yaxis(2) no grid", [_sc(yaxis="2")]),
+    _case("44-05 lone yaxis(2) ylabel axis(2) grid", [_sc(yaxis="2")],
+          go={"ylabel2": ", grid"}),
+    _case("44-05 pci lone yaxis(2)", [plot_for("pci", {"yaxis": "2"})]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

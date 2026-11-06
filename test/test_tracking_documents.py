@@ -2936,7 +2936,6 @@ GAPS4_OPEN = {
     'AX-20': 'A bar with baroffset() on a date (period) axis uses its drawn centre as the tick input, so the axis ticks move with the offset; twoway ticks the date',
     'AX-19': 'A range type (rbar, rspike, rcap, rcapsym) widens the x axis over rows where both bounds are missing; twoway leaves those rows out of the axis',
     'MS-14': 'xscale(range()) on a log axis adds a tick at the range end',
-    'MS-12': 'A graph whose only plot is on yaxis(2) is drawn with y gridlines; twoway draws none',
     'MS-11': "twoway's '<first title>...' x title (different x across y-axis groups, or upright plus turned layers) is not drawn",
     'MS-13': 'ytitle(A) ytitle(B, suffix) is joined on one line; twoway draws two lines for axis titles',
     'PIC-12': "A right-hand y title reads top to bottom; twoway's reads upward (every economist graph, any yaxis(2))",

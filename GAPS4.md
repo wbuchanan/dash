@@ -498,7 +498,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-19 Tracked:** Open (WP-44 section 44-03).
 - **AX-20 Tracked:** Open (WP-44 section 44-04).
 - **MS-14 Tracked:** Open (WP-44 section 44-03).
-- **MS-12 Tracked:** Open (WP-44 section 44-05).
+- **MS-12 Tracked:** Closed in WP-44, BUGS.md "A graph whose only plot is on yaxis(2) is drawn with y gridlines; twoway draws none", commit pending.
 - **MS-11 Tracked:** Open (WP-44 section 44-01).
 - **MS-13 Tracked:** Open (WP-44 section 44-01).
 - **PIC-12 Tracked:** Open (WP-44 section 44-01).

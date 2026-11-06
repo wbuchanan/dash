@@ -203,6 +203,110 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w44_run' {
 }
 * ==== end S00 ====
 
+// S05 helpers (WP-44 44-05).  _q4405_reg <dir> <dash command...>:
+// register one graph and count the drawn y and x grids (a Grid whose
+// line colour is set) both modes draw, into q4405_<y|x><s|v>;
+// _q4405_svg <file>: twoway's gridline groups -- the horizontal and
+// vertical lines whose stroke is not black -- into q4405_ty and q4405_tx.
+python:
+import os as _q4405_os, sys as _q4405_sys
+for _q4405_p in (_q4405_os.path.abspath(".."),
+                 _q4405_os.path.abspath(_q4405_os.path.join("..", "scripts"))):
+    if _q4405_p not in _q4405_sys.path:
+        _q4405_sys.path.insert(0, _q4405_p)
+
+
+def _q4405_read(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    from bokeh.models import Grid
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+        with open(app, encoding="utf-8") as fh:
+            src = fh.read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        ns = dict(__name__="dash_q4405_app")
+        exec(compile(src.replace(attach, "pass"), "dash_q4405_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    for models, sfx in ((list(r._last_layout_root.references()), "s"),
+                        (list(doc.models), "v")):
+        grids = [m for m in models if isinstance(m, Grid)
+                 and m.grid_line_color is not None]
+        Macro.setGlobal("q4405_y" + sfx,
+                        str(sum(1 for g in grids if g.dimension == 1)))
+        Macro.setGlobal("q4405_x" + sfx,
+                        str(sum(1 for g in grids if g.dimension == 0)))
+
+
+def _q4405_svg(path):
+    from sfi import Macro
+    from svg_truth import svg_document
+    d = svg_document(path)
+    for kind, g in (("hlines", "q4405_ty"), ("vlines", "q4405_tx")):
+        Macro.setGlobal(g, str(sum(1 for ln in d[kind]
+                                   if ln.get("stroke") not in (None, "#000000"))))
+end
+
+capture program drop _q4405_reg
+program define _q4405_reg
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4405_m; _q4405_m._q4405_read("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
+* ==== S05 MS-12: lone second axis without gridlines ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w44_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+    local q05d "`w44_work'/s05a"
+    capture mkdir "`q05d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // Q4405-1: a graph whose every layer is on a second (or third)
+    // axis draws no gridline of that dimension, live twoway beside
+    // dash, saved and served; ylabel(, grid axis(2)) and a graph on
+    // axis 1 draw them (test/fixtures/axis_misc_truth.json ms12.*).
+    // ------------------------------------------------------------
+    foreach c in "y|0|scatter mpg weight, yaxis(2)" "y|0|pci 20 3000 30 4000, yaxis(2)" ///
+            "y|0|scatter mpg weight, yaxis(3)" "y|1|scatter mpg weight, yaxis(2) ylabel(, grid axis(2))" ///
+            "y|1|scatter mpg weight" "x|0|scatter mpg weight, xaxis(2) scheme(stcolor)" ///
+            "x|1|scatter mpg weight, scheme(stcolor)" {
+        gettoken d c : c, parse("|")
+        gettoken w c : c, parse("|")
+        gettoken w c : c, parse("|")
+        gettoken bar c : c, parse("|")
+        sysuse auto, clear
+        local comma = cond(strpos(`"`c'"', ","), "", ",")
+        quietly twoway `c'`comma' name(q05t, replace)
+        capture erase "`q05d'/q05t.svg"
+        cert_svg_export, name(q05t) file("`q05d'/q05t.svg")
+        python: import __main__ as _q4405_m; _q4405_m._q4405_svg("`q05d'/q05t.svg")
+        local tw = (${q4405_t`d'} > 0)
+        _q4405_reg "`q05d'" `c'`comma' name(q05d)
+        local gs = (${q4405_`d's} > 0)
+        local gv = (${q4405_`d'v} > 0)
+        _w44_expect Q4405-1 "(`tw' == `w' & `gs' == `w' & `gv' == `w')" `"`c': `d' grid twoway `tw' (want `w'), dash saved `gs', served `gv'"'
+    }
+    _w44_done Q4405-1 "a lone second or third axis draws no gridline, as twoway draws it; grid asked for and axis 1 keep theirs, saved and served"
+
+    capture graph drop _all
+    capture dash clear
+    macro drop q4405_*
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

@@ -4731,6 +4731,11 @@ def _dash_lone_second_axes(spec):
     measured: ``scatter mpg weight, yaxis(3)`` has one left axis).  Both
     loaders call this, before the spec is drawn or embedded.  Returns a new dict and never modifies the
     caller's; a spec of the wrong shape is returned as it came.
+
+    WP-44 MS-12: when no layer of a side is on its axis 1, the copy's
+    ``graph_options`` gains ``"_dash_lone_from": {"y": k}`` (``"x"``; both
+    when both move), k the number of the axis drawn first -- an int, never
+    user text -- which :func:`_dash_lone_axis_look` reads.
     """
     if not isinstance(spec, dict) or not isinstance(spec.get("graphs"), list):
         return spec
@@ -4754,6 +4759,7 @@ def _dash_lone_second_axes(spec):
         # layer naming several axes of the side ties them; such a side is
         # left as it came.
         remap = {}
+        lone = {}
         for side in ("y", "x"):
             used, tied = [], False
             for p in plots:
@@ -4765,6 +4771,12 @@ def _dash_lone_second_axes(spec):
                     used.append(nos[0])
             if tied or not used:
                 continue
+            if 1 not in used:
+                # WP-44 MS-12: no layer on axis 1 of the side -- the axis
+                # drawn first keeps its own number's look (twoway draws
+                # axis 2 and higher in *_nogrid; _dash_lone_axis_look).
+                lone[side] = int(sorted(used)[0] if len(used) >= 3
+                                 else used[0])
             if len(used) >= 3:
                 # WP-31 D9b (measured, axis2_move_truth.json first_used
                 # y123 ... y243): three or more axes are drawn in number
@@ -4812,6 +4824,8 @@ def _dash_lone_second_axes(spec):
                                     for r in recs]
             if axisn is not None:
                 go["axisn"] = {k: v for k, v in axisn.items() if v}
+            if lone:
+                go["_dash_lone_from"] = dict(lone)
             g["graph_options"] = go
         graphs.append(g)
         changed = True
@@ -4820,6 +4834,40 @@ def _dash_lone_second_axes(spec):
     out = dict(spec)
     out["graphs"] = graphs
     return out
+
+
+def _dash_lone_axis_look(fig, graph_opts, scheme=None):
+    """A lone second axis's own look: no gridlines (WP-44 MS-12).
+
+    twoway draws axis 2 and higher in the ``*_nogrid`` axis style
+    (twowaygraph_g.class ``create_axes``: axis 1 is ``vertical_default``,
+    every other ``vertical_nogrid``; ``style/axisstyle-vertical_nogrid.style``
+    ``set draw_major_grid no``), so a graph whose every layer is on
+    yaxis(2) has no y gridline (measured, test/fixtures/
+    axis_misc_truth.json ``ms12.y2``, ``ms12.y3``, ``ms12.pci_y2``; and
+    ``ms12.x2_stcolor`` for x).  :func:`_dash_lone_second_axes` draws such
+    an axis as axis 1 and marks the graph ``"_dash_lone_from"``; here the
+    grid of each marked dimension goes off when the scheme's axis-2 style
+    (*scheme*, else the figure's) draws no major grid.  Called first in
+    :func:`_dash_apply_axis_options`, so ``ylabel(, grid axis(2))`` still
+    draws it (``ms12.y2_grid``).  A marker that is not a dict of
+    ``"x"``/``"y"`` to an int 2-9 is ignored."""
+    lone = graph_opts.get("_dash_lone_from") \
+        if isinstance(graph_opts, dict) else None
+    if not isinstance(lone, dict):
+        return
+    if scheme is None:
+        scheme = getattr(fig, "_dash_scheme", None) or SchemeParser.fallback()
+    styles = getattr(scheme, "axis_styles", None) or {}
+    for side, grids, own in (("x", fig.xgrid, "horizontal_nogrid"),
+                             ("y", fig.ygrid, "vertical_nogrid")):
+        k = lone.get(side)
+        if isinstance(k, bool) or not isinstance(k, int) or not 2 <= k <= 9:
+            continue
+        if not str(styles.get((side, 2)) or own).endswith("_nogrid"):
+            continue
+        for g in grids:
+            g.grid_line_color = None
 
 
 #: The fit types whose points dash.ado computes in Stata when estopts(),
@@ -49337,7 +49385,11 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
     On an axis with no date kind (WP-30 P1.23a, D-35e/D-35i) a date
     variable's column is read in its Stata units, so ``minmax`` ticks Stata
     values, and with *formats* an axis no format names is labelled in its
-    first layer's date format (:func:`_dash_axis_unit_format`)."""
+    first layer's date format (:func:`_dash_axis_unit_format`).
+
+    WP-44 MS-12: first, a lone second axis's own look
+    (:func:`_dash_lone_axis_look`), before ``grid`` is read."""
+    _dash_lone_axis_look(fig, graph_opts)
     cols = getattr(frame, "columns", [])
     fmts = (None if plots is None else
             _dash_axis_tick_formats(plots, numeric_formats or {},
@@ -76889,6 +76941,8 @@ class ServerAppBuilder:
                          "_dash_place_minor_counts",
                          "_dash_finish_minor_ticks",
                          "_dash_apply_axis_options",
+                         # WP-44 MS-12: a lone second axis's own look.
+                         "_dash_lone_axis_look",
                          # WP-30 P1.18a: the axis look
                          "_dash_tick_geometry", "_dash_tick_position",
                          "_dash_tick_look", "_dash_scale_look",

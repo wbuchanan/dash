@@ -765,8 +765,11 @@ _PLAIN_DIGESTS = {
     # padding (width-scale JS text only); the same under both Pythons.
     ("saved", "plain"):
         "6ede92b7a0a9c78b3439cff787b173d286269fb8c4b17dff0bbae772b19a2b8e",
+    # 6ede92b7... -> 215296e3... (yaxis2 only): WP-44 MS-12, a lone
+    # yaxis(2) draws no y grid (grid_line_color null; masked model diff
+    # against "plain": that one property); the same under both Pythons.
     ("saved", "yaxis2"):
-        "6ede92b7a0a9c78b3439cff787b173d286269fb8c4b17dff0bbae772b19a2b8e",
+        "215296e380d47e7e3a451cc30c65b8cdc25044fcf59bc56745a8eac0f8c3e312",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     # 23c6fcc8... -> f8ce3f00... -> 59d68f1d... -> 0440b3d9...: WP-31
@@ -782,8 +785,10 @@ _PLAIN_DIGESTS = {
     # as the saved page's.
     ("served", "plain"):
         "08dea9359c18f1a721003c6df225ac6cd0ca2e557156bd4fa1bc3547b0c0c94e",
+    # 08dea935... -> 2e684a6b... (yaxis2 only): WP-44 MS-12, as the
+    # saved page's; the same under both Pythons.
     ("served", "yaxis2"):
-        "08dea9359c18f1a721003c6df225ac6cd0ca2e557156bd4fa1bc3547b0c0c94e",
+        "2e684a6b28c1fad42126d7860cc1624e87cc3bb38efca3fa41d719dd7076e54c",
 }
 
 

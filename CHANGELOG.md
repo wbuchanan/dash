@@ -1013,6 +1013,8 @@ and now matches Stata.
 
 ### Fixed in WP-44
 
+- A graph whose every layer is on yaxis(2) (or xaxis(2), or a third to ninth axis) draws that axis without gridlines, as twoway draws a second axis; dash drew the first axis's grid. ylabel(, grid axis(2)) still draws it (WP-44, MS-12)
+
 ### Fixed in WP-43
 
 - bexpand on title(), subtitle(), note(), caption(), the edge titles and legend() is named in the note, where it was taken in silence; dash draws the box as without it, a documented difference from twoway (ruling D72): help dash, Differences from twoway, item 16 (WP-43, LT-7)

@@ -5709,6 +5709,9 @@ axis, on the left, as {cmd:twoway} does; the {cmd:axis(2)} forms --
 r(198), with {cmd:twoway}'s message ({cmd:ylabels(5000 10000) not allowed,}
 {cmd:yaxis1 does not exist}).  When every layer is on {opt xaxis(2)}, the
 one x axis is drawn at the bottom, styled the same way by the x forms.
+The one axis is drawn with that axis's default look: no gridlines, as
+{cmd:twoway} draws a second axis (and a third through ninth), unless
+asked for ({cmd:ylabel(, grid axis(2))}).
 
 {marker dashonly}{...}
 {pstd}

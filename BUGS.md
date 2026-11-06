@@ -5640,11 +5640,11 @@
   - Suggested fix: Do not add range ends to log default ticks; compare drawn_ticks
   - Resolution: Not fixed because WP-44 section 44-03 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
 
-- [ ] Title: A graph whose only plot is on yaxis(2) is drawn with y gridlines; twoway draws none
+- [x] Title: A graph whose only plot is on yaxis(2) is drawn with y gridlines; twoway draws none
   - File Names and Line Numbers: _dash_lone_second_axes (dash_render.py:5003-5017); E14, C10
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids MS-12; confirmed; tracked: untracked. Registered as GAPS4 MS-12 (WP-44, section 44-05, Fix).
   - Suggested fix: Keep axis k's grid default when renumbering
-  - Resolution: Not fixed because WP-44 section 44-05 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+  - Resolution: Fixed 06nov2026 (WP-44, MS-12). Measured first (scripts/extract_axis_misc_truth.do, test/fixtures/axis_misc_truth.json ms12.*): twoway draws axis 2 and higher in the `*_nogrid' axis style (twowaygraph_g.class create_axes; axisstyle-vertical_nogrid.style `set draw_major_grid no'), so scatter mpg weight, yaxis(2) (and yaxis(3), pci ..., yaxis(2), and (yaxis(2)) (yaxis(3)) layers) draw no #eaf2f3 y gridline under s2color, and under stcolor xaxis(2) alone draws no x gridline; ylabel(, grid axis(2)) draws the grid. dash drew the renumbered axis with axis 1's grid. _dash_lone_second_axes marks a side with no layer on axis 1 (graph_options "_dash_lone_from", the number of the axis drawn first), and _dash_lone_axis_look, the first statement of _dash_apply_axis_options, turns that dimension's grid off when the scheme's axis-2 style draws none, in both modes; a grid asked for is drawn after it. Pinned by test/test_axis_misc_p9.py::TestLoneAxisGrid (saved, served), ::TestLoneAxisLook and test_wp44_truth.cscript Q4405-1. Closes GAPS4 MS-12 (WP-44, MS-12).
 
 - [ ] Title: twoway's '<first title>...' x title (different x across y-axis groups, or upright plus turned layers) is not drawn
   - File Names and Line Numbers: dash_render.py:39809-39841; E12, E13, C04, P36; test_horizontal.py:378 skips; dash.sthlp:3630-3632

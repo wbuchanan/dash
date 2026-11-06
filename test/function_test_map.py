@@ -557,6 +557,7 @@ FUNCTIONS = {
  '_dash_sorted_copy': 'test/test_noted_drawn.py::TestSortOrder::test_drawn_in_x_order',
  '_dash_json_value': 'test/test_export.py::TestTheHelpers::test_json_value',
  '_dash_lone_second_axes': 'test/test_dual_axis.py::TestTheLoneAxisRewrite::test_the_callers_spec_is_not_modified',
+ '_dash_lone_axis_look': 'test/test_axis_misc_p9.py::TestLoneAxisLook::test_marker_turns_that_grid_off',
  # WP-31 S35 (D9)
  '_dash_renumber_axis_options': 'test/test_second_axis_moves.py::TestTheRenumbering::test_options_move_with_their_axis',
  '_dash_axis_option_slot': 'test/test_second_axis_moves.py::TestTheRenumbering::test_the_slots',

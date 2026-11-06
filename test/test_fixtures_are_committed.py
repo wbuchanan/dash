@@ -309,6 +309,7 @@ GENERATORS = {
     "axis_add_truth.json": "scripts/extract_axis_add_truth.do",
     "axis_format_truth.json": "scripts/extract_axis_format_truth.do",
     "axis_look_truth.json": "scripts/extract_axis_look_truth.do",
+    "axis_misc_truth.json": "scripts/extract_axis_misc_truth.do",
     "axis_subopt_truth.json": "scripts/extract_axis_subopt_truth.do",
     "axis_truth.json": "scripts/extract_axis_truth.do",
     "axisn_alt_truth.json": "scripts/extract_axisn_alt_truth.do",

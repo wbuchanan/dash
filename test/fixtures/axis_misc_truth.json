@@ -1,0 +1,10089 @@
+{
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "44a647850e30ec5dfe89f7c265d5231a8ed59e90",
+  "extracted": " 6 Nov 2026 06:10:01",
+  "source": "scripts/extract_axis_misc_truth.do",
+  "stata_version": "19.5"
+ },
+ "dg9.T11": {
+  "command": "twoway scatter mpg rep78, xlabel(1/5 .a, valuelabel) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : 1/5 .a:"
+  ],
+  "raw_message": "invalid label specifier, :  1/5 .a:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.abc_xlabel": {
+  "command": "twoway scatter mpg weight, xlabel(abc) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc:"
+  ],
+  "raw_message": "invalid label specifier, :  abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.abc_xmlabel": {
+  "command": "twoway scatter mpg weight, xmlabel(abc) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc:"
+  ],
+  "raw_message": "invalid label specifier, :  abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.abc_xmtick": {
+  "command": "twoway scatter mpg weight, xmtick(abc) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc:"
+  ],
+  "raw_message": "invalid label specifier, :  abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.abc_xtick": {
+  "command": "twoway scatter mpg weight, xtick(abc) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc:"
+  ],
+  "raw_message": "invalid label specifier, :  abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.abc_ylabel": {
+  "command": "twoway scatter mpg weight, ylabel(abc) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc:"
+  ],
+  "raw_message": "invalid label specifier, :  abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.abc_ymlabel": {
+  "command": "twoway scatter mpg weight, ymlabel(abc) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc:"
+  ],
+  "raw_message": "invalid label specifier, :  abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.abc_ymtick": {
+  "command": "twoway scatter mpg weight, ymtick(abc) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc:"
+  ],
+  "raw_message": "invalid label specifier, :  abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.abc_ytick": {
+  "command": "twoway scatter mpg weight, ytick(abc) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc:"
+  ],
+  "raw_message": "invalid label specifier, :  abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.accept_bracket": {
+  "command": "twoway scatter mpg weight, ylabel(5 10[10]40) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2111.74,
+    "y2": 2111.74
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1483.44,
+    "y2": 1483.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 855.26,
+    "y2": 855.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 226.96,
+    "y2": 226.96
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2111.74,
+    "y2": 2111.74
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1483.44,
+    "y2": 1483.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 855.26,
+    "y2": 855.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 226.96,
+    "y2": 226.96
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_colon": {
+  "command": "twoway scatter mpg weight, ylabel(10 20 : 40) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_desc_rule": {
+  "command": "twoway scatter mpg weight, ylabel(40(-10)10) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_dot": {
+  "command": "twoway scatter mpg weight, ylabel(10 . 30) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : 10 . 30:"
+  ],
+  "raw_message": "invalid label specifier, :  10 . 30:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.accept_exp": {
+  "command": "twoway scatter mpg weight, xlabel(1e3 3000) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 454.16,
+    "x2": 454.16,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2194.58,
+    "x2": 2194.58,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_label": {
+  "command": "twoway scatter mpg weight, ylabel(10 \"a\" 20 \"b\") name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_label_tail": {
+  "command": "twoway scatter mpg weight, ylabel(10 \"a\" 20/30) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1623.28,
+    "y2": 1623.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1550.39,
+    "y2": 1550.39
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1477.37,
+    "y2": 1477.37
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1404.48,
+    "y2": 1404.48
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1331.47,
+    "y2": 1331.47
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1258.58,
+    "y2": 1258.58
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1185.56,
+    "y2": 1185.56
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1112.67,
+    "y2": 1112.67
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1039.66,
+    "y2": 1039.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1623.28,
+    "y2": 1623.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1550.39,
+    "y2": 1550.39
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1477.37,
+    "y2": 1477.37
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1404.48,
+    "y2": 1404.48
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1331.47,
+    "y2": 1331.47
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1258.58,
+    "y2": 1258.58
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1185.56,
+    "y2": 1185.56
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1112.67,
+    "y2": 1112.67
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1039.66,
+    "y2": 1039.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_lead_dot": {
+  "command": "twoway scatter mpg weight, ylabel(.5 20) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1336.91,
+    "y2": 1336.91
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1336.91,
+    "y2": 1336.91
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_lead_dot_rule": {
+  "command": "twoway scatter mpg weight, ylabel(. 10 20) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_neg": {
+  "command": "twoway scatter mpg weight, ylabel(-5 10) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1688.37,
+    "y2": 1688.37
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1688.37,
+    "y2": 1688.37
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_neg_dot": {
+  "command": "twoway scatter mpg weight, ylabel(-.5 20) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1308.57,
+    "y2": 1308.57
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1308.57,
+    "y2": 1308.57
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_negrange": {
+  "command": "twoway scatter mpg weight, ylabel(-1/1 20) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1294.96,
+    "y2": 1294.96
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2371.99,
+    "y2": 2371.99
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2318.16,
+    "y2": 2318.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1294.96,
+    "y2": 1294.96
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_paren": {
+  "command": "twoway scatter mpg weight, ylabel(5 10(10)40) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2111.74,
+    "y2": 2111.74
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1483.44,
+    "y2": 1483.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 855.26,
+    "y2": 855.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 226.96,
+    "y2": 226.96
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2111.74,
+    "y2": 2111.74
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1483.44,
+    "y2": 1483.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 855.26,
+    "y2": 855.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 226.96,
+    "y2": 226.96
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_plus": {
+  "command": "twoway scatter mpg weight, ylabel(+2 20) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1381.96,
+    "y2": 1381.96
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1381.96,
+    "y2": 1381.96
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_range": {
+  "command": "twoway scatter mpg weight, ylabel(10/12 20) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2352.93,
+    "y2": 2352.93
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2279.92,
+    "y2": 2279.92
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2352.93,
+    "y2": 2352.93
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2279.92,
+    "y2": 2279.92
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_rule_tail": {
+  "command": "twoway scatter mpg weight, ylabel(10(10)30 35) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 601.94,
+    "y2": 601.94
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 601.94,
+    "y2": 601.94
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_spaced_rule": {
+  "command": "twoway scatter mpg weight, ylabel(10 (10) 40) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_tc": {
+  "command": "twoway line close date, xlabel(tc(1jan2001 00:00:00)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : tc(1jan2001 00:00:00):"
+  ],
+  "raw_message": "invalid label specifier, :  tc(1jan2001 00:00:00):",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.accept_tc_big": {
+  "command": "twoway line close date, xlabel(tC(1jan2001 00:00:00)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : tC(1jan2001 00:00:00):"
+  ],
+  "raw_message": "invalid label specifier, :  tC(1jan2001 00:00:00):",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.accept_td": {
+  "command": "twoway line close date, xlabel(td(1jan2001) td(1jul2001)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : td(1jan2001) td(1jul2001):"
+  ],
+  "raw_message": "invalid label specifier, :  td(1jan2001) td(1jul2001):",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.accept_td_y": {
+  "command": "twoway scatter mpg weight, ylabel(td(1jan1960)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : td(1jan1960):"
+  ],
+  "raw_message": "invalid label specifier, :  td(1jan1960):",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.accept_th": {
+  "command": "twoway line close date, xlabel(th(2001h2)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : th(2001h2):"
+  ],
+  "raw_message": "invalid label specifier, :  th(2001h2):",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.accept_tm": {
+  "command": "twoway line close date, xlabel(tm(2001m6)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : tm(2001m6):"
+  ],
+  "raw_message": "invalid label specifier, :  tm(2001m6):",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.accept_to": {
+  "command": "twoway scatter mpg weight, ylabel(10 20 to 40) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.accept_tq": {
+  "command": "twoway line close date, xlabel(tq(2001q2)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : tq(2001q2):"
+  ],
+  "raw_message": "invalid label specifier, :  tq(2001q2):",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.accept_tw": {
+  "command": "twoway line close date, xlabel(tw(2001w10)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : tw(2001w10):"
+  ],
+  "raw_message": "invalid label specifier, :  tw(2001w10):",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.accept_ty": {
+  "command": "twoway line close date, xlabel(ty(2001)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : ty(2001):"
+  ],
+  "raw_message": "invalid label specifier, :  ty(2001):",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.count_word": {
+  "command": "twoway scatter mpg weight, ylabel(#3 abc) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc:"
+  ],
+  "raw_message": "invalid label specifier, :  abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.desc_rule_word": {
+  "command": "twoway scatter mpg weight, ylabel(40(-10)10 abc) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : 40(-10)10 abc:"
+  ],
+  "raw_message": "invalid label specifier, :  40(-10)10 abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.dot_a": {
+  "command": "twoway scatter mpg weight, ylabel(10 .a 20) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : 10 .a 20:"
+  ],
+  "raw_message": "invalid label specifier, :  10 .a 20:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.fn_d": {
+  "command": "twoway line close date, xlabel(d(1jan2001)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : d(1jan2001):"
+  ],
+  "raw_message": "invalid label specifier, :  d(1jan2001):",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.fn_ts": {
+  "command": "twoway line close date, xlabel(ts(1jan2001)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : ts(1jan2001):"
+  ],
+  "raw_message": "invalid label specifier, :  ts(1jan2001):",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.fn_upper": {
+  "command": "twoway line close date, xlabel(TD(1jan2001)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : TD(1jan2001):"
+  ],
+  "raw_message": "invalid label specifier, :  TD(1jan2001):",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.fn_word": {
+  "command": "twoway scatter mpg weight, ylabel(abc(1)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc(1):"
+  ],
+  "raw_message": "invalid label specifier, :  abc(1):",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.mid_word": {
+  "command": "twoway scatter mpg weight, ylabel(10 abc 20) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : 10 abc 20:"
+  ],
+  "raw_message": "invalid label specifier, :  10 abc 20:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.missing_dot_word": {
+  "command": "twoway scatter mpg weight, ylabel(. abc) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc:"
+  ],
+  "raw_message": "invalid label specifier, :  abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.rule_label": {
+  "command": "twoway scatter mpg weight, ylabel(10(10)40 \"a\") name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : \"a\":"
+  ],
+  "raw_message": "invalid label specifier, :  \"a\":",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.rule_word": {
+  "command": "twoway scatter mpg weight, ylabel(10(10)40 abc) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc:"
+  ],
+  "raw_message": "invalid label specifier, :  abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.tlabel_abc": {
+  "command": "twoway line close date, tlabel(abc) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc:"
+  ],
+  "raw_message": "invalid label specifier, :  abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.to_open": {
+  "command": "twoway scatter mpg weight, ylabel(10 \"a\" to 40) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : 10 \"a\" to 40:"
+  ],
+  "raw_message": "invalid label specifier, :  10 \"a\" to 40:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.unfinished_range": {
+  "command": "twoway scatter mpg weight, ylabel(10/ 20) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2352.93,
+    "y2": 2352.93
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2279.92,
+    "y2": 2279.92
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2207.03,
+    "y2": 2207.03
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2134.01,
+    "y2": 2134.01
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2061.12,
+    "y2": 2061.12
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1988.11,
+    "y2": 1988.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1915.09,
+    "y2": 1915.09
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1842.2,
+    "y2": 1842.2
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1769.19,
+    "y2": 1769.19
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2352.93,
+    "y2": 2352.93
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2279.92,
+    "y2": 2279.92
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2207.03,
+    "y2": 2207.03
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2134.01,
+    "y2": 2134.01
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2061.12,
+    "y2": 2061.12
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1988.11,
+    "y2": 1988.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1915.09,
+    "y2": 1915.09
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1842.2,
+    "y2": 1842.2
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1769.19,
+    "y2": 1769.19
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "dg9.word_label": {
+  "command": "twoway scatter mpg weight, ylabel(10 abc \"x\") name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : 10 abc \"x\":"
+  ],
+  "raw_message": "invalid label specifier, :  10 abc \"x\":",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.y2_abc": {
+  "command": "twoway scatter mpg weight, yaxis(1 2) ylabel(abc, axis(2)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc:"
+  ],
+  "raw_message": "invalid label specifier, :  abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "dg9.ymlabel_y2_abc": {
+  "command": "twoway scatter mpg weight, yaxis(1 2) ymlabel(abc, axis(2)) name(u44k, replace)",
+  "log": [
+   "invalid label specifier, : abc:"
+  ],
+  "raw_message": "invalid label specifier, :  abc:",
+  "rc": 198,
+  "scheme": "s2color"
+ },
+ "ms12.control": {
+  "command": "twoway scatter mpg weight, name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "ms12.control_stcolor": {
+  "command": "twoway scatter mpg weight, name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 522.79,
+    "x2": 587.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 619.99,
+    "x2": 684.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 717.19,
+    "x2": 781.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 814.39,
+    "x2": 879.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 911.59,
+    "x2": 976.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1008.79,
+    "x2": 1073.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1105.99,
+    "x2": 1170.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1203.19,
+    "x2": 1267.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1300.39,
+    "x2": 1365.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1397.59,
+    "x2": 1462.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1494.79,
+    "x2": 1559.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1591.99,
+    "x2": 1656.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1689.19,
+    "x2": 1753.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1786.39,
+    "x2": 1851.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1883.59,
+    "x2": 1948.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1980.79,
+    "x2": 2045.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2077.99,
+    "x2": 2142.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2175.19,
+    "x2": 2239.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2272.39,
+    "x2": 2337.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2369.59,
+    "x2": 2434.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2466.79,
+    "x2": 2531.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2563.99,
+    "x2": 2628.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2661.19,
+    "x2": 2725.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2758.39,
+    "x2": 2823.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2855.59,
+    "x2": 2920.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2952.79,
+    "x2": 3017.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3049.99,
+    "x2": 3114.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3147.19,
+    "x2": 3211.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3244.39,
+    "x2": 3309.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3341.59,
+    "x2": 3406.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3438.79,
+    "x2": 3503.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3535.99,
+    "x2": 3600.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3633.19,
+    "x2": 3697.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3730.39,
+    "x2": 3795.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3827.59,
+    "x2": 3892.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3924.79,
+    "x2": 3989.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4021.99,
+    "x2": 4086.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4119.19,
+    "x2": 4183.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4216.39,
+    "x2": 4281.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4313.59,
+    "x2": 4378.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4410.79,
+    "x2": 4475.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4507.99,
+    "x2": 4572.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4605.19,
+    "x2": 4669.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4702.39,
+    "x2": 4767.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4799.59,
+    "x2": 4864.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4896.79,
+    "x2": 4961.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4993.99,
+    "x2": 5058.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5091.19,
+    "x2": 5155.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5188.39,
+    "x2": 5253.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5285.59,
+    "x2": 5286.6,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 522.79,
+    "x2": 587.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 619.99,
+    "x2": 684.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 717.19,
+    "x2": 781.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 814.39,
+    "x2": 879.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 911.59,
+    "x2": 976.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1008.79,
+    "x2": 1073.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1105.99,
+    "x2": 1170.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1203.19,
+    "x2": 1267.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1300.39,
+    "x2": 1365.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1397.59,
+    "x2": 1462.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1494.79,
+    "x2": 1559.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1591.99,
+    "x2": 1656.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1689.19,
+    "x2": 1753.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1786.39,
+    "x2": 1851.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1883.59,
+    "x2": 1948.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1980.79,
+    "x2": 2045.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2077.99,
+    "x2": 2142.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2175.19,
+    "x2": 2239.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2272.39,
+    "x2": 2337.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2369.59,
+    "x2": 2434.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2466.79,
+    "x2": 2531.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2563.99,
+    "x2": 2628.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2661.19,
+    "x2": 2725.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2758.39,
+    "x2": 2823.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2855.59,
+    "x2": 2920.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2952.79,
+    "x2": 3017.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3049.99,
+    "x2": 3114.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3147.19,
+    "x2": 3211.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3244.39,
+    "x2": 3309.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3341.59,
+    "x2": 3406.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3438.79,
+    "x2": 3503.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3535.99,
+    "x2": 3600.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3633.19,
+    "x2": 3697.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3730.39,
+    "x2": 3795.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3827.59,
+    "x2": 3892.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3924.79,
+    "x2": 3989.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4021.99,
+    "x2": 4086.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4119.19,
+    "x2": 4183.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4216.39,
+    "x2": 4281.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4313.59,
+    "x2": 4378.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4410.79,
+    "x2": 4475.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4507.99,
+    "x2": 4572.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4605.19,
+    "x2": 4669.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4702.39,
+    "x2": 4767.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4799.59,
+    "x2": 4864.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4896.79,
+    "x2": 4961.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4993.99,
+    "x2": 5058.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5091.19,
+    "x2": 5155.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5188.39,
+    "x2": 5253.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5285.59,
+    "x2": 5286.6,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 522.79,
+    "x2": 587.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 619.99,
+    "x2": 684.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 717.19,
+    "x2": 781.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 814.39,
+    "x2": 879.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 911.59,
+    "x2": 976.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1008.79,
+    "x2": 1073.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1105.99,
+    "x2": 1170.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1203.19,
+    "x2": 1267.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1300.39,
+    "x2": 1365.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1397.59,
+    "x2": 1462.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1494.79,
+    "x2": 1559.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1591.99,
+    "x2": 1656.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1689.19,
+    "x2": 1753.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1786.39,
+    "x2": 1851.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1883.59,
+    "x2": 1948.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1980.79,
+    "x2": 2045.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2077.99,
+    "x2": 2142.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2175.19,
+    "x2": 2239.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2272.39,
+    "x2": 2337.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2369.59,
+    "x2": 2434.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2466.79,
+    "x2": 2531.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2563.99,
+    "x2": 2628.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2661.19,
+    "x2": 2725.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2758.39,
+    "x2": 2823.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2855.59,
+    "x2": 2920.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2952.79,
+    "x2": 3017.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3049.99,
+    "x2": 3114.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3147.19,
+    "x2": 3211.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3244.39,
+    "x2": 3309.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3341.59,
+    "x2": 3406.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3438.79,
+    "x2": 3503.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3535.99,
+    "x2": 3600.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3633.19,
+    "x2": 3697.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3730.39,
+    "x2": 3795.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3827.59,
+    "x2": 3892.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3924.79,
+    "x2": 3989.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4021.99,
+    "x2": 4086.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4119.19,
+    "x2": 4183.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4216.39,
+    "x2": 4281.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4313.59,
+    "x2": 4378.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4410.79,
+    "x2": 4475.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4507.99,
+    "x2": 4572.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4605.19,
+    "x2": 4669.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4702.39,
+    "x2": 4767.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4799.59,
+    "x2": 4864.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4896.79,
+    "x2": 4961.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4993.99,
+    "x2": 5058.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5091.19,
+    "x2": 5155.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5188.39,
+    "x2": 5253.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5285.59,
+    "x2": 5286.6,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 522.79,
+    "x2": 587.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 619.99,
+    "x2": 684.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 717.19,
+    "x2": 781.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 814.39,
+    "x2": 879.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 911.59,
+    "x2": 976.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1008.79,
+    "x2": 1073.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1105.99,
+    "x2": 1170.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1203.19,
+    "x2": 1267.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1300.39,
+    "x2": 1365.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1397.59,
+    "x2": 1462.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1494.79,
+    "x2": 1559.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1591.99,
+    "x2": 1656.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1689.19,
+    "x2": 1753.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1786.39,
+    "x2": 1851.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1883.59,
+    "x2": 1948.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1980.79,
+    "x2": 2045.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2077.99,
+    "x2": 2142.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2175.19,
+    "x2": 2239.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2272.39,
+    "x2": 2337.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2369.59,
+    "x2": 2434.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2466.79,
+    "x2": 2531.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2563.99,
+    "x2": 2628.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2661.19,
+    "x2": 2725.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2758.39,
+    "x2": 2823.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2855.59,
+    "x2": 2920.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2952.79,
+    "x2": 3017.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3049.99,
+    "x2": 3114.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3147.19,
+    "x2": 3211.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3244.39,
+    "x2": 3309.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3341.59,
+    "x2": 3406.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3438.79,
+    "x2": 3503.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3535.99,
+    "x2": 3600.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3633.19,
+    "x2": 3697.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3730.39,
+    "x2": 3795.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3827.59,
+    "x2": 3892.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3924.79,
+    "x2": 3989.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4021.99,
+    "x2": 4086.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4119.19,
+    "x2": 4183.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4216.39,
+    "x2": 4281.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4313.59,
+    "x2": 4378.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4410.79,
+    "x2": 4475.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4507.99,
+    "x2": 4572.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4605.19,
+    "x2": 4669.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4702.39,
+    "x2": 4767.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4799.59,
+    "x2": 4864.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4896.79,
+    "x2": 4961.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4993.99,
+    "x2": 5058.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5091.19,
+    "x2": 5155.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5188.39,
+    "x2": 5253.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5285.59,
+    "x2": 5286.6,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 477.73,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 477.73,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 477.73,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 477.73,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 5286.6,
+    "y1": 2766.66,
+    "y2": 2766.66
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2766.6600000000003,
+   "fill": "#ffffff",
+   "left": 522.79,
+   "right": 5286.6,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 113.4
+  },
+  "rc": 0,
+  "scheme": "stcolor",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2766.66,
+    "y2": 2701.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2669.46,
+    "y2": 2604.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2572.26,
+    "y2": 2507.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2475.06,
+    "y2": 2410.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2377.86,
+    "y2": 2313.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2280.66,
+    "y2": 2215.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2183.46,
+    "y2": 2118.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2086.26,
+    "y2": 2021.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1989.06,
+    "y2": 1924.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1891.86,
+    "y2": 1827.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1794.66,
+    "y2": 1729.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1697.46,
+    "y2": 1632.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1600.26,
+    "y2": 1535.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1503.06,
+    "y2": 1438.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1405.86,
+    "y2": 1341.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1308.66,
+    "y2": 1243.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1211.46,
+    "y2": 1146.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1114.26,
+    "y2": 1049.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1017.06,
+    "y2": 952.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 919.86,
+    "y2": 855.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 822.66,
+    "y2": 757.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 725.46,
+    "y2": 660.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 628.26,
+    "y2": 563.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 531.06,
+    "y2": 466.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 433.86,
+    "y2": 369.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 336.66,
+    "y2": 271.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 239.46,
+    "y2": 174.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 142.26,
+    "y2": 113.4
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2766.66,
+    "y2": 2701.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2669.46,
+    "y2": 2604.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2572.26,
+    "y2": 2507.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2475.06,
+    "y2": 2410.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2377.86,
+    "y2": 2313.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2280.66,
+    "y2": 2215.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2183.46,
+    "y2": 2118.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2086.26,
+    "y2": 2021.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1989.06,
+    "y2": 1924.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1891.86,
+    "y2": 1827.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1794.66,
+    "y2": 1729.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1697.46,
+    "y2": 1632.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1600.26,
+    "y2": 1535.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1503.06,
+    "y2": 1438.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1405.86,
+    "y2": 1341.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1308.66,
+    "y2": 1243.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1211.46,
+    "y2": 1146.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1114.26,
+    "y2": 1049.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1017.06,
+    "y2": 952.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 919.86,
+    "y2": 855.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 822.66,
+    "y2": 757.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 725.46,
+    "y2": 660.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 628.26,
+    "y2": 563.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 531.06,
+    "y2": 466.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 433.86,
+    "y2": 369.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 336.66,
+    "y2": 271.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 239.46,
+    "y2": 174.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 142.26,
+    "y2": 113.4
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2766.66,
+    "y2": 2701.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2669.46,
+    "y2": 2604.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2572.26,
+    "y2": 2507.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2475.06,
+    "y2": 2410.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2377.86,
+    "y2": 2313.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2280.66,
+    "y2": 2215.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2183.46,
+    "y2": 2118.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2086.26,
+    "y2": 2021.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1989.06,
+    "y2": 1924.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1891.86,
+    "y2": 1827.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1794.66,
+    "y2": 1729.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1697.46,
+    "y2": 1632.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1600.26,
+    "y2": 1535.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1503.06,
+    "y2": 1438.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1405.86,
+    "y2": 1341.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1308.66,
+    "y2": 1243.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1211.46,
+    "y2": 1146.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1114.26,
+    "y2": 1049.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1017.06,
+    "y2": 952.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 919.86,
+    "y2": 855.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 822.66,
+    "y2": 757.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 725.46,
+    "y2": 660.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 628.26,
+    "y2": 563.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 531.06,
+    "y2": 466.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 433.86,
+    "y2": 369.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 336.66,
+    "y2": 271.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 239.46,
+    "y2": 174.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 142.26,
+    "y2": 113.4
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2766.66,
+    "y2": 2701.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2669.46,
+    "y2": 2604.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2572.26,
+    "y2": 2507.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2475.06,
+    "y2": 2410.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2377.86,
+    "y2": 2313.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2280.66,
+    "y2": 2215.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2183.46,
+    "y2": 2118.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2086.26,
+    "y2": 2021.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1989.06,
+    "y2": 1924.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1891.86,
+    "y2": 1827.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1794.66,
+    "y2": 1729.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1697.46,
+    "y2": 1632.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1600.26,
+    "y2": 1535.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1503.06,
+    "y2": 1438.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1405.86,
+    "y2": 1341.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1308.66,
+    "y2": 1243.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1211.46,
+    "y2": 1146.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1114.26,
+    "y2": 1049.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1017.06,
+    "y2": 952.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 919.86,
+    "y2": 855.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 822.66,
+    "y2": 757.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 725.46,
+    "y2": 660.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 628.26,
+    "y2": 563.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 531.06,
+    "y2": 466.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 433.86,
+    "y2": 369.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 336.66,
+    "y2": 271.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 239.46,
+    "y2": 174.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 142.26,
+    "y2": 113.4
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 522.79,
+    "y1": 2766.66,
+    "y2": 113.4
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2766.66,
+    "y2": 2811.54
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2766.66,
+    "y2": 2811.54
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2766.66,
+    "y2": 2811.54
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2766.66,
+    "y2": 2811.54
+   }
+  ]
+ },
+ "ms12.pci_y2": {
+  "command": "twoway pci 20 3000 30 4000, yaxis(2) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1973.5,
+    "y2": 1973.5
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1521.18,
+    "y2": 1521.18
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1068.86,
+    "y2": 1068.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 616.54,
+    "y2": 616.54
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 164.22,
+    "y2": 164.22
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 454.16,
+    "x2": 454.16,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1122.41,
+    "x2": 1122.41,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1790.79,
+    "x2": 1790.79,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2459.04,
+    "x2": 2459.04,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3127.41,
+    "x2": 3127.41,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "ms12.swap": {
+  "command": "twoway (scatter price weight, yaxis(2)) (scatter mpg weight), name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3569.07,
+    "y1": 2170.27,
+    "y2": 2170.27
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3569.07,
+    "y1": 1523.16,
+    "y2": 1523.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3569.07,
+    "y1": 876.05,
+    "y2": 876.05
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3569.07,
+    "y1": 228.82,
+    "y2": 228.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3569.07,
+    "x2": 3609.05,
+    "y1": 2170.27,
+    "y2": 2170.27
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3569.07,
+    "x2": 3609.05,
+    "y1": 1523.16,
+    "y2": 1523.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3569.07,
+    "x2": 3609.05,
+    "y1": 876.05,
+    "y2": 876.05
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3569.07,
+    "x2": 3609.05,
+    "y1": 228.82,
+    "y2": 228.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2170.27,
+    "y2": 2170.27
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1539.75,
+    "y2": 1539.75
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 909.1,
+    "y2": 909.1
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 278.45,
+    "y2": 278.45
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3569.07,
+    "y1": 2233.63,
+    "y2": 2233.63
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3569.07,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3569.07,
+    "x2": 3569.07,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 680.13,
+    "x2": 680.13,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1621.99,
+    "x2": 1621.99,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2563.85,
+    "x2": 2563.85,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3505.71,
+    "x2": 3505.71,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ]
+ },
+ "ms12.x2": {
+  "command": "twoway scatter mpg weight, xaxis(2) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "ms12.x2_stcolor": {
+  "command": "twoway scatter mpg weight, xaxis(2) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 522.79,
+    "x2": 587.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 619.99,
+    "x2": 684.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 717.19,
+    "x2": 781.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 814.39,
+    "x2": 879.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 911.59,
+    "x2": 976.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1008.79,
+    "x2": 1073.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1105.99,
+    "x2": 1170.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1203.19,
+    "x2": 1267.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1300.39,
+    "x2": 1365.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1397.59,
+    "x2": 1462.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1494.79,
+    "x2": 1559.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1591.99,
+    "x2": 1656.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1689.19,
+    "x2": 1753.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1786.39,
+    "x2": 1851.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1883.59,
+    "x2": 1948.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1980.79,
+    "x2": 2045.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2077.99,
+    "x2": 2142.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2175.19,
+    "x2": 2239.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2272.39,
+    "x2": 2337.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2369.59,
+    "x2": 2434.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2466.79,
+    "x2": 2531.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2563.99,
+    "x2": 2628.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2661.19,
+    "x2": 2725.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2758.39,
+    "x2": 2823.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2855.59,
+    "x2": 2920.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2952.79,
+    "x2": 3017.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3049.99,
+    "x2": 3114.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3147.19,
+    "x2": 3211.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3244.39,
+    "x2": 3309.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3341.59,
+    "x2": 3406.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3438.79,
+    "x2": 3503.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3535.99,
+    "x2": 3600.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3633.19,
+    "x2": 3697.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3730.39,
+    "x2": 3795.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3827.59,
+    "x2": 3892.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3924.79,
+    "x2": 3989.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4021.99,
+    "x2": 4086.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4119.19,
+    "x2": 4183.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4216.39,
+    "x2": 4281.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4313.59,
+    "x2": 4378.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4410.79,
+    "x2": 4475.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4507.99,
+    "x2": 4572.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4605.19,
+    "x2": 4669.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4702.39,
+    "x2": 4767.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4799.59,
+    "x2": 4864.39,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4896.79,
+    "x2": 4961.59,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4993.99,
+    "x2": 5058.79,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5091.19,
+    "x2": 5155.99,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5188.39,
+    "x2": 5253.19,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5285.59,
+    "x2": 5286.6,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 522.79,
+    "x2": 587.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 619.99,
+    "x2": 684.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 717.19,
+    "x2": 781.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 814.39,
+    "x2": 879.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 911.59,
+    "x2": 976.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1008.79,
+    "x2": 1073.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1105.99,
+    "x2": 1170.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1203.19,
+    "x2": 1267.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1300.39,
+    "x2": 1365.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1397.59,
+    "x2": 1462.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1494.79,
+    "x2": 1559.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1591.99,
+    "x2": 1656.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1689.19,
+    "x2": 1753.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1786.39,
+    "x2": 1851.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1883.59,
+    "x2": 1948.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1980.79,
+    "x2": 2045.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2077.99,
+    "x2": 2142.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2175.19,
+    "x2": 2239.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2272.39,
+    "x2": 2337.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2369.59,
+    "x2": 2434.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2466.79,
+    "x2": 2531.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2563.99,
+    "x2": 2628.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2661.19,
+    "x2": 2725.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2758.39,
+    "x2": 2823.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2855.59,
+    "x2": 2920.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2952.79,
+    "x2": 3017.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3049.99,
+    "x2": 3114.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3147.19,
+    "x2": 3211.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3244.39,
+    "x2": 3309.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3341.59,
+    "x2": 3406.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3438.79,
+    "x2": 3503.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3535.99,
+    "x2": 3600.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3633.19,
+    "x2": 3697.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3730.39,
+    "x2": 3795.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3827.59,
+    "x2": 3892.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3924.79,
+    "x2": 3989.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4021.99,
+    "x2": 4086.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4119.19,
+    "x2": 4183.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4216.39,
+    "x2": 4281.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4313.59,
+    "x2": 4378.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4410.79,
+    "x2": 4475.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4507.99,
+    "x2": 4572.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4605.19,
+    "x2": 4669.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4702.39,
+    "x2": 4767.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4799.59,
+    "x2": 4864.39,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4896.79,
+    "x2": 4961.59,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4993.99,
+    "x2": 5058.79,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5091.19,
+    "x2": 5155.99,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5188.39,
+    "x2": 5253.19,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5285.59,
+    "x2": 5286.6,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 522.79,
+    "x2": 587.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 619.99,
+    "x2": 684.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 717.19,
+    "x2": 781.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 814.39,
+    "x2": 879.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 911.59,
+    "x2": 976.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1008.79,
+    "x2": 1073.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1105.99,
+    "x2": 1170.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1203.19,
+    "x2": 1267.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1300.39,
+    "x2": 1365.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1397.59,
+    "x2": 1462.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1494.79,
+    "x2": 1559.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1591.99,
+    "x2": 1656.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1689.19,
+    "x2": 1753.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1786.39,
+    "x2": 1851.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1883.59,
+    "x2": 1948.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1980.79,
+    "x2": 2045.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2077.99,
+    "x2": 2142.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2175.19,
+    "x2": 2239.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2272.39,
+    "x2": 2337.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2369.59,
+    "x2": 2434.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2466.79,
+    "x2": 2531.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2563.99,
+    "x2": 2628.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2661.19,
+    "x2": 2725.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2758.39,
+    "x2": 2823.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2855.59,
+    "x2": 2920.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2952.79,
+    "x2": 3017.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3049.99,
+    "x2": 3114.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3147.19,
+    "x2": 3211.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3244.39,
+    "x2": 3309.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3341.59,
+    "x2": 3406.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3438.79,
+    "x2": 3503.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3535.99,
+    "x2": 3600.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3633.19,
+    "x2": 3697.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3730.39,
+    "x2": 3795.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3827.59,
+    "x2": 3892.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3924.79,
+    "x2": 3989.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4021.99,
+    "x2": 4086.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4119.19,
+    "x2": 4183.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4216.39,
+    "x2": 4281.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4313.59,
+    "x2": 4378.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4410.79,
+    "x2": 4475.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4507.99,
+    "x2": 4572.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4605.19,
+    "x2": 4669.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4702.39,
+    "x2": 4767.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4799.59,
+    "x2": 4864.39,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4896.79,
+    "x2": 4961.59,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4993.99,
+    "x2": 5058.79,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5091.19,
+    "x2": 5155.99,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5188.39,
+    "x2": 5253.19,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5285.59,
+    "x2": 5286.6,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 522.79,
+    "x2": 587.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 619.99,
+    "x2": 684.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 717.19,
+    "x2": 781.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 814.39,
+    "x2": 879.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 911.59,
+    "x2": 976.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1008.79,
+    "x2": 1073.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1105.99,
+    "x2": 1170.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1203.19,
+    "x2": 1267.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1300.39,
+    "x2": 1365.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1397.59,
+    "x2": 1462.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1494.79,
+    "x2": 1559.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1591.99,
+    "x2": 1656.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1689.19,
+    "x2": 1753.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1786.39,
+    "x2": 1851.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1883.59,
+    "x2": 1948.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 1980.79,
+    "x2": 2045.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2077.99,
+    "x2": 2142.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2175.19,
+    "x2": 2239.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2272.39,
+    "x2": 2337.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2369.59,
+    "x2": 2434.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2466.79,
+    "x2": 2531.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2563.99,
+    "x2": 2628.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2661.19,
+    "x2": 2725.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2758.39,
+    "x2": 2823.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2855.59,
+    "x2": 2920.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2952.79,
+    "x2": 3017.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3049.99,
+    "x2": 3114.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3147.19,
+    "x2": 3211.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3244.39,
+    "x2": 3309.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3341.59,
+    "x2": 3406.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3438.79,
+    "x2": 3503.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3535.99,
+    "x2": 3600.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3633.19,
+    "x2": 3697.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3730.39,
+    "x2": 3795.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3827.59,
+    "x2": 3892.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3924.79,
+    "x2": 3989.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4021.99,
+    "x2": 4086.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4119.19,
+    "x2": 4183.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4216.39,
+    "x2": 4281.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4313.59,
+    "x2": 4378.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4410.79,
+    "x2": 4475.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4507.99,
+    "x2": 4572.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4605.19,
+    "x2": 4669.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4702.39,
+    "x2": 4767.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4799.59,
+    "x2": 4864.39,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4896.79,
+    "x2": 4961.59,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 4993.99,
+    "x2": 5058.79,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5091.19,
+    "x2": 5155.99,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5188.39,
+    "x2": 5253.19,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5285.59,
+    "x2": 5286.6,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 477.73,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 477.73,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 477.73,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 477.73,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 5286.6,
+    "y1": 2766.66,
+    "y2": 2766.66
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2766.6600000000003,
+   "fill": "#ffffff",
+   "left": 522.79,
+   "right": 5286.6,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 113.4
+  },
+  "rc": 0,
+  "scheme": "stcolor",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 522.79,
+    "y1": 2766.66,
+    "y2": 113.4
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2766.66,
+    "y2": 2811.54
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2766.66,
+    "y2": 2811.54
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2766.66,
+    "y2": 2811.54
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2766.66,
+    "y2": 2811.54
+   }
+  ]
+ },
+ "ms12.y2": {
+  "command": "twoway scatter mpg weight, yaxis(2) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "ms12.y2_grid": {
+  "command": "twoway scatter mpg weight, yaxis(2) ylabel(, grid axis(2)) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#eaf2f3",
+    "width": 8.64,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "ms12.y2_s2color": {
+  "command": "twoway scatter mpg weight, yaxis(2) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ },
+ "ms12.y2_stcolor": {
+  "command": "twoway scatter mpg weight, yaxis(2) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 477.73,
+    "y1": 2695.28,
+    "y2": 2695.28
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 477.73,
+    "y1": 1885.44,
+    "y2": 1885.44
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 477.73,
+    "y1": 1075.61,
+    "y2": 1075.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 477.73,
+    "y1": 265.61,
+    "y2": 265.61
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 5286.6,
+    "y1": 2766.66,
+    "y2": 2766.66
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2766.6600000000003,
+   "fill": "#ffffff",
+   "left": 522.79,
+   "right": 5286.6,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 113.4
+  },
+  "rc": 0,
+  "scheme": "stcolor",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2766.66,
+    "y2": 2701.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2669.46,
+    "y2": 2604.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2572.26,
+    "y2": 2507.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2475.06,
+    "y2": 2410.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2377.86,
+    "y2": 2313.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2280.66,
+    "y2": 2215.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2183.46,
+    "y2": 2118.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2086.26,
+    "y2": 2021.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1989.06,
+    "y2": 1924.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1891.86,
+    "y2": 1827.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1794.66,
+    "y2": 1729.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1697.46,
+    "y2": 1632.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1600.26,
+    "y2": 1535.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1503.06,
+    "y2": 1438.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1405.86,
+    "y2": 1341.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1308.66,
+    "y2": 1243.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1211.46,
+    "y2": 1146.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1114.26,
+    "y2": 1049.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 1017.06,
+    "y2": 952.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 919.86,
+    "y2": 855.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 822.66,
+    "y2": 757.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 725.46,
+    "y2": 660.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 628.26,
+    "y2": 563.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 531.06,
+    "y2": 466.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 433.86,
+    "y2": 369.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 336.66,
+    "y2": 271.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 239.46,
+    "y2": 174.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 142.26,
+    "y2": 113.4
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2766.66,
+    "y2": 2701.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2669.46,
+    "y2": 2604.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2572.26,
+    "y2": 2507.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2475.06,
+    "y2": 2410.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2377.86,
+    "y2": 2313.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2280.66,
+    "y2": 2215.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2183.46,
+    "y2": 2118.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2086.26,
+    "y2": 2021.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1989.06,
+    "y2": 1924.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1891.86,
+    "y2": 1827.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1794.66,
+    "y2": 1729.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1697.46,
+    "y2": 1632.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1600.26,
+    "y2": 1535.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1503.06,
+    "y2": 1438.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1405.86,
+    "y2": 1341.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1308.66,
+    "y2": 1243.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1211.46,
+    "y2": 1146.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1114.26,
+    "y2": 1049.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 1017.06,
+    "y2": 952.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 919.86,
+    "y2": 855.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 822.66,
+    "y2": 757.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 725.46,
+    "y2": 660.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 628.26,
+    "y2": 563.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 531.06,
+    "y2": 466.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 433.86,
+    "y2": 369.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 336.66,
+    "y2": 271.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 239.46,
+    "y2": 174.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 142.26,
+    "y2": 113.4
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2766.66,
+    "y2": 2701.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2669.46,
+    "y2": 2604.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2572.26,
+    "y2": 2507.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2475.06,
+    "y2": 2410.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2377.86,
+    "y2": 2313.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2280.66,
+    "y2": 2215.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2183.46,
+    "y2": 2118.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2086.26,
+    "y2": 2021.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1989.06,
+    "y2": 1924.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1891.86,
+    "y2": 1827.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1794.66,
+    "y2": 1729.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1697.46,
+    "y2": 1632.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1600.26,
+    "y2": 1535.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1503.06,
+    "y2": 1438.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1405.86,
+    "y2": 1341.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1308.66,
+    "y2": 1243.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1211.46,
+    "y2": 1146.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1114.26,
+    "y2": 1049.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 1017.06,
+    "y2": 952.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 919.86,
+    "y2": 855.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 822.66,
+    "y2": 757.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 725.46,
+    "y2": 660.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 628.26,
+    "y2": 563.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 531.06,
+    "y2": 466.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 433.86,
+    "y2": 369.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 336.66,
+    "y2": 271.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 239.46,
+    "y2": 174.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 142.26,
+    "y2": 113.4
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2766.66,
+    "y2": 2701.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2669.46,
+    "y2": 2604.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2572.26,
+    "y2": 2507.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2475.06,
+    "y2": 2410.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2377.86,
+    "y2": 2313.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2280.66,
+    "y2": 2215.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2183.46,
+    "y2": 2118.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2086.26,
+    "y2": 2021.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1989.06,
+    "y2": 1924.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1891.86,
+    "y2": 1827.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1794.66,
+    "y2": 1729.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1697.46,
+    "y2": 1632.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1600.26,
+    "y2": 1535.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1503.06,
+    "y2": 1438.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1405.86,
+    "y2": 1341.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1308.66,
+    "y2": 1243.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1211.46,
+    "y2": 1146.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1114.26,
+    "y2": 1049.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 1017.06,
+    "y2": 952.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 919.86,
+    "y2": 855.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 822.66,
+    "y2": 757.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 725.46,
+    "y2": 660.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 628.26,
+    "y2": 563.46
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 531.06,
+    "y2": 466.26
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 433.86,
+    "y2": 369.06
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 336.66,
+    "y2": 271.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 239.46,
+    "y2": 174.66
+   },
+   {
+    "dasharray": null,
+    "stroke": "#f0f0f0",
+    "width": 9.72,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 142.26,
+    "y2": 113.4
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 522.79,
+    "x2": 522.79,
+    "y1": 2766.66,
+    "y2": 113.4
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 936.39,
+    "x2": 936.39,
+    "y1": 2766.66,
+    "y2": 2811.54
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 2362.67,
+    "x2": 2362.67,
+    "y1": 2766.66,
+    "y2": 2811.54
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 3788.94,
+    "x2": 3788.94,
+    "y1": 2766.66,
+    "y2": 2811.54
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 6.48,
+    "x1": 5215.39,
+    "x2": 5215.39,
+    "y1": 2766.66,
+    "y2": 2811.54
+   }
+  ]
+ },
+ "ms12.y2_y3": {
+  "command": "twoway (scatter mpg weight, yaxis(2)) (scatter price weight, yaxis(3)), name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3569.07,
+    "x2": 3609.05,
+    "y1": 2170.27,
+    "y2": 2170.27
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3569.07,
+    "x2": 3609.05,
+    "y1": 1539.75,
+    "y2": 1539.75
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3569.07,
+    "x2": 3609.05,
+    "y1": 909.1,
+    "y2": 909.1
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3569.07,
+    "x2": 3609.05,
+    "y1": 278.45,
+    "y2": 278.45
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2170.27,
+    "y2": 2170.27
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1523.16,
+    "y2": 1523.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 876.05,
+    "y2": 876.05
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 228.82,
+    "y2": 228.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3569.07,
+    "y1": 2233.63,
+    "y2": 2233.63
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3569.07,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3569.07,
+    "x2": 3569.07,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 680.13,
+    "x2": 680.13,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1621.99,
+    "x2": 1621.99,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2563.85,
+    "x2": 2563.85,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3505.71,
+    "x2": 3505.71,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ]
+ },
+ "ms12.y3": {
+  "command": "twoway scatter mpg weight, yaxis(3) name(u44k, replace)",
+  "hlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 2425.82,
+    "y2": 2425.82
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 1696.29,
+    "y2": 1696.29
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 966.64,
+    "y2": 966.64
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 350.83,
+    "y1": 237.11,
+    "y2": 237.11
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 3859.02,
+    "y1": 2489.19,
+    "y2": 2489.19
+   }
+  ],
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scheme": "s2color",
+  "vlines": [
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 701.66,
+    "x2": 701.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 1733.0,
+    "x2": 1733.0,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 2764.33,
+    "x2": 2764.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "dasharray": null,
+    "stroke": "#000000",
+    "width": 5.76,
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ]
+ }
+}
