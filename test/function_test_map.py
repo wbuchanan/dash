@@ -1263,6 +1263,10 @@ FUNCTIONS = {
  '_dash_layer_series.<locals>.Ly': 'test/test_varlabel_options.py::TestVarlabels::test_range_and_fit_layers',
  '_dash_layer_series.<locals>.words': 'test/test_varlabel_options.py::TestVarlabels::test_range_and_fit_layers',
  '_dash_axis_default_titles': 'test/test_series_labels.py::TestTheAxisTitleRule::test_first_equals_last',
+ '_dash_axis_default_titles.<locals>._axis_title': 'test/test_axis_titles_p9.py::TestTheRegionRule::test_each_probe',
+ '_dash_axis_default_titles.<locals>._nums': 'test/test_axis_titles_p9.py::TestTheRegionRule::test_each_probe',
+ '_dash_axis_default_titles.<locals>._region_titles': 'test/test_axis_titles_p9.py::TestTheRegionRule::test_each_probe',
+ '_dash_axis_default_titles.<locals>._regions': 'test/test_axis_titles_p9.py::TestTheRegionRule::test_each_probe',
  # WP-30 S21 (P1.3a): natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)
  '_dash_axis_plan': 'test/test_default_axes.py::TestTheHelpers::test_axis_plan_shape',
  '_dash_by_numticks': 'test/test_default_axes.py::TestTheHelpers::test_the_by_tick_count',

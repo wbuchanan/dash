@@ -499,7 +499,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-20 Tracked:** Open (WP-44 section 44-04).
 - **MS-14 Tracked:** Open (WP-44 section 44-03).
 - **MS-12 Tracked:** Closed in WP-44, BUGS.md "A graph whose only plot is on yaxis(2) is drawn with y gridlines; twoway draws none", commit de3e00e.
-- **MS-11 Tracked:** Open (WP-44 section 44-01).
+- **MS-11 Tracked:** Closed in WP-44, BUGS.md "twoway's '<first title>...' x title (different x across y-axis groups, or upright plus turned layers) is not drawn", commit pending.
 - **MS-13 Tracked:** Closed in WP-44, BUGS.md "ytitle(A) ytitle(B, suffix) is joined on one line; twoway draws two lines for axis titles", commit pending.
 - **PIC-12 Tracked:** Closed in WP-44, BUGS.md "A right-hand y title reads top to bottom; twoway's reads upward (every economist graph, any yaxis(2))", commit pending.
 - **DG-6 Tracked:** Open (WP-44 section 44-04).

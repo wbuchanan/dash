@@ -391,10 +391,11 @@ _DRAW = dict({t: [_tplot(t, _H)] for t in _TURNED}, **{
     "HZ-28": [_tplot("scatter"), _tplot("bar", dict(_H, yaxis="2"))],
     "hist-d": [_tplot("histogram", _H, y="Day")],
 })
-#: Read apart: twoway writes HZ-28's mixed x title "Xvar..." (a two-label
-#: axis), which dash leaves untitled by S19's rule; its y and y2 titles are
-#: compared.  tsrline's x is its time variable here.
-_NO_XTITLE = {"HZ-28"}
+#: Flipped (WP-44 MS-11): HZ-28's x title "Xvar..." was read apart because
+#: dash left it untitled; that was wrong -- twoway's plot-region rule
+#: titles it so and dash draws it now (test_axis_titles_p9.py::
+#: TestTheRegionRule).  tsrline's x is its time variable here.
+_NO_XTITLE = set()
 #: A date and a number share each axis: a numeric axis labelled in the
 #: first layer's format (S35's mixed axis), read by test_mixed_order.
 _MIXED = {"HZ-26", "HZ-27"}

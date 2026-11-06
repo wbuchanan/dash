@@ -1015,6 +1015,7 @@ and now matches Stata.
 ### Fixed in WP-44
 
 - A graph whose every layer is on yaxis(2) (or xaxis(2), or a third to ninth axis) draws that axis without gridlines, as twoway draws a second axis; dash drew the first axis's grid. ylabel(, grid axis(2)) still draws it (WP-44, MS-12)
+- An axis shared by plot regions titled differently is titled as twoway titles it, the first region's title and "..." -- (scatter mpg weight) (scatter price length, yaxis(2)) titles its x axis "Weight (lbs.)..."; it was untitled or took one layer's label (WP-44, MS-11)
 - A suffix or prefix copy of an axis title -- ytitle(A) ytitle(B, suffix), and the axis(2) forms -- draws a second line, as twoway draws it; it was joined to the first (WP-44, MS-13)
 - A right-hand y title -- a second axis, yscale(alt), scheme(economist) -- reads upward, as twoway draws it; it read downward (WP-44, PIC-12)
 - Axis titles draw orientation(), placement(), linegap(), tstyle(), margin(), box and its colours, width() and height() as twoway draws them, a boxed right-hand title included; they were named in the note (WP-44, AX-13)

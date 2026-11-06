@@ -43233,26 +43233,77 @@ def _dash_axis_default_titles(plots, var_labels=None, yaxis=1, xaxis=1,
     counts on an axis when that axis's number is among its ``yaxis()`` /
     ``xaxis()`` numbers (1 when it names none).  Raw text, compared raw.
     Total: anything in *plots* that is not a dict is skipped.
+
+    WP-44 MS-11: the rule is twoway's per plot region (twowaygraph_g.class
+    ``create_axes``): a layer joins the first region whose x axes and y
+    axes both meet its own, else opens one; each region is titled by the
+    rule above; then, from the last region holding the axis to the first,
+    a region whose title differs from the title so far gives its own
+    title and "..." -- ``(scatter mpg weight) (scatter price length,
+    yaxis(2))`` is titled ``Weight (lbs.)...`` -- and a y axis so marked
+    is untitled (axis_title_truth.json ms11_*).  One region gives the
+    rule above unchanged.
     """
-    ys, xs = [], []
-    for plot in plots or ():
-        if not isinstance(plot, dict):
-            continue
-        opts = (plot.get("options") if isinstance(plot.get("options"), dict)
-                else {})
-        series = _dash_layer_series(plot, var_labels, default_level)
-        if _dash_is_horizontal(plot):
-            # Each series read through its orientation (WP-30 P1.9a).
-            series = [(s[1], s[0]) + tuple(s[2:]) for s in series]
-        if str(yaxis) in (str(opts.get("yaxis", "1") or "1").split()
-                          or ["1"]):
+    def _nums(opts, which):
+        return set(str(opts.get(which, "1") or "1").split() or ["1"])
+
+    def _regions(plots):
+        # twoway's plot regions (twowaygraph_g.class: a plot joins the
+        # first region whose x axes and y axes both meet its own, else
+        # opens a new one; the region takes the plot's axes).
+        regs = []
+        for plot in plots or ():
+            if not isinstance(plot, dict):
+                continue
+            opts = (plot.get("options")
+                    if isinstance(plot.get("options"), dict) else {})
+            xn, yn = _nums(opts, "xaxis"), _nums(opts, "yaxis")
+            for r in regs:
+                if r[0] & xn and r[1] & yn:
+                    r[0].update(xn)
+                    r[1].update(yn)
+                    r[2].append(plot)
+                    break
+            else:
+                regs.append((set(xn), set(yn), [plot]))
+        return regs
+
+    def _region_titles(rplots):
+        # A region's title on each dimension: the first series' label
+        # when the last series has the same one (K01-K11).
+        ys, xs = [], []
+        for plot in rplots:
+            series = _dash_layer_series(plot, var_labels, default_level)
+            if _dash_is_horizontal(plot):
+                # Each series read through its orientation (WP-30 P1.9a).
+                series = [(s[1], s[0]) + tuple(s[2:]) for s in series]
             ys.extend(s[0] for s in series)
-        if str(xaxis) in (str(opts.get("xaxis", "1") or "1").split()
-                          or ["1"]):
             xs.extend(s[1] for s in series)
-    x = xs[0] if xs and xs[0] == xs[-1] else ""
-    y = ys[0] if ys and ys[0] == ys[-1] else ""
-    return x, y
+        return (xs[0] if xs and xs[0] == xs[-1] else "",
+                ys[0] if ys and ys[0] == ys[-1] else "")
+
+    regs = _regions(plots)
+    titles = [_region_titles(r[2]) for r in regs]
+
+    def _axis_title(num, d):
+        # From the highest-numbered region holding the axis down: the
+        # first gives the title; a later one whose title differs gives
+        # its own title and "..." (create_axes).  A y axis so marked is
+        # untitled.
+        title, dots = None, False
+        for i in range(len(regs) - 1, -1, -1):
+            if str(num) not in regs[i][d]:
+                continue
+            t = titles[i][d]
+            if title is None:
+                title = t
+            elif t != title:
+                title, dots = t + "...", True
+        if title is None:
+            return ""
+        return "" if (dots and d == 1) else title
+
+    return _axis_title(xaxis, 0), _axis_title(yaxis, 1)
 
 
 def _dash_axis_labels(plots, graph_opts, var_labels, seen=None, key=""):

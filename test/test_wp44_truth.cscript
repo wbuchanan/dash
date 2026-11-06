@@ -596,6 +596,37 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
 }
 * ==== end S01 ====
 
+* ==== S01 MS-11: the ... default title ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+    local q01 "`w44_work'/s01"
+    capture mkdir "`q01'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4401-6: layers on two y axes with different x variables: twoway
+    // titles the x axis "Weight (lbs.)..." (audit E12, E13, C04), and so
+    // does dash in both modes.
+    _q4401_reg "`q01'" 41 "xt:Weight (lbs.)..." auto (scatter mpg weight) (scatter price length, yaxis(2)),
+    _q4401_same Q4401-6 "E12" "Weight (lbs.)..."
+    _q4401_reg "`q01'" 42 "xt:Weight (lbs.)..." auto (scatter mpg weight) (scatteri 20 3000 25 4000, yaxis(2)),
+    _q4401_same Q4401-6 "E13" "Weight (lbs.)..."
+    _q4401_reg "`q01'" 43 "xt:Weight (lbs.)..." auto (scatter mpg weight) (scatter mpg length, yaxis(2)) (scatter price weight, yaxis(2)),
+    _q4401_same Q4401-6 "C04" "Weight (lbs.)..."
+    _w44_done Q4401-6 "the ... x title of E12, E13 and C04"
+
+    // Q4401-7: an upright layer beside a turned one on y axis 2 (HZ-28).
+    _q4401_reg "`q01'" 44 "xt:Weight (lbs.)..." auto (scatter mpg weight) (rcap mpg turn weight, horizontal yaxis(2)),
+    _q4401_same Q4401-7 "HZ-28" "Weight (lbs.)..."
+    _w44_done Q4401-7 "the ... x title beside a turned layer"
+
+    capture graph drop _all
+    dash clear
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

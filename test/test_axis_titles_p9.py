@@ -479,3 +479,56 @@ class TestTwoLines:
         f, w = _figs(mode, {"ytitle": '`"A"\' `"B"\''})
         assert not _notes(w), w
         assert tda._axis(f, "y").axis_label == "A\nB"
+
+
+def _ms11(key):
+    """twoway's x title for a probe: the text just below the plot
+    region, not a tick label's or the legend's."""
+    row = _T[key]
+    pr = row["plotregion"]
+    xt = [t["text"] for t in row["texts"] if t["rotate"] is None
+          and t["anchor"] == "middle" and t["y"] > pr["bottom"]
+          and t["y"] < pr["bottom"] + 300
+          and (any(c.isalpha() for c in t["text"]) or t["text"] == "...")]
+    return xt[0] if xt else ""
+
+
+_LAB = {"mpg": "Mileage (mpg)", "weight": "Weight (lbs.)",
+        "price": "Price", "length": "Length (in.)",
+        "turn": "Turn circle (ft.)"}
+_REGION = [
+    ("ms11_e12", [P("scatter", "mpg", "weight"),
+                  P("scatter", "price", "length", yaxis=2)]),
+    ("ms11_c04", [P("scatter", "mpg", "weight"),
+                  P("scatter", "mpg", "length", yaxis=2),
+                  P("scatter", "price", "weight", yaxis=2)]),
+    ("ms11_same", [P("scatter", "mpg", "weight"),
+                   P("scatter", "price", "weight", yaxis=2)]),
+    ("ms11_empty1", [P("scatter", "mpg", "weight"),
+                     P("scatter", "mpg", "length"),
+                     P("scatter", "price", "weight", yaxis=2)]),
+    ("ms11_three", [P("scatter", "mpg", "weight"),
+                    P("scatter", "price", "length", yaxis=2),
+                    P("scatter", "turn", "weight", yaxis=3)]),
+]
+
+
+class TestTheRegionRule:
+    """MS-11: twoway titles an axis per plot region (a layer joins the
+    first region whose x and y axes both meet its own) and, walking the
+    regions from the last, appends "..." where a region's title differs
+    (twowaygraph_g.class create_axes; ms11_*)."""
+
+    @pytest.mark.parametrize("key,plots", _REGION,
+                             ids=[r[0] for r in _REGION])
+    def test_each_probe(self, key, plots):
+        want = _ms11(key)
+        x, _y = dr._dash_axis_default_titles(plots, _LAB)
+        assert x == want, (key, x, want)
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_drawn(self, mode):
+        want = _ms11("ms11_e12")
+        assert want == "Weight (lbs.)..."
+        f, _w = _figs(mode, {}, _REGION[0][1])
+        assert tda._axis(f, "x").axis_label == want

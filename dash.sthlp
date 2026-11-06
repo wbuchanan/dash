@@ -4315,9 +4315,14 @@ A {cmd:ci} fit has two keys, its band {it:#}{cmd:% CI} and then its line.
 Each axis is titled by default with the label of the first series
 drawn on it when the last series drawn on it has the same label, and
 is untitled otherwise, as {cmd:twoway} titles it; a {cmd:ci} fit is
-two series, band then line.  The rule holds for each axis on its own,
-{cmd:yaxis(2)} and {cmd:xaxis(2)} included, and on every {cmd:by()}
-panel.  Keys {cmd:twoway} merges into one and the legend it leaves off
+two series, band then line.  The rule holds for each plot region,
+as {cmd:twoway} groups the layers: a layer joins the first region
+whose x and y axes both meet its own.  Where regions sharing an axis
+are titled differently, the axis takes the first region's title
+followed by {cmd:...} -- {cmd:(scatter mpg weight) (scatter price length, yaxis(2))}
+titles its x axis {cmd:Weight (lbs.)...} -- and a y axis so shared is
+untitled.  The rule holds for each axis, {cmd:yaxis(2)} and
+{cmd:xaxis(2)} included, and on every {cmd:by()} panel.  Keys {cmd:twoway} merges into one and the legend it leaves off
 a graph of histograms alone are still drawn by {cmd:dash}.
 
 {synoptset 20}{...}

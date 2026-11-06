@@ -3234,6 +3234,9 @@ CORPUS = [
           {"scheme": "economist"}),
     _case("ytitle suffix two lines (WP-44 44-01)", [_sc()],
           go={"ytitle": '`"A"\' `"B"\''}),
+    _case("two y groups x title dots (WP-44 44-01)",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price",
+                           xvar="length")]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair
