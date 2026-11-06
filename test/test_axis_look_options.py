@@ -392,8 +392,13 @@ class TestTheHonouredSet:
         drawn = {"labgap", "labjustification", "labalignment", "alternate",
                  "altgap", "tlwidth", "tlcolor", "tlpattern", "glwidth",
                  "glcolor", "glpattern", "gmin", "nogmin", "gmax", "nogmax",
-                 "gextend", "custom"}
+                 "gextend", "custom",
+                 # WP-44 AX-8: the label words.
+                 "showlabels", "noshowlabels", "pgmgrid", "nopgmgrid",
+                 "labelminlen"}
         assert drawn <= dr._DASH_AXLABEL_HONOURED
+        # WP-44 AX-8: style() names a ticksetstyle file dash does not read.
+        assert "style" not in dr._DASH_AXLABEL_HONOURED
         for style in ("labstyle", "tstyle", "gstyle", "tlstyle", "glstyle",
                       "nogextend"):
             assert style not in dr._DASH_AXLABEL_HONOURED

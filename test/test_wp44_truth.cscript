@@ -530,8 +530,9 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
 // builds both modes from the spec (S01's _q4401_docs) and puts twoway's
 // answer in $q4402_tw and the saved and served answers in $q4402_s and
 // $q4402_v.  Cases: "ycol:<text>" -- the colours of the y labels other
-// than <text>; "ygrid" -- the colours of the y gridlines; "xtgrid" --
-// the colour of the x tick-option gridlines.  Legend key
+// than <text>; "ylabs" -- whether the y labels are drawn; "ygrid" --
+// the colours of the y gridlines; "xtgrid" -- the colour of the x
+// tick-option gridlines.  Legend key
 // proxies are never read (only axes and grids are).
 // ----------------------------------------------------------------
 python:
@@ -542,6 +543,9 @@ def _q4402_dash(figs, case):
     if kind == "ycol":
         ax = [m for m in f.left if isinstance(m, Axis)][0]
         return str(ax.major_label_text_color).lower()
+    if kind == "ylabs":
+        ax = [m for m in f.left if isinstance(m, Axis)][0]
+        return "none" if ax.major_label_text_font_size == "0px" else "labels"
     if kind == "ygrid":
         gs = [g for g in f.renderers + f.center if isinstance(g, Grid)
               and g.dimension == 1 and g.grid_line_color is not None]
@@ -570,6 +574,10 @@ def _q4402_tw(case, svg):
             left = [t for t in left if t["x"] > far]
         fills = {t["fill"] for t in left if t["text"] != arg}
         return " ".join(sorted(fills)) or "none"
+    if kind == "ylabs":
+        left = [t for t in doc["texts"]
+                if t["x"] is not None and t["x"] < pr["left"]]
+        return "labels" if len(left) > 1 else "none"
     if kind == "ygrid":
         got = sorted({ln["stroke"] for ln in doc["hlines"]
                       if ln["stroke"] not in (None, "#000000")})
@@ -673,6 +681,38 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w44_run' {
         }
     }
     _w44_done Q4402-3 "tick-option gridlines take the major grid's look"
+
+    capture graph drop _all
+    dash clear
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
+* ==== S02 AX-8: the label words ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w44_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local q02 "`w44_work'/s02c"
+    capture mkdir "`q02'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4402-4: noshowlabels hides the y labels and showlabels beside
+    // nolabels shows them; nopgmgrid hides the y grid, nogrid wins over
+    // pgmgrid and grid over nopgmgrid, as twoway draws them, saved and
+    // served.
+    local k 0
+    foreach o in "noshowlabels" "showlabels nolabels" "noshowlabels labels" {
+        local ++k
+        _q4402_reg "`q02'" `k' "ylabs" scatter mpg weight, ylabel(, `o')
+        _q4402_same Q4402-4 "ylabel(, `o')"
+    }
+    foreach o in "nopgmgrid" "nogrid pgmgrid" "grid nopgmgrid" {
+        local ++k
+        _q4402_reg "`q02'" `k' "ygrid" scatter mpg weight, ylabel(, `o') scheme(s2color)
+        _q4402_same Q4402-4 "ylabel(, `o')"
+    }
+    _w44_done Q4402-4 "showlabels, noshowlabels, pgmgrid and nopgmgrid drawn as twoway draws them"
 
     capture graph drop _all
     dash clear

@@ -3243,6 +3243,9 @@ CORPUS = [
                         'glcolor(red)'}),
     _case("xtick grid major style (WP-44 44-02)", [_sc()],
           go={"xtick": "2500 3500, grid", "xmtick": "3000, grid"}),
+    _case("ylabel labelminlen noshowlabels (WP-44 44-02)", [_sc()],
+          go={"ylabel": ", labelminlen(8) nopgmgrid",
+              "xlabel": ", noshowlabels pgmgrid"}),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

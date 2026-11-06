@@ -5363,7 +5363,14 @@ listed value ({cmd:ylabel(, custom labcolor(red))}, or after a rule,
 custom ticks alone in their own look ({cmd:ylabel(25 "x", add custom labcolor(red))}
 draws only {cmd:x} red); {cmd:dash} draws them in the axis's look and
 names their edits in a note, because Bokeh draws one label and tick look
-per axis.  {it:Difference from twoway:} {cmd:nogextend}, which stops
+per axis.  {cmd:showlabels} and {cmd:noshowlabels} are {cmd:labels} and
+{cmd:nolabels} (the positive word wins within one option);
+{cmd:pgmgrid} and {cmd:nopgmgrid} turn the gridlines on and off,
+{cmd:grid} and {cmd:nogrid} winning over them; and
+{cmd:labelminlen(}{it:#}{cmd:)} gives a y axis's labels room for at least
+{it:#} characters, the x labels keeping their place, as in {cmd:twoway}.
+{it:Difference from twoway:} {cmd:style()}, which names a ticksetstyle
+file, is named in a note.  {it:Difference from twoway:} {cmd:nogextend}, which stops
 the gridlines at the scale's ends, is named in a note (a Bokeh gridline
 spans the plot), and so are {cmd:labstyle()}, {cmd:tstyle()},
 {cmd:gstyle()}, {cmd:tlstyle()} and {cmd:glstyle()}, which name Stata

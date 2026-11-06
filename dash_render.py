@@ -45950,7 +45950,7 @@ _DASH_CUSTOM_TICK_EDITS = (
     ("altgap", ("altgap",)), ("tlength", ("tlength",)),
     ("tposition", ("tposition",)), ("labgap", ("labgap",)),
     ("show_ticks", ("ticks", "noticks")),
-    ("show_labels", ("labels", "nolabels")),
+    ("show_labels", ("labels", "nolabels", "showlabels", "noshowlabels")),
     ("labsize", ("labsize",)), ("labcolor", ("labcolor",)),
     ("labjust", ("labjustification",)), ("labalign", ("labalignment",)),
     ("tlwidth", ("tlwidth",)), ("tlcolor", ("tlcolor",)),
@@ -46029,7 +46029,9 @@ def _dash_parse_axis_spec(raw, minor=False, tick=False):
            "alternate": False, "altgap": None, "tlwidth": None,
            "tlcolor": None, "tlpattern": None, "glwidth": None,
            "glcolor": None, "glpattern": None, "gmin": None, "gmax": None,
-           "gextend": None, "rule": False}
+           "gextend": None, "rule": False,
+           # WP-44 AX-8: labelminlen()'s count (None: not given).
+           "minlen": None}
     if not raw or not str(raw).strip():
         return out
     text = str(raw)
@@ -46085,21 +46087,36 @@ def _dash_parse_axis_spec(raw, minor=False, tick=False):
                 out["labalign"] = _arg
             elif _nm == "alternate":
                 out["alternate"] = True
+            elif _nm == "labelminlen":
+                # WP-44 AX-8: an integer (dash.ado checks it, as twoway's
+                # syntax does); 0 or less asks for nothing.
+                try:
+                    out["minlen"] = max(0, min(int(_arg.strip()), 255))
+                except (TypeError, ValueError, OverflowError):
+                    out["minlen"] = None
         # WP-31 D6: the positive word wins within one copy, as for grid.
         for _w in ("gmin", "gmax", "gextend"):
             if _w in _seen:
                 out[_w] = True
             elif "no" + _w in _seen:
                 out[_w] = False
+        # WP-44 AX-8: twoway applies pgmgrid/nopgmgrid before grid/nogrid,
+        # the later edit winning (tick_style_truth.json ax8_pgmgrid:
+        # nogrid pgmgrid draws no grid).
         if "grid" in _seen:
             out["grid"] = True
         elif "nogrid" in _seen:
             out["grid"] = False
+        elif "pgmgrid" in _seen:
+            out["grid"] = True
+        elif "nopgmgrid" in _seen:
+            out["grid"] = False
         out["valuelabel"] = "valuelabels" in _seen
-        # The positive word wins within one copy, as for grid.
-        if "labels" in _seen:
+        # The positive word wins within one copy, as for grid; showlabels
+        # is labels and noshowlabels nolabels (WP-44 AX-8; ax8_order_*).
+        if "labels" in _seen or "showlabels" in _seen:
             out["show_labels"] = True
-        elif "nolabels" in _seen:
+        elif "nolabels" in _seen or "noshowlabels" in _seen:
             out["show_labels"] = False
         if "ticks" in _seen:
             out["show_ticks"] = True
@@ -49801,6 +49818,10 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
         if raw.strip() and "alt" in raw:
             _dash_alt_axes(fig, list(_dash_primary_axes(axes, rattr)),
                            _dash_parse_axis_spec(raw), ref_in, ax_key)
+        # WP-44 AX-8: labelminlen(), on the axis's final formatter.
+        if raw.strip() and "labelminlen" in raw:
+            _dash_label_minlen(fig, list(_dash_primary_axes(axes, rattr)),
+                               _dash_parse_axis_spec(raw))
     # WP-44 AX-13: every axis title's look, once every axis is on its
     # final side in both modes.
     _dash_axis_title_look(fig, graph_opts, getattr(fig, "_dash_scheme", None),
@@ -49814,6 +49835,48 @@ _DASH_ALT_LABEL_JS = (
     "if ((index % 2) !== parity) return \"\";\n"
     "const out = base.doFormat(ticks, {loc: 0});\n"
     "return (out && out.length > index) ? out[index] : \"\";")
+
+#: WP-44 AX-8: labelminlen()'s label formatter.  twoway gives a y axis's
+#: label column room for at least n characters (measured:
+#: test/fixtures/tick_style_truth.json ``ax8_minlen_y``, 0.567 of the font
+#: size a character), so each label shorter than n is padded with figure
+#: spaces (U+2007, a digit's width) on the side away from its tick.
+#: Constant text: the axis's own formatter, n and the side travel in
+#: ``args``.
+_DASH_LABEL_MINLEN_JS = (
+    "const out = base.doFormat(ticks, {loc: 0});\n"
+    "const s = (out && out.length > index) ? String(out[index]) : "
+    "String(tick);\n"
+    "const k = Math.max(0, Math.min(255, n | 0) - s.length);\n"
+    "if (!k) return s;\n"
+    "const pad = \"\\u2007\".repeat(k);\n"
+    "return side === \"end\" ? s + pad : pad + s;")
+
+
+def _dash_label_minlen(fig, axis_obj, spec):
+    """``labelminlen(n)`` of a label option as twoway draws it (WP-44 AX-8;
+    measured: test/fixtures/tick_style_truth.json ``ax8_minlen_*``): a y
+    axis's label column is at least n characters wide -- its formatter is
+    wrapped by :data:`_DASH_LABEL_MINLEN_JS`, padding at the start on a
+    left axis and at the end on a right one -- and an x axis is unchanged
+    (twoway's x labels keep their place).  Returns the axes wrapped."""
+    n = (spec or {}).get("minlen")
+    if not n:
+        return []
+    from bokeh.models import CustomJSTickFormatter
+    made = []
+    for ax in list(axis_obj if isinstance(axis_obj, list) else [axis_obj]):
+        side = next((sd for sd in ("left", "right")
+                     if any(a is ax for a in getattr(fig, sd))), None)
+        if side is None or ax.formatter is None:
+            continue
+        ax.formatter = CustomJSTickFormatter(
+            args={"base": ax.formatter, "n": int(n),
+                  "side": "start" if side == "left" else "end"},
+            code=_DASH_LABEL_MINLEN_JS)
+        made.append(ax)
+    return made
+
 
 #: The axis-title properties alternate moves to the outer label row.
 _DASH_ALT_TITLE_PROPS = (
@@ -51515,6 +51578,7 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
             # test/fixtures/axisn_alt_truth.json -- on axes 2 and 3 the
             # lowest label is on the row nearest the plot, as on axis 1).
             _dash_alt_axes(fig, [ax], spec, ref_in, option=_on("label"))
+            _dash_label_minlen(fig, [ax], spec)
         elif fmts2 is not None and ax is not None:
             fb2, _by2 = fmts2.get(name, ("", False))
             if kind and not _by2:
@@ -59331,7 +59395,9 @@ _DASH_AXLABEL_HONOURED = frozenset({
     # WP-31 D6: the stylable sub-options.
     "labgap", "labjustification", "labalignment", "alternate", "altgap",
     "tlwidth", "tlcolor", "tlpattern", "glwidth", "glcolor", "glpattern",
-    "gmin", "nogmin", "gmax", "nogmax", "gextend", "custom"})
+    "gmin", "nogmin", "gmax", "nogmax", "gextend", "custom",
+    # WP-44 AX-8: drawn.
+    "showlabels", "noshowlabels", "pgmgrid", "nopgmgrid", "labelminlen"})
 
 #: twoway's real and integer literals, fullmatched on the stripped argument
 #: (float() would take 1_0, inf and nan).
@@ -76993,6 +77059,8 @@ class ServerAppBuilder:
                       "_DASH_MINOR_RULE_RE", "_DASH_MTICK_JS",
                       # WP-44 AX-5: a custom option's edits.
                       "_DASH_CUSTOM_GRID_KEYS", "_DASH_CUSTOM_TICK_EDITS",
+                      # WP-44 AX-8: labelminlen()'s formatter.
+                      "_DASH_LABEL_MINLEN_JS",
                       # WP-31 D10c: the major-length minor tick styles.
                       "_DASH_MTICK_MAJOR_STYLES",
                       "_DASH_SUBOPT_REAL_RE", "_DASH_SUBOPT_INT_RE",
@@ -77497,6 +77565,8 @@ class ServerAppBuilder:
                          "_dash_axis_custom",
                          # WP-44 AX-6.
                          "_dash_tick_grid_look",
+                         # WP-44 AX-8.
+                         "_dash_label_minlen",
                          # WP-28 S14 (B1): the quote-aware tokenizer and
                          # numlist expander _dash_parse_axis_label_opt is
                          # rebuilt on, and the too-many pre-check

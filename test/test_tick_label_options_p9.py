@@ -174,3 +174,89 @@ class TestTickGrid:
             assert list(g.minor_grid_line_dash) == \
                 list(s.major_grid_dash or [])
         assert s.minor_tickset_gridstyle == "major"
+
+
+def _shows_labels(ax):
+    return ax.major_label_text_font_size != "0px"
+
+
+def _drawn_grid(f, letter):
+    return any(g.grid_line_color is not None
+               for g in (f.xgrid if letter == "x" else f.ygrid))
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestLabelWords:
+    """AX-8: showlabels/noshowlabels are labels/nolabels, pgmgrid/nopgmgrid
+    turn the grid on and off below grid/nogrid, and labelminlen() widens
+    a y axis's label column, as twoway draws them, with no note."""
+
+    def test_each(self, mode):
+        # twoway: the positive label word wins within one copy, and
+        # grid/nogrid are applied after pgmgrid/nopgmgrid (its tickset
+        # code order, the later edit winning).
+        assert not _ylabel_fills(_T["ax8_noshowlabels"])
+        for k in ("ax8_showlabels", "ax8_order_a", "ax8_order_b",
+                  "ax8_order_c", "ax8_order_d"):
+            assert _ylabel_fills(_T[k]), k
+        assert not _grid_strokes(_T["ax8_nopgmgrid"])
+        assert not _grid_strokes(_T["ax8_pgmgrid"])
+        assert _grid_strokes(_T["ax8_grid_nopgmgrid"])
+        cases = (
+            ({"ylabel": ", noshowlabels"}, False, True),
+            ({"ylabel": ", showlabels"}, True, True),
+            ({"ylabel": ", showlabels nolabels"}, True, True),
+            ({"ylabel": ", nolabels showlabels"}, True, True),
+            ({"ylabel": ", labels noshowlabels"}, True, True),
+            ({"ylabel": ", noshowlabels labels"}, True, True),
+            ({"ylabel": ", nopgmgrid"}, True, False),
+            ({"ylabel": ", nogrid pgmgrid"}, True, False),
+            ({"ylabel": ", grid nopgmgrid"}, True, True),
+        )
+        for go, labels, grid in cases:
+            f, msgs = _figs(mode, go)
+            assert _shows_labels(tda._axis(f, "y")) is labels, go
+            assert _drawn_grid(f, "y") is grid, go
+            assert not [m for m in msgs if "not implemented" in m], (go, msgs)
+        f0, _m = _figs(mode, {})
+        f, msgs = _figs(mode, {"xlabel": ", pgmgrid"})
+        assert not _drawn_grid(f0, "x") and _drawn_grid(f, "x")
+
+    def test_minlen(self, mode):
+        from bokeh.models import CustomJSTickFormatter
+        # twoway widens the y label column to ten characters' room
+        # (510 units: 0.567 of the 112.56-unit font a character) and
+        # changes no x label.
+        y0 = _T["plain_stcolor"]["plotregion"]["left"]
+        y1 = _T["ax8_minlen_y"]["plotregion"]["left"]
+        assert (y1 - y0) / 8 / 112.56 == pytest.approx(0.567, abs=0.005)
+        assert _T["ax8_minlen_x"]["plotregion"] == \
+            _T["plain_stcolor"]["plotregion"]
+        f, msgs = _figs(mode, {"ylabel": ", labelminlen(10)",
+                               "xlabel": ", labelminlen(10)"})
+        fy = tda._axis(f, "y").formatter
+        assert isinstance(fy, CustomJSTickFormatter)
+        assert fy.code == dr._DASH_LABEL_MINLEN_JS
+        assert fy.args["n"] == 10 and fy.args["side"] == "start"
+        fx = tda._axis(f, "x").formatter
+        assert not (isinstance(fx, CustomJSTickFormatter)
+                    and fx.code == dr._DASH_LABEL_MINLEN_JS)
+        assert not [m for m in msgs if "not implemented" in m], msgs
+
+
+class TestLabelMinlenJS:
+    def test_minlen_pads(self):
+        import js_runner
+        src = (
+            "const base = {doFormat: (ticks, opts) => "
+            "ticks.map((t) => String(t))};\n"
+            "const f = new Function('tick', 'index', 'ticks', 'base', 'n', "
+            "'side', " + json.dumps(dr._DASH_LABEL_MINLEN_JS) + ");\n"
+            "const ticks = [10, 2000, 123456789012];\n"
+            "const a = ticks.map((t, i) => f(t, i, ticks, base, 6, 'start'));\n"
+            "const b = ticks.map((t, i) => f(t, i, ticks, base, 6, 'end'));\n"
+            "console.log(JSON.stringify([a, b]));\n")
+        fs = chr(0x2007)
+        assert js_runner.run_js(src) == [
+            [fs * 4 + "10", fs * 2 + "2000", "123456789012"],
+            ["10" + fs * 4, "2000" + fs * 2, "123456789012"]]
