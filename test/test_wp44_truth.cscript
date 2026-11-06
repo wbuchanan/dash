@@ -531,7 +531,7 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
 // answer in $q4402_tw and the saved and served answers in $q4402_s and
 // $q4402_v.  Cases: "ycol:<text>" -- the colours of the y labels other
 // than <text>; "ygrid" -- the colours of the y gridlines; "xtgrid" --
-// the colour and pattern of the x tick-option gridlines.  Legend key
+// the colour of the x tick-option gridlines.  Legend key
 // proxies are never read (only axes and grids are).
 // ----------------------------------------------------------------
 python:
@@ -550,11 +550,7 @@ def _q4402_dash(figs, case):
     if kind == "xtgrid":
         gs = [g for g in f.renderers + f.center if isinstance(g, Grid)
               and g.dimension == 0 and g.minor_grid_line_color is not None]
-        return " ".join(sorted({"%s %s" % (str(g.minor_grid_line_color)
-                                           .lower(),
-                                           "solid" if not list(
-                                               g.minor_grid_line_dash)
-                                           else "dashed")
+        return " ".join(sorted({str(g.minor_grid_line_color).lower()
                                 for g in gs})) or "none"
     return "?"
 
@@ -579,9 +575,9 @@ def _q4402_tw(case, svg):
                       if ln["stroke"] not in (None, "#000000")})
         return " ".join(got) or "none"
     if kind == "xtgrid":
-        got = sorted({"%s %s" % (ln["stroke"], "dashed" if ln["dasharray"]
-                                 else "solid")
-                      for ln in doc["vlines"]
+        # twoway writes a dashed line as short segments, so the colour
+        # is compared (the pattern is pinned by TestTickGrid).
+        got = sorted({ln["stroke"] for ln in doc["vlines"]
                       if ln["stroke"] not in (None, "#000000")})
         return " ".join(got) or "none"
     return "?"
@@ -648,6 +644,35 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w44_run' {
     _q4402_reg "`q02'" 3 "ygrid" scatter mpg weight, ylabel(, custom grid glcolor(red))
     _q4402_same Q4402-1 "custom grid glcolor(red): the gridlines"
     _w44_done Q4402-1 "custom styles its own ticks only and its grid edits change nothing"
+
+    capture graph drop _all
+    dash clear
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
+* ==== S02 AX-6: tick-option gridlines in the major style ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w44_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local q02 "`w44_work'/s02b"
+    capture mkdir "`q02'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4402-3: xtick(, grid) and xmtick(, grid) draw their gridlines in
+    // the major grid's colour under s2color and stcolor, as twoway draws
+    // them (the x major grid is off under s2color, so twoway's only x
+    // gridlines are the tick option's), saved and served.
+    local k 0
+    foreach sch in s2color stcolor {
+        foreach o in xtick xmtick {
+            local ++k
+            _q4402_reg "`q02'" `k' "xtgrid" scatter mpg weight, `o'(2500 3500, grid) scheme(`sch')
+            _q4402_same Q4402-3 "`o'(, grid) under `sch'"
+        }
+    }
+    _w44_done Q4402-3 "tick-option gridlines take the major grid's look"
 
     capture graph drop _all
     dash clear

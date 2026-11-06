@@ -5668,8 +5668,11 @@ a minor label is written in {cmd:gsize minortick_label} ({cmd:vsmall}) in
 {cmd:format()}, its quoted text, or with {cmd:valuelabel} its value
 label; the option's {cmd:format()} also after a filter move).  An
 {cmd:angle()} outside -360 to 360 on {cmd:axis(2)}'s minor labels and
-ticks is refused, {cmd:r(198)}, as on the first axis.  {cmd:grid} draws the minor grid in the scheme's
-{cmd:minor_grid} style.  Bokeh draws one set of minor ticks per axis, so
+ticks is refused, {cmd:r(198)}, as on the first axis.  {cmd:grid} on
+{cmd:xtick()}, {cmd:xmtick()} and their kin draws gridlines at their
+positions in the scheme's {cmd:gridstyle minor}, which is {cmd:major} in
+every shipped scheme: the major grid's colour, width and pattern, as in
+{cmd:twoway}.  Bokeh draws one set of minor ticks per axis, so
 an axis with both {cmd:xtick()} and {cmd:xmtick()} draws all of them at
 the major ticks' length: {cmd:xtick(10 20) xmtick(15)} draws 15 as long
 as 10 and 20.  With {cmd:axis(2)} the ticks and labels are on the second
@@ -7040,7 +7043,7 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     and {cmd:stmono1} draw no grid at all, as in Stata.  A grid that
     {cmd:xlabel(, grid)} or {cmd:ylabel(, grid)} turns on is drawn in the
     scheme's grid colour and in its {cmd:linepattern major_grid}
-    ({cmd:linepattern minor_grid} for a minor grid): the {cmd:st*} schemes
+    (the tick options' gridlines too, in {cmd:gridstyle minor}): the {cmd:st*} schemes
     that dash their grid ({cmd:stcolor} among them) draw it dashed, and
     {cmd:xlabel(, grid)} keeps the dashes.  Ticks are the scheme's:
     {cmd:gsize tick} long in Stata units ({cmd:tiny}, about 5 pixels at

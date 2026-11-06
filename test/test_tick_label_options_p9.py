@@ -145,3 +145,32 @@ class TestCustomRefusalTruth:
             assert _T[k]["log"] == ["tick_styles[-1] invalid name"], k
         for k in ("ax5_empty_plain", "ax5_empty_grid", "ax5_empty_format"):
             assert _T[k]["rc"] == 0, k
+
+
+def _vgrid_looks(row):
+    """{(stroke, width, dasharray)} of a fixture row's non-black vertical
+    lines: twoway's x gridlines."""
+    return {(ln["stroke"], ln["width"], ln["dasharray"])
+            for ln in row["vlines"] if ln["stroke"] not in (None, "#000000")}
+
+
+@pytest.mark.parametrize("mode", _MODES)
+@pytest.mark.parametrize("scheme", ("stcolor", "s2color"))
+class TestTickGrid:
+    """AX-6: the gridlines of xtick() and xmtick() are drawn in the major
+    gridstyle (every shipped scheme: ``gridstyle minor major``)."""
+
+    @pytest.mark.parametrize("option", ("xtick", "xmtick"))
+    def test_major_style(self, mode, scheme, option):
+        assert _vgrid_looks(_T["ax6_%s_%s" % (option, scheme)]) == \
+            _vgrid_looks(_T["ax6_xlabel_%s" % scheme])
+        s = dr.SchemeParser(scheme)
+        f, _m = _figs(mode, {option: "2500 3500, grid"}, scheme=scheme)
+        gs = [g for g in f.xgrid if g.minor_grid_line_color is not None]
+        assert gs, option
+        for g in gs:
+            assert g.minor_grid_line_color == s.grid_color
+            assert g.minor_grid_line_width == s.grid_line_width
+            assert list(g.minor_grid_line_dash) == \
+                list(s.major_grid_dash or [])
+        assert s.minor_tickset_gridstyle == "major"

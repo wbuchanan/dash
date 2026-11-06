@@ -486,7 +486,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **RH-13 Tracked:** Closed in WP-43, BUGS.md "A horizontal kdensity (and function) is keyed by its name; twoway keys it by the grid variable 'x'", commit 4a20773.
 - **AX-13 Tracked:** Closed in WP-44, BUGS.md "Axis title textbox sub-options other than size/color are named: orientation() (Bokeh axis_label_orientation never set), justification(), placement(), box, margin() ...", commit c139429.
 - **AX-5 Tracked:** Open (WP-44 section 44-02).
-- **AX-6 Tracked:** Open (WP-44 section 44-02).
+- **AX-6 Tracked:** Closed in WP-44, BUGS.md "Gridlines of xtick()/xmtick() are drawn in the minor style (dotted); twoway uses the major gridstyle", commit pending.
 - **AX-7 Tracked:** Open (WP-44 section 44-03).
 - **AX-8 Tracked:** Open (WP-44 section 44-02).
 - **AX-9 Tracked:** Open (WP-44 section 44-03).

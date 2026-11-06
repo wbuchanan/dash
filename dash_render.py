@@ -14142,6 +14142,17 @@ class SchemeParser:
                 fig.below = [a for a in fig.below if a not in moved]
                 fig.above = moved + list(fig.above)
 
+    @property
+    def minor_tickset_gridstyle(self) -> str:
+        """The scheme's ``gridstyle minor`` -- the gridstyle twoway draws
+        the gridlines of xtick(), xmtick() and their kin in (WP-44 AX-6):
+        ``major`` in scheme-s2color.scheme, which every shipped scheme
+        includes (measured: test/fixtures/tick_style_truth.json
+        ``ax6_*``, the tick-option gridlines equal xlabel(, grid)'s under
+        stcolor and s2color).  ``major`` when the scheme names none."""
+        v = str(self._props.get("gridstyle minor", "") or "").strip()
+        return v.split()[0].lower() if v else "major"
+
     def apply_to_axis(self, axis: Any, which: "str | None" = None,
                       number: int = 1) -> None:
         """The scheme's axis style on one axis: its line, its title's and
@@ -14200,6 +14211,12 @@ class SchemeParser:
             "minor_grid_color": self.minor_grid_color,
             "minor_grid_width": float(self.minor_grid_line_width),
             "minor_grid_dash": list(self.minor_grid_dash or []),
+            # WP-44 AX-6: the major grid's look and the tick-option
+            # gridlines' gridstyle.
+            "grid_color": self.grid_color,
+            "grid_width": float(self.grid_line_width),
+            "grid_dash": list(self.major_grid_dash or []),
+            "tick_gridstyle": self.minor_tickset_gridstyle,
             # WP-31 E6: the unfloored widths *# multiplies.
             "tick_pt": float(self.linewidth_pt("tick")),
             "grid_pt": float(self.linewidth_pt("major_grid")),
@@ -48898,8 +48915,31 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
         _dash_tick_look(ax, spec, True, by_graph, option, ref_in)
         _dash_tick_line_look(ax, spec, True, option, ref_in)
     if spec.get("grid"):
+        look = next((getattr(a, "_dash_scheme_look", None) for a in axes
+                     if getattr(a, "_dash_scheme_look", None)), None) or {}
         for g in grids:
-            g.minor_grid_line_color = grid_color or "#e5e5e5"
+            _dash_tick_grid_look(g, look, grid_color)
+
+
+def _dash_tick_grid_look(grid, look, grid_color=None):
+    """The gridlines of a tick option -- xtick(, grid), xmtick(, grid) and
+    their kin, drawn as *grid*'s minor gridlines -- in the scheme's
+    ``gridstyle minor`` (WP-44 AX-6): the major grid's colour, width and
+    pattern when it is ``major`` (every shipped scheme; measured:
+    test/fixtures/tick_style_truth.json ``ax6_*``), else the
+    ``minor_grid`` look.  *look* is the axis's ``_dash_scheme_look``;
+    *grid_color* the caller's major grid colour when the look has none."""
+    if look.get("tick_gridstyle", "major") == "major":
+        keys = ("grid_color", "grid_width", "grid_dash")
+        fallback = grid_color or "#e5e5e5"
+    else:
+        keys = ("minor_grid_color", "minor_grid_width", "minor_grid_dash")
+        fallback = "#e5e5e5"
+    grid.minor_grid_line_color = look.get(keys[0]) or fallback
+    if keys[1] in look:
+        grid.minor_grid_line_width = look[keys[1]]
+    if look.get(keys[2]) is not None:
+        grid.minor_grid_line_dash = list(look[keys[2]])
 
 
 # ==== Minor ticks and minor labels (WP-31 D1) =============================
@@ -49341,12 +49381,7 @@ def _dash_apply_minor_ticks(fig, axes, grids, which, axis_no, mtick_raw,
                 ax.minor_tick_out = ax.major_tick_out
         if any(sp.get("grid") for _r, _o, sp in specs):
             for g in grids or ():
-                g.minor_grid_line_color = look.get("minor_grid_color",
-                                                   "#e5e5e5")
-                if "minor_grid_width" in look:
-                    g.minor_grid_line_width = look["minor_grid_width"]
-                if look.get("minor_grid_dash") is not None:
-                    g.minor_grid_line_dash = list(look["minor_grid_dash"])
+                _dash_tick_grid_look(g, look)
         mn = {"tb": int(tb), "lb": int(lb), "fixed": mfixed, "src": None,
               "labels": [], "rows": [], "every": list(every),
               "lspec": lspec, "vlabels": value_labels, "which": which,
@@ -77460,6 +77495,8 @@ class ServerAppBuilder:
                          "_dash_parse_axis_spec", "_dash_apply_axis_spec",
                          # WP-44 AX-5.
                          "_dash_axis_custom",
+                         # WP-44 AX-6.
+                         "_dash_tick_grid_look",
                          # WP-28 S14 (B1): the quote-aware tokenizer and
                          # numlist expander _dash_parse_axis_label_opt is
                          # rebuilt on, and the too-many pre-check

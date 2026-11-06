@@ -3241,6 +3241,8 @@ CORPUS = [
     _case("ylabel add custom labcolor (WP-44 44-02)", [_sc()],
           go={"ylabel": '25 "x", add custom labcolor(red) grid '
                         'glcolor(red)'}),
+    _case("xtick grid major style (WP-44 44-02)", [_sc()],
+          go={"xtick": "2500 3500, grid", "xmtick": "3000, grid"}),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

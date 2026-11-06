@@ -1367,6 +1367,8 @@ FUNCTIONS = {
  '_dash_tick_look': 'test/test_axis_suboptions.py::TestTheUnitFunctions::test_tick_look',
  '_dash_alt_axes': 'test/test_axis_look_options.py::TestAlternate::test_twin',
  '_dash_axis_custom': 'test/test_tick_label_options_p9.py::TestCustom::test_add_custom_lab',
+ '_dash_tick_grid_look': 'test/test_tick_label_options_p9.py::TestTickGrid::test_major_style',
+ 'SchemeParser.minor_tickset_gridstyle': 'test/test_tick_label_options_p9.py::TestTickGrid::test_major_style',
  '_dash_axis_bounds': 'test/test_axis_look_options.py::TestTheBoundsFinisher::test_a_tagged_axis_ends_at_its_ticks',
  '_dash_axis_label_look': 'test/test_axis_look_options.py::TestLabelLook::test_labgap',
  '_dash_axis_layer_values': 'test/test_axis_look_options.py::TestMinmax::test_helper_columns',

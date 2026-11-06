@@ -1016,6 +1016,7 @@ and now matches Stata.
 
 ### Fixed in WP-44
 
+- The gridlines of xtick(, grid), xmtick(, grid) and their kin are drawn in the major grid's colour, width and pattern, as twoway draws them (gridstyle minor is major in every shipped scheme); dash drew them in the minor grid's darker look (#505050) (WP-44, AX-6)
 - A custom option's glcolor() and other grid-line edits change no gridline, and with add its label and tick edits no longer reach the axis's other labels (ylabel(25 "x", add custom labcolor(red)) keeps 10 20 30 40 in the axis's colour), as twoway draws them; the custom ticks' own look is named in a note (WP-44, AX-5, partly)
 - A graph whose every layer is on yaxis(2) (or xaxis(2), or a third to ninth axis) draws that axis without gridlines, as twoway draws a second axis; dash drew the first axis's grid. ylabel(, grid axis(2)) still draws it (WP-44, MS-12)
 - An axis shared by plot regions titled differently is titled as twoway titles it, the first region's title and "..." -- (scatter mpg weight) (scatter price length, yaxis(2)) titles its x axis "Weight (lbs.)..."; it was untitled or took one layer's label (WP-44, MS-11)

@@ -451,7 +451,11 @@ class TestMinorGrid:
     def test_grid_word(self, mode):
         f = _figs(mode, {"xmtick": "1500 2500, grid"})[0]
         s = _scheme()
-        assert any(g.minor_grid_line_color == s.minor_grid_color
+        # Flipped (WP-44 AX-6): the minor style was wrong because twoway's
+        # gridstyle minor is major (tick_style_truth.json ax6_xmtick_*).
+        assert any(g.minor_grid_line_color == s.grid_color
+                   and list(g.minor_grid_line_dash)
+                   == list(s.major_grid_dash or [])
                    for g in f.xgrid)
         f0 = _figs(mode, {"xmtick": "1500 2500"})[0]
         assert all(g.minor_grid_line_color is None for g in f0.xgrid)

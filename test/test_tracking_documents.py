@@ -2923,7 +2923,6 @@ class TestTheCountsAreTrue:
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
     'AX-5': 'custom on xlabel()/ylabel() is ignored: its styles reach every label and the grid; custom with no list is accepted (twoway r(198))',
-    'AX-6': 'Gridlines of xtick()/xmtick() are drawn in the minor style (dotted); twoway uses the major gridstyle',
     'AX-7': "yscale(off fill) is drawn as off; twoway keeps the axis's space",
     'AX-8': 'Label sub-options twoway draws are named: labelminlen(), noshowlabels/showlabels, nopgmgrid/pgmgrid, style(); showlabels nolabels hides labels',
     'AX-9': 'xscale/yscale atanh, logit, log1m and style() are named and drawn linear',
