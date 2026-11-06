@@ -523,6 +523,34 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w44_run' {
 }
 * ==== end S05 ====
 
+* ==== S01 PIC-12: right-hand y titles read upward ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+    local q01 "`w44_work'/s01"
+    capture mkdir "`q01'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4401-3: the y2 title and economist's right-hand y title read
+    // upward (twoway rotate(-90)) in both modes.
+    _q4401_reg "`q01'" 4 "right:Price" auto (scatter mpg weight) (scatter price weight, yaxis(2)),
+    _q4401_same Q4401-3 "yaxis(2)" "90"
+    _q4401_reg "`q01'" 5 "right:Mileage (mpg)" auto scatter mpg weight, scheme(economist)
+    _q4401_same Q4401-3 "economist" "90"
+    _w44_done Q4401-3 "right-hand y titles read upward (yaxis(2), economist)"
+
+    // Q4401-4: orientation(horizontal) on the axis-2 title wins.
+    _q4401_reg "`q01'" 6 "right:P" auto (scatter mpg weight) (scatter price weight, yaxis(2)), ytitle("P", axis(2) orientation(horizontal))
+    _q4401_same Q4401-4 "axis(2) orientation(horizontal)" "0"
+    _w44_done Q4401-4 "the axis-2 title's orientation(horizontal) is drawn upright"
+
+    capture graph drop _all
+    dash clear
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

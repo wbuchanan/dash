@@ -5658,11 +5658,11 @@
   - Suggested fix: Join axis-title suffix/prefix copies as separate lines
   - Resolution: Not fixed because WP-44 section 44-01 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
 
-- [ ] Title: A right-hand y title reads top to bottom; twoway's reads upward (every economist graph, any yaxis(2))
+- [x] Title: A right-hand y title reads top to bottom; twoway's reads upward (every economist graph, any yaxis(2))
   - File Names and Line Numbers: tw rotate(-90); axis_label_orientation never set
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 9 (major): ids PIC-12; confirmed; tracked: untracked. Registered as GAPS4 PIC-12 (WP-44, section 44-01, Fix).
   - Suggested fix: Set axis_label_orientation on right axes
-  - Resolution: Not fixed because WP-44 section 44-01 has not landed. Graded S2 (WP-44): drop-in audit package 9, major.
+  - Resolution: Fixed 06nov2026 (WP-44, PIC-12). Measured first (scripts/extract_axis_title_truth.do, test/fixtures/axis_title_truth.json pic12_*): twoway writes the right-hand y title rotate(-90), reading upward, for yaxis(2), yaxis(3), yscale(alt) and scheme(economist), and draws it upright under ytitle(, axis(2) orientation(horizontal)) (pic12_y2orient). Bokeh drew "parallel", which reads downward on the right. _dash_axis_title_look now sets axis_label_orientation = pi/2 on every right-hand axis whose title has no orientation(), in both modes (an alternate twin included; a boxed right title is the side-panel Label at pi/2); left, bottom and top stay "parallel". Pinned by test/test_axis_titles_p9.py::TestRightTitles (saved, served), test_wp44_truth.cscript Q4401-3, Q4401-4. Closes GAPS4 PIC-12 (WP-44, PIC-12).
 
 - [ ] Title: %tC ticks are placed and labelled in leap-second-corrected time (22 s off in 2001)
   - File Names and Line Numbers: T04/T05; no %tC row in stata_ticks_truth

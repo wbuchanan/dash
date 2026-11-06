@@ -1278,7 +1278,9 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:bmargin()} draw what the plain title draws, as in
     {cmd:twoway}.  A boxed title, one with {cmd:width()} or
     {cmd:height()}, and one with {cmd:margin()} are drawn beside their
-    axis in the box, on every side of the plot.
+    axis in the box, on every side of the plot.  A right-hand y title --
+    of a second axis, of {cmd:yscale(alt)} or under
+    {cmd:scheme(economist)} -- reads upward, as {cmd:twoway} draws it.
 
 {pmore2}
     A lone {cmd:suffix} on an axis title adds its lines after the

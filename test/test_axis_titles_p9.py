@@ -415,3 +415,52 @@ class TestBoxInChrome:
         (b0,) = got0["labels"]
         assert (b[2] - b[0]) - (b0[2] - b0[0]) == pytest.approx(
             144 * _PX, abs=1)
+
+
+def _right_y_axes(f):
+    return [a for a in f.right if type(a).__name__.endswith("Axis")
+            and a.axis_label]
+
+
+_RIGHT = [("pic12_y2", {}, _Y2, "", "Price"),
+          ("pic12_econ", {}, None, "economist", "Mileage (mpg)"),
+          ("pic12_alt", {"yscale": "alt"}, None, "", "Mileage (mpg)"),
+          ("pic12_y3", {}, [P("scatter", "mpg", "weight"),
+                            P("scatter", "price", "weight", yaxis=3)],
+           "", "Price")]
+
+
+class TestRightTitles:
+    """PIC-12: twoway writes every right-hand y title rotate(-90), reading
+    upward (pic12_*); BokehJS turns a "parallel" title on the right to
+    read downward."""
+
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("key,go,plots,scheme,title", _RIGHT,
+                             ids=[r[0] for r in _RIGHT])
+    def test_upward(self, mode, key, go, plots, scheme, title):
+        r = next(t for t in _T[key]["texts"] if t["text"] == title
+                 and t["x"] > _T[key]["plotregion"]["right"])
+        assert r["rotate"] == -90.0
+        f, _w = _figs(mode, go, plots, scheme=scheme)
+        axs = _right_y_axes(f)
+        assert axs
+        for a in axs:
+            assert a.axis_label_orientation == pytest.approx(
+                _fixture_angle(key, title)), key
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_left_is_unchanged(self, mode):
+        f, _w = _figs(mode, {}, _Y2)
+        for side in ("left", "below", "above"):
+            for a in getattr(f, side):
+                if type(a).__name__.endswith("Axis"):
+                    assert a.axis_label_orientation == "parallel", side
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_explicit_orientation_wins(self, mode):
+        assert _text("pic12_y2orient", "P")["rotate"] is None
+        f, w = _figs(mode, {"ytitle2": '"P", orientation(horizontal)'}, _Y2)
+        assert not _notes(w), w
+        (a,) = _right_y_axes(f)
+        assert a.axis_label_orientation == 0.0

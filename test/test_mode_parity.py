@@ -3228,6 +3228,10 @@ CORPUS = [
     _case("ytitle box on axis 2 (WP-44 44-01)",
           [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
           go={"ytitle2": '"Y", box'}),
+    _case("yaxis(2) right title upward (WP-44 44-01)",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")]),
+    _case("economist right title (WP-44 44-01)", [_sc()],
+          {"scheme": "economist"}),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

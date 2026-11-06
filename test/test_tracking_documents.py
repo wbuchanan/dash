@@ -2937,7 +2937,6 @@ GAPS4_OPEN = {
     'MS-14': 'xscale(range()) on a log axis adds a tick at the range end',
     'MS-11': "twoway's '<first title>...' x title (different x across y-axis groups, or upright plus turned layers) is not drawn",
     'MS-13': 'ytitle(A) ytitle(B, suffix) is joined on one line; twoway draws two lines for axis titles',
-    'PIC-12': "A right-hand y title reads top to bottom; twoway's reads upward (every economist graph, any yaxis(2))",
     'DG-6': '%tC ticks are placed and labelled in leap-second-corrected time (22 s off in 2001)',
     'DG-4': 'Parenthesised dates holding blanks ((1 jan 2001)) are refused in tlabel(), tline() and tscale(range())',
     'DG-13': "ylabel(minmax) on an empty scale draws Bokeh's default ticks; data spanning about ±8e307 give an OverflowError traceback (twoway gives r(199))",

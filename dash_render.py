@@ -59612,7 +59612,8 @@ def _dash_axis_title_look(fig, graph_opts, scheme=None, seen=None, key=""):
     draw what the plain title draws and are taken in silence; the box
     words and ``margin()`` draw the title as a side-panel Label
     (:func:`_dash_axis_title_label`).  *seen*/*key* are the render's
-    note set and the graph's name."""
+    note set and the graph's name.  A right-hand title with no
+    orientation() reads upward, as twoway draws it (WP-44 PIC-12)."""
     from bokeh.models import Axis
     T = OptionTranslator
     ref = T.size_ref_of(fig)
@@ -59624,6 +59625,11 @@ def _dash_axis_title_look(fig, graph_opts, scheme=None, seen=None, key=""):
             if text is None or str(text) == "":
                 continue
             o = getattr(ax, "_dash_title_opts", None) or {}
+            if side == "right" and not o.get("orientation"):
+                # WP-44 PIC-12: twoway writes every right-hand y title
+                # rotate(-90), reading upward (axis_title_truth.json
+                # pic12_*); Bokeh's "parallel" reads downward there.
+                ax.axis_label_orientation = float(math.pi / 2)
             if not o:
                 continue
             dim = "y" if side in ("left", "right") else "x"
