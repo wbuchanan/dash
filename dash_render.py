@@ -693,6 +693,49 @@ def _dash_tc_from_tC(values):
     return out
 
 
+def _dash_tC_from_tc(values):
+    """%tC values of %tc milliseconds, as Stata's Cofc() gives them (WP-44
+    DG-6): one second added per leap second whose instant
+    (:data:`_STATA_LEAP_SECONDS_TC_MS`) is at or before the value -- the
+    inverse of :func:`_dash_tc_from_tC` everywhere but inside a leap
+    second (fixture leap.roundtrip, leap.after_midnight).  NaN and
+    infinities stay as they are."""
+    v = np.asarray(values, dtype=float)
+    table = np.asarray(_STATA_LEAP_SECONDS_TC_MS, dtype=float)
+    with np.errstate(invalid="ignore"):
+        k = np.searchsorted(table, v, side="right")
+    out = v + 1000.0 * k
+    bad = ~np.isfinite(v)
+    out[bad] = v[bad]
+    return out
+
+
+#: WP-44 DG-6: the page's twins of :func:`_dash_tc_from_tC` and
+#: :func:`_dash_tC_from_tc` (Stata milliseconds), for the axis finisher
+#: alone: concatenated after _DASH_AXIS_FINISH_JS's date prefix, never into
+#: _DASH_DATE_UNITS_JS (which rides on every date column's transform).
+#: The table is _STATA_LEAP_SECONDS_TC_MS, written in at import.
+_DASH_LEAP_SECONDS_JS = r"""
+const DASH_LEAP_TC = @@DASH_LEAP_TC@@;
+// %tc ms of a %tC value (cofC): a second less per leap second counted.
+function dash_tc_from_tC(v) {
+    v = Number(v);
+    if (!isFinite(v)) return v;
+    let k = 0;
+    for (let i = 0; i < DASH_LEAP_TC.length; i++) if (v >= DASH_LEAP_TC[i] + 1000 * (i + 1)) k = i + 1;
+    return v - 1000 * k;
+}
+// %tC of %tc ms (Cofc): a second more per leap second at or before it.
+function dash_tC_from_tc(t) {
+    t = Number(t);
+    if (!isFinite(t)) return t;
+    let k = 0;
+    for (let i = 0; i < DASH_LEAP_TC.length; i++) if (t >= DASH_LEAP_TC[i]) k = i + 1;
+    return t + 1000 * k;
+}
+""".replace("@@DASH_LEAP_TC@@", json.dumps(list(_STATA_LEAP_SECONDS_TC_MS)))
+
+
 def _stata_dates_to_datetime(values: "pd.Series", kind: str,
                              fractions: bool = False) -> "pd.Series":
     """Convert Stata SIF values of a given date *kind* to datetime64[ms].
@@ -45326,6 +45369,13 @@ def _dash_axis_count_ticks(lo, hi, n, kind=None, table=None):
             b = float(hi) - _STATA_EPOCH_UNIX_MS
         except (TypeError, ValueError, OverflowError):
             return None
+        if kind == "tC":
+            # WP-44 DG-6: twoway ticks a %tC axis over its raw values and
+            # places each tick at the instant it denotes.
+            a, b = (float(x) for x in _dash_tC_from_tc([a, b]))
+            t = _dash_stata_or_model(table, a, b, n, "")
+            return ([float(v) + _STATA_EPOCH_UNIX_MS
+                     for v in _dash_tc_from_tC(t)] if t else None)
         t = _dash_stata_or_model(table, a, b, n, "")
         return [v + _STATA_EPOCH_UNIX_MS for v in t] if t else None
     unit = _DASH_TS_UNITS.get(kind) if isinstance(kind, str) else None
@@ -46841,7 +46891,8 @@ _DASH_MTICK_JS = (
 #: the plan (_dash_axis_plan) and the models it names: no DOM, no eval, no
 #: BokehJS view internals, no user text.  The __DASH_*__ tokens are the
 #: Python constants, written in at import.
-_DASH_AXIS_FINISH_JS = _DASH_DATE_UNITS_JS + _DASH_TSNATSCALE_JS + r"""
+_DASH_AXIS_FINISH_JS = (_DASH_DATE_UNITS_JS + _DASH_TSNATSCALE_JS
+                        + _DASH_LEAP_SECONDS_JS) + r"""
 // The date kind a plan layer draws field *f* in (its [field, kind] pairs;
 // WP-30 P1.23a), or null: a field not listed is read as stored.
 function dash_axis_unit_of(units, f) {
@@ -46914,7 +46965,12 @@ function dash_axis_ticks(lo, hi, n, kind, tab) {
         const t = (nat(lo, hi) || []).filter((v) => v > 0);
         return t.length ? t : null;
     }
-    if (kind === "tc" || kind === "tC") {
+    if (kind === "tC") {
+        // WP-44 DG-6: ticked over the raw %tC values, placed at their instants.
+        const t = nat(dash_tC_from_tc(Number(lo) - (@@DASH_EPOCH@@)), dash_tC_from_tc(Number(hi) - (@@DASH_EPOCH@@)));
+        return t ? t.map((v) => dash_tc_from_tC(v) + (@@DASH_EPOCH@@)) : null;
+    }
+    if (kind === "tc") {
         const t = nat(Number(lo) - (@@DASH_EPOCH@@), Number(hi) - (@@DASH_EPOCH@@));
         return t ? t.map((v) => v + (@@DASH_EPOCH@@)) : null;
     }
@@ -77693,7 +77749,8 @@ class ServerAppBuilder:
                          "_dash_with_codes",
                          # %tC through Stata's leap seconds and the graph
                          # set font faces (WP-31 G2).
-                         "_dash_tc_from_tC", "_dash_build_dp",
+                         "_dash_tc_from_tC", "_dash_tC_from_tc",
+                         "_dash_build_dp",
                          "_dash_gt_fonts_of", "_dash_page_fonts",
                          "_dash_dp_fmt", "_dash_cache_dp",
                          "_dash_page_settings", "_dash_page_dp",

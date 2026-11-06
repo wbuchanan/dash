@@ -705,7 +705,10 @@ _SAVED_DIGEST = (
     # 92f23360... -> c171a548...: WP-44 AX-18, the finish and zoom code
     # ticks a log axis of dates on their calendar (dash_axis_ticks_of;
     # finish JS text only); the same under both Pythons.
-    "c171a54845b46d2aca746f03b56c98df9d4ed25737c404f31720a7c045f2458e")
+    # c171a548... -> b42e1910...: WP-44 DG-6, the finish code's leap-second
+    # pair (_DASH_LEAP_SECONDS_JS) and its %tC tick branch (finish JS text
+    # only); the same under both Pythons.
+    "b42e1910fb5bc89a990b7fdc67c1bdf8a476641453790ad348817d052256569b")
 
 
 # ===========================================================================

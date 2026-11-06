@@ -771,6 +771,9 @@ _PLAIN_DIGESTS = {
     # WP-44 AX-18, the finish and zoom code ticks a log axis of dates on
     # their calendar (dash_axis_ticks_of; finish JS text only); the same
     # under both Pythons.
+    # a1befad1... -> 37b69e60... saved, 104fc2fd... -> f9f5be2d... served:
+    # WP-44 DG-6, the finish code's leap-second pair and its %tC tick
+    # branch (finish JS text only); the same under both Pythons.
     ("saved", "plain"):
         "6ede92b7a0a9c78b3439cff787b173d286269fb8c4b17dff0bbae772b19a2b8e",
     # 6ede92b7... -> 215296e3... (yaxis2 only): WP-44 MS-12, a lone

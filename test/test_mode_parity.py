@@ -3351,6 +3351,10 @@ DATE_CORPUS = [
     _case("xscale log on date",
           [plot_for("line", yvar="mpg", xvar="when")], _W,
           go={"xscale": "log"}),
+    # WP-44 44-04 (DG-6): a %tC axis ticked in raw units (price read as
+    # %tC milliseconds: the corpus frame holds no 1972-or-later time).
+    _case("tC ticks", [plot_for("scatter", yvar="mpg", xvar="price")],
+          {"formats": {"price": "%tC"}}),
 ]
 
 #: The entries a report is the point of, with the report each must make.
@@ -4631,6 +4635,12 @@ MOVE_CORPUS.append(_move_case(
     "xscale log on date, dropdown", _MOVES[0],
     [plot_for("line", yvar="mpg", xvar="when")], go={"xscale": "log"},
     bo={"formats": {"when": "%td"}}))
+
+# WP-44 44-04 (DG-6): a %tC axis re-ticked in raw units after a move.
+MOVE_CORPUS.append(_move_case(
+    "tC ticks, dropdown", _MOVES[0],
+    [plot_for("scatter", yvar="mpg", xvar="price")],
+    bo={"formats": {"price": "%tC"}}))
 
 _MOVE_CORPUS_NAMES = frozenset(p.values[0] for p in MOVE_CORPUS)
 

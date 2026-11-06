@@ -318,3 +318,118 @@ class TestLogDate:
         assert isinstance(ax, LogAxis)
         assert _major_ticks(ax) == want
         assert all(re.fullmatch(r"\d\d[a-z]{3}2001", t) for t in _labels(ax))
+
+
+# ---------------------------------------------------------------------------
+# DG-6: %tC ticks in twoway's raw units
+# ---------------------------------------------------------------------------
+
+with open(os.path.join(_HERE, "fixtures", "data_locale_truth.json"),
+          encoding="utf-8") as _fh:
+    _LOC = json.load(_fh)
+_LEAP = list(_LOC["leap.table"])
+
+
+def _Cofc(t):
+    """Stata's Cofc() of %tc milliseconds *t*, from the measured table (a
+    local inverse, independent of dash_render): one second per leap second
+    whose instant is at or before *t*."""
+    return t + 1000.0 * sum(1 for L in _LEAP if L <= t)
+
+
+def _tc_frame(start, step, n=30):
+    t = [start + i * step for i in range(n)]
+    return pd.DataFrame({"t": t, "tC": [_Cofc(v) for v in t],
+                         "tv": t, "y": [float(i + 1) for i in range(n)]})
+
+
+#: dg6 keys: (frame, the x variable).  T04/T05: 30 days from
+#: tc(01jan2001 00:00:00); *_2016: 30 ten-second steps from
+#: tc(31dec2016 23:58:00), across the 2016 leap second.
+_TC_FRAMES = {
+    "dg6.T04": (_tc_frame(1293926400000.0, 86400000.0), "t"),
+    "dg6.T05": (_tc_frame(1293926400000.0, 86400000.0), "tC"),
+    "dg6.tc_2016": (_tc_frame(1798847880000.0, 10000.0), "t"),
+    "dg6.tC_2016": (_tc_frame(1798847880000.0, 10000.0), "tC"),
+}
+_TC_FMT = {"t": "%tc", "tC": "%tC", "tv": "%9.0g"}
+
+
+def _tc_build(tmp_path, mode, df, var, filt=None):
+    spec = _spec([_L("scatter", "y", var)], formats=_TC_FMT,
+                 filters=[_filter("range", filt)] if filt else None)
+    if mode == "saved":
+        r, _w = _saved(tmp_path, spec, df)
+        return r, list(r.figures.values())
+    doc, _w = _served(tmp_path, spec, df)
+    return doc, tda.tb._panels(tda.tb._figs_of(doc.roots))
+
+
+class TestTcTicks:
+    @pytest.mark.parametrize("mode", MODES)
+    def test_labels_equal_twoway(self, tmp_path, mode):
+        """A %tC axis is ticked over its raw values and labelled to the
+        second as twoway labels it; a %tc axis is unchanged."""
+        bad = []
+        for i, (key, (df, var)) in enumerate(_TC_FRAMES.items()):
+            sub = tmp_path / str(i)
+            sub.mkdir()
+            _o, figs = _tc_build(sub, mode, df, var)
+            got = _labels(_axis(figs[0], "x"))
+            if got != _want(key, "x"):
+                bad.append((key, got, _want(key, "x")))
+        assert not bad, bad
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_after_a_move(self, tmp_path, mode):
+        """After a filter move the %tC axis is ticked over the kept rows'
+        raw values, as twoway ticks them."""
+        df, var = _TC_FRAMES["dg6.T05"]
+        obj, _figs = _tc_build(tmp_path, mode, df, var, "tv")
+        kept = (float(df["t"][5]), float(df["t"][20]))
+        if mode == "saved":
+            figs = tda._move_saved(obj, "RangeSlider", kept)
+        else:
+            figs = tda._move_served(obj, "RangeSlider", kept)
+        raw = [_Cofc(v) for v in df["t"] if kept[0] <= v <= kept[1]]
+        epoch = dr._STATA_EPOCH_UNIX_MS
+        want = [v - 1000.0 * sum(1 for k, L in enumerate(_LEAP)
+                                 if v >= L + 1000.0 * (k + 1)) + epoch
+                for v in dr._dash_natscale_ticks(min(raw), max(raw), 5)]
+        assert _major_ticks(_axis(figs[0], "x")) == want
+
+    def test_inverse_round_trip(self):
+        """dash's two directions against every measured leap.* pair, in
+        Python and in the page's JavaScript."""
+        pairs = (list(_LOC["leap.roundtrip"]) + list(_LOC["leap.after_midnight"]))
+        tC = [p[0] for p in pairs]
+        tc = [p[1] for p in pairs]
+        assert [_Cofc(v) for v in tc] == tC
+        assert list(dr._dash_tC_from_tc(tc)) == tC
+        assert list(dr._dash_tc_from_tC(tC)) == tc
+        inside = list(_LOC["leap.inside"])
+        assert list(dr._dash_tc_from_tC([p[0] for p in inside])) == [
+            p[1] for p in inside]
+        import js_runner
+        if js_runner.NODE is None:
+            pytest.fail("node is required for the page's leap-second code")
+        src = (dr._DASH_LEAP_SECONDS_JS
+               + "process.stdout.write(JSON.stringify([%s.map(dash_tC_from_tc),"
+               " %s.map(dash_tc_from_tC), %s.map(dash_tc_from_tC)]));"
+               % (json.dumps(tc), json.dumps(tC),
+                  json.dumps([p[0] for p in inside])))
+        a, b, c = js_runner.run_js(src)
+        assert a == tC and b == tc and c == [p[1] for p in inside]
+
+    def test_js_table_equals_python(self):
+        m = re.search(r"const DASH_LEAP_TC = (\[[^\]]*\]);",
+                      dr._DASH_LEAP_SECONDS_JS)
+        assert m and json.loads(m.group(1)) == list(
+            dr._STATA_LEAP_SECONDS_TC_MS) == _LEAP
+        assert dr._DASH_LEAP_SECONDS_JS in dr._DASH_AXIS_FINISH_JS
+
+    def test_not_in_the_transforms(self):
+        """The leap code rides on the finish code only, never on every date
+        column's transform."""
+        assert "dash_tC_from_tc" not in dr._DASH_DATE_UNITS_JS
+        assert "dash_tc_from_tC" not in dr._DASH_DATE_UNITS_JS

@@ -1020,6 +1020,7 @@ and now matches Stata.
 - A right-hand y title -- a second axis, yscale(alt), scheme(economist) -- reads upward, as twoway draws it; it read downward (WP-44, PIC-12)
 - Axis titles draw orientation(), placement(), linegap(), tstyle(), margin(), box and its colours, width() and height() as twoway draws them, a boxed right-hand title included; they were named in the note (WP-44, AX-13)
 - An axis whose format comes from lfit, qfit, lfitci, qfitci, kdensity, lpoly, lpolyci, scatteri, pci, pcarrowi or function is labelled with a date variable's numbers, as twoway labels it: dash kdensity date on sp500 labels 15000 to 15400 (was 01jan2001 to 01jan2002); xscale(log) and yscale(log) on a date axis draw a log scale with the date axis's labels, where dash drew a linear date axis and printed a note (WP-44, AX-18)
+- A %tC axis is ticked over its raw values and labelled to the second as twoway labels it, leap seconds included: thirty daily %tC times from 01jan2001 read 01jan2001 20:26:18 (was 20:26:40, 22 seconds off), before and after a filter move (WP-44, DG-6)
 
 ### Fixed in WP-43
 

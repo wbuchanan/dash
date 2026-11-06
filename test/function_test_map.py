@@ -693,6 +693,7 @@ FUNCTIONS = {
  '_dash_figure_date_kind': 'test/test_date_axes_p9.py::TestNumberFirst::test_each_type',
  '_dash_format_layer_of': 'test/test_date_axes_p9.py::TestNumberFirst::test_second_axis',
  '_dash_axis_format_layer': 'test/test_date_axes_p9.py::TestNumberFirst::test_each_type',
+ '_dash_tC_from_tc': 'test/test_date_axes_p9.py::TestTcTicks::test_inverse_round_trip',
  '_dash_log_date': 'test/test_date_axes_p9.py::TestLogDate::test_log_with_date_labels',
  '_dash_unmark_date_axis': 'test/test_date_axes_p9.py::TestLogDate::test_second_axis_log',
  '_dash_entry_count_ticks': 'test/test_date_axes_p9.py::TestLogDate::test_move',

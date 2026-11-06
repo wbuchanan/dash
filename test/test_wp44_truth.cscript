@@ -714,6 +714,52 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w44_run' {
 }
 * ==== end S04 ====
 
+* ==== S04 DG-6: %tC ticks in raw units ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w44_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    local q4d "`w44_work'/s04"
+    capture mkdir "`q4d'"
+    capture graph drop _all
+    set scheme s2color
+
+    // ------------------------------------------------------------
+    // Q4404-4: a %tC axis is ticked over its raw values and labelled to
+    // the second as twoway labels it (dg6.T05: 01jan2001 20:26:18 ...;
+    // dg6.tC_2016 across the 2016 leap second); %tc is unchanged
+    // (dg6.T04), both modes.
+    // ------------------------------------------------------------
+    local k 0
+    // The first instants as numbers: tc(01jan2001 00:00:00) and
+    // tc(31dec2016 23:58:00), the extract script's.
+    foreach c in "dg6.T04 1293926400000 86400000 t" ///
+                 "dg6.T05 1293926400000 86400000 tC" ///
+                 "dg6.tC_2016 1798847880000 10000 tC" {
+        local ++k
+        gettoken key c : c
+        gettoken t0 c : c
+        gettoken step c : c
+        gettoken var c : c
+        clear
+        quietly set obs 30
+        quietly gen double t = `t0' + (_n - 1) * `step'
+        quietly gen double tC = Cofc(t)
+        format t %tc
+        format tC %tC
+        quietly gen y = _n
+        _q4404_reg "`q4d'" 4`k' `key' x scatter y `var',
+        foreach m in s v {
+            _w44_expect Q4404-4 `"("${q4404_got_`m'}" == "${q4404_want}")"' "`key' `m': ${q4404_got_`m'}, twoway ${q4404_want}"
+        }
+    }
+    _w44_done Q4404-4 "%tC axes are ticked and labelled as twoway's, to the second, saved and served"
+
+    dash clear
+    capture graph drop _all
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 // S05 helpers (WP-44 44-05).  _q4405_reg <dir> <dash command...>:
 // register one graph and count the drawn y and x grids (a Grid whose
 // line colour is set) both modes draw, into q4405_<y|x><s|v>;
