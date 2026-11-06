@@ -988,6 +988,9 @@ COVERAGE = {
         "_dash_tdate_ticks": ("test_twoway_option_parity.cscript:TA-01",),
         "_dash_tdate_lines": ("test_twoway_option_parity.cscript:TA-05",),
         "_dash_tdate_tok": ("test_twoway_option_parity.cscript:TA-02", "test_twoway_option_parity.cscript:TA-05"),
+        # WP-44 DG-4: parenthesised dates holding blanks.
+        "_dash_tdate_toks": ("test_wp44_truth.cscript:Q4404-5",),
+        "_dash_tdate_lit": ("test_wp44_truth.cscript:Q4404-5", "test_twoway_option_parity.cscript:TA-02"),
         "_dash_tdate_range": ("test_twoway_option_parity.cscript:TA-02",),
         "_dash_xdate_find": ("test_twoway_option_parity.cscript:TA-15",),
         "_dash_taxis_fmt": ("test_twoway_option_parity.cscript:TA-12",),

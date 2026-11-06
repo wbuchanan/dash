@@ -760,6 +760,108 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w44_run' {
 }
 * ==== end S04 ====
 
+// S04 DG-4 helper: the registered graph's x options, as dash.ado wrote
+// them into its spec (q4404_xl, q4404_xn, q4404_xs: xlabel, xline,
+// xscale), and twoway's rc and first log line for <key> from
+// date_axis_rule_truth.json (q4404_trc, q4404_tmsg); _q4404_said: 1 when
+// dash's log holds that line (q4404_said).
+python:
+def _q4404_opts(sp, key):
+    import json, os
+    from sfi import Macro
+    go = {}
+    if sp:
+        with open(sp, encoding="utf-8") as fh:
+            go = json.load(fh)["graphs"][0]["graph_options"]
+    for k, nm in (("xlabel", "xl"), ("xline", "xn"), ("xscale", "xs")):
+        Macro.setGlobal("q4404_" + nm, " ".join(str(go.get(k, "")).split()))
+    with open(os.path.join("fixtures", "date_axis_rule_truth.json"),
+              encoding="utf-8") as fh:
+        row = json.load(fh)[key]
+    Macro.setGlobal("q4404_trc", str(row["rc"]))
+    Macro.setGlobal("q4404_tmsg", row["log"][0] if row["log"] else "")
+
+
+def _q4404_said(logpath):
+    """1 when dash's log holds twoway's first line (both read with their
+    runs of blanks as one, as the fixture records them)."""
+    from sfi import Macro
+    want = Macro.getGlobal("q4404_tmsg")
+    with open(logpath, encoding="utf-8", errors="replace") as fh:
+        got = [" ".join(ln.split()) for ln in fh]
+    Macro.setGlobal("q4404_said", "1" if want and want in got else "0")
+end
+
+* ==== S04 DG-4: parenthesised dates with blanks ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w44_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    local q4d "`w44_work'/s04"
+    capture mkdir "`q4d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse sp500, clear
+
+    // ------------------------------------------------------------
+    // Q4404-5: a date in parentheses holding blanks is read in tlabel(),
+    // tline() and tscale(range()) as twoway reads it (dg4.DT04, DT05,
+    // DT09, DT20: drawn at 01jan2001, 01jul2001, 15jun2001, 01dec2000
+    // and 31jan2002); one twoway refuses keeps its rc and line
+    // (dg4.DT06: a comma inside; dg4.ttext: ttext()'s position).
+    // ------------------------------------------------------------
+    local d1 = td(01jan2001)
+    local d2 = td(01jul2001)
+    local d3 = td(15jun2001)
+    local d4 = td(01dec2000)
+    local d5 = td(31jan2002)
+    local k 0
+    foreach c in "dg4.DT04 xl `d1' `d2'|tlabel((1 jan 2001) (1 jul 2001))" ///
+                 "dg4.DT05 xl `d1' `d2'|tlabel(01jan2001 (1 jul 2001))" ///
+                 "dg4.DT09 xn `d3'|tline((15 jun 2001))" ///
+                 "dg4.DT20 xs range(`d4' `d5')|tscale(range((1 dec 2000) (31 jan 2002)))" ///
+                 "dg4.DT06 -|tlabel((july 1, 2001))" {
+        local ++k
+        gettoken head opt : c, parse("|")
+        local opt = substr(`"`opt'"', 2, .)
+        gettoken key head : head
+        gettoken fld want : head
+        local want = strtrim(`"`want'"')
+        dash clear
+        capture log close _q45
+        quietly log using "`q4d'/q45_`k'.log", text replace name(_q45)
+        capture noisily dash line close date, `opt' name(zq45_`k')
+        local drc = _rc
+        quietly log close _q45
+        if `drc' == 0 {
+            _dash_serve_spec, specpath("`q4d'/s5`k'.json") datapath("`q4d'/d5`k'.json")
+            python: import __main__ as _q4404_m; _q4404_m._q4404_opts("`q4d'/s5`k'.json", "`key'")
+        }
+        else {
+            python: import __main__ as _q4404_m; _q4404_m._q4404_opts("", "`key'")
+        }
+        _w44_expect Q4404-5 "(`drc' == ${q4404_trc})" "`key': dash rc `drc', twoway rc ${q4404_trc}"
+        if ${q4404_trc} == 0 & `drc' == 0 {
+            _w44_expect Q4404-5 `"("${q4404_`fld'}" == "`want'")"' "`key': dash wrote `fld' ${q4404_`fld'}, twoway's dates `want'"
+        }
+        if ${q4404_trc} != 0 {
+            python: import __main__ as _q4404_m; _q4404_m._q4404_said("`q4d'/q45_`k'.log")
+            _w44_expect Q4404-5 "(${q4404_said} == 1)" "`key': dash's log lacks twoway's line ${q4404_tmsg}"
+        }
+    }
+    // ttext()'s position: twoway refuses a parenthesised date there.
+    dash clear
+    capture noisily dash line close date, ttext(1300 (15 jun 2001) "x") name(zq45_t)
+    local drc = _rc
+    python: import __main__ as _q4404_m; _q4404_m._q4404_opts("", "dg4.ttext")
+    _w44_expect Q4404-5 "(`drc' == ${q4404_trc})" "dg4.ttext: dash rc `drc', twoway rc ${q4404_trc}"
+    _w44_done Q4404-5 "parenthesised dates with blanks are read where twoway reads them, refused where it refuses them"
+
+    dash clear
+    capture graph drop _all
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 // S05 helpers (WP-44 44-05).  _q4405_reg <dir> <dash command...>:
 // register one graph and count the drawn y and x grids (a Grid whose
 // line colour is set) both modes draw, into q4405_<y|x><s|v>;

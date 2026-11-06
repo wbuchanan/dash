@@ -782,7 +782,10 @@
 *!       (position) or A(d)B rule, and _dash_tdate_value(tok, unit, val):
 *!       1 a number or a date of unit (val set), 2 a date of another unit,
 *!       3 neither -- the number first, then a whitelist, then Mata's
-*!       string date functions, never Stata code.
+*!       string date functions (_dash_tdate_lit), never Stata code; a
+*!       date in parentheses may hold blanks, (1 jan 2001), and
+*!       _dash_tdate_toks(seg) splits a list at the blanks outside
+*!       parentheses (WP-44 DG-4).
 *!
 *!   _dash_tdate_lines(unit)
 *!       A tline() value the same way, cut into _td_n pieces _td_s<i>
@@ -11139,15 +11142,30 @@ string scalar _dash_taxis_unit(string scalar fmt, real scalar family)
 // 480; scalar s = m(2000x1), measured) -- and only then Mata's date(),
 // weekly(), monthly(), quarterly() and halfyearly() over the token as a
 // string; an integer answer is a date.  A token the gate refuses is never
-// evaluated.  S56's ttext() reads its position with it too.
+// evaluated.  S56's ttext() reads its position with it too.  A token in
+// parentheses holding a blank, (1 jan 2001), is its inner text read with
+// the blank added to the gate, as twoway's datelist binds a date with
+// blanks (WP-44 DG-4: test/fixtures/date_axis_rule_truth.json dg4.*); a
+// comma inside stays refused (dg4.DT06).
 real scalar _dash_tdate_value(string scalar tok, string scalar unit,
                               real scalar val)
 {
     string scalar  t, ok
     real scalar    v, i
-    real rowvector w
 
-    t = strtrim(tok)
+    t  = strtrim(tok)
+    ok = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.+-*/@=_"
+    if (strlen(t) > 2 & substr(t, 1, 1) == "(" &
+        substr(t, strlen(t), 1) == ")" &
+        strpos(substr(t, 2, strlen(t) - 2), " ")) {
+        t  = strtrim(substr(t, 2, strlen(t) - 2))
+        ok = ok + " "
+        if (strlen(t) < 1 | strlen(t) > 40) return(3)
+        for (i = 1; i <= strlen(t); i++) {
+            if (!strpos(ok, substr(t, i, 1))) return(3)
+        }
+        return(_dash_tdate_lit(t, unit, val))
+    }
     v = strtoreal(t)
     if (v < .) {
         val = v
@@ -11159,10 +11177,22 @@ real scalar _dash_tdate_value(string scalar tok, string scalar unit,
         return(1)
     }
     if (strlen(t) < 1 | strlen(t) > 40) return(3)
-    ok = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.+-*/@=_"
     for (i = 1; i <= strlen(t); i++) {
         if (!strpos(ok, substr(t, i, 1))) return(3)
     }
+    return(_dash_tdate_lit(t, unit, val))
+}
+
+// _dash_tdate_lit(t, unit, val) -- _dash_tdate_value's last step, for a
+// token its gate passed: Mata's date(), weekly(), monthly(), quarterly()
+// and halfyearly() over t as a string; 1 (val set) for an integer answer
+// in unit, 2 for one in another unit, else 3.
+real scalar _dash_tdate_lit(string scalar t, string scalar unit,
+                            real scalar val)
+{
+    real scalar    v, i
+    real rowvector w
+
     w = (date(t, "DMY"), weekly(t, "YW"), monthly(t, "YM"),
          quarterly(t, "YQ"), halfyearly(t, "YH"))
     // (A chain of ?: reads unit == "d" ? .. : unit == .. wrongly in
@@ -11175,6 +11205,36 @@ real scalar _dash_tdate_value(string scalar tok, string scalar unit,
     }
     for (i = 1; i <= 5; i++) if (w[i] < . & w[i] == floor(w[i])) return(2)
     return(3)
+}
+
+// _dash_tdate_toks(seg) -- seg split at the blanks outside parentheses (a
+// depth counter; a quote has no meaning here), so (1 jan 2001) and
+// td(1jan2001) are one token each and two dates a blank apart are two
+// (WP-44 DG-4).  Linear in seg's length; tokens(seg) for seg with no
+// parenthesis.
+string rowvector _dash_tdate_toks(string scalar seg)
+{
+    string rowvector out
+    string scalar    cur, c
+    real scalar      i, depth
+
+    if (!strpos(seg, "(")) return(tokens(seg))
+    out   = J(1, 0, "")
+    cur   = ""
+    depth = 0
+    for (i = 1; i <= strlen(seg); i++) {
+        c = substr(seg, i, 1)
+        if (c == "(") depth++
+        else if (c == ")" & depth > 0) depth--
+        if ((c == " " | c == char(9)) & depth == 0) {
+            if (cur != "") out = out, cur
+            cur = ""
+            continue
+        }
+        cur = cur + c
+    }
+    if (cur != "") out = out, cur
+    return(out)
 }
 
 // _dash_tdate_tok(tok, unit, out, bad, single) -- one position slot of a
@@ -11213,7 +11273,8 @@ real scalar _dash_tdate_tok(string scalar tok, string scalar unit,
         a    = substr(tok, 2, q - 2)
         rest = substr(tok, q + 1, .)
         if (rest == "") {
-            k = _dash_tdate_value(a, unit, v)
+            // WP-44 DG-4: (1 jan 2001), its blanks bound by the parentheses.
+            k = _dash_tdate_value(strpos(a, " ") ? "(" + a + ")" : a, unit, v)
             if (k == 1) {
                 out    = strtrim(strofreal(v, "%21.0g"))
                 single = 1
@@ -11361,7 +11422,7 @@ void _dash_tdate_lines(string scalar unit)
             continue
         }
         first = 0
-        t   = tokens(seg)
+        t   = _dash_tdate_toks(seg)
         out = ""
         for (i = 1; i <= cols(t) & !rc; i++) {
             k = _dash_tdate_tok(t[i], unit, o, bad, single)
@@ -11415,7 +11476,7 @@ void _dash_tdate_range(string scalar unit)
         nm = (p ? strlower(substr(w[i], 1, p - 1)) : "")
         if (!p | _dash_so_canon(nm, "axscale") != "range") continue
         if (!at) at = i
-        t = tokens(_dash_rep_value(w[i]))
+        t = _dash_tdate_toks(_dash_rep_value(w[i]))
         for (j = 1; j <= cols(t); j++) {
             if (_dash_tdate_value(t[j], unit, v) != 1 | v >= .) {
                 rc = 121

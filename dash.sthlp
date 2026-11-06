@@ -5781,15 +5781,20 @@ A date literal is read in the unit of the x axis's label format, the
 format of the first plot's x variable ({cmd:2002m1} is 504 on a
 {cmd:%tm} axis, {cmd:15feb2000} 14655 on a {cmd:%td} one), as
 {cmd:twoway}'s {cmd:d()}, {cmd:w()}, {cmd:m()}, {cmd:q()} and {cmd:h()}
-read it; a number is a number first ({cmd:01012001} is 1012001).  The
+read it; a number is a number first ({cmd:01012001} is 1012001).  A
+date in parentheses may hold blanks, as in {cmd:twoway}'s date lists:
+{cmd:tlabel((1 jan 2001) (1 jul 2001))}, {cmd:tline((15 jun 2001))} and
+{cmd:tscale(range((1 dec 2000) (31 jan 2002)))} are read; one with a
+comma inside, {cmd:(july 1, 2001)}, is refused, and so is a parenthesised
+date in {opt ttext()}'s position, as {cmd:twoway} refuses them.  The
 axis takes numbers only when its format is {cmd:%tc}, {cmd:%tC},
 {cmd:%tb} or numeric, or when the first plot is {cmd:lfit}, {cmd:qfit},
 {cmd:lfitci}, {cmd:qfitci}, {cmd:lpoly}, {cmd:lpolyci}, {cmd:kdensity},
 {cmd:function}, {cmd:scatteri}, {cmd:pci} or {cmd:pcarrowi}; the
 paired-coordinate types read their first x variable, and an operated x
 ({cmd:L.t}) its variable.  {opt tmlabel()} and {opt tmtick()} are drawn
-as {cmd:xmlabel()} and {cmd:xmtick()} are; {cmd:tscale(log)} on a date axis is noted as
-{cmd:xscale(log)} is.  What {cmd:twoway} refuses is refused in its words:
+as {cmd:xmlabel()} and {cmd:xmtick()} are; {cmd:tscale(log)} on a date axis draws a log scale
+as {cmd:xscale(log)} does.  What {cmd:twoway} refuses is refused in its words:
 a date literal in {cmd:xlabel()}, {cmd:xtick()}, {cmd:xmlabel()},
 {cmd:xmtick()} or {cmd:xline()} (r(198)) or in {cmd:xscale(range())}
 (r(121)), and likewise in {cmd:ylabel()}, {cmd:ytick()}, {cmd:ymlabel()},

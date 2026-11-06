@@ -503,7 +503,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **MS-13 Tracked:** Closed in WP-44, BUGS.md "ytitle(A) ytitle(B, suffix) is joined on one line; twoway draws two lines for axis titles", commit c1a4a93.
 - **PIC-12 Tracked:** Closed in WP-44, BUGS.md "A right-hand y title reads top to bottom; twoway's reads upward (every economist graph, any yaxis(2))", commit 382b26b.
 - **DG-6 Tracked:** Closed in WP-44, BUGS.md "%tC ticks are placed and labelled in leap-second-corrected time (22 s off in 2001)", commit pending.
-- **DG-4 Tracked:** Open (WP-44 section 44-04).
+- **DG-4 Tracked:** Closed in WP-44, BUGS.md "Parenthesised dates holding blanks ((1 jan 2001)) are refused in tlabel(), tline() and tscale(range())", commit pending.
 - **DG-9 Tracked:** Closed in WP-44, BUGS.md "A non-number in a label list (.a, a bare word) is noted and drawn; twoway refuses 'invalid label specifier'", commit fd34f03.
 - **DG-13 Tracked:** Open (WP-44 section 44-03).
 - **PIC-4 Tracked:** Open (WP-45 section 45-01).
