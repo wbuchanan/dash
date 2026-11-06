@@ -513,3 +513,66 @@ class TestAxisStyleTokens:
         assert got["ylabel"] == ", nolabels tstyle(major_nolabel)"
         assert got["axisn"]["y3"]["label"] == \
             ", noticks labgap(tiny) style(major_vert_notick)"
+
+
+# ---------------------------------------------------------------------------
+# AX-15: the hexadecimal, IEEE-byte and string axis formats
+# ---------------------------------------------------------------------------
+
+#: The fixture's ax15_fmtl_* lists (scripts/extract_tick_style_truth.do):
+#: ``twoway scatteri 0 0 1 1, ylabel(<list>, format(<f>))``, written in
+#: the list's order.
+_LX = [0, 0.1, -0.5, 10, 33.3333333, 65536, 1e-310, 1e20, -2.5e-8]
+_LS = [0, 0.1, -0.5, 10, 33.3333333, 1234567.891, 1234567890, -123456789,
+       0.000012345, 123456789012]
+_FMT_LISTS = (("x21", "%21x", _LX), ("xl", "%-21x", _LX),
+              ("h16", "%16H", _LX), ("h8", "%8H", _LX),
+              ("l16", "%16L", _LX), ("l8", "%8L", _LX),
+              ("hl", "%-16H", _LX), ("s", "%12s", _LS), ("sl", "%-5s", _LS))
+#: ``scatter mpg weight, ylabel(, format(<f>))``: its labels 10 20 30 40.
+_FMT_AXES = (("ax15_fmt_x", "%21x"), ("ax15_fmt_hexhi", "%16H"),
+             ("ax15_fmt_s", "%12s"))
+
+
+def _ylabel_texts(row):
+    """The y axis label texts of a fixture row, in the order written."""
+    left = row["plotregion"]["left"]
+    return [t["text"] for t in row["texts"]
+            if t["x"] is not None and t["x"] < left and t["rotate"] is None]
+
+
+class TestFormats:
+
+    def test_the_writer(self):
+        for key, fmt, vals in _FMT_LISTS:
+            want = _ylabel_texts(_T["ax15_fmtl_" + key])
+            assert [dr._dash_fmt_text(v, fmt) for v in vals] == want, fmt
+        # twoway refuses the other widths (r(198) "invalid format, %10x"),
+        # which the writer does not claim.
+        for key, fmt in (("bad10x", "%10x"), ("bad12h", "%12H")):
+            row = _T["ax15_fmtl_" + key]
+            assert row["rc"] == 198
+            assert row["log"] == ["invalid format, " + fmt]
+            assert not dr._dash_fmt_dump_writes(fmt)
+
+    def test_the_js_twin(self):
+        import js_runner
+        cases = [[fmt, vals] for _k, fmt, vals in _FMT_LISTS]
+        got = js_runner.run_js(
+            dr._DASH_FMT_JS + "\nconst c = %s;\n"
+            "process.stdout.write(JSON.stringify(c.map((x) => x[1].map("
+            "(v) => dash_fmt_text(v, x[0])))));" % json.dumps(cases))
+        assert got == [_ylabel_texts(_T["ax15_fmtl_" + k])
+                       for k, _f, _v in _FMT_LISTS]
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_axis(self, mode):
+        for key, fmt in _FMT_AXES:
+            row = _T[key]
+            f, msgs = _figs(mode, {"ylabel": ", format(%s)" % fmt})
+            fm = tda._axis(f, "y").formatter
+            assert fm.args["fmt"] == fmt, (key, fm.args)
+            got = [dr._dash_fmt_text(v, fm.args["fmt"])
+                   for v in (10, 20, 30, 40)]
+            assert got == _ylabel_texts(row), key
+            assert not [m for m in msgs if "format(" in m], msgs

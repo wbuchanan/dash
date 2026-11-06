@@ -3527,7 +3527,7 @@ been tested.
 
 {pstd}
 {ul:Page size.}  Each distinct display format on a page carries one tick
-formatter and one tooltip formatter of about 38 KB each, the writer that
+formatter and one tooltip formatter of about 40 KB each, the writer that
 writes numbers and dates as Stata's {cmd:display} does; the page's script
 cannot share one model between an axis and a tooltip, so a page with many
 formats grows by that much for each.
@@ -5558,10 +5558,16 @@ writes {cmd:01/01/2001}, and {cmd:format(%td)} on a numeric axis writes
 its numbers as dates.  Ticks beside text labels are written in the same
 format.  A format {cmd:twoway} refuses, here or in the colour key's
 {cmd:zlabel()}, is refused in its words, {cmd:invalid format, bogus},
-r(198).  A string, hexadecimal or byte-dump
-format ({cmd:%12s}, {cmd:%21x}, {cmd:%16H}), which {cmd:twoway} accepts,
-is written in {cmd:%9.0g} with a note, since {cmd:twoway}'s text can
-differ.
+r(198).  The hexadecimal, byte-dump and string formats {cmd:twoway}
+accepts are written as it writes them: {cmd:format(%21x)} writes 10 as
+{cmd:+1.4000000000000X+003} and 0 as {cmd:+0.0000000000000X-3ff},
+{cmd:%16H} the double's bytes high first ({cmd:4024000000000000}),
+{cmd:%8H} the float's ({cmd:41200000}), {cmd:%16L} and {cmd:%8L} low
+first, {cmd:%-21x} and {cmd:%-16H} as {cmd:%-21.14e} and {cmd:%-16.9e},
+and a string format such as {cmd:%12s} or {cmd:%-5s} writes each number
+in {cmd:%10.0g} ({cmd:33.3333333} is {cmd:33.333333}).  Other widths,
+{cmd:%10x} or {cmd:%12H}, are refused, {cmd:invalid format, %10x},
+r(198), as in {cmd:twoway}.
 
 {phang}{opt xvarformat(fmt)} and {opt yvarformat(fmt)}, inside a plot,
 replace that layer's x or y variable's display format for the axis it

@@ -300,9 +300,12 @@ class TestEffectiveFormat:
         ({}, "when", {"when": "%tdCCYY-NN-DD"}, "max", "%tdCCYY-NN-DD"),
         ({}, "when", {"when": "%tdCCYY-NN-DD"}, "count", "%9.0g"),
         ({}, "when", {"when": "%tdCCYY-NN-DD"}, "sd", "%9.0g"),
-        # A hand-edited fmt() is returned as written (the writer shows
-        # %9.0g for it, with one note); a variable's own %x is not placed.
-        ({"fmt": "%21x"}, "price", {"price": "%8.0gc"}, "mean", "%21x"),
+        # A hand-edited fmt() the page cannot write is %9.0g, with one
+        # note; a variable's own %x is not placed.  Flipped (WP-44 AX-15):
+        # it was returned as written while the writer wrote %21x in
+        # %9.0g; the writer now writes %21x as Stata does (on an axis), so
+        # the card's %9.0g is resolved here and its text is unchanged.
+        ({"fmt": "%21x"}, "price", {"price": "%8.0gc"}, "mean", "%9.0g"),
         ({}, "price", {"price": "%21x"}, "mean", "%9.0g"),
         ({}, "x", {}, "mean", "%9.0g"),
     ])

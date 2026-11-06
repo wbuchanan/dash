@@ -396,7 +396,10 @@ class TestExplicitFormat:
 class TestUnwritableFormats:
 
     def test_one_rule(self, mode):
-        for xl in (", format(%12s)", ", format(%21x)", ", format(bogus)"):
+        # Flipped (WP-44 AX-15): format(%12s) and format(%21x) are written
+        # as twoway writes them (test_tick_label_options_p9.py::
+        # TestFormats), so only a word that is no format stays %9.0g.
+        for xl in (", format(bogus)",):
             b = _built(mode, [_sc("mpg", "weight")], xlabel=xl)
             (fig,) = _figs(b)
             assert _fmt_of(fig, "x") == "%9.0g", xl
@@ -545,8 +548,10 @@ def _line(y, x, **o):
 #: case id -> (plots, graph options, format overrides, axes compared).
 #: Cases left out, and why: k04/k05 (the off-canvas 0 and log ticks are
 #: S21's), l04/l14 (literal layers: same %9.0g, positions S21's), l15
-#: (a date axis's own writer, unchanged), e11/e12 (%12s and %21x: drawn
-#: in %9.0g with the note, P1.5.2), v10 (date ticks are placed in day
+#: (a date axis's own writer, unchanged), e11/e12 (%12s over a literal
+#: layer's positions, and %21x, whose texts give no value to place them;
+#: both written as twoway writes them since WP-44 AX-15, pinned by
+#: test_tick_label_options_p9.py::TestFormats), v10 (date ticks are placed in day
 #: units, S21's), v15 (twoway draws no labels), m13 y2 (the SVG reader
 #: reads the axis title there).
 _CASE_SPECS = {

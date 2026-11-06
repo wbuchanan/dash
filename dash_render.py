@@ -33571,6 +33571,8 @@ function dash_fmt(value, fmt, storage, strip, dp, bcal) {
         if (td === null) { return dash_fmt(v, "%9.0g", null, strip, dp); }
         return dash_fmt(td, "%td" + parsed.picture, null, strip, dp);
     }
+    var dump = dash_fmt_dump(fmt, v, dp);
+    if (dump !== null) { return strip ? dump.trim() : dump; }
     var kind = parsed ? parsed.kind : null;
     if (kind === null || kind === "x" || kind === "H") {
         parsed = {kind: "g", width: 9, dec: 0, left: false, zero: false,
@@ -33592,6 +33594,44 @@ function dash_fmt(value, fmt, storage, strip, dp, bcal) {
         result = dash_fmt_number(parsed, v);
     }
     return strip ? result.trim() : result;
+}
+
+// WP-44 AX-15: _dash_fmt_dump_writes and _dash_fmt_dump.
+var _DASH_FMT_DUMP_RE = /^%(-)?(\\d{1,4})([xHLs])$/;
+
+function dash_fmt_dump_writes(fmt) {
+    // _dash_fmt_dump_writes
+    var m = typeof fmt === "string" ? _DASH_FMT_DUMP_RE.exec(fmt.trim()) : null;
+    if (!m) { return false; }
+    var w = parseInt(m[2], 10), ch = m[3];
+    return (ch === "x" && w === 21) || ((ch === "H" || ch === "L")
+        && (w === 16 || w === 8)) || (ch === "s" && w >= 1 && w <= 2045);
+}
+
+function dash_fmt_dump(fmt, v, dp) {
+    // _dash_fmt_dump
+    if (!dash_fmt_dump_writes(fmt)) { return null; }
+    var m = _DASH_FMT_DUMP_RE.exec(fmt.trim());
+    var left = !!m[1], w = parseInt(m[2], 10), ch = m[3];
+    if (ch === "s") { return dash_fmt(v, "%10.0g", null, true, dp); }
+    if (left) { return dash_fmt(v, "%-" + w + "." + (w - 7) + "e", null, false, dp); }
+    if (!isFinite(v)) { v = Math.pow(2, 1023); }
+    var dv = new DataView(new ArrayBuffer(8));
+    var hex = function (n, k) { return n.toString(16).padStart(k, "0"); };
+    if (ch === "x") {
+        dv.setFloat64(0, v, false);
+        var hi = dv.getUint32(0, false), lo = dv.getUint32(4, false);
+        var exp = (hi >>> 20) & 0x7ff;
+        var e = exp === 0 ? -0x3ff : exp - 1023;
+        return (hi >>> 31 ? "-" : "+") + (exp === 0 ? "0" : "1") + "."
+            + hex(hi & 0xfffff, 5) + hex(lo, 8) + "X"
+            + (e < 0 ? "-" : "+") + hex(Math.abs(e), 3);
+    }
+    var n = w === 16 ? 8 : 4, out = "";
+    if (n === 8) { dv.setFloat64(0, v, ch === "L"); }
+    else { dv.setFloat32(0, v, ch === "L"); }
+    for (var i = 0; i < n; i++) { out += hex(dv.getUint8(i), 2); }
+    return out;
 }
 
 function dash_fmt_text(value, fmt, storage, dp, bcal) {
@@ -40715,6 +40755,9 @@ def _dash_fmt(value, fmt, storage=None, strip=False, dp="period",
         if td is None:
             return _dash_fmt(v, "%9.0g", strip=strip, dp=dp)
         return _dash_fmt(td, "%td" + parsed["picture"], strip=strip, dp=dp)
+    dump = _dash_fmt_dump(fmt, v, dp)
+    if dump is not None:
+        return dump.strip() if strip else dump
     kind = parsed["kind"] if parsed else None
     if kind in (None, "x", "H"):
         parsed = {"kind": "g", "width": 9, "dec": 0, "left": False,
@@ -40732,6 +40775,67 @@ def _dash_fmt(value, fmt, storage=None, strip=False, dp="period",
     else:
         result = _dash_fmt_number(parsed, v)
     return result.strip() if strip else result
+
+
+#: WP-44 AX-15: the dump and string formats twoway accepts on a number
+#: (``confirm format``; the others are refused, "invalid format, %10x"):
+#: %21x, %16H, %8H, %16L, %8L, their left-aligned forms, and %#s.
+_DASH_FMT_DUMP_RE = re.compile(r"^%(-)?(\d{1,4})([xHLs])$")
+
+
+def _dash_fmt_dump_writes(fmt):
+    """True when *fmt* is a hexadecimal, IEEE-byte or string format
+    :func:`_dash_fmt_dump` writes as Stata does (WP-44 AX-15)."""
+    m = _DASH_FMT_DUMP_RE.fullmatch(fmt.strip()) \
+        if isinstance(fmt, str) else None
+    if not m:
+        return False
+    w, ch = int(m.group(2)), m.group(3)
+    return ((ch == "x" and w == 21) or (ch in "HL" and w in (16, 8))
+            or (ch == "s" and 1 <= w <= 2045))
+
+
+def _dash_fmt_dump(fmt, v, dp="period"):
+    """*v* written in a hexadecimal, IEEE-byte or string format as
+    Stata's ``display`` and twoway's axis labels write it, or ``None``
+    when *fmt* is none of them (WP-44 AX-15; measured:
+    test/fixtures/tick_style_truth.json ``ax15_fmt_*``, ``ax15_fmtl_*``).
+
+    ``%21x`` is the double in hexadecimal, ``+1.4000000000000X+003`` for
+    10: the sign, the lead bit (0 for zero and a subnormal), 13 hex digits
+    and the unbiased exponent in three hex digits (``-3ff`` for zero and
+    a subnormal).  ``%16H`` is the double's eight bytes high first and
+    ``%8H`` the float's four (10 is ``41200000``); ``%16L``/``%8L`` low
+    byte first.  Their left-aligned forms write ``%-W.(W-7)e``
+    (``%-21x`` is ``%-21.14e``, ``%-16H`` ``%-16.9e``).  ``%#s`` and
+    ``%-#s`` on a number write ``%10.0g`` without its padding, whatever
+    the width (``33.3333333`` is ``33.333333``).  A missing value is
+    Stata's ``.``, whose double is 2^1023."""
+    if not _dash_fmt_dump_writes(fmt):
+        return None
+    m = _DASH_FMT_DUMP_RE.fullmatch(fmt.strip())
+    left, w, ch = bool(m.group(1)), int(m.group(2)), m.group(3)
+    if ch == "s":
+        return _dash_fmt(v, "%10.0g", strip=True, dp=dp)
+    if left:
+        return _dash_fmt(v, "%%-%d.%de" % (w, w - 7), dp=dp)
+    if not math.isfinite(v):
+        v = 2.0 ** 1023
+    if ch == "x":
+        bits = int.from_bytes(np.array([v], dtype=">f8").tobytes(), "big")
+        sign = "-" if bits >> 63 else "+"
+        exp = (bits >> 52) & 0x7FF
+        frac = bits & ((1 << 52) - 1)
+        e = -0x3FF if exp == 0 else exp - 1023
+        return "%s%d.%013xX%s%03x" % (sign, 0 if exp == 0 else 1, frac,
+                                      "-" if e < 0 else "+", abs(e))
+    order = ">" if ch == "H" else "<"
+    with warnings.catch_warnings():
+        # Past float's range the float is infinite, as Stata's is (1e300
+        # is 7f800000).
+        warnings.simplefilter("ignore", RuntimeWarning)
+        raw = np.array([v], dtype=order + ("f8" if w == 16 else "f4"))
+    return raw.tobytes().hex()
 
 
 def _dash_fmt_writes_number(fmt):
@@ -46662,9 +46766,12 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
     fmt = typed or fmt_fallback
     if fmt:
         _fk = _dash_fmt_kind(fmt) if fmt.isascii() else None
-        if _fk not in ("f", "g", "e", "t"):
+        if _fk not in ("f", "g", "e", "t") \
+                and not (typed and _dash_fmt_dump_writes(fmt)):
             # Accepted by twoway (dash.ado refuses what it refuses), but
             # not a format the writer writes exactly: %9.0g, one note.
+            # WP-44 AX-15: format(%21x), %16H, %8H, %16L, %8L and %#s
+            # are written as twoway writes them (_dash_fmt_dump).
             if typed:
                 shown = fmt[:80] + ("..." if len(fmt) > 80 else "")
                 _dash_warn_once(
@@ -66816,8 +66923,10 @@ def _dash_effective_kpi_fmt(kpi, varname, formats=None, stat="",
                             date_vars=None):
     """The format a KPI card is actually displayed with (WP-28, GAPS2 E1).
 
-    ``fmt()`` if given (as written, even one the page cannot write: the
-    writer shows ``%9.0g`` for it and the builders name it once); else, for
+    ``fmt()`` if given, ``%9.0g`` for one the page cannot write (the
+    builders name it once; WP-44 AX-15: the writer now writes ``%21x``
+    and ``%16H`` on an axis, so a card's refused one is resolved here, as
+    it shows ``%9.0g``); else, for
     a date variable, its own ``%t`` picture when the statistic is itself a
     date (``_dash_kpi_date_valued``) and ``%9.0g`` for a count, a spread or
     a sum of dates; else the variable's own display format when the writer
@@ -66837,7 +66946,7 @@ def _dash_effective_kpi_fmt(kpi, varname, formats=None, stat="",
     """
     explicit = str(kpi.get("fmt", "") or "").strip()
     if explicit:
-        return explicit
+        return explicit if _dash_fmt_refusal(explicit) is None else "%9.0g"
     own = str((formats or {}).get(varname, "") or "").strip()
     if (date_vars or {}).get(varname):
         if own and _dash_kpi_date_valued(stat):
@@ -77650,6 +77759,7 @@ class ServerAppBuilder:
                       "_DASH_FMT_NUM_RE", "_DASH_FMT_DATE_RE",
                       "_DASH_FMT_TB_RE",
                       "_DASH_FMT_X_RE", "_DASH_FMT_H_RE",
+                      "_DASH_FMT_DUMP_RE",
                       "_DASH_FMT_RANGE",
                       "_DASH_FMT_FALLBACK_WIDTH", "_DASH_FMT_DEFAULT_PICTURE",
                       "_DASH_CSV_FILENAME",
@@ -77941,7 +78051,8 @@ class ServerAppBuilder:
                          "_dash_fmt_tokenize_picture", "_dash_fmt_date",
                          "_dash_fmt_picture_width", "_dash_stata_value_of",
                          "_dash_fmt", "_dash_bcal_td", "_dash_fmt_writes_number",
-                         "_dash_fmt_text",
+                         "_dash_fmt_text", "_dash_fmt_dump_writes",
+                         "_dash_fmt_dump",
                          # Explicit-digit g and axis formats from the
                          # plots (WP-30 P1.5, P1.5.7).
                          "_dash_g_text_explicit",

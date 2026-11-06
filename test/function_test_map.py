@@ -65,6 +65,8 @@ FUNCTIONS = {
  '_dash_fmt_refusal': 'test/test_display_format_writer.py::TestParser::test_refusal_messages',
  '_dash_fmt_render_code': 'test/test_display_format_writer.py::TestPythonWriter::test_every_date_display_matches_stata_exactly',
  '_dash_fmt_text': 'test/test_display_format_writer.py::TestPythonWriter::test_text_strips_and_missing_is_a_dot',
+ '_dash_fmt_dump': 'test/test_tick_label_options_p9.py::TestFormats::test_the_writer',
+ '_dash_fmt_dump_writes': 'test/test_tick_label_options_p9.py::TestFormats::test_the_writer',
  '_dash_fmt_tokenize_picture': 'test/test_display_format_writer.py::TestPythonWriter::test_every_date_display_matches_stata_exactly',
  '_dash_function_points': 'test/test_function_expr.py::TestFunctionPoints::test_valid_and_invalid',
  '_dash_function_points.<locals>._real': 'test/test_function_expr.py::TestFunctionPoints::test_valid_and_invalid',

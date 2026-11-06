@@ -128,8 +128,11 @@ class TestPythonWriter:
         assert dr._dash_fmt_text(6165.2567, "%10.0g") == row["display"].strip()
 
     def test_a_refused_or_unknown_format_is_written_in_9_0g(self):
+        # Flipped (WP-44 AX-15): %21x and %16H are written as Stata writes
+        # them (test_tick_label_options_p9.py::TestFormats); a width
+        # twoway refuses (%10x, %12H) still falls back to %9.0g.
         want = dr._dash_fmt_text(1.5, "%9.0g")
-        for fmt in ("%21x", "%16H", "%9.999999999f", "bogus",
+        for fmt in ("%10x", "%12H", "%9.999999999f", "bogus",
                     "%1" + "0" * 5000 + ".2f"):
             t0 = time.time()
             got = dr._dash_fmt_text(1.5, fmt)

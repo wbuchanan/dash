@@ -711,7 +711,12 @@ _SAVED_DIGEST = (
     # b42e1910... -> b8c07992...: WP-44 AX-14, the finish code's
     # dash_grid_nogextend (finish JS text only); the same under Bokeh 3.8
     # and 3.9.
-    "b8c079928528b9c5dbb9b08fa01ef71e923af2f7f45bf2c96443b059e418bee5")
+    # b8c07992... -> 07b79173...: WP-44 AX-15, the Stata writer's
+    # dash_fmt_dump in _DASH_FMT_JS (the %21x, %16H, %8H, %16L, %8L and
+    # %#s axis formats; writer JS text only: with the old _DASH_FMT_JS
+    # spliced into the new tree the old digest is given); the same under
+    # Bokeh 3.8 and 3.9.
+    "07b7917350736b87a054d3e3f5dde707477eb024639c0f2b3ec71c8f75879f5e")
 
 
 # ===========================================================================

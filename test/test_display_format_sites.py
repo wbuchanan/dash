@@ -516,10 +516,13 @@ class TestNumericAxis:
     @pytest.mark.parametrize("mode", MODES)
     def test_format_suboption_is_written_by_the_formatter(self, mode):
         """Flipped (WP-30 P1.5): the %12s graph getting no writer was wrong
-        because twoway accepts %12s; it is drawn in %9.0g with the note."""
+        because twoway accepts %12s; it is drawn in %9.0g with the note.
+        Flipped (WP-44 AX-15): twoway writes %12s on a number as %10.0g
+        (test/fixtures/tick_style_truth.json ax15_fmtl_s), so it is now
+        written so, with no note."""
         cases = {"%9.0fc": "4,099", "%9.2e": "4.10e+03",
                  "%9.3g": dr._dash_fmt_text(4099, "%9.3g"),
-                 "%9.0g": "4099"}
+                 "%9.0g": "4099", "%12s": "4099"}
         graphs = [_graph(f"g{i}", [_scatter("price", "mpg")],
                          ylabel=f", format({f})")
                   for i, f in enumerate(cases)]
@@ -534,7 +537,7 @@ class TestNumericAxis:
             if isinstance(fm, CustomJSTickFormatter) and "fmt" in fm.args:
                 got[fm.args["fmt"]] = js_texts(fm, [4099], "tick")[0]
         assert got == cases, got
-        assert any("format(%12s)" in w for w in b.warnings), b.warnings
+        assert not any("format(%12s)" in w for w in b.warnings), b.warnings
         del figs
 
     def test_an_absurd_width_is_bounded_and_named(self):

@@ -534,8 +534,10 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
 // the colours of the y gridlines; "xtgrid" -- the colour of the x
 // tick-option gridlines; "yticks" -- whether the y ticks are drawn;
 // "ygridall" -- the colours of the y gridlines, black included;
-// "gxext" -- the x values the y gridlines run between.  Legend key
-// proxies are never read (only axes and grids are).
+// "gxext" -- the x values the y gridlines run between; "ytext:<values>"
+// -- the y label texts at <values> (twoway's in the order written, dash's
+// from its y axis writer's format).  Legend key proxies are never read
+// (only axes and grids are).
 // ----------------------------------------------------------------
 python:
 def _q4402_dash(figs, case):
@@ -567,6 +569,12 @@ def _q4402_dash(figs, case):
               and g.dimension == 1 and g.grid_line_color is not None]
         return " ".join(sorted({str(g.grid_line_color).lower()
                                 for g in gs})) or "none"
+    if kind == "ytext":
+        import dash_render as dr
+        ax = [m for m in f.left if isinstance(m, Axis)][0]
+        fmt = (getattr(ax.formatter, "args", None) or {}).get("fmt")
+        return " ".join(dr._dash_fmt_text(float(v), fmt or "%9.0g")
+                        for v in arg.split())
     if kind == "gxext":
         gs = [g for g in f.renderers + f.center if isinstance(g, Grid)
               and g.dimension == 1 and g.grid_line_color is not None]
@@ -595,6 +603,13 @@ def _q4402_tw(case, svg):
         left = [t for t in doc["texts"]
                 if t["x"] is not None and t["x"] < pr["left"]]
         return "labels" if len(left) > 1 else "none"
+    if kind == "ytext":
+        # In the order written, the outermost text (the axis title) left
+        # out, whichever way the scheme turns them.
+        left = [t for t in doc["texts"]
+                if t["x"] is not None and t["x"] < pr["left"]]
+        far = min(t["x"] for t in left) if left else 0
+        return " ".join(t["text"] for t in left if t["x"] > far)
     if kind == "ygrid":
         got = sorted({ln["stroke"] for ln in doc["hlines"]
                       if ln["stroke"] not in (None, "#000000")})
@@ -790,6 +805,32 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w44_run' {
         _q4402_same Q4402-5 "ylabel(, `o'): the gridlines' ends"
     }
     _w44_done Q4402-5 "the axis style names and nogextend drawn as twoway draws them"
+
+    capture graph drop _all
+    dash clear
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
+* ==== S02 AX-15: hexadecimal, IEEE-byte and string axis formats ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w44_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local q02 "`w44_work'/s02e"
+    capture mkdir "`q02'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4402-6: ylabel(, format()) with %21x, %-21x, %16H, %8H, %16L and
+    // %12s writes each y label as twoway writes it, saved and served.
+    local L "0 0.1 -0.5 10 33.3333333"
+    local k 0
+    foreach f in %21x %-21x %16H %8H %16L %12s {
+        local ++k
+        _q4402_reg "`q02'" `k' "ytext:`L'" scatter mpg weight, ylabel(`L', format(`f'))
+        _q4402_same Q4402-6 "ylabel(, format(`f'))"
+    }
+    _w44_done Q4402-6 "the hexadecimal, IEEE-byte and string axis formats written as twoway writes them"
 
     capture graph drop _all
     dash clear

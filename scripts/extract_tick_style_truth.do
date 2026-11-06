@@ -168,6 +168,23 @@ _ts_run ax15_past auto stcolor `"twoway scatteri 1300 99999999, xscale(range(0 9
 _ts_run ax15_margin_5 auto stcolor `"`S', xsize(5.5) ysize(4) `N'"'
 _ts_run ax15_margin_11 auto stcolor `"`S', xsize(11) ysize(4) `N'"'
 _ts_run ax15_past_browser sp500 stcolor `"twoway (line close date) (scatteri 1300 1000000000), `N'"'
+* AX-15: the hexadecimal, IEEE and string formats over a list of values
+* (zero, a fraction, negatives, a subnormal, large and small numbers),
+* written in the list's order; %10x and %12H are refused.
+local I "twoway scatteri 0 0 1 1"
+local LX "0 0.1 -0.5 10 33.3333333 65536 1e-310 1e20 -2.5e-8"
+local LS "0 0.1 -0.5 10 33.3333333 1234567.891 1234567890 -123456789 0.000012345 123456789012"
+_ts_run ax15_fmtl_x21 auto stcolor `"`I', ylabel(`LX', format(%21x)) `N'"'
+_ts_run ax15_fmtl_xl auto stcolor `"`I', ylabel(`LX', format(%-21x)) `N'"'
+_ts_run ax15_fmtl_h16 auto stcolor `"`I', ylabel(`LX', format(%16H)) `N'"'
+_ts_run ax15_fmtl_h8 auto stcolor `"`I', ylabel(`LX', format(%8H)) `N'"'
+_ts_run ax15_fmtl_l16 auto stcolor `"`I', ylabel(`LX', format(%16L)) `N'"'
+_ts_run ax15_fmtl_l8 auto stcolor `"`I', ylabel(`LX', format(%8L)) `N'"'
+_ts_run ax15_fmtl_hl auto stcolor `"`I', ylabel(`LX', format(%-16H)) `N'"'
+_ts_run ax15_fmtl_s auto stcolor `"`I', ylabel(`LS', format(%12s)) `N'"'
+_ts_run ax15_fmtl_sl auto stcolor `"`I', ylabel(`LS', format(%-5s)) `N'"'
+_ts_run ax15_fmtl_bad10x auto stcolor `"`I', ylabel(`LX', format(%10x)) `N'"'
+_ts_run ax15_fmtl_bad12h auto stcolor `"`I', ylabel(`LX', format(%12H)) `N'"'
 
 python:
 import json, os, sys

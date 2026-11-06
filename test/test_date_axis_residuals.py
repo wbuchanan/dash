@@ -676,6 +676,13 @@ def _digest(model):
 # (hidden) legend takes the scheme's key geometry, its grid and its
 # panel location from twoway's clock table.
 _PLAIN_DIGESTS = {
+    # WP-44 AX-15: the Stata writer's dash_fmt_dump in _DASH_FMT_JS (the
+    # %21x, %16H, %8H, %16L, %8L and %#s axis formats) moves every row:
+    # plain ff506fe8... -> 7a0827b1... (saved) and d88403ed... ->
+    # 2b2d3f05... (served); yaxis2 1f466c9b... -> b8f86ce0... and
+    # 7e08caa5... -> 3e942cf1....  With the old _DASH_FMT_JS spliced into
+    # the new tree the old four are given: writer JS text only, under
+    # Bokeh 3.8 and 3.9.
     # WP-44 AX-14: the finish code's dash_grid_nogextend moves every row:
     # plain 37b69e60... -> ff506fe8... (saved) and f9f5be2d... ->
     # d88403ed... (served); yaxis2 39f4cfe4... -> 1f466c9b... and
@@ -690,13 +697,13 @@ _PLAIN_DIGESTS = {
     # null y grid).  A masked model diff against the tree before 44-04
     # differs in the x range's finish callback code alone, in both cases.
     ("saved", "plain"):
-        "ff506fe8aec1da1f9e157b34bf8b566d70166caad081eb30559c204aa8186206",
+        "7a0827b13c8d23c037b735194ea5753d3609bfb34a2f01ed3f8965afd02391bf",
     ("saved", "yaxis2"):
-        "1f466c9bd39f53230326291d9f122121b628c446095d0e44639a3720772b7e00",
+        "b8f86ce0296aba75ae7e42209ae8906610f5b658429c5605cccd2986f74f5dc7",
     ("served", "plain"):
-        "d88403edb32f6837f44a1b57ceebcdd0ae5d690fa3c98e3f9e0a44dc87efadf1",
+        "2b2d3f05522bc84900c0b64cd9d4c32af9ccd744bf0ecbee09cc92271a4ac699",
     ("served", "yaxis2"):
-        "7e08caa55571fb96c795079257d4cd95def9e4210642424480da62c0b7164fce",
+        "3e942cf1d9dfd04f3be10c5f1288223b5c7fe5728691d34f8a0240846d70dc60",
 }
 
 
