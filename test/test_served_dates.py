@@ -50,6 +50,7 @@ sys.path.insert(0, _HERE)
 import dash_render as dr  # noqa: E402
 from conftest import drawn_renderers  # noqa: E402
 from test_date_range import (_COMPUTED, _DATES, _HALF_GAP, _HI_MS,  # noqa: E402
+                             _bounds_for,
                              _ISO, _LO_MS, _MS, _PAST, _card, _filter, _frame,
                              _iso, _kpi, _outside, _plot_for, _saved, _served,
                              _spec, _spread_frame, _x_extents)
@@ -194,14 +195,16 @@ class TestTheServedFigureReadsTheDateAsTheSavedOne:
         assert [type(a).__name__ for a in _served_fig(doc).xaxis] == [
             type(a).__name__ for a in r.figures["g1"].xaxis]
 
-    def test_xscale_log_on_a_date_axis_warns_and_draws_dates(self, tmp_path):
+    def test_xscale_log_on_a_date_axis_draws_a_log_axis(self, tmp_path):
+        # Flipped (WP-44 AX-18): the note and the date axis were wrong
+        # because twoway draws a log scale with date labels there.
+        from bokeh.models import LogAxis
         spec = _spec(_LINE, graph_options={"xscale": "log"})
         _r, sw = _saved(tmp_path, spec, _frame())
         doc, vw = _served(tmp_path, spec, _frame())
-        want = [m for m in sw if "xscale(log) is meaningless" in m]
-        assert want and [m for m in vw if "xscale(log)" in m] == want
-        assert any(isinstance(a, DatetimeAxis)
-                   for a in _served_fig(doc).xaxis)
+        assert not [m for m in sw + vw if "meaningless" in m]
+        assert any(isinstance(a, LogAxis) for a in _served_fig(doc).xaxis)
+        assert any(isinstance(a, LogAxis) for a in _r.figures["g1"].xaxis)
 
     @pytest.mark.parametrize("ptype", _COMPUTED)
     def test_every_layer_is_drawn_where_the_saved_one_is(self, tmp_path,
@@ -216,8 +219,10 @@ class TestTheServedFigureReadsTheDateAsTheSavedOne:
         served = sorted(_x_extents(_served_fig(doc)))
         saved = sorted(_x_extents(r.figures["g1"]))
         assert served == saved
-        assert served and all(_LO_MS - _HALF_GAP <= e[2]
-                              and e[3] <= _HI_MS + _HALF_GAP for e in served)
+        # Flipped (WP-44 AX-18): a lone lfit or kdensity is drawn at Stata's
+        # day numbers on a numeric axis, as twoway labels it.
+        lo, hi = _bounds_for(ptype)
+        assert served and all(lo <= e[2] and e[3] <= hi for e in served)
 
     def test_a_by_graph_over_dates(self, tmp_path):
         df = _spread_frame()

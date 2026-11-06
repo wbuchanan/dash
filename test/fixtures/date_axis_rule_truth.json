@@ -1,0 +1,8647 @@
+{
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "44a647850e30ec5dfe89f7c265d5231a8ed59e90",
+  "extracted": " 6 Nov 2026 06:02:17",
+  "scheme": "s2color",
+  "source": "scripts/extract_date_axis_rule_truth.do",
+  "stata_version": "19.5"
+ },
+ "ax18.first_fpfit": {
+  "command": "twoway (fpfit close date) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2012.36
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1550.26
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1088.29
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 626.19
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 354.17,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1202.73,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2060.81,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2928.3,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3795.66,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Predicted close",
+    "x": 1520.15,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2466.59,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 354.17,
+    "x2": 354.17,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1202.73,
+    "x2": 1202.73,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2060.81,
+    "x2": 2060.81,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2928.3,
+    "x2": 2928.3,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    354.17,
+    1202.73,
+    2060.81,
+    2928.3,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    626.19,
+    1088.29,
+    1550.26,
+    2012.36
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_fpfitci": {
+  "command": "twoway (fpfitci close date) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2093.67,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 1883.29
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1453.49
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1023.69
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 593.89
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 354.17,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1202.73,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2060.81,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2928.3,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3795.66,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 2333.64
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "95% CI",
+    "x": 1355.06,
+    "y": 2546.49
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Predicted close",
+    "x": 2526.85,
+    "y": 2546.49
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 1355.06,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2093.67,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 354.17,
+    "x2": 354.17,
+    "y1": 2093.67,
+    "y2": 2133.64
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1202.73,
+    "x2": 1202.73,
+    "y1": 2093.67,
+    "y2": 2133.64
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2060.81,
+    "x2": 2060.81,
+    "y1": 2093.67,
+    "y2": 2133.64
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2928.3,
+    "x2": 2928.3,
+    "y1": 2093.67,
+    "y2": 2133.64
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2093.67,
+    "y2": 2133.64
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    354.17,
+    1202.73,
+    2060.81,
+    2928.3,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    593.89,
+    1023.69,
+    1453.49,
+    1883.29
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_function": {
+  "command": "twoway (function y = 1300, range(15000 15400)) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2333.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2104.43
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1619.32
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1134.33
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 649.21
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 541.28,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1354.94,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2168.47,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 2982.13,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2463.58
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "y",
+    "x": 1845.11,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2141.62,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2333.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 541.28,
+    "x2": 541.28,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1354.94,
+    "x2": 1354.94,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2168.47,
+    "x2": 2168.47,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2982.13,
+    "x2": 2982.13,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2333.63,
+    "y2": 2373.72
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    541.28,
+    1354.94,
+    2168.47,
+    2982.13,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    649.21,
+    1134.33,
+    1619.32,
+    2104.43
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_function_rangevar": {
+  "command": "twoway (function y = 1300, range(date)) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2333.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2104.43
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1619.32
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1134.33
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 649.21
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 541.28,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1354.94,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2168.47,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 2982.13,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2463.58
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "y",
+    "x": 1845.11,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2141.62,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2333.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 541.28,
+    "x2": 541.28,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1354.94,
+    "x2": 1354.94,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2168.47,
+    "x2": 2168.47,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2982.13,
+    "x2": 2982.13,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2333.63,
+    "y2": 2373.72
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    541.28,
+    1354.94,
+    2168.47,
+    2982.13,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    649.21,
+    1134.33,
+    1619.32,
+    2104.43
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_histogram": {
+  "command": "twoway (histogram date) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    0.0,
+    1500.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "0",
+    "x": 200.73,
+    "y": 2170.27
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "500",
+    "x": 200.73,
+    "y": 1501.63
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 832.86
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1500",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 354.17,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1202.73,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2060.81,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2928.3,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3795.66,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Density",
+    "x": 1699.21,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2287.64,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 354.17,
+    "x2": 354.17,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1202.73,
+    "x2": 1202.73,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2060.81,
+    "x2": 2060.81,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2928.3,
+    "x2": 2928.3,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    354.17,
+    1202.73,
+    2060.81,
+    2928.3,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1500",
+    "1000",
+    "500",
+    "0"
+   ],
+   "tick_px": [
+    164.22,
+    832.86,
+    1501.63,
+    2170.27
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_kdensity": {
+  "command": "twoway (kdensity date) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2333.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    0.0,
+    1500.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "0",
+    "x": 200.73,
+    "y": 2270.39
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "500",
+    "x": 200.73,
+    "y": 1568.33
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 866.28
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1500",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 541.28,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1354.94,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2168.47,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 2982.13,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2463.58
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "kdensity date",
+    "x": 1570.02,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2416.71,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2333.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 541.28,
+    "x2": 541.28,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1354.94,
+    "x2": 1354.94,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2168.47,
+    "x2": 2168.47,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2982.13,
+    "x2": 2982.13,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2333.63,
+    "y2": 2373.72
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    541.28,
+    1354.94,
+    2168.47,
+    2982.13,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1500",
+    "1000",
+    "500",
+    "0"
+   ],
+   "tick_px": [
+    164.22,
+    866.28,
+    1568.33,
+    2270.39
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_lfit": {
+  "command": "twoway (lfit close date) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2012.36
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1550.26
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1088.29
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 626.19
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 541.28,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1354.94,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2168.47,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 2982.13,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Fitted values",
+    "x": 1578.43,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2408.3,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 541.28,
+    "x2": 541.28,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1354.94,
+    "x2": 1354.94,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2168.47,
+    "x2": 2168.47,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2982.13,
+    "x2": 2982.13,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    541.28,
+    1354.94,
+    2168.47,
+    2982.13,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    626.19,
+    1088.29,
+    1550.26,
+    2012.36
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_lfitci": {
+  "command": "twoway (lfitci close date) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2093.67,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 1883.29
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1453.49
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1023.69
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 593.89
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 541.28,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1354.94,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2168.47,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 2982.13,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 2333.64
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "95% CI",
+    "x": 1413.23,
+    "y": 2546.49
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Fitted values",
+    "x": 2585.14,
+    "y": 2546.49
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 1413.23,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2093.67,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 541.28,
+    "x2": 541.28,
+    "y1": 2093.67,
+    "y2": 2133.64
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1354.94,
+    "x2": 1354.94,
+    "y1": 2093.67,
+    "y2": 2133.64
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2168.47,
+    "x2": 2168.47,
+    "y1": 2093.67,
+    "y2": 2133.64
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2982.13,
+    "x2": 2982.13,
+    "y1": 2093.67,
+    "y2": 2133.64
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2093.67,
+    "y2": 2133.64
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    541.28,
+    1354.94,
+    2168.47,
+    2982.13,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    593.89,
+    1023.69,
+    1453.49,
+    1883.29
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_lowess": {
+  "command": "twoway (lowess close date) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2012.36
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1550.26
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1088.29
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 626.19
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 354.17,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1202.73,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2060.81,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2928.3,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3795.66,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "lowess close date",
+    "x": 1463.47,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2523.26,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 354.17,
+    "x2": 354.17,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1202.73,
+    "x2": 1202.73,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2060.81,
+    "x2": 2060.81,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2928.3,
+    "x2": 2928.3,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    354.17,
+    1202.73,
+    2060.81,
+    2928.3,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    626.19,
+    1088.29,
+    1550.26,
+    2012.36
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_lpoly": {
+  "command": "twoway (lpoly close date) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2333.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2104.43
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1619.32
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1134.33
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 649.21
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 541.28,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1354.94,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2168.47,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 2982.13,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2463.58
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "lpoly smooth: Closing price",
+    "x": 1251.36,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2735.37,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2333.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 541.28,
+    "x2": 541.28,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1354.94,
+    "x2": 1354.94,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2168.47,
+    "x2": 2168.47,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2982.13,
+    "x2": 2982.13,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2333.63,
+    "y2": 2373.72
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    541.28,
+    1354.94,
+    2168.47,
+    2982.13,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    649.21,
+    1134.33,
+    1619.32,
+    2104.43
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_lpolyci": {
+  "command": "twoway (lpolyci close date) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2193.6600000000003,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 1975.48
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1522.67
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1069.85
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 617.04
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 541.28,
+    "y": 2323.61
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1354.94,
+    "y": 2323.61
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2168.47,
+    "y": 2323.61
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 2982.13,
+    "y": 2323.61
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2323.61
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "95% CI",
+    "x": 1086.28,
+    "y": 2546.49
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "lpoly smooth: Closing price",
+    "x": 2258.07,
+    "y": 2546.49
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 1086.28,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2193.66,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 541.28,
+    "x2": 541.28,
+    "y1": 2193.66,
+    "y2": 2233.63
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1354.94,
+    "x2": 1354.94,
+    "y1": 2193.66,
+    "y2": 2233.63
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2168.47,
+    "x2": 2168.47,
+    "y1": 2193.66,
+    "y2": 2233.63
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2982.13,
+    "x2": 2982.13,
+    "y1": 2193.66,
+    "y2": 2233.63
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2193.66,
+    "y2": 2233.63
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    541.28,
+    1354.94,
+    2168.47,
+    2982.13,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    617.04,
+    1069.85,
+    1522.67,
+    1975.48
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_mband": {
+  "command": "twoway (mband close date) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2012.36
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1550.26
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1088.29
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 626.19
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 354.17,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1202.73,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2060.81,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2928.3,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3795.66,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Median bands",
+    "x": 1553.31,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2433.54,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 354.17,
+    "x2": 354.17,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1202.73,
+    "x2": 1202.73,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2060.81,
+    "x2": 2060.81,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2928.3,
+    "x2": 2928.3,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    354.17,
+    1202.73,
+    2060.81,
+    2928.3,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    626.19,
+    1088.29,
+    1550.26,
+    2012.36
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_mspline": {
+  "command": "twoway (mspline close date) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2012.36
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1550.26
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1088.29
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 626.19
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 354.17,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1202.73,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2060.81,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2928.3,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3795.66,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Median spline",
+    "x": 1555.91,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2430.95,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 354.17,
+    "x2": 354.17,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1202.73,
+    "x2": 1202.73,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2060.81,
+    "x2": 2060.81,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2928.3,
+    "x2": 2928.3,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    354.17,
+    1202.73,
+    2060.81,
+    2928.3,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    626.19,
+    1088.29,
+    1550.26,
+    2012.36
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_pcarrowi": {
+  "command": "twoway (pcarrowi 1300 15200 1400 15300) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2333.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2104.43
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1619.32
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1134.33
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 649.21
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 541.28,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1354.94,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2168.47,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 2982.13,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2463.58
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "y/yb",
+    "x": 1775.81,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2210.92,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2333.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 541.28,
+    "x2": 541.28,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1354.94,
+    "x2": 1354.94,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2168.47,
+    "x2": 2168.47,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2982.13,
+    "x2": 2982.13,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2333.63,
+    "y2": 2373.72
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    541.28,
+    1354.94,
+    2168.47,
+    2982.13,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    649.21,
+    1134.33,
+    1619.32,
+    2104.43
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_pci": {
+  "command": "twoway (pci 1300 15200 1400 15300) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2333.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2104.43
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1619.32
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1134.33
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 649.21
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 541.28,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1354.94,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2168.47,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 2982.13,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2463.58
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "y/yb",
+    "x": 1775.81,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2210.92,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2333.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 541.28,
+    "x2": 541.28,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1354.94,
+    "x2": 1354.94,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2168.47,
+    "x2": 2168.47,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2982.13,
+    "x2": 2982.13,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2333.63,
+    "y2": 2373.72
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    541.28,
+    1354.94,
+    2168.47,
+    2982.13,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    649.21,
+    1134.33,
+    1619.32,
+    2104.43
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_qfit": {
+  "command": "twoway (qfit close date) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2012.36
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1550.26
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1088.29
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 626.19
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 541.28,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1354.94,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2168.47,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 2982.13,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Fitted values",
+    "x": 1578.43,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2408.3,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 541.28,
+    "x2": 541.28,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1354.94,
+    "x2": 1354.94,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2168.47,
+    "x2": 2168.47,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2982.13,
+    "x2": 2982.13,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    541.28,
+    1354.94,
+    2168.47,
+    2982.13,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    626.19,
+    1088.29,
+    1550.26,
+    2012.36
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_qfitci": {
+  "command": "twoway (qfitci close date) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2093.67,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 1883.29
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1453.49
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1023.69
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 593.89
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 541.28,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1354.94,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2168.47,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 2982.13,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2223.62
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 2333.64
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "95% CI",
+    "x": 1413.23,
+    "y": 2546.49
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Fitted values",
+    "x": 2585.14,
+    "y": 2546.49
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 1413.23,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2093.67,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 541.28,
+    "x2": 541.28,
+    "y1": 2093.67,
+    "y2": 2133.64
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1354.94,
+    "x2": 1354.94,
+    "y1": 2093.67,
+    "y2": 2133.64
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2168.47,
+    "x2": 2168.47,
+    "y1": 2093.67,
+    "y2": 2133.64
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2982.13,
+    "x2": 2982.13,
+    "y1": 2093.67,
+    "y2": 2133.64
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2093.67,
+    "y2": 2133.64
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    541.28,
+    1354.94,
+    2168.47,
+    2982.13,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    593.89,
+    1023.69,
+    1453.49,
+    1883.29
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.first_scatteri": {
+  "command": "twoway (scatteri 1300 15400) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2333.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2104.43
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1619.32
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1134.33
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 649.21
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 541.28,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1354.94,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2168.47,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 2982.13,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2463.58
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "y",
+    "x": 1680.03,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 1976.41,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2333.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 541.28,
+    "x2": 541.28,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1354.94,
+    "x2": 1354.94,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2168.47,
+    "x2": 2168.47,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2982.13,
+    "x2": 2982.13,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2333.63,
+    "y2": 2373.72
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    541.28,
+    1354.94,
+    2168.47,
+    2982.13,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    649.21,
+    1134.33,
+    1619.32,
+    2104.43
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.hz": {
+  "command": "twoway kdensity date, horizontal",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    0.001,
+    0.003
+   ],
+   "y": [
+    14977.0,
+    15400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "15000",
+    "x": 300.72,
+    "y": 2302.81
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "15100",
+    "x": 300.72,
+    "y": 1768.2
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "15200",
+    "x": 300.72,
+    "y": 1233.45
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "15300",
+    "x": 300.72,
+    "y": 698.84
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "15400",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "x",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": ".001",
+    "x": 454.16,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": ".0015",
+    "x": 1289.47,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": ".002",
+    "x": 2124.91,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": ".0025",
+    "x": 2960.35,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": ".003",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "kdensity date",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 454.16,
+    "x2": 454.16,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1289.47,
+    "x2": 1289.47,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2124.91,
+    "x2": 2124.91,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2960.35,
+    "x2": 2960.35,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    ".001",
+    ".0015",
+    ".002",
+    ".0025",
+    ".003"
+   ],
+   "tick_px": [
+    454.16,
+    1289.47,
+    2124.91,
+    2960.35,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "15400",
+    "15300",
+    "15200",
+    "15100",
+    "15000"
+   ],
+   "tick_px": [
+    164.22,
+    698.84,
+    1233.45,
+    1768.2,
+    2302.81
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.kdensity_alone": {
+  "command": "twoway kdensity date,",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    0.001,
+    0.003
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": ".001",
+    "x": 300.72,
+    "y": 2425.82
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": ".0015",
+    "x": 300.72,
+    "y": 1860.39
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": ".002",
+    "x": 300.72,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": ".0025",
+    "x": 300.72,
+    "y": 729.53
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": ".003",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "kdensity date",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 635.83,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1425.85,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2215.74,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 3005.76,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "x",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 635.83,
+    "x2": 635.83,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1425.85,
+    "x2": 1425.85,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2215.74,
+    "x2": 2215.74,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3005.76,
+    "x2": 3005.76,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    635.83,
+    1425.85,
+    2215.74,
+    3005.76,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    ".003",
+    ".0025",
+    ".002",
+    ".0015",
+    ".001"
+   ],
+   "tick_px": [
+    164.22,
+    729.53,
+    1294.96,
+    1860.39,
+    2425.82
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.lfit_alone": {
+  "command": "twoway lfit close date,",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    1081.467529296875,
+    1304.865600585938
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 300.72,
+    "y": 2238.21
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1150",
+    "x": 300.72,
+    "y": 1732.06
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 300.72,
+    "y": 1225.78
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1250",
+    "x": 300.72,
+    "y": 719.63
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 300.72,
+    "y": 213.48
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Fitted values",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 635.83,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1425.85,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2215.74,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 3005.76,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 635.83,
+    "x2": 635.83,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1425.85,
+    "x2": 1425.85,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2215.74,
+    "x2": 2215.74,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3005.76,
+    "x2": 3005.76,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    635.83,
+    1425.85,
+    2215.74,
+    3005.76,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1300",
+    "1250",
+    "1200",
+    "1150",
+    "1100"
+   ],
+   "tick_px": [
+    213.48,
+    719.63,
+    1225.78,
+    1732.06,
+    2238.21
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.lfit_range": {
+  "command": "twoway (lfit close date, range(14900 15400)) (scatter close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14900.0,
+    15400.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2012.36
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1550.26
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1088.29
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 626.19
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "14900",
+    "x": 354.17,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 1042.47,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1730.77,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2419.07,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 3107.36,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Fitted values",
+    "x": 1578.43,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2408.3,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 354.17,
+    "x2": 354.17,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1042.47,
+    "x2": 1042.47,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1730.77,
+    "x2": 1730.77,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2419.07,
+    "x2": 2419.07,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3107.36,
+    "x2": 3107.36,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "14900",
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    354.17,
+    1042.47,
+    1730.77,
+    2419.07,
+    3107.36,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    626.19,
+    1088.29,
+    1550.26,
+    2012.36
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.line_first": {
+  "command": "twoway (line close date) (lfit close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2012.36
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1550.26
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1088.29
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 626.19
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 354.17,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1202.73,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2060.81,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2928.3,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3795.66,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 1413.23,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Fitted values",
+    "x": 2585.14,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 354.17,
+    "x2": 354.17,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1202.73,
+    "x2": 1202.73,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2060.81,
+    "x2": 2060.81,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2928.3,
+    "x2": 2928.3,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    354.17,
+    1202.73,
+    2060.81,
+    2928.3,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    626.19,
+    1088.29,
+    1550.26,
+    2012.36
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.log_x4_td": {
+  "command": "twoway line close date, xscale(log) xlabel(#4)",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 300.72,
+    "y": 2247.74
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 300.72,
+    "y": 1726.86
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 300.72,
+    "y": 1205.98
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 300.72,
+    "y": 685.1
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Closing price",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 454.16,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1285.64,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2121.2,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2960.97,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 454.16,
+    "x2": 454.16,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1285.64,
+    "x2": 1285.64,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2121.2,
+    "x2": 2121.2,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2960.97,
+    "x2": 2960.97,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    454.16,
+    1285.64,
+    2121.2,
+    2960.97,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    685.1,
+    1205.98,
+    1726.86,
+    2247.74
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.log_x4_tm": {
+  "command": "twoway line close m, xscale(log) xlabel(#4)",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    492.0,
+    503.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 300.72,
+    "y": 2247.74
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 300.72,
+    "y": 1726.86
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 300.72,
+    "y": 1205.98
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 300.72,
+    "y": 685.1
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Closing price",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "2001m1",
+    "x": 454.16,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "2001m4",
+    "x": 1372.88,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "2001m7",
+    "x": 2286.03,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "2001m10",
+    "x": 3193.62,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "m",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 454.16,
+    "x2": 454.16,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1372.88,
+    "x2": 1372.88,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2286.03,
+    "x2": 2286.03,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3193.62,
+    "x2": 3193.62,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "2001m1",
+    "2001m4",
+    "2001m7",
+    "2001m10"
+   ],
+   "tick_px": [
+    454.16,
+    1372.88,
+    2286.03,
+    3193.62
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    685.1,
+    1205.98,
+    1726.86,
+    2247.74
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.log_x_td": {
+  "command": "twoway line close date, xscale(log)",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 300.72,
+    "y": 2247.74
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 300.72,
+    "y": 1726.86
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 300.72,
+    "y": 1205.98
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 300.72,
+    "y": 685.1
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Closing price",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 454.16,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1285.64,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2121.2,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2960.97,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 454.16,
+    "x2": 454.16,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1285.64,
+    "x2": 1285.64,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2121.2,
+    "x2": 2121.2,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2960.97,
+    "x2": 2960.97,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    454.16,
+    1285.64,
+    2121.2,
+    2960.97,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    685.1,
+    1205.98,
+    1726.86,
+    2247.74
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.log_x_tm": {
+  "command": "twoway line close m, xscale(log)",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    492.0,
+    504.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 300.72,
+    "y": 2247.74
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 300.72,
+    "y": 1726.86
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 300.72,
+    "y": 1205.98
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 300.72,
+    "y": 685.1
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Closing price",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "2001m1",
+    "x": 454.16,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "2001m4",
+    "x": 1297.15,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "2001m7",
+    "x": 2134.94,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "2001m10",
+    "x": 2967.9,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "2002m1",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "m",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 454.16,
+    "x2": 454.16,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1297.15,
+    "x2": 1297.15,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2134.94,
+    "x2": 2134.94,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2967.9,
+    "x2": 2967.9,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "2001m1",
+    "2001m4",
+    "2001m7",
+    "2001m10",
+    "2002m1"
+   ],
+   "tick_px": [
+    454.16,
+    1297.15,
+    2134.94,
+    2967.9,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    685.1,
+    1205.98,
+    1726.86,
+    2247.74
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.log_y_td": {
+  "command": "twoway scatter date close, yscale(log)",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    965.7999877929688,
+    1400.0
+   ],
+   "y": [
+    14976.0,
+    15341.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "01jan2001",
+    "x": 300.72,
+    "y": 2425.82
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "01apr2001",
+    "x": 300.72,
+    "y": 1863.11
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "01jul2001",
+    "x": 300.72,
+    "y": 1297.44
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "01oct2001",
+    "x": 300.72,
+    "y": 729.16
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "01jan2002",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Date",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1000",
+    "x": 717.38,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1100",
+    "x": 1486.98,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1200",
+    "x": 2256.58,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1300",
+    "x": 3026.18,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1400",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 717.38,
+    "x2": 717.38,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1486.98,
+    "x2": 1486.98,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2256.58,
+    "x2": 2256.58,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3026.18,
+    "x2": 3026.18,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400"
+   ],
+   "tick_px": [
+    717.38,
+    1486.98,
+    2256.58,
+    3026.18,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "01jan2002",
+    "01oct2001",
+    "01jul2001",
+    "01apr2001",
+    "01jan2001"
+   ],
+   "tick_px": [
+    164.22,
+    729.16,
+    1297.44,
+    1863.11,
+    2425.82
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.log_y_tm": {
+  "command": "twoway scatter m close, yscale(log)",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    965.7999877929688,
+    1400.0
+   ],
+   "y": [
+    492.0,
+    504.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "2001m1",
+    "x": 300.72,
+    "y": 2425.82
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "2001m4",
+    "x": 300.72,
+    "y": 1855.32
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "2001m7",
+    "x": 300.72,
+    "y": 1288.15
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "2001m10",
+    "x": 300.72,
+    "y": 724.46
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "2002m1",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "m",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1000",
+    "x": 717.38,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1100",
+    "x": 1486.98,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1200",
+    "x": 2256.58,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1300",
+    "x": 3026.18,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1400",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 717.38,
+    "x2": 717.38,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1486.98,
+    "x2": 1486.98,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2256.58,
+    "x2": 2256.58,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3026.18,
+    "x2": 3026.18,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400"
+   ],
+   "tick_px": [
+    717.38,
+    1486.98,
+    2256.58,
+    3026.18,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "2002m1",
+    "2001m10",
+    "2001m7",
+    "2001m4",
+    "2001m1"
+   ],
+   "tick_px": [
+    164.22,
+    724.46,
+    1288.15,
+    1855.32,
+    2425.82
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.mixed_lfit_first": {
+  "command": "twoway (lfit close date) (scatter close change),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2333.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    -53.77001953125,
+    15340.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2104.43
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1619.32
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1134.33
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 649.21
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "0",
+    "x": 366.18,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "5000",
+    "x": 1484.01,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "10000",
+    "x": 2601.84,
+    "y": 2463.58
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 3719.68,
+    "y": 2463.58
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Fitted values",
+    "x": 1578.43,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2408.3,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2333.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 366.18,
+    "x2": 366.18,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1484.01,
+    "x2": 1484.01,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2601.84,
+    "x2": 2601.84,
+    "y1": 2333.63,
+    "y2": 2373.72
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3719.68,
+    "x2": 3719.68,
+    "y1": 2333.63,
+    "y2": 2373.72
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "0",
+    "5000",
+    "10000",
+    "15000"
+   ],
+   "tick_px": [
+    366.18,
+    1484.01,
+    2601.84,
+    3719.68
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    649.21,
+    1134.33,
+    1619.32,
+    2104.43
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.scatter_first": {
+  "command": "twoway (scatter close date) (lfit close date),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2012.36
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1550.26
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1088.29
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 626.19
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 354.17,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1202.73,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2060.81,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2928.3,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3795.66,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 1248.14,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Fitted values",
+    "x": 2419.93,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 354.17,
+    "x2": 354.17,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1202.73,
+    "x2": 1202.73,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2060.81,
+    "x2": 2060.81,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2928.3,
+    "x2": 2928.3,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    354.17,
+    1202.73,
+    2060.81,
+    2928.3,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    626.19,
+    1088.29,
+    1550.26,
+    2012.36
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.y2_first": {
+  "command": "twoway (scatter close date) (lfit open date, xaxis(2)),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 390.81
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "x2": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ],
+   "y2": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 200.73,
+    "y": 2035.13
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 200.73,
+    "y": 1639.86
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 200.73,
+    "y": 1244.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 200.73,
+    "y": 849.45
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 200.73,
+    "y": 454.18
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 541.28,
+    "y": 300.73
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1354.94,
+    "y": 300.73
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2168.47,
+    "y": 300.73
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 2982.13,
+    "y": 300.73
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3795.66,
+    "y": 300.73
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 190.72
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 354.17,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1202.73,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2060.81,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2928.3,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3795.66,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2074.92,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 1248.14,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Fitted values",
+    "x": 2419.93,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2233.63,
+    "y2": 390.81
+   },
+   {
+    "stroke": "#000000",
+    "x1": 541.28,
+    "x2": 541.28,
+    "y1": 390.81,
+    "y2": 350.84
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1354.94,
+    "x2": 1354.94,
+    "y1": 390.81,
+    "y2": 350.84
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2168.47,
+    "x2": 2168.47,
+    "y1": 390.81,
+    "y2": 350.84
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2982.13,
+    "x2": 2982.13,
+    "y1": 390.81,
+    "y2": 350.84
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 390.81,
+    "y2": 350.84
+   },
+   {
+    "stroke": "#000000",
+    "x1": 354.17,
+    "x2": 354.17,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1202.73,
+    "x2": 1202.73,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2060.81,
+    "x2": 2060.81,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2928.3,
+    "x2": 2928.3,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    354.17,
+    1202.73,
+    2060.81,
+    2928.3,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    454.18,
+    849.45,
+    1244.59,
+    1639.86,
+    2035.13
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.y_lfit": {
+  "command": "twoway (lfit date close) (scatter date close),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    965.7999877929688,
+    1400.0
+   ],
+   "y": [
+    14977.0,
+    15400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "15000",
+    "x": 200.73,
+    "y": 2061.24
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "15100",
+    "x": 200.73,
+    "y": 1587.02
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "15200",
+    "x": 200.73,
+    "y": 1112.67
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "15300",
+    "x": 200.73,
+    "y": 638.45
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "15400",
+    "x": 200.73,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1000",
+    "x": 625.18,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1100",
+    "x": 1417.8,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1200",
+    "x": 2210.42,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1300",
+    "x": 3003.04,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1400",
+    "x": 3795.66,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2074.92,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Fitted values",
+    "x": 1769.63,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Date",
+    "x": 2599.49,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 625.18,
+    "x2": 625.18,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1417.8,
+    "x2": 1417.8,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2210.42,
+    "x2": 2210.42,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3003.04,
+    "x2": 3003.04,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400"
+   ],
+   "tick_px": [
+    625.18,
+    1417.8,
+    2210.42,
+    3003.04,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "15400",
+    "15300",
+    "15200",
+    "15100",
+    "15000"
+   ],
+   "tick_px": [
+    164.22,
+    638.45,
+    1112.67,
+    1587.02,
+    2061.24
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.y_scatter": {
+  "command": "twoway (scatter date close) (lfit date close),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 290.81,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    965.7999877929688,
+    1400.0
+   ],
+   "y": [
+    14976.0,
+    15363.857421875
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "01jan2001",
+    "x": 200.73,
+    "y": 2170.27
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "01apr2001",
+    "x": 200.73,
+    "y": 1704.83
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "01jul2001",
+    "x": 200.73,
+    "y": 1234.07
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "01oct2001",
+    "x": 200.73,
+    "y": 758.24
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "01jan2002",
+    "x": 200.73,
+    "y": 282.41
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1000",
+    "x": 625.18,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1100",
+    "x": 1417.8,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1200",
+    "x": 2210.42,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1300",
+    "x": 3003.04,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "1400",
+    "x": 3795.66,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Closing price",
+    "x": 2074.92,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Date",
+    "x": 1439.21,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Fitted values",
+    "x": 2228.86,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 290.81,
+    "x2": 290.81,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 625.18,
+    "x2": 625.18,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1417.8,
+    "x2": 1417.8,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2210.42,
+    "x2": 2210.42,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3003.04,
+    "x2": 3003.04,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400"
+   ],
+   "tick_px": [
+    625.18,
+    1417.8,
+    2210.42,
+    3003.04,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "01jan2002",
+    "01oct2001",
+    "01jul2001",
+    "01apr2001",
+    "01jan2001"
+   ],
+   "tick_px": [
+    282.41,
+    758.24,
+    1234.07,
+    1704.83,
+    2170.27
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.ygrp_lfit_first": {
+  "command": "twoway (lfit close date) (scatter open date, yaxis(2)),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3569.07,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "x2": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    1081.467529296875,
+    1304.865600585938
+   ],
+   "y2": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 3699.02,
+    "y": 2012.36
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 3699.02,
+    "y": 1550.26
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 3699.02,
+    "y": 1088.29
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 3699.02,
+    "y": 626.19
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 3699.02,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Opening price",
+    "x": 3809.04,
+    "y": 1167.25
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 300.72,
+    "y": 2003.95
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1150",
+    "x": 300.72,
+    "y": 1554.84
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 300.72,
+    "y": 1105.86
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1250",
+    "x": 300.72,
+    "y": 656.89
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 300.72,
+    "y": 207.91
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Fitted values",
+    "x": 190.71,
+    "y": 1167.25
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 454.16,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1206.56,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 1967.38,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2736.61,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3505.71,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 1979.88,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Fitted values",
+    "x": 1463.59,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Opening price",
+    "x": 2293.46,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 3569.07,
+    "x2": 3569.07,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 454.16,
+    "x2": 454.16,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1206.56,
+    "x2": 1206.56,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1967.38,
+    "x2": 1967.38,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2736.61,
+    "x2": 2736.61,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3505.71,
+    "x2": 3505.71,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    454.16,
+    1206.56,
+    1967.38,
+    2736.61,
+    3505.71
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1300",
+    "1250",
+    "1200",
+    "1150",
+    "1100"
+   ],
+   "tick_px": [
+    207.91,
+    656.89,
+    1105.86,
+    1554.84,
+    2003.95
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "ax18.ygrp_lfit_second": {
+  "command": "twoway (scatter close date) (lfit open date, yaxis(2)),",
+  "log": [],
+  "plotregion": {
+   "bottom": 2233.63,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3569.07,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14977.0,
+    15400.0
+   ],
+   "x2": [
+    14977.0,
+    15400.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ],
+   "y2": [
+    1081.1669921875,
+    1306.5576171875
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 3699.02,
+    "y": 2002.71
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1150",
+    "x": 3699.02,
+    "y": 1557.69
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 3699.02,
+    "y": 1112.67
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1250",
+    "x": 3699.02,
+    "y": 667.53
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 3699.02,
+    "y": 222.51
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Fitted values",
+    "x": 3809.04,
+    "y": 1167.25
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 300.72,
+    "y": 2012.36
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 300.72,
+    "y": 1550.26
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 300.72,
+    "y": 1088.29
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 300.72,
+    "y": 626.19
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Closing price",
+    "x": 190.71,
+    "y": 1167.25
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15000",
+    "x": 620.11,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15100",
+    "x": 1341.45,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15200",
+    "x": 2062.91,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15300",
+    "x": 2784.38,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "15400",
+    "x": 3505.71,
+    "y": 2363.59
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 1979.88,
+    "y": 2473.6
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Closing price",
+    "x": 1153.1,
+    "y": 2686.46
+   },
+   {
+    "anchor": null,
+    "rotate": null,
+    "text": "Fitted values",
+    "x": 2324.89,
+    "y": 2686.46
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 3569.07,
+    "x2": 3569.07,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2233.63,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 620.11,
+    "x2": 620.11,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1341.45,
+    "x2": 1341.45,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2062.91,
+    "x2": 2062.91,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2784.38,
+    "x2": 2784.38,
+    "y1": 2233.63,
+    "y2": 2273.73
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3505.71,
+    "x2": 3505.71,
+    "y1": 2233.63,
+    "y2": 2273.73
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "15000",
+    "15100",
+    "15200",
+    "15300",
+    "15400"
+   ],
+   "tick_px": [
+    620.11,
+    1341.45,
+    2062.91,
+    2784.38,
+    3505.71
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    626.19,
+    1088.29,
+    1550.26,
+    2012.36
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "dg4.DT04": {
+  "command": "twoway line close date, tlabel((1 jan 2001) (1 jul 2001))",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15340.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 300.72,
+    "y": 2247.74
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 300.72,
+    "y": 1726.86
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 300.72,
+    "y": 1205.98
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 300.72,
+    "y": 685.1
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Closing price",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 454.16,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2115.75,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 454.16,
+    "x2": 454.16,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2115.75,
+    "x2": 2115.75,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01jul2001"
+   ],
+   "tick_px": [
+    454.16,
+    2115.75
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    685.1,
+    1205.98,
+    1726.86,
+    2247.74
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "dg4.DT05": {
+  "command": "twoway line close date, tlabel(01jan2001 (1 jul 2001))",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15340.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 300.72,
+    "y": 2247.74
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 300.72,
+    "y": 1726.86
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 300.72,
+    "y": 1205.98
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 300.72,
+    "y": 685.1
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Closing price",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 454.16,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2115.75,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 454.16,
+    "x2": 454.16,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2115.75,
+    "x2": 2115.75,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01jul2001"
+   ],
+   "tick_px": [
+    454.16,
+    2115.75
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    685.1,
+    1205.98,
+    1726.86,
+    2247.74
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "dg4.DT06": {
+  "command": "twoway line close date, tlabel((july 1, 2001))",
+  "log": [
+   "invalid label specifier, : (july 1, 2001):"
+  ],
+  "rc": 198
+ },
+ "dg4.DT09": {
+  "command": "twoway line close date, tline((15 jun 2001))",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 300.72,
+    "y": 2247.74
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 300.72,
+    "y": 1726.86
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 300.72,
+    "y": 1205.98
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 300.72,
+    "y": 685.1
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Closing price",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 454.16,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1278.09,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2111.18,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2953.42,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#c10534",
+    "x1": 1964.78,
+    "x2": 1964.78,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 454.16,
+    "x2": 454.16,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1278.09,
+    "x2": 1278.09,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2111.18,
+    "x2": 2111.18,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2953.42,
+    "x2": 2953.42,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    454.16,
+    1278.09,
+    2111.18,
+    2953.42,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    685.1,
+    1205.98,
+    1726.86,
+    2247.74
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "dg4.DT20": {
+  "command": "twoway line close date, tscale(range((1 dec 2000) (31 jan 2002)))",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14945.0,
+    15371.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 300.72,
+    "y": 2247.74
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 300.72,
+    "y": 1726.86
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 300.72,
+    "y": 1205.98
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 300.72,
+    "y": 685.1
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Closing price",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 697.33,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1403.33,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2117.11,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2838.7,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3560.41,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 697.33,
+    "x2": 697.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1403.33,
+    "x2": 1403.33,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2117.11,
+    "x2": 2117.11,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2838.7,
+    "x2": 2838.7,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3560.41,
+    "x2": 3560.41,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    697.33,
+    1403.33,
+    2117.11,
+    2838.7,
+    3560.41
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    685.1,
+    1205.98,
+    1726.86,
+    2247.74
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "dg4.plain": {
+  "command": "twoway line close date,",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    14976.0,
+    15341.0
+   ],
+   "y": [
+    965.7999877929688,
+    1400.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1000",
+    "x": 300.72,
+    "y": 2247.74
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1100",
+    "x": 300.72,
+    "y": 1726.86
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1200",
+    "x": 300.72,
+    "y": 1205.98
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1300",
+    "x": 300.72,
+    "y": 685.1
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "1400",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "Closing price",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001",
+    "x": 454.16,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01apr2001",
+    "x": 1278.09,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jul2001",
+    "x": 2111.18,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01oct2001",
+    "x": 2953.42,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2002",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "Date",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 454.16,
+    "x2": 454.16,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1278.09,
+    "x2": 1278.09,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2111.18,
+    "x2": 2111.18,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2953.42,
+    "x2": 2953.42,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002"
+   ],
+   "tick_px": [
+    454.16,
+    1278.09,
+    2111.18,
+    2953.42,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "1400",
+    "1300",
+    "1200",
+    "1100",
+    "1000"
+   ],
+   "tick_px": [
+    164.22,
+    685.1,
+    1205.98,
+    1726.86,
+    2247.74
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "dg4.ttext": {
+  "command": "twoway line close date, ttext(1300 (15 jun 2001) \"x\")",
+  "log": [
+   "invalid point, (15 1300"
+  ],
+  "rc": 198
+ },
+ "dg6.T04": {
+  "command": "twoway scatter y t,",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    1293926400000.0,
+    1296500000000.0
+   ],
+   "y": [
+    0.0,
+    30.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "0",
+    "x": 300.72,
+    "y": 2425.82
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "10",
+    "x": 300.72,
+    "y": 1671.91
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "20",
+    "x": 300.72,
+    "y": 918.01
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "30",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "y",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001 20:26:40",
+    "x": 549.7,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "07jan2001 15:20:00",
+    "x": 1198.89,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "13jan2001 10:13:20",
+    "x": 1848.08,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "19jan2001 05:06:40",
+    "x": 2497.28,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "25jan2001 00:00:00",
+    "x": 3146.47,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "30jan2001 18:53:20",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "t",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 549.7,
+    "x2": 549.7,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1198.89,
+    "x2": 1198.89,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1848.08,
+    "x2": 1848.08,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2497.28,
+    "x2": 2497.28,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3146.47,
+    "x2": 3146.47,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001 20:26:40",
+    "07jan2001 15:20:00",
+    "13jan2001 10:13:20",
+    "19jan2001 05:06:40",
+    "25jan2001 00:00:00",
+    "30jan2001 18:53:20"
+   ],
+   "tick_px": [
+    549.7,
+    1198.89,
+    1848.08,
+    2497.28,
+    3146.47,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "30",
+    "20",
+    "10",
+    "0"
+   ],
+   "tick_px": [
+    164.22,
+    918.01,
+    1671.91,
+    2425.82
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "dg6.T05": {
+  "command": "twoway scatter y tC,",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    1293926422000.0,
+    1296500000000.0
+   ],
+   "y": [
+    0.0,
+    30.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "0",
+    "x": 300.72,
+    "y": 2425.82
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "10",
+    "x": 300.72,
+    "y": 1671.91
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "20",
+    "x": 300.72,
+    "y": 918.01
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "30",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "y",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2001 20:26:18",
+    "x": 549.7,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "07jan2001 15:19:38",
+    "x": 1198.89,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "13jan2001 10:12:58",
+    "x": 1848.08,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "19jan2001 05:06:18",
+    "x": 2497.28,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "24jan2001 23:59:38",
+    "x": 3146.47,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "30jan2001 18:52:58",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "tC",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 549.7,
+    "x2": 549.7,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1198.89,
+    "x2": 1198.89,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1848.08,
+    "x2": 1848.08,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2497.28,
+    "x2": 2497.28,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3146.47,
+    "x2": 3146.47,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "01jan2001 20:26:18",
+    "07jan2001 15:19:38",
+    "13jan2001 10:12:58",
+    "19jan2001 05:06:18",
+    "24jan2001 23:59:38",
+    "30jan2001 18:52:58"
+   ],
+   "tick_px": [
+    549.7,
+    1198.89,
+    1848.08,
+    2497.28,
+    3146.47,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "30",
+    "20",
+    "10",
+    "0"
+   ],
+   "tick_px": [
+    164.22,
+    918.01,
+    1671.91,
+    2425.82
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "dg6.tC_2016": {
+  "command": "twoway scatter y tC,",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    1798847900000.0,
+    1798848200000.0
+   ],
+   "y": [
+    0.0,
+    30.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "0",
+    "x": 300.72,
+    "y": 2425.82
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "10",
+    "x": 300.72,
+    "y": 1671.91
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "20",
+    "x": 300.72,
+    "y": 918.01
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "30",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "y",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "31dec2016 23:57:54",
+    "x": 454.16,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "31dec2016 23:59:34",
+    "x": 1568.04,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2017 00:01:13",
+    "x": 2681.91,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2017 00:02:53",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "tC",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 454.16,
+    "x2": 454.16,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1568.04,
+    "x2": 1568.04,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2681.91,
+    "x2": 2681.91,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "31dec2016 23:57:54",
+    "31dec2016 23:59:34",
+    "01jan2017 00:01:13",
+    "01jan2017 00:02:53"
+   ],
+   "tick_px": [
+    454.16,
+    1568.04,
+    2681.91,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "30",
+    "20",
+    "10",
+    "0"
+   ],
+   "tick_px": [
+    164.22,
+    918.01,
+    1671.91,
+    2425.82
+   ],
+   "tick_side": "left of plotregion"
+  }
+ },
+ "dg6.tc_2016": {
+  "command": "twoway scatter y t,",
+  "log": [],
+  "plotregion": {
+   "bottom": 2489.19,
+   "fill": "#ffffff",
+   "left": 390.8,
+   "right": 3859.02,
+   "source": "first solid-fill <rect> inside the graph region (Stata writes canvas, graphregion, plotregion, then legend / by-panel regions, in that order)",
+   "top": 100.86
+  },
+  "rc": 0,
+  "scale": {
+   "x": [
+    1798847880000.0,
+    1798848200000.0
+   ],
+   "y": [
+    0.0,
+    30.0
+   ]
+  },
+  "texts": [
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "0",
+    "x": 300.72,
+    "y": 2425.82
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "10",
+    "x": 300.72,
+    "y": 1671.91
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "20",
+    "x": 300.72,
+    "y": 918.01
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "30",
+    "x": 300.72,
+    "y": 164.22
+   },
+   {
+    "anchor": "middle",
+    "rotate": -90.0,
+    "text": "y",
+    "x": 190.71,
+    "y": 1294.96
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "31dec2016 23:58:20",
+    "x": 662.93,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2017 00:00:00",
+    "x": 1707.26,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2017 00:01:40",
+    "x": 2751.46,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "01jan2017 00:03:20",
+    "x": 3795.66,
+    "y": 2619.14
+   },
+   {
+    "anchor": "middle",
+    "rotate": null,
+    "text": "t",
+    "x": 2124.91,
+    "y": 2729.16
+   }
+  ],
+  "vlines": [
+   {
+    "stroke": "#000000",
+    "x1": 390.8,
+    "x2": 390.8,
+    "y1": 2489.19,
+    "y2": 100.86
+   },
+   {
+    "stroke": "#000000",
+    "x1": 662.93,
+    "x2": 662.93,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 1707.26,
+    "x2": 1707.26,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 2751.46,
+    "x2": 2751.46,
+    "y1": 2489.19,
+    "y2": 2529.16
+   },
+   {
+    "stroke": "#000000",
+    "x1": 3795.66,
+    "x2": 3795.66,
+    "y1": 2489.19,
+    "y2": 2529.16
+   }
+  ],
+  "xaxis": {
+   "labels": [
+    "31dec2016 23:58:20",
+    "01jan2017 00:00:00",
+    "01jan2017 00:01:40",
+    "01jan2017 00:03:20"
+   ],
+   "tick_px": [
+    662.93,
+    1707.26,
+    2751.46,
+    3795.66
+   ],
+   "tick_side": "below plotregion"
+  },
+  "yaxis": {
+   "labels": [
+    "30",
+    "20",
+    "10",
+    "0"
+   ],
+   "tick_px": [
+    164.22,
+    918.01,
+    1671.91,
+    2425.82
+   ],
+   "tick_side": "left of plotregion"
+  }
+ }
+}

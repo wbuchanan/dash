@@ -369,13 +369,17 @@ class TestAUnivariateDateIsOnX:
     @pytest.mark.parametrize("ptype", ["histogram", "kdensity"])
     @pytest.mark.parametrize("mode", _MODES)
     def test_the_date_axis_is_x(self, tmp_path, mode, ptype):
-        """kdensity: D05-1 was struck (01oct2026), so dash keeps its date
-        axis where twoway labels numbers."""
+        """The date is on x; a histogram's x is a date axis, a kdensity's a
+        numeric one, as twoway labels them."""
+        # Flipped (WP-44 AX-18): kdensity's date axis was wrong because
+        # twoway labels the axis with the variable's numbers
+        # (date_axis_rule_truth.json ax18.kdensity_alone: 15000 ... 15400).
         fig, _w, _c = _build(mode, tmp_path,
                              _spec([{"type": ptype, "var": "date",
                                      "options": {}}]))
         xa, ya = _axis_types(fig)
-        assert xa is DatetimeAxis and ya is not DatetimeAxis, (xa, ya)
+        want = DatetimeAxis if ptype == "histogram" else LinearAxis
+        assert xa is want and ya is not DatetimeAxis, (xa, ya)
 
     @pytest.mark.parametrize("fmt", ["%tdCCYY-NN-DD", "%tmMon_CCYY"])
     @pytest.mark.parametrize("mode", _MODES)
@@ -416,11 +420,14 @@ class TestAUnivariateDateIsOnX:
         assert not [x for x in w if "date variable ''" in x], w
 
     @pytest.mark.parametrize("mode", _MODES)
-    def test_xscale_log_note_names_the_variable(self, tmp_path, mode):
-        _fig, w, _c = _build(mode, tmp_path,
-                             _spec([_hist("date")], go={"xscale": "log"}))
-        assert [x for x in w if "xscale(log) is meaningless for the date "
-                "variable 'date'" in x], w
+    def test_xscale_log_draws_a_log_axis(self, tmp_path, mode):
+        # Flipped (WP-44 AX-18): the note and the dropped log were wrong
+        # because twoway draws a log scale with date labels on a date axis
+        # (date_axis_rule_truth.json ax18.log_*).
+        fig, w, _c = _build(mode, tmp_path,
+                            _spec([_hist("date")], go={"xscale": "log"}))
+        assert isinstance(fig.xaxis[0], LogAxis), type(fig.xaxis[0])
+        assert not [x for x in w if "meaningless" in x], w
 
 
 # ---------------------------------------------------------------------------
@@ -493,22 +500,30 @@ class TestTheAxisRule:
 
     @pytest.mark.parametrize("case", _DIVERGES)
     @pytest.mark.parametrize("mode", _MODES)
-    def test_a_unit_labelled_first_layer_keeps_the_date_axis(
+    def test_a_unit_labelled_first_layer_labels_numbers(
             self, tmp_path, mode, case):
-        """The ratified divergence (D05-1 struck 01oct2026): twoway labels
-        this axis with the variable's numbers, dash keeps its date axis."""
-        _check_date_axis(tmp_path, mode, case)
+        """twoway labels this axis with the variable's numbers, and so does
+        dash: neither axis is a date axis."""
+        # Flipped (WP-44 AX-18): a date axis there was wrong because twoway
+        # labels the axis with the variable's numbers.
+        fig, _w, _c = _build(mode, tmp_path, _spec(_AXIS_PLOTS[case]))
+        xa, ya = _axis_types(fig)
+        assert xa is not DatetimeAxis and ya is not DatetimeAxis, (
+            case, xa.__name__, ya.__name__)
 
     @pytest.mark.parametrize("ptype", ["lfit", "qfit", "lfitci", "qfitci",
                                        "kdensity", "lpoly", "lpolyci"])
     @pytest.mark.parametrize("mode", _MODES)
     def test_a_lone_fit_is_drawn_at_its_dates(self, tmp_path, mode, ptype):
+        # Flipped (WP-44 AX-18): a date axis in milliseconds was wrong
+        # because twoway labels a lone fit's axis with the variable's
+        # numbers; the fit is drawn at its day numbers.
         plot = _kd("date") if ptype == "kdensity" else _fit(ptype)
         fig, _w, _c = _build(mode, tmp_path, _spec([plot]))
-        assert isinstance(fig.xaxis[0], DatetimeAxis)
+        assert not isinstance(fig.xaxis[0], DatetimeAxis)
         xs = _drawn_x(fig)
         xs = xs[np.isfinite(xs)]
-        lo, hi = ms_td(14977), ms_td(15340)
+        lo, hi = 14977.0, 15340.0
         assert xs.size and xs.min() >= lo - 1 and xs.max() <= hi + 1, (
             xs.min() if xs.size else None, xs.max() if xs.size else None)
         if ptype in ("lpoly", "lpolyci"):
@@ -583,12 +598,14 @@ class TestKdensityOnADate:
                                      "options": dict(opts)}]))
         x, y, _r = _line(fig)
         assert _rel(y, t["y"], 1e-9), (y.tolist(), t["y"])
-        oracle = ms_td if var == "date" else ms_tm_frac
-        want = [oracle(v) for v in t["x"]]
+        # Flipped (WP-44 AX-18): epoch milliseconds on a date axis were
+        # wrong because twoway labels a lone kdensity's axis with the
+        # variable's numbers: the curve is at twoway's own x.
+        want = list(t["x"])
         assert x.shape == (len(want),) and np.allclose(x, want, rtol=0,
-                                                       atol=1.0), (
+                                                       atol=1e-9), (
             x.tolist(), want)
-        assert isinstance(fig.xaxis[0], DatetimeAxis)
+        assert not isinstance(fig.xaxis[0], DatetimeAxis)
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_on_a_date_axis_it_is_drawn_at_the_dates(self, tmp_path, mode):
@@ -707,8 +724,10 @@ _OOR = {
     "kd_after_hist_range-1000000_15400": (
         [_hist("date"), _kd("date", range="-1000000 15400", n=5)],
         "2 point(s)", 3),
+    # Flipped (WP-44 AX-18): a lone kdensity's axis is numeric, as twoway
+    # labels it, so a point before 0100 is a number it draws: no note.
     "kd_lone_range-1000000_15400": (
-        [_kd("date", range="-1000000 15400", n=5)], "2 point(s)", 3),
+        [_kd("date", range="-1000000 15400", n=5)], None, 5),
     "lfit_after_scatter_range-700000_15340": (
         [_two("scatter", "close", "date"),
          _two("lfit", "close", "date", range="-700000 15340")],
@@ -735,7 +754,10 @@ class TestOutOfRange:
         plots, note, kept = _OOR[case]
         fig, w, ctx = _build(mode, tmp_path / "a", _spec(plots))
         notes = [x for x in w if "outside Stata's dates" in x]
-        assert len(notes) == 1 and note in notes[0], w
+        if note is None:
+            assert not notes, w
+        else:
+            assert len(notes) == 1 and note in notes[0], w
         if plots[-1]["type"] == "histogram":
             _l, _rr, top, _r = _bars(fig)
             assert len(top) == kept
@@ -854,7 +876,10 @@ class TestAfterAFilterMove:
                      _two("lfit", "close", "date")]
             lo, hi = 14977.0, 15340.0
         else:
-            plots = [_two("lfit", "close", "date")]
+            # Flipped (WP-44 AX-18): a scatter first keeps the date axis; a
+            # lone lfit's axis is numeric, as twoway labels it.
+            plots = [_two("scatter", "close", "date"),
+                     _two("lfit", "close", "date")]
             lo, hi = ms_td(14977), ms_td(15340)
         fig, _w, doc = _build("served", tmp_path, _spec(plots), _obs_frame())
         for moved in (False, True):

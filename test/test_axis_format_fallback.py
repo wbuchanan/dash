@@ -202,12 +202,17 @@ class TestTheHelper:
 
     def test_a_date_variable_gives_no_format(self):
         dv = {"date": "td"}
+        # Flipped (WP-44 AX-18): "" for an lfit or kdensity of a date was
+        # wrong because twoway labels their axis in %9.0g, the date's
+        # numbers (date_axis_rule_truth.json ax18.first_lfit,
+        # ax18.kdensity_alone: 15000 ... 15400); a line keeps "".
         assert dr._dash_layer_tick_format(
-            _p("lfit", yvar="close", xvar="date"), "x", _NF, dv) == ("", False)
+            _p("lfit", yvar="close", xvar="date"), "x", _NF, dv) == (
+                "%9.0g", False)
         assert dr._dash_layer_tick_format(
             _p("line", yvar="close", xvar="date"), "x", _NF, dv) == ("", False)
         assert dr._dash_layer_tick_format(
-            _p("kdensity", var="date"), "x", _NF, dv) == ("", False)
+            _p("kdensity", var="date"), "x", _NF, dv) == ("%9.0g", False)
         assert dr._dash_axis_tick_formats(None, _NF) == {
             "x": ("", False), "y": ("", False), "x2": ("", False),
             "y2": ("", False)}

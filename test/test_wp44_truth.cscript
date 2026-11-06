@@ -419,110 +419,6 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
     display as text "S01 end " c(current_date) " " c(current_time)
 }
 * ==== end S01 ====
-// S05 helpers (WP-44 44-05).  _q4405_reg <dir> <dash command...>:
-// register one graph and count the drawn y and x grids (a Grid whose
-// line colour is set) both modes draw, into q4405_<y|x><s|v>;
-// _q4405_svg <file>: twoway's gridline groups -- the horizontal and
-// vertical lines whose stroke is not black -- into q4405_ty and q4405_tx.
-python:
-import os as _q4405_os, sys as _q4405_sys
-for _q4405_p in (_q4405_os.path.abspath(".."),
-                 _q4405_os.path.abspath(_q4405_os.path.join("..", "scripts"))):
-    if _q4405_p not in _q4405_sys.path:
-        _q4405_sys.path.insert(0, _q4405_p)
-
-
-def _q4405_read(sp, dp, app):
-    import warnings
-    import dash_render as dr
-    from bokeh.document import Document
-    from bokeh.models import Grid
-    from sfi import Macro
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        r = dr.DashRenderer(sp, dp)
-        r.render()
-        dr.ServerAppBuilder(sp, dp).build(app)
-        with open(app, encoding="utf-8") as fh:
-            src = fh.read()
-        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
-        ns = dict(__name__="dash_q4405_app")
-        exec(compile(src.replace(attach, "pass"), "dash_q4405_app.py",
-                     "exec"), ns)
-        doc = Document()
-        ns["make_document"](doc)
-    for models, sfx in ((list(r._last_layout_root.references()), "s"),
-                        (list(doc.models), "v")):
-        grids = [m for m in models if isinstance(m, Grid)
-                 and m.grid_line_color is not None]
-        Macro.setGlobal("q4405_y" + sfx,
-                        str(sum(1 for g in grids if g.dimension == 1)))
-        Macro.setGlobal("q4405_x" + sfx,
-                        str(sum(1 for g in grids if g.dimension == 0)))
-
-
-def _q4405_svg(path):
-    from sfi import Macro
-    from svg_truth import svg_document
-    d = svg_document(path)
-    for kind, g in (("hlines", "q4405_ty"), ("vlines", "q4405_tx")):
-        Macro.setGlobal(g, str(sum(1 for ln in d[kind]
-                                   if ln.get("stroke") not in (None, "#000000"))))
-end
-
-capture program drop _q4405_reg
-program define _q4405_reg
-    version 19
-    gettoken dir 0 : 0
-    dash clear
-    quietly dash `0'
-    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
-    python: import __main__ as _q4405_m; _q4405_m._q4405_read("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
-end
-
-* ==== S05 MS-12: lone second axis without gridlines ====
-local only : env WP44_ONLY
-if inlist("`only'", "", "S05") & `: list posof "S05" in w44_run' {
-    display as text "S05 start " c(current_date) " " c(current_time)
-    local q05d "`w44_work'/s05a"
-    capture mkdir "`q05d'"
-    capture graph drop _all
-
-    // ------------------------------------------------------------
-    // Q4405-1: a graph whose every layer is on a second (or third)
-    // axis draws no gridline of that dimension, live twoway beside
-    // dash, saved and served; ylabel(, grid axis(2)) and a graph on
-    // axis 1 draw them (test/fixtures/axis_misc_truth.json ms12.*).
-    // ------------------------------------------------------------
-    foreach c in "y|0|scatter mpg weight, yaxis(2)" "y|0|pci 20 3000 30 4000, yaxis(2)" ///
-            "y|0|scatter mpg weight, yaxis(3)" "y|1|scatter mpg weight, yaxis(2) ylabel(, grid axis(2))" ///
-            "y|1|scatter mpg weight" "x|0|scatter mpg weight, xaxis(2) scheme(stcolor)" ///
-            "x|1|scatter mpg weight, scheme(stcolor)" {
-        gettoken d c : c, parse("|")
-        gettoken w c : c, parse("|")
-        gettoken w c : c, parse("|")
-        gettoken bar c : c, parse("|")
-        sysuse auto, clear
-        local comma = cond(strpos(`"`c'"', ","), "", ",")
-        quietly twoway `c'`comma' name(q05t, replace)
-        capture erase "`q05d'/q05t.svg"
-        cert_svg_export, name(q05t) file("`q05d'/q05t.svg")
-        python: import __main__ as _q4405_m; _q4405_m._q4405_svg("`q05d'/q05t.svg")
-        local tw = (${q4405_t`d'} > 0)
-        _q4405_reg "`q05d'" `c'`comma' name(q05d)
-        local gs = (${q4405_`d's} > 0)
-        local gv = (${q4405_`d'v} > 0)
-        _w44_expect Q4405-1 "(`tw' == `w' & `gs' == `w' & `gv' == `w')" `"`c': `d' grid twoway `tw' (want `w'), dash saved `gs', served `gv'"'
-    }
-    _w44_done Q4405-1 "a lone second or third axis draws no gridline, as twoway draws it; grid asked for and axis 1 keep theirs, saved and served"
-
-    capture graph drop _all
-    capture dash clear
-    macro drop q4405_*
-    display as text "S05 end " c(current_date) " " c(current_time)
-}
-* ==== end S05 ====
-
 * ==== S01 PIC-12: right-hand y titles read upward ====
 local only : env WP44_ONLY
 if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
@@ -626,6 +522,301 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w44_run' {
     display as text "S01 end " c(current_date) " " c(current_time)
 }
 * ==== end S01 ====
+
+// S04 helpers (WP-44 44-04).  _q4404_reg <dir> <k> <key> <axis> <dash
+// command...>: registers the dash graph, builds it saved and served, and
+// writes each mode's <axis> axis as "<axis type>|<label texts>"
+// (q4404_got_s, q4404_got_v; the labels are the formatter's format
+// written at each tick by dash's own Python writer) and twoway's, from
+// test/fixtures/date_axis_rule_truth.json <key>, in the same form
+// (q4404_want): LogAxis under a log scale, DatetimeAxis where twoway
+// writes dates, else LinearAxis.  Legend-only key proxies are no axis.
+python:
+import os as _q4404_os
+import sys as _q4404_sys
+# dash_render.py of this tree (the script runs from test/).
+_q4404_sys.path.insert(0, _q4404_os.path.abspath(".."))
+
+
+def _q4404_docs(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_q4404_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_q4404_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    sv = [m for m in doc.models if type(m).__name__ == "figure"
+          and m.renderers]
+    return list(r.figures.values()), sv
+
+
+def _q4404_axis(fig, which):
+    import dash_render as dr
+    side, rn, nm = {"x": ("below", "x_range_name", "default"),
+                    "y": ("left", "y_range_name", "default"),
+                    "x2": ("above", "x_range_name", "x2"),
+                    "y2": ("right", "y_range_name", "y2")}[which]
+    axes = [a for a in getattr(fig, side) if hasattr(a, "ticker")
+            and getattr(a, rn, "default") == nm]
+    if not axes:
+        return "none"
+    ax = axes[0]
+    t = ax.ticker
+    args = dict(getattr(t, "args", None) or {})
+    base = args.get("base", t)
+    ticks = list(getattr(base, "ticks", None) or [])
+    fa = dict(getattr(ax.formatter, "args", None) or {})
+    fmt, kind = fa.get("fmt", "%9.0g"), fa.get("kind", "")
+    texts = []
+    for v in ticks:
+        u = dr._dash_stata_value_of(v, kind) if kind else v
+        texts.append(dr._dash_fmt(u, fmt, strip=True))
+    return type(ax).__name__ + "|" + " ".join(texts)
+
+
+def _q4404_draw(sp, dp, app, key, which):
+    import json, os, re
+    from sfi import Macro
+    a, b = _q4404_docs(sp, dp, app)
+    Macro.setGlobal("q4404_got_s", _q4404_axis(a[0], which))
+    Macro.setGlobal("q4404_got_v", _q4404_axis(b[0], which))
+    with open(os.path.join("fixtures", "date_axis_rule_truth.json"),
+              encoding="utf-8") as fh:
+        row = json.load(fh)[key]
+    labels = list(row[which[0] + "axis"]["labels"])
+    if which[0] == "y":
+        labels.reverse()
+    cmd = row["command"]
+    dated = any(re.search(r"[a-z]", t or "") for t in labels)
+    typ = ("LogAxis" if re.search(r"scale\(log", cmd) else
+           "DatetimeAxis" if dated else "LinearAxis")
+    Macro.setGlobal("q4404_want", typ + "|" + " ".join(labels))
+end
+
+capture program drop _q4404_reg
+program define _q4404_reg
+    // _q4404_reg <dir> <k> <key> <axis> <dash command, options>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken key 0 : 0
+    gettoken which 0 : 0
+    dash clear
+    // A registered graph: name() after the command's own options (every
+    // case's command ends in its option comma or its options).
+    quietly dash `0' name(zq4404_`k')
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _q4404_m; _q4404_m._q4404_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`key'", "`which'")
+end
+
+* ==== S04 AX-18: numbers and log on date axes ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w44_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    local q4d "`w44_work'/s04"
+    capture mkdir "`q4d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse sp500, clear
+
+    // ------------------------------------------------------------
+    // Q4404-1: kdensity of a date labels its axis with the date's
+    // numbers, 15000 ... 15400, as twoway does (first layer, alone and
+    // horizontal), both modes.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "ax18.first_kdensity x (kdensity date) (scatter close date)," ///
+                 "ax18.kdensity_alone x kdensity date," ///
+                 "ax18.hz y kdensity date, horizontal" {
+        local ++k
+        gettoken key c : c
+        gettoken which c : c
+        _q4404_reg "`q4d'" 1`k' `key' `which' `c'
+        foreach m in s v {
+            _w44_expect Q4404-1 `"("${q4404_got_`m'}" == "${q4404_want}")"' "`key' `m': ${q4404_got_`m'}, twoway ${q4404_want}"
+        }
+    }
+    _w44_done Q4404-1 "kdensity of a date is labelled with its numbers, as twoway labels it, saved and served"
+
+    // ------------------------------------------------------------
+    // Q4404-2: a fit or an immediate type that gives the axis its format
+    // labels it with numbers; a scatter, fpfit or line first keeps the
+    // dates; with a second y axis the group whose first layer comes last
+    // decides (ax18.ygrp_*), both modes.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "ax18.first_lfit x (lfit close date) (scatter close date)," ///
+                 "ax18.first_qfitci x (qfitci close date) (scatter close date)," ///
+                 "ax18.first_lpoly x (lpoly close date) (scatter close date)," ///
+                 "ax18.first_scatteri x (scatteri 1300 15400) (scatter close date)," ///
+                 "ax18.first_pci x (pci 1300 15200 1400 15300) (scatter close date)," ///
+                 "ax18.first_function x (function y = 1300, range(15000 15400)) (scatter close date)," ///
+                 "ax18.first_fpfit x (fpfit close date) (scatter close date)," ///
+                 "ax18.scatter_first x (scatter close date) (lfit close date)," ///
+                 "ax18.lfit_range x (lfit close date, range(14900 15400)) (scatter close date)," ///
+                 "ax18.y_lfit y (lfit date close) (scatter date close)," ///
+                 "ax18.ygrp_lfit_second x (scatter close date) (lfit open date, yaxis(2))," ///
+                 "ax18.ygrp_lfit_first x (lfit close date) (scatter open date, yaxis(2))," {
+        local ++k
+        gettoken key c : c
+        gettoken which c : c
+        _q4404_reg "`q4d'" 2`k' `key' `which' `c'
+        foreach m in s v {
+            _w44_expect Q4404-2 `"("${q4404_got_`m'}" == "${q4404_want}")"' "`key' `m': ${q4404_got_`m'}, twoway ${q4404_want}"
+        }
+    }
+    _w44_done Q4404-2 "the layer an axis takes its format from decides dates or numbers, as twoway, saved and served"
+
+    // ------------------------------------------------------------
+    // Q4404-3: xscale(log)/yscale(log) on a date axis draw a log axis
+    // with twoway's date labels (%td and %tm, #4 included), and dash
+    // writes no warning.
+    // ------------------------------------------------------------
+    gen int m = mofd(date)
+    format m %tm
+    local k 0
+    foreach c in "ax18.log_x_td x line close date, xscale(log)" ///
+                 "ax18.log_y_td y scatter date close, yscale(log)" ///
+                 "ax18.log_x4_td x line close date, xscale(log) xlabel(#4)" ///
+                 "ax18.log_x_tm x line close m, xscale(log)" ///
+                 "ax18.log_y_tm y scatter m close, yscale(log)" ///
+                 "ax18.log_x4_tm x line close m, xscale(log) xlabel(#4)" {
+        local ++k
+        gettoken key c : c
+        gettoken which c : c
+        _q4404_reg "`q4d'" 3`k' `key' `which' `c'
+        foreach m in s v {
+            _w44_expect Q4404-3 `"("${q4404_got_`m'}" == "${q4404_want}")"' "`key' `m': ${q4404_got_`m'}, twoway ${q4404_want}"
+        }
+    }
+    dash clear
+    capture noisily dash line close date, xscale(log)
+    local q3rc = _rc
+    _w44_expect Q4404-3 "(`q3rc' == 0)" "dash line close date, xscale(log) rc `q3rc'"
+    _w44_done Q4404-3 "log date axes are drawn with twoway's date labels, saved and served"
+    drop m
+
+    dash clear
+    capture graph drop _all
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
+// S05 helpers (WP-44 44-05).  _q4405_reg <dir> <dash command...>:
+// register one graph and count the drawn y and x grids (a Grid whose
+// line colour is set) both modes draw, into q4405_<y|x><s|v>;
+// _q4405_svg <file>: twoway's gridline groups -- the horizontal and
+// vertical lines whose stroke is not black -- into q4405_ty and q4405_tx.
+python:
+import os as _q4405_os, sys as _q4405_sys
+for _q4405_p in (_q4405_os.path.abspath(".."),
+                 _q4405_os.path.abspath(_q4405_os.path.join("..", "scripts"))):
+    if _q4405_p not in _q4405_sys.path:
+        _q4405_sys.path.insert(0, _q4405_p)
+
+
+def _q4405_read(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    from bokeh.models import Grid
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+        with open(app, encoding="utf-8") as fh:
+            src = fh.read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        ns = dict(__name__="dash_q4405_app")
+        exec(compile(src.replace(attach, "pass"), "dash_q4405_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    for models, sfx in ((list(r._last_layout_root.references()), "s"),
+                        (list(doc.models), "v")):
+        grids = [m for m in models if isinstance(m, Grid)
+                 and m.grid_line_color is not None]
+        Macro.setGlobal("q4405_y" + sfx,
+                        str(sum(1 for g in grids if g.dimension == 1)))
+        Macro.setGlobal("q4405_x" + sfx,
+                        str(sum(1 for g in grids if g.dimension == 0)))
+
+
+def _q4405_svg(path):
+    from sfi import Macro
+    from svg_truth import svg_document
+    d = svg_document(path)
+    for kind, g in (("hlines", "q4405_ty"), ("vlines", "q4405_tx")):
+        Macro.setGlobal(g, str(sum(1 for ln in d[kind]
+                                   if ln.get("stroke") not in (None, "#000000"))))
+end
+
+capture program drop _q4405_reg
+program define _q4405_reg
+    version 19
+    gettoken dir 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _q4405_m; _q4405_m._q4405_read("`dir'/s.json", "`dir'/d.json", "`dir'/a.py")
+end
+
+* ==== S05 MS-12: lone second axis without gridlines ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w44_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+    local q05d "`w44_work'/s05a"
+    capture mkdir "`q05d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // Q4405-1: a graph whose every layer is on a second (or third)
+    // axis draws no gridline of that dimension, live twoway beside
+    // dash, saved and served; ylabel(, grid axis(2)) and a graph on
+    // axis 1 draw them (test/fixtures/axis_misc_truth.json ms12.*).
+    // ------------------------------------------------------------
+    foreach c in "y|0|scatter mpg weight, yaxis(2)" "y|0|pci 20 3000 30 4000, yaxis(2)" ///
+            "y|0|scatter mpg weight, yaxis(3)" "y|1|scatter mpg weight, yaxis(2) ylabel(, grid axis(2))" ///
+            "y|1|scatter mpg weight" "x|0|scatter mpg weight, xaxis(2) scheme(stcolor)" ///
+            "x|1|scatter mpg weight, scheme(stcolor)" {
+        gettoken d c : c, parse("|")
+        gettoken w c : c, parse("|")
+        gettoken w c : c, parse("|")
+        gettoken bar c : c, parse("|")
+        sysuse auto, clear
+        local comma = cond(strpos(`"`c'"', ","), "", ",")
+        quietly twoway `c'`comma' name(q05t, replace)
+        capture erase "`q05d'/q05t.svg"
+        cert_svg_export, name(q05t) file("`q05d'/q05t.svg")
+        python: import __main__ as _q4405_m; _q4405_m._q4405_svg("`q05d'/q05t.svg")
+        local tw = (${q4405_t`d'} > 0)
+        _q4405_reg "`q05d'" `c'`comma' name(q05d)
+        local gs = (${q4405_`d's} > 0)
+        local gv = (${q4405_`d'v} > 0)
+        _w44_expect Q4405-1 "(`tw' == `w' & `gs' == `w' & `gv' == `w')" `"`c': `d' grid twoway `tw' (want `w'), dash saved `gs', served `gv'"'
+    }
+    _w44_done Q4405-1 "a lone second or third axis draws no gridline, as twoway draws it; grid asked for and axis 1 keep theirs, saved and served"
+
+    capture graph drop _all
+    capture dash clear
+    macro drop q4405_*
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
 
 * ==== append new blocks above this line ====
 

@@ -744,6 +744,19 @@ def _plot_for(ptype, options=None):
     return {"type": ptype, "yvar": "lo", "xvar": "date", "options": o}
 
 
+def _bounds_for(ptype):
+    """The x extent a lone *ptype* layer over ``_spread_frame``'s dates may
+    reach: epoch ms on its date axis, or -- for a type twoway labels with
+    the date's numbers (WP-44 AX-18) -- Stata's days on a numeric axis."""
+    # Flipped (WP-44 AX-18): epoch ms for lfit, kdensity and the like was
+    # wrong because twoway labels their lone axis with the date's numbers,
+    # so their layers are drawn at Stata's day numbers.
+    if ptype in dr._DASH_NUMBER_FIRST_TYPES:
+        return tuple(dr._dash_unix_ms_to_unit(v, "d") for v in (
+            _LO_MS - _HALF_GAP, _HI_MS + _HALF_GAP))
+    return (_LO_MS - _HALF_GAP, _HI_MS + _HALF_GAP)
+
+
 def _spread_frame(hole=False):
     vals = list(_SPREAD)
     if hole:
@@ -816,8 +829,8 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
                        _spread_frame(hole))
         ext = _x_extents(r.figures["g1"])
         assert ext, "the layer drew nothing"
-        wrong = [e for e in ext if not (_LO_MS - _HALF_GAP <= e[2]
-                                        and e[3] <= _HI_MS + _HALF_GAP)]
+        lo, hi = _bounds_for(ptype)
+        wrong = [e for e in ext if not (lo <= e[2] and e[3] <= hi)]
         assert not wrong, wrong
 
     def test_a_bar_over_dates_is_as_wide_as_their_spacing(self, tmp_path):

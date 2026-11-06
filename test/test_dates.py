@@ -399,7 +399,7 @@ class TestDatetimeAxis:
             f"the date series reached the glyph with {lengths} points"
         )
 
-    def test_log_scale_on_a_date_variable_warns_and_stays_a_date(self,
+    def test_log_scale_on_a_date_variable_draws_a_log_axis(self,
                                                                  tmp_path):
         data = _jsonio_payload(
             [{"date": 14977.0 + i, "close": 1000.0 + i} for i in range(10)],
@@ -412,9 +412,13 @@ class TestDatetimeAxis:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             fig = dr._build_figures()["g1"]
-        from bokeh.models import DatetimeAxis
-        assert any(isinstance(a, DatetimeAxis) for a in fig.xaxis)
-        assert any("date" in str(w.message).lower() for w in caught)
+        # Flipped (WP-44 AX-18): the warning and the date axis were wrong
+        # because twoway draws a log scale with date labels on a date axis
+        # (date_axis_rule_truth.json ax18.log_x_td): a log axis, no warning.
+        from bokeh.models import DatetimeAxis, LogAxis
+        assert any(isinstance(a, LogAxis) for a in fig.xaxis)
+        assert not any(isinstance(a, DatetimeAxis) for a in fig.xaxis)
+        assert not any("meaningless" in str(w.message) for w in caught)
 
 
 # ======================================================================

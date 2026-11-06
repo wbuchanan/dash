@@ -462,7 +462,11 @@ class TestFallbackTooltipsUseDisplayFormats:
         tips, fmts = _tool(root)
         assert tips[0][0] == "date" and tips[0][1].endswith("{custom}")
         fx = fmts[tips[0][1].split("{custom}")[0]]
-        assert fx.args["kind"] == "td"
+        # Flipped (WP-44 AX-18): a lone lfit's axis is numeric, as twoway
+        # labels it, so x is the day number and the tooltip writes it in
+        # the date's format from Stata's units (kind ""); epoch ms (kind
+        # "td") was wrong because the axis is no date axis.
+        assert fx.args["fmt"] == "%td" and fx.args["kind"] == ""
         assert tips[1] == ("lo", tips[1][1])
         assert tips[1][1].endswith("{0.00}")
 
@@ -763,6 +767,10 @@ _PLAIN_DIGESTS = {
     # d03b126c... -> 6ede92b7... saved, 8d93b119... -> 08dea935... served:
     # WP-43 LT-10, the width scale's pair kind takes a legend's four-sided
     # padding (width-scale JS text only); the same under both Pythons.
+    # 6ede92b7... -> a1befad1... saved, 08dea935... -> 104fc2fd... served:
+    # WP-44 AX-18, the finish and zoom code ticks a log axis of dates on
+    # their calendar (dash_axis_ticks_of; finish JS text only); the same
+    # under both Pythons.
     ("saved", "plain"):
         "6ede92b7a0a9c78b3439cff787b173d286269fb8c4b17dff0bbae772b19a2b8e",
     # 6ede92b7... -> 215296e3... (yaxis2 only): WP-44 MS-12, a lone
@@ -956,6 +964,7 @@ from js_runner import run_js  # noqa: E402
 from test_served_dates import _served_fig  # noqa: E402
 from bokeh.models import (Arrow, CustomJSTransform, DatetimeAxis,  # noqa: E402,E501
                           DatetimeTicker, DatetimeTickFormatter, LabelSet,
+                          LogAxis,
                           Span)
 
 _E = -315619200000.0
@@ -1647,12 +1656,13 @@ class TestASecondDateAxis:
 
     @pytest.mark.parametrize("mode", MODES)
     def test_yscale2_log_on_a_date_axis_draws_dates(self, tmp_path, mode):
+        # Flipped (WP-44 AX-18): the note and the dropped log were wrong
+        # because twoway draws a log scale with date labels on a date axis
+        # (date_axis_rule_truth.json ax18.log_*): a log axis, no note.
         fig, w, _o = _da_fig(tmp_path, mode, self._Y2,
                              go={"yscale2": "log"})
-        assert isinstance(_da_axis(fig, "right", "y2"), DatetimeAxis)
-        assert [x for x in w if "yscale2(log)" in x] == [
-            "dash: yscale2(log) is meaningless for the date variable 'd2'; "
-            "drawing a date axis instead."], w
+        assert isinstance(_da_axis(fig, "right", "y2"), LogAxis)
+        assert [x for x in w if "yscale2(log)" in x] == [], w
 
 
 def tb_major(ax):

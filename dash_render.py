@@ -1562,6 +1562,17 @@ def _dash_column_values(col):
     return col.tolist() if hasattr(col, "tolist") else list(col)
 
 
+#: The layer types whose axis twoway labels with numbers when its format
+#: comes from them, a date variable's included (WP-44 AX-18): their serset
+#: column is twoway's own ``%9.0g`` (measured on sysuse sp500,
+#: test/fixtures/date_axis_rule_truth.json ``ax18.first_<type>``: these
+#: label ``(<type> close date) (scatter close date)`` 15000 ... 15400;
+#: fpfit, fpfitci, lowess, mspline, mband and histogram keep the dates).
+_DASH_NUMBER_FIRST_TYPES = frozenset({
+    "lfit", "qfit", "lfitci", "qfitci", "kdensity", "lpoly", "lpolyci",
+    "scatteri", "pci", "pcarrowi", "function"})
+
+
 def _dash_figure_date_kind(plots, key, fallback, date_vars, axis_no=1):
     """The date kind of a figure's x (``key="xvar"``) or y axis number
     *axis_no*, or None.
@@ -1581,10 +1592,12 @@ def _dash_figure_date_kind(plots, key, fallback, date_vars, axis_no=1):
     twoway does, so its ``var`` counts on the ``"xvar"`` key and nothing on
     ``"yvar"`` (WP-29 P0.8); a horizontal one on ``"yvar"`` (WP-30 P1.9a,
     through :func:`_dash_layer_axis_names`).
-    Where twoway's first-plot rule labels the axis with the variable's
-    numbers -- an ``lfit``, ``qfit``, ``lfitci``, ``qfitci``, ``kdensity``,
-    ``lpoly`` or ``lpolyci`` first, measured in WP-29 S05 Evidence §6 --
-    dash keeps its date axis: a documented divergence, ratified 01oct2026.
+    twoway labels an axis in the format of the layer its format comes
+    from (:func:`_dash_axis_format_layer`); when that layer is one of
+    :data:`_DASH_NUMBER_FIRST_TYPES`, the format is ``%9.0g`` and the axis
+    is a numeric one labelled with the variable's numbers (WP-44 AX-18,
+    measured: test/fixtures/date_axis_rule_truth.json ``ax18.first_*``,
+    ``ax18.ygrp_*``), so the kind is None.
     """
     if not date_vars:
         return None
@@ -1600,6 +1613,12 @@ def _dash_figure_date_kind(plots, key, fallback, date_vars, axis_no=1):
             if name:
                 kinds.add(date_vars.get(name))
     if not kinds or len(kinds) > 1 or None in kinds:
+        return None
+    chosen = _dash_axis_format_layer(plots, "x" if key == "xvar" else "y",
+                                     str(axis_no))
+    if isinstance(chosen, dict) \
+            and str(chosen.get("type", "")).lower() \
+            in _DASH_NUMBER_FIRST_TYPES:
         return None
     return kinds.pop()
 
@@ -1860,9 +1879,10 @@ def _dash_layer_tick_format(plot, dim, numeric_formats, date_vars):
     histogram's height is ``%6.4g``; lowess and fpfit write y in
     ``%9.0g``; a range layer's y is ``yvar1``'s and a pc layer's axes
     ``y1var``/``x1var``'s; every other layer its own variables'.  A date
-    variable gives ``""`` (its axis keeps its date writer; the ratified
-    lfit-on-a-date-x divergence), and so does a ``%9.0g``/``%6.4g`` row
-    whose source variable on *dim* is a date."""
+    variable gives ``""`` (its axis keeps its date writer), and so does a
+    ``%6.4g`` or lowess/fpfit ``%9.0g`` row whose source variable on *dim*
+    is a date; the fits and kdensity write ``%9.0g`` on a date too, as
+    twoway labels them (WP-44 AX-18)."""
     if not isinstance(plot, dict):
         return ("", False)
     opts = plot.get("options") or {}
@@ -1884,11 +1904,10 @@ def _dash_layer_tick_format(plot, dim, numeric_formats, date_vars):
     yv = plot.get("yvar", "") or ""
     if ptype in _DASH_LITERAL_TYPES:
         return ("%9.0g", False)
-    if ptype in ("lfit", "qfit", "lfitci", "qfitci", "lpoly", "lpolyci"):
-        return (_fixed("%9.0g", xv if dim == "x" else yv), False)
-    if ptype == "kdensity":
-        v = plot.get("var", "") or xv
-        return (_fixed("%9.0g", v), False)
+    if ptype in ("lfit", "qfit", "lfitci", "qfitci", "lpoly", "lpolyci",
+                 "kdensity"):
+        # WP-44 AX-18: %9.0g on a date too, as twoway labels it.
+        return ("%9.0g", False)
     if ptype == "histogram":
         v = plot.get("var", "") or xv
         return ((_of(v) if dim == "x" else _fixed("%6.4g", v)), False)
@@ -1936,23 +1955,49 @@ def _dash_axis_tick_formats(plots, numeric_formats, date_vars=None):
     nums = ["1", "2"] + [str(k) for k in range(3, 10) if str(k) in used]
     for dim, other in (("x", "y"), ("y", "x")):
         for n in nums:
-            on = [(i, p, n, (ya if dim == "x" else xa)[0])
-                  for i, p, xa, ya in layers
-                  if n in (xa if dim == "x" else ya)]
             key = dim if n == "1" else dim + "2"
-            if not on:
+            chosen = _dash_format_layer_of(layers, dim, n)
+            if chosen is None:
                 out[key] = ("", False)
                 continue
-            firsts = {}
-            for i, p, _mine, oth in on:
-                firsts.setdefault(oth, (i, p))
-            _i, chosen = max(firsts.values(), key=lambda t: t[0])
             # A horizontal layer's format on *dim* is its other role's
             # (WP-30 P1.9a).
             out[key] = _dash_layer_tick_format(
                 chosen, _dash_role_letter(chosen, dim), numeric_formats,
                 date_vars)
     return out
+
+
+def _dash_format_layer_of(layers, dim, n):
+    """The layer axis *n* (a string) of *dim* takes its format from, of
+    *layers* (``(index, plot, xaxes, yaxes)``), or None: the first layer
+    of the group (by the axis used in the other dimension) whose first
+    layer comes last (:func:`_dash_axis_tick_formats`)."""
+    on = [(i, p, (ya if dim == "x" else xa)[0])
+          for i, p, xa, ya in layers if n in (xa if dim == "x" else ya)]
+    if not on:
+        return None
+    firsts = {}
+    for i, p, oth in on:
+        firsts.setdefault(oth, (i, p))
+    return max(firsts.values(), key=lambda t: t[0])[1]
+
+
+def _dash_axis_format_layer(plots, dim, n="1"):
+    """The plot of *plots* that axis *n* (``"1"`` .. ``"9"``) of *dim*
+    (``"x"`` or ``"y"``, physical) takes its format from, as twoway picks
+    it (:func:`_dash_axis_tick_formats`), or None when no layer is on it
+    (WP-44 AX-18)."""
+    layers = []
+    for i, p in enumerate(plots or []):
+        if not isinstance(p, dict):
+            continue
+        opts = p.get("options") or {}
+        if not isinstance(opts, dict):
+            opts = {}
+        layers.append((i, p, _dash_axis_numbers(opts, "xaxis"),
+                       _dash_axis_numbers(opts, "yaxis")))
+    return _dash_format_layer_of(layers, dim, str(n))
 
 
 def _dash_mark_date_axes(fig, x_kind, y_kind, x2_kind=None, y2_kind=None):
@@ -1962,6 +2007,32 @@ def _dash_mark_date_axes(fig, x_kind, y_kind, x2_kind=None, y2_kind=None):
     axis in the variable's unit.  Python attributes, never serialised."""
     fig._dash_date_kinds = (x_kind or None, y_kind or None)
     fig._dash_date_kinds2 = (x2_kind or None, y2_kind or None)
+
+
+def _dash_log_date(kind, log):
+    """``(kind, None)``, or ``(None, kind)`` for a date axis (*kind* set)
+    with a log scale (*log*): twoway draws it as a log scale in the
+    variable's units, ticked and labelled as its date axis (measured:
+    test/fixtures/date_axis_rule_truth.json ``ax18.log_*``), so the figure
+    makes a numeric log axis whose layers draw the dates in Stata units
+    (WP-44 AX-18)."""
+    if kind and log:
+        return (None, kind)
+    return (kind, None)
+
+
+def _dash_unmark_date_axis(fig, axis):
+    """Remove the date kind of *fig*'s axis *axis* (``"x2"``, ``"y2"`` or
+    an axis 3-9's name), so its layers draw dates in Stata units: a log
+    second axis of dates (WP-44 AX-18)."""
+    if axis in ("x2", "y2"):
+        kinds = list(getattr(fig, "_dash_date_kinds2", None) or (None, None))
+        kinds[0 if axis == "x2" else 1] = None
+        fig._dash_date_kinds2 = tuple(kinds)
+        return
+    kn = getattr(fig, "_dash_date_kinds_n", None)
+    if isinstance(kn, dict):
+        kn.pop(axis, None)
 
 
 def _dash_axis_date_kind(fig, axis):
@@ -46852,6 +46923,13 @@ function dash_axis_ticks(lo, hi, n, kind, tab) {
     if (kind) return null;
     return nat(lo, hi);
 }
+// WP-44 AX-18: an axis's ticks by its kind, or a log axis of dates' on
+// their calendar in Stata units (tkind), less those a log axis cannot draw.
+function dash_axis_ticks_of(a, lo, hi, n, tab) {
+    if (!a.tkind) return dash_axis_ticks(lo, hi, n, a.kind, tab);
+    const t = (dash_axis_ticks(lo, hi, n, a.tkind, tab) || []).filter((v) => v > 0);
+    return t.length ? t : null;
+}
 function dash_axis_rows(layer, models, n) {
     if (layer.filt < 0 || !layer.fk) return null;
     const f = models[layer.filt];
@@ -47187,7 +47265,7 @@ function dash_stata_pick(rows, lo, hi, u) {
 function dash_axis_every(a, lo, hi, tickers, tick_range) {
     const ev = a.every;
     if (!ev || typeof ev.t !== "number" || ev.t < 0 || lo === null) return;
-    const t = dash_axis_ticks(lo, hi, ev.n, a.kind, ev.stata);
+    const t = dash_axis_ticks_of(a, lo, hi, ev.n, ev.stata);
     if (!t || !t.length) return;
     a.held = t;
     tickers[ev.t] = t;
@@ -47195,7 +47273,7 @@ function dash_axis_every(a, lo, hi, tickers, tick_range) {
 }
 function dash_axis_place(a, lo, hi, cur) {
     if (a.mode !== "count" || a.hold) return cur;
-    let t = dash_axis_ticks(lo, hi, a.n, a.kind, a.stata);
+    let t = dash_axis_ticks_of(a, lo, hi, a.n, a.stata);
     if (a.extra.length) {
         const b = t || [];
         t = Array.from(new Set(b.concat(a.extra))).sort((x, y) => x - y);
@@ -47588,7 +47666,7 @@ _DASH_AXIS_ZOOM_JS = r"""
         if (home) {
             t = tg.tickers[a.ticker] || null;
         } else if (!a.hold) {
-            t = dash_axis_ticks(Math.min(s, e), Math.max(s, e), a.n, a.kind);
+            t = dash_axis_ticks_of(a, Math.min(s, e), Math.max(s, e), a.n);
             if (t && a.extra.length) {
                 t = Array.from(new Set(t.concat(a.extra))).sort((x, y) => x - y);
             }
@@ -49243,8 +49321,8 @@ def _dash_place_minor_counts(entries):
         t = ax.ticker
         for role, n in mn["every"]:
             # WP-34 AX-3: the axis entry's Stata table, as its majors.
-            pos = [float(v) for v in (_dash_axis_count_ticks(
-                lo, hi, n, e.get("kind"), table=e.get("stata")) or [])]
+            pos = [float(v) for v in (_dash_entry_count_ticks(
+                e, lo, hi, n, e.get("stata")) or [])]
             if isinstance(t, CustomJSTicker):
                 a = dict(t.args or {})
                 a["mextra"] = sorted(set(list(a.get("mextra") or []) + pos))
@@ -49770,8 +49848,10 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
     the saved renderer has styled by now and the served app has not.
 
     *date_axes* maps ``"y2"``/``"x2"`` to ``(var, fmt)`` for a second axis
-    marked with a date kind: it is a DatetimeAxis labelled in *fmt*, and a
-    ``log`` asked of it is named once and not drawn (WP-30 P1.23a).
+    marked with a date kind: it is a DatetimeAxis labelled in *fmt*
+    (WP-30 P1.23a), unless a ``log`` is asked of it: then it is a numeric
+    log axis in the variable's units, its mark removed
+    (:func:`_dash_unmark_date_axis`, WP-44 AX-18).
 
     Axes 3-9 (WP-31 C10c) are built the same way, as ``y3``..``y9`` and
     ``x3``..``x9``: their title and scale are read from the graph's
@@ -49841,15 +49921,10 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
                                                   seen, key)
             dated = (date_axes or {}).get(name)
             if dated and is_log:
-                _dash_warn_once(
-                    ("date-log2", name),
-                    f"dash: {n}scale(log, axis({num})) is meaningless for "
-                    f"the date variable '{_dash_display(dated[0], 32)}'; "
-                    f"drawing a date axis instead." if num != 2 else
-                    f"dash: {n}scale2(log) is meaningless for the date "
-                    f"variable '{_dash_display(dated[0], 32)}'; drawing a "
-                    f"date axis instead.")
-                is_log = False
+                # WP-44 AX-18: a log date axis is a numeric log axis in
+                # the variable's units, labelled with its dates.
+                dated = None
+                _dash_unmark_date_axis(fig, name)
             if dated:
                 ax = DatetimeAxis(**{kw: name}, axis_label=text)
             else:
@@ -50961,6 +51036,10 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                     ent["every"] = {"t": fi_, "n": int(_en), "stata": [
                         [r[0], r[1], r[3], list(r[4])]
                         for r in (e.get("stata") or ()) if r[2] == int(_en)]}
+                # WP-44 AX-18: a log axis of dates' calendar (absent on
+                # any other axis).
+                if isinstance(e.get("tkind"), str):
+                    ent["tkind"] = e["tkind"]
                 # WP-31 D7: a noextend axis the page bounds after each
                 # finish (dash_axis_bounds).
                 if getattr(ax, "_dash_noextend", False):
@@ -51467,16 +51546,21 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
                 # WP-34 AX-4: a histogram's span (hull only).
                 sext = _dash_layer_extent(pool, range_attr, name, kind,
                                           role="hull")
+                _uk = (getattr(fig, "_dash_unit_kind", None) or {}).get(
+                    letter if name == "default" else name)
                 if kind is None:
                     # WP-30 P1.3b (D-44c): a date beside a number is
                     # ticked on its calendar, in Stata units.
-                    kind = (getattr(fig, "_dash_unit_kind", None) or {}).get(
-                        letter if name == "default" else name)
+                    kind = _uk
                 default = (base is not None and _DASH_DEFAULT_TAG in
                            (getattr(base, "tags", None) or ()))
                 out.append({"key": (side, pos), "ax": ax, "t": t,
                             "base": base, "every": every, "rng": rng,
                             "kind": kind, "letter": letter, "name": name,
+                            # WP-44 AX-18: a log axis of dates is ticked on
+                            # their calendar, in Stata units.
+                            "tkind": (_uk if kind == "log"
+                                      and _dash_ts_kind(_uk) else None),
                             "pool": pool, "default": default,
                             "refinish": bool(refinish),
                             "hold": bool(refinish and base is not None
@@ -51490,6 +51574,19 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
                             "stata": getattr(fig, "_dash_stata_ticks",
                                              None)})
     return out
+
+
+def _dash_entry_count_ticks(e, lo, hi, n, table=None):
+    """:func:`_dash_axis_count_ticks` for the counted axis entry *e*
+    (:func:`_dash_count_axes`): by its kind, or a log axis of dates by its
+    ``tkind`` (``"su:<k>"``, the date's calendar in Stata units), less the
+    ticks a log axis cannot draw (WP-44 AX-18)."""
+    tk = e.get("tkind")
+    if not tk:
+        return _dash_axis_count_ticks(lo, hi, n, e.get("kind"), table=table)
+    t = [v for v in (_dash_axis_count_ticks(lo, hi, n, tk, table=table)
+                     or ()) if v > 0]
+    return t or None
 
 
 def _dash_place_count_ticks(e, lo, hi, common=False):
@@ -51513,11 +51610,9 @@ def _dash_place_count_ticks(e, lo, hi, common=False):
     # WP-31 D15: Stata's own ticks where the range is one the export
     # summarized (the figure's stata table), else the model.
     tab = e.get("stata")
-    t_base = (_dash_axis_count_ticks(lo, hi, _dash_count_of(base), kind,
-                                     table=tab)
+    t_base = (_dash_entry_count_ticks(e, lo, hi, _dash_count_of(base), tab)
               if base is not None and not held else None)
-    t_every = (_dash_axis_count_ticks(lo, hi, _dash_count_of(every), kind,
-                                      table=tab)
+    t_every = (_dash_entry_count_ticks(e, lo, hi, _dash_count_of(every), tab)
                if every is not None and not held else None)
     # US-14.4 (B1, WP-28 S14): a rule may precede a labelled list --
     # "#5 50 'fifty'" -- and twoway draws both; _dash_apply_axis_spec left
@@ -72862,20 +72957,10 @@ class DashRenderer:
         _x2_date = self._figure_date_kind(plots, "xvar", _xa2, axis_no=2)
         _y2_date = self._figure_date_kind(plots, "yvar", _ya2, axis_no=2)
 
-        if _x_date and _xs_log:
-            warnings.warn(
-                f"dash: xscale(log) is meaningless for the date variable "
-                f"'{_xa}'; drawing a date axis instead.",
-                UserWarning,
-            )
-            _xs_log = False
-        if _y_date and _ys_log:
-            warnings.warn(
-                f"dash: yscale(log) is meaningless for the date variable "
-                f"'{_ya}'; drawing a date axis instead.",
-                UserWarning,
-            )
-            _ys_log = False
+        # WP-44 AX-18: a log date axis is a numeric log axis in the
+        # variable's units, labelled with its dates.
+        _x_date = _dash_log_date(_x_date, _xs_log)[0]
+        _y_date = _dash_log_date(_y_date, _ys_log)[0]
 
         if _x_date:
             fig_kwargs["x_axis_type"] = "datetime"
@@ -76864,6 +76949,8 @@ class ServerAppBuilder:
                       "_DASH_DATA_FORMAT", "_DASH_COLUMN_DTYPES",
                       # Stata's leap seconds for %tC (WP-31 G2).
                       "_STATA_LEAP_SECONDS_TC_MS",
+                      # twoway's number-labelling first types (WP-44 AX-18).
+                      "_DASH_NUMBER_FIRST_TYPES",
                       "_DASH_QUAL_PREFIX", "_DASH_QUAL_NAME_RE",
                       # The time-series columns (WP-30 P1.7).
                       "_DASH_TSOP_PREFIX", "_DASH_TSOP_NAME_RE",
@@ -77061,6 +77148,7 @@ class ServerAppBuilder:
                          "_dash_decode_columns", "_dash_columns_frame",
                          "_dash_finite_numeric",
                          "_dash_figure_date_kind", "_dash_mark_date_axes",
+                         "_dash_log_date", "_dash_unmark_date_axis",
                          "_dash_axis_date_kind", "_dash_axis_positions",
                          "_dash_layer_axis_names", "_dash_date_transform",
                          "_dash_spec_units", "_dash_spec_field",
@@ -77232,6 +77320,7 @@ class ServerAppBuilder:
                          "_dash_g_text_explicit",
                          "_dash_axis_format_text", "_dash_layer_tick_format",
                          "_dash_axis_tick_formats",
+                         "_dash_format_layer_of", "_dash_axis_format_layer",
                          "_dash_fmt_label_tick_formatter",
                          "_dash_varformat_writable",
                          # _dash_plot_type_names is NOT copied: the parity
@@ -77348,6 +77437,7 @@ class ServerAppBuilder:
                          "_dash_ts_month_week", "_dash_ts_week_day",
                          "_dash_ts_day_week", "_dash_ts_daily",
                          "_dash_count_axes", "_dash_place_count_ticks",
+                         "_dash_entry_count_ticks",
                          "_dash_common_count_ticks",
                          "_dash_share_by_scales", "_dash_share_repoint",
                          # The filter widgets and the rows they select.
@@ -80233,20 +80323,9 @@ class ServerAppBuilder:
             "        _x2_date = _dash_figure_date_kind(plots, 'xvar', _xa2, _date_vars, 2)",
             "        _y2_date = _dash_figure_date_kind(plots, 'yvar', _ya2, _date_vars, 2)",
             "        _xs_log, _ys_log = _xsc['log'], _ysc['log']",
-            "        if _x_date and _xs_log:",
-            "            warnings.warn(",
-            "                f\"dash: xscale(log) is meaningless for the date variable \"",
-            "                f\"'{_xa}'; drawing a date axis instead.\",",
-            "                UserWarning,",
-            "            )",
-            "            _xs_log = False",
-            "        if _y_date and _ys_log:",
-            "            warnings.warn(",
-            "                f\"dash: yscale(log) is meaningless for the date variable \"",
-            "                f\"'{_ya}'; drawing a date axis instead.\",",
-            "                UserWarning,",
-            "            )",
-            "            _ys_log = False",
+            "        # WP-44 AX-18: a log date axis is a numeric log axis.",
+            "        _x_date = _dash_log_date(_x_date, _xs_log)[0]",
+            "        _y_date = _dash_log_date(_y_date, _ys_log)[0]",
             "        if _x_date: _fig_kw['x_axis_type'] = 'datetime'",
             "        elif _xs_log: _fig_kw['x_axis_type'] = 'log'",
             "        if _y_date: _fig_kw['y_axis_type'] = 'datetime'",

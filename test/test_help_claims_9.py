@@ -185,12 +185,15 @@ class TestTheDateLogParagraph:
         h = _flat(_help())
         i = h.index("{ul:Log scales on date axes.}")
         para = h[i:h.index("{pstd}", i)]
-        assert "{cmd:%tC}" in para and "{cmd:xscale(log)}" in para
-        assert "is meaningless for the date variable" in para
+        # Flipped (WP-44 AX-18): the paragraph described a note and a
+        # dropped log, which was wrong because twoway draws a log scale
+        # with date labels; it now says so, and the note is gone.
+        assert "{cmd:xscale(log)}" in para and "log scale" in para
+        assert "01jan2001 01apr2001 01jul2001 01oct2001 01jan2002" in para
+        assert "is meaningless for the date variable" not in para
         src = _render()
-        assert ("dash: xscale(log) is meaningless for the date variable "
-                in src)
-        assert "drawing a date axis instead." in src
+        assert "is meaningless for the date variable" not in src
+        assert "drawing a date axis instead." not in src
 
 
 # ---------------------------------------------------------------------------

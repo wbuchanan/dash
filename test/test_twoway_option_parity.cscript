@@ -4831,17 +4831,19 @@ foreach o in tscale xscale {
     capture noisily dash build, saving("`tapg'", replace)
     local rc_`o' = _rc
     quietly log close _ztalog
-    cert_log_has "$zta_log", needle("xscale(log) is meaningless for the date variable")
+    // Flipped (WP-44 AX-18): the note was wrong because twoway draws a
+    // log scale with date labels on a date axis; no note now.
+    cert_log_has "$zta_log", needle("is meaningless for the date variable")
     local n_`o' = r(found)
 }
-if `rc_tscale' | `rc_xscale' | !`n_tscale' | !`n_xscale' local bad `"`bad' [log: rc `rc_tscale'/`rc_xscale' note `n_tscale'/`n_xscale']"'
+if `rc_tscale' | `rc_xscale' | `n_tscale' | `n_xscale' local bad `"`bad' [log: rc `rc_tscale'/`rc_xscale' note `n_tscale'/`n_xscale']"'
 capture erase "`tapg'"
 if `"`bad'"' != "" {
     local nfail = `nfail' + 1
     local faillist "`faillist' TA-04"
     display as error `"TA-04 FAIL:`bad'"'
 }
-else display as text "TA-04 PASS: d w m q h y units, numbers on %tc and numeric axes, the first plot's unit, operators, and tscale(log)'s note"
+else display as text "TA-04 PASS: d w m q h y units, numbers on %tc and numeric axes, the first plot's unit, operators, and tscale(log) without a note"
 
 // TA-05: twoway's refusals of the t-options, rc and words.
 local bad ""

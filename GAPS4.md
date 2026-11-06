@@ -494,7 +494,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-11 Tracked:** Open (WP-44 section 44-03).
 - **AX-14 Tracked:** Open (WP-44 section 44-02).
 - **AX-15 Tracked:** Open (WP-44 section 44-02).
-- **AX-18 Tracked:** Open (WP-44 section 44-04).
+- **AX-18 Tracked:** Closed in WP-44, BUGS.md "A date axis is kept where twoway labels Stata numbers (first layer lfit/qfit/ci/kdensity/lpoly/function/immediates); xscale(log) on a date axis is drawn linear", commit pending.
 - **AX-19 Tracked:** Open (WP-44 section 44-03).
 - **AX-20 Tracked:** Open (WP-44 section 44-04).
 - **MS-14 Tracked:** Open (WP-44 section 44-03).

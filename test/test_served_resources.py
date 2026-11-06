@@ -702,7 +702,10 @@ _SAVED_DIGEST = (
     # box's share (with _dash_legend_key_boxes stubbed out and the base's
     # _DASH_KEY_PAINT_JS the tree gives the old digest); the same under
     # both Pythons.
-    "92f233606f7303b1b9e9575836d979a5776f532be5e20cc896ee91ada157e359")
+    # 92f23360... -> c171a548...: WP-44 AX-18, the finish and zoom code
+    # ticks a log axis of dates on their calendar (dash_axis_ticks_of;
+    # finish JS text only); the same under both Pythons.
+    "c171a54845b46d2aca746f03b56c98df9d4ed25737c404f31720a7c045f2458e")
 
 
 # ===========================================================================

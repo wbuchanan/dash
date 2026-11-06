@@ -3308,8 +3308,9 @@ DATE_CORPUS = [
     _case("an lpoly over a date, bwidth() in days",
           [plot_for("scatter", yvar="mpg", xvar="when"),
            plot_for("lpoly", {"bwidth": "3"}, yvar="mpg", xvar="when")], _W),
-    # D05-1 struck (01oct2026): a lone fit keeps the date axis.
-    _case("a lone lfit over a date keeps the date axis",
+    # Flipped (WP-44 AX-18): a lone fit's axis is labelled with the
+    # date's numbers, as twoway labels it (was: keeps the date axis).
+    _case("a lone lfit over a date labels its numbers",
           [plot_for("lfit", yvar="mpg", xvar="when")], _W),
     # D05-4's mixed axis (section 05 Evidence 8).
     _case("a date fit on an axis shared with a number",
@@ -3336,6 +3337,20 @@ DATE_CORPUS = [
            plot_for("pcarrow", {"mlabel": "mpg"})], {"scheme": "sttrans"}),
     # WP-30 P1.23a (section 35): date positions on every axis.
     *_P123A_CASES,
+    # WP-44 44-04 (AX-18): numbers where twoway labels numbers; log date
+    # axes drawn.
+    _case("kdensity date numbers",
+          [plot_for("kdensity", var="when")], _W),
+    _case("lfit first on date numbers",
+          [plot_for("lfit", yvar="mpg", xvar="when"),
+           plot_for("scatter", yvar="mpg", xvar="when")], _W),
+    _case("function first on date numbers",
+          [{"type": "function", "expr": "20",
+            "options": {"range": "15340 15350"}},
+           plot_for("scatter", yvar="mpg", xvar="when")], _W),
+    _case("xscale log on date",
+          [plot_for("line", yvar="mpg", xvar="when")], _W,
+          go={"xscale": "log"}),
 ]
 
 #: The entries a report is the point of, with the report each must make.
@@ -4610,6 +4625,12 @@ MOVE_CORPUS.extend(
                [plot_for(t), plot_for("scatter")])
     for t in ("rcap", "rcapsym", "pccapsym", "dropline", "pcarrow",
               "pcbarrow", "rarea"))
+
+# WP-44 44-04 (AX-18): a log date axis re-ticked after a move.
+MOVE_CORPUS.append(_move_case(
+    "xscale log on date, dropdown", _MOVES[0],
+    [plot_for("line", yvar="mpg", xvar="when")], go={"xscale": "log"},
+    bo={"formats": {"when": "%td"}}))
 
 _MOVE_CORPUS_NAMES = frozenset(p.values[0] for p in MOVE_CORPUS)
 

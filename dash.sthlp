@@ -5513,15 +5513,14 @@ reads {cmd:2001m1 2001m4}, a {cmd:%td} axis {cmd:02jan2001}, a custom
 picture as written.
 
 {pstd}
-{ul:Log scales on date axes.}  On an axis drawn in a date format --
-{cmd:%tc} and {cmd:%tC} as well as {cmd:%td} to {cmd:%ty} -- the date axis
-wins over {cmd:xscale(log)} or {cmd:yscale(log)}: {cmd:dash} draws the
-dates on a linear axis, read as the paragraphs above say ({cmd:%tC} with
-Stata's leap seconds), and notes "xscale(log) is meaningless for the date
-variable '{it:t}'; drawing a date axis instead".  {cmd:twoway} draws a log
-scale there, labelled in the date format; measured on twenty monthly
-{cmd:%tC} times in 2017-2018, its tick labels sit up to 0.3% of the plot's
-width from where a linear axis puts them.
+{ul:Log scales on date axes.}  On an axis drawn in a date format,
+{cmd:xscale(log)} or {cmd:yscale(log)} (and {cmd:yscale(log axis(2))})
+draws a log scale in the variable's own units, as {cmd:twoway} draws it:
+the ticks are those of the linear date axis, placed on the log scale and
+labelled in the date format, in the saved page and the served app and
+after a filter move.  On {cmd:sp500}, {cmd:line close date, xscale(log)}
+labels {cmd:01jan2001 01apr2001 01jul2001 01oct2001 01jan2002} at
+log-spaced positions, and a {cmd:%tm} axis {cmd:2001m1 2001m4 ...}.
 
 {pstd}
 {cmd:format()} writes the axis's stored value in any display format, as
@@ -5605,11 +5604,10 @@ dates whenever every layer's variable on it is a date of one kind, and a
 date layer that shares an axis with a plain number is drawn at its Stata
 values, as {cmd:twoway} draws it.  A bar or point computed outside
 01jan0100 to 31dec9999 is not drawn, and a note says how many.
-{it:Difference from twoway:} twoway labels the axis with the variable's numbers (15000, 15100, ...) when the first layer is {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci}, {cmd:kdensity}, {cmd:lpoly} or {cmd:lpolyci}; dash keeps its date axis there and draws those layers at the dates their values denote.
-So {cmd:dash kdensity date} has a date axis where {cmd:twoway kdensity date} shows 15000 to 15400, and a {cmd:range()} that reaches before 01jan0100 loses those points, with a note, where twoway draws them.
+An axis takes the format of the layer its format comes from (the first layer on it; with several y axes, the first layer of the y axis whose first layer comes last), as {cmd:twoway} does, so when that layer is {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci}, {cmd:kdensity}, {cmd:lpoly}, {cmd:lpolyci}, {cmd:scatteri}, {cmd:pci}, {cmd:pcarrowi} or {cmd:function}, the axis is a numeric one labelled with the variable's numbers and every layer on it is drawn at its Stata values: {cmd:dash kdensity date} on {cmd:sp500} labels 15000 to 15400, as {cmd:twoway kdensity date} does.  With a {cmd:scatter}, {cmd:line}, {cmd:histogram}, {cmd:lowess}, {cmd:fpfit}, {cmd:mspline} or {cmd:mband} there the axis shows dates: {cmd:(scatter close date) (lfit close date)} labels 01jan2001 to 01jan2002.
 
 {pstd}
-{ul:Dates on every axis.}  A date is placed in its variable's own units on every axis, as {cmd:twoway} places it, in the saved page and the served app, before and after any filter move. The bounds of the range plots ({cmd:rarea}, {cmd:rbar}, {cmd:rspike}, {cmd:rcap}, {cmd:rline}, {cmd:rconnected}, {cmd:rcapsym}, {cmd:rscatter}, {cmd:tsrline}) and the coordinates of the paired plots ({cmd:pcspike}, {cmd:pccapsym}, {cmd:pcarrow}, {cmd:pcbarrow}, {cmd:pcscatter}) count toward the axis they are drawn on, so an {cmd:rarea} whose bounds are {cmd:date} and {cmd:d2} has a date y axis. Each axis is decided by its own layers: a {opt yaxis(2)} or {opt xaxis(2)} layer of a plain number leaves the first axis's dates alone, and a second axis whose layers are dates of one kind is a date axis whose {cmd:axis(2)} labels, ticks, lines and {cmd:range()} read dates, as on the first axis. On a date axis the coordinates of {cmd:scatteri}, {cmd:pci} and {cmd:pcarrowi}, the points of {cmd:function} and an explicit {cmd:base()} of {cmd:bar}, {cmd:spike}, {cmd:dropline} and {cmd:area} are dates too: {cmd:scatteri 1300 15400} on a {cmd:%td} axis is drawn at 01mar2002. A date that shares an axis with a plain number is drawn at its Stata values, the axis labelled in the first layer's date format when that layer draws the date itself (a scatter of {cmd:close} against {cmd:date} beside one against {cmd:obs} reads 01jan1960 at 0), and {cmd:xlabel(minmax)} there ticks those values. A literal coordinate, a {cmd:function} point or a {cmd:base()} outside 01jan0100 to 31dec9999 is drawn where its number falls on the date axis, as {cmd:twoway} draws it ({cmd:scatteri 1300 99999999} reaches 1.00e+08), and a tick there is labelled with its number, as {cmd:display} writes it. {it:Difference from twoway:} a value past the dates a browser can draw (years -271821 to 275760) is not drawn, and a note says so; the ticks of an axis that reaches past Stata's dates are {cmd:dash}'s natscale ticks over its numbers (0 2.00e+07 ... 1.00e+08 where {cmd:twoway} draws 2.50e+07 ... 1.00e+08). Where the first layer is {cmd:scatteri}, {cmd:pci}, {cmd:pcarrowi} or {cmd:function}, which {cmd:twoway} labels with numbers, {cmd:dash} keeps the date axis, as for the fits above.
+{ul:Dates on every axis.}  A date is placed in its variable's own units on every axis, as {cmd:twoway} places it, in the saved page and the served app, before and after any filter move. The bounds of the range plots ({cmd:rarea}, {cmd:rbar}, {cmd:rspike}, {cmd:rcap}, {cmd:rline}, {cmd:rconnected}, {cmd:rcapsym}, {cmd:rscatter}, {cmd:tsrline}) and the coordinates of the paired plots ({cmd:pcspike}, {cmd:pccapsym}, {cmd:pcarrow}, {cmd:pcbarrow}, {cmd:pcscatter}) count toward the axis they are drawn on, so an {cmd:rarea} whose bounds are {cmd:date} and {cmd:d2} has a date y axis. Each axis is decided by its own layers: a {opt yaxis(2)} or {opt xaxis(2)} layer of a plain number leaves the first axis's dates alone, and a second axis whose layers are dates of one kind is a date axis whose {cmd:axis(2)} labels, ticks, lines and {cmd:range()} read dates, as on the first axis. On a date axis the coordinates of {cmd:scatteri}, {cmd:pci} and {cmd:pcarrowi}, the points of {cmd:function} and an explicit {cmd:base()} of {cmd:bar}, {cmd:spike}, {cmd:dropline} and {cmd:area} are dates too: {cmd:scatteri 1300 15400} on a {cmd:%td} axis is drawn at 01mar2002. A date that shares an axis with a plain number is drawn at its Stata values, the axis labelled in the first layer's date format when that layer draws the date itself (a scatter of {cmd:close} against {cmd:date} beside one against {cmd:obs} reads 01jan1960 at 0), and {cmd:xlabel(minmax)} there ticks those values. A literal coordinate, a {cmd:function} point or a {cmd:base()} outside 01jan0100 to 31dec9999 is drawn where its number falls on the date axis, as {cmd:twoway} draws it ({cmd:scatteri 1300 99999999} reaches 1.00e+08), and a tick there is labelled with its number, as {cmd:display} writes it. {it:Difference from twoway:} a value past the dates a browser can draw (years -271821 to 275760) is not drawn, and a note says so; the ticks of an axis that reaches past Stata's dates are {cmd:dash}'s natscale ticks over its numbers (0 2.00e+07 ... 1.00e+08 where {cmd:twoway} draws 2.50e+07 ... 1.00e+08). Where the first layer is {cmd:scatteri}, {cmd:pci}, {cmd:pcarrowi} or {cmd:function}, the axis is labelled with numbers, as {cmd:twoway} labels it (above).
 
 {pstd}
 {ul:Ticks without labels.}  {cmd:xtick()} and {cmd:ytick()} add ticks

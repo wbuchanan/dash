@@ -1019,6 +1019,7 @@ and now matches Stata.
 - A suffix or prefix copy of an axis title -- ytitle(A) ytitle(B, suffix), and the axis(2) forms -- draws a second line, as twoway draws it; it was joined to the first (WP-44, MS-13)
 - A right-hand y title -- a second axis, yscale(alt), scheme(economist) -- reads upward, as twoway draws it; it read downward (WP-44, PIC-12)
 - Axis titles draw orientation(), placement(), linegap(), tstyle(), margin(), box and its colours, width() and height() as twoway draws them, a boxed right-hand title included; they were named in the note (WP-44, AX-13)
+- An axis whose format comes from lfit, qfit, lfitci, qfitci, kdensity, lpoly, lpolyci, scatteri, pci, pcarrowi or function is labelled with a date variable's numbers, as twoway labels it: dash kdensity date on sp500 labels 15000 to 15400 (was 01jan2001 to 01jan2002); xscale(log) and yscale(log) on a date axis draw a log scale with the date axis's labels, where dash drew a linear date axis and printed a note (WP-44, AX-18)
 
 ### Fixed in WP-43
 
