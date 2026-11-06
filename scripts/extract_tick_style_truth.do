@@ -26,7 +26,9 @@
 *! graph to SVG.  The trailing python: block reads files only (never
 *! calls Stata): each key's rc, its log lines, and the SVG's texts (with
 *! fill, size and the text as written, so U+00A0 padding is kept), lines,
-*! circles and plot region through scripts/svg_truth.py.
+*! circles and plot region through scripts/svg_truth.py.  Keys differ in
+*! more than case: their log and SVG files share one folder, and the
+*! file system may not tell %16H's from %16h's.
 *! ---------------------------------------------------------------------------
 
 clear all
@@ -159,8 +161,8 @@ _ts_run ax15_refl_out auto stcolor `"`S', xline(5100) yline(45) `N'"'
 _ts_run ax15_refl_out_log auto stcolor `"`S', xscale(log) xline(5100) `N'"'
 _ts_run ax15_refl_far auto stcolor `"`S', xline(10000) `N'"'
 _ts_run ax15_fmt_x auto stcolor `"`S', ylabel(, format(%21x)) `N'"'
-_ts_run ax15_fmt_H auto stcolor `"`S', ylabel(, format(%16H)) `N'"'
-_ts_run ax15_fmt_h auto stcolor `"`S', ylabel(, format(%16h)) `N'"'
+_ts_run ax15_fmt_hexhi auto stcolor `"`S', ylabel(, format(%16H)) `N'"'
+_ts_run ax15_fmt_hexlo auto stcolor `"`S', ylabel(, format(%16h)) `N'"'
 _ts_run ax15_fmt_s auto stcolor `"`S', ylabel(, format(%12s)) `N'"'
 _ts_run ax15_past auto stcolor `"twoway scatteri 1300 99999999, xscale(range(0 99999999)) xlabel(, format(%td)) `N'"'
 _ts_run ax15_margin_5 auto stcolor `"`S', xsize(5.5) ysize(4) `N'"'

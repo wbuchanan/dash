@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "14 Oct 2026",
-  "dash_commit": "946587a3cc3dd38c6d1216906e32d00214e1184a",
-  "extracted": " 6 Nov 2026 08:08:41",
+  "dash_commit": "f86593f57946cdddb0fbd3099a5ed89969c462d6",
+  "extracted": " 6 Nov 2026 08:48:43",
   "source": "scripts/extract_tick_style_truth.do",
   "stata_version": "19.5"
  },
@@ -33190,7 +33190,7 @@
    }
   ]
  },
- "ax15_fmt_H": {
+ "ax15_fmt_hexhi": {
   "canvas": {
    "h": 3240.0,
    "w": 5400.0,
@@ -34688,9 +34688,7 @@
     "y2": 2766.66
    }
   ],
-  "log": [
-   "invalid format, %16h"
-  ],
+  "log": [],
   "plotregion": {
    "bottom": 2766.6600000000003,
    "fill": "#ffffff",
@@ -35859,7 +35857,7 @@
    }
   ]
  },
- "ax15_fmt_h": {
+ "ax15_fmt_hexlo": {
   "command": "twoway scatter mpg weight, ylabel(, format(%16h)) name(u442k, replace)",
   "data": "auto",
   "log": [
