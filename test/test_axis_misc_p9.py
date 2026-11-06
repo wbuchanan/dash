@@ -219,3 +219,35 @@ class TestLoneAxisLook:
         for bad in ("y", {"y": "2"}, {"y": True}, {"y": 1}, {"z": 2}, None):
             _dr._dash_lone_axis_look(fig, {"_dash_lone_from": bad})
         assert _colours(fig.ygrid) == ["#eaf2f3"]
+
+
+class TestLabelWords:
+    """DG-9: twoway reads each run of a label or tick list between its
+    labels with numlist (_gs_parse_and_log_tickset.ado NumTextList), so a
+    bare word, .a or a date function is refused r(198); dash refuses it at
+    registration (test_option_validation.cscript Q4405-2, Q4405-3, from
+    axis_misc_truth.json dg9.*)."""
+
+    def test_the_help_sentence(self):
+        import re
+        with open(os.path.join(_ROOT, "dash.sthlp"), encoding="utf-8") as fh:
+            text = re.sub(r"\s+", " ", fh.read())
+        assert ("a word that is no value, form, rule or label is refused as "
+                "{cmd:twoway} refuses it ({cmd:invalid label specifier}, "
+                "{cmd:r(198)})") in text
+        assert "a word that is no value, form, rule or label is named in " \
+            "the note" not in text
+
+    def test_the_truth_refuses_words(self):
+        """The fixture's twoway answers the cscript compares with."""
+        t = _truth()
+        for k in ("dg9.T11", "dg9.abc_xlabel", "dg9.abc_ymtick",
+                  "dg9.dot_a", "dg9.accept_td", "dg9.fn_word"):
+            assert t[k]["rc"] == 198, k
+            assert t[k]["raw_message"].startswith(
+                "invalid label specifier, :  "), k
+        assert t["dg9.T11"]["raw_message"] \
+            == "invalid label specifier, :  1/5 .a:"
+        for k in ("dg9.accept_neg", "dg9.accept_exp", "dg9.accept_to",
+                  "dg9.accept_spaced_rule", "dg9.accept_lead_dot_rule"):
+            assert t[k]["rc"] == 0, k

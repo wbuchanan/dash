@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- A word that is no number in an axis label or tick list -- ylabel(abc), xlabel(1/5 .a), ylabel(10 . 30), ylabel(abc(1)), xlabel(td(1jan2001)), ylabel(10(10)40 "a") -- is refused, r(198), "invalid label specifier, :  <the list>:", as twoway refuses it, on every x and y label and tick option, the minor ones included; dash named the word in a note and drew the graph (WP-44, DG-9)
 - Two legend keys are one only when their plots are the same kind of plot in the same pstyle() with no style option of their own, as twoway merges them: under s1mono line v1-v14 x draws 14 keys (dash drew 13, merging the look-alike p6 and p14 lines), and a kdensity beside a line, both pstyle(p1), is one key (WP-43, MS-10)
 - legend(nobox) draws the legend's region box as the default does, as twoway draws it: nobox and box are the key texts' text box options; dash drew no region box (use region(lcolor(none) fcolor(none)) for that) (WP-43, LT-2)
 - title("'90s") and every option text holding a stray "' are refused with twoway's rc and words -- ) required r(100), type mismatch r(109), too few or too many ')' or ']' r(132), parentheses do not balance r(198), by what follows the quote -- and nothing is stored; dash drew them.  Compound-quoted text and a "' in an if qualifier are kept as typed (WP-43, LT-24)

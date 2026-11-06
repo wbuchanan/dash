@@ -489,7 +489,7 @@ program define _dash_require_mata
         _dash_kpi_pctile _dash_json_escape _dash_dp_format _dash_path_badchar _dash_cmd_metachar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal _dash_tabs_refusal _dash_tabs_unwrap ///
         _dash_legend_first_refusal _dash_bare_string_refusal _dash_stray_quote_refusal ///
-        _dash_axlabel_refusal ///
+        _dash_axlabel_refusal _dash_axlabel_runs ///
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
         _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
@@ -4664,6 +4664,36 @@ program define _dash_validate_value, rclass
         }
     }
     else if "`kind'" == "axislist" {
+        // WP-44 DG-9: first, the list as typed, as twoway reads it
+        // (_gs_parse_and_log_tickset.ado: its leading rule, then each run
+        // of values between the labels a numlist), so a bare word, .a, a
+        // missing value, td() or abc(1) is refused, r(198), "invalid label
+        // specifier, :  <the list after its rule>:", on every x and y
+        // label and tick option, minor ones included (measured,
+        // test/fixtures/axis_misc_truth.json dg9.*).  Before the runs are
+        // expanded below, which would read 10(10)40 "a" as a list.  A run
+        // holding a byte that may not reach a command line is refused
+        // unread (numlist refuses it in twoway).  Also WP-31 D6's forms
+        // (_dash_axlabel_refusal), here before format() as in twoway.
+        mata: st_local("_alr", _dash_axlabel_refusal(st_local("value")))
+        if `"`macval(_alr)'"' == "" {
+            mata: _dash_axlabel_runs(st_local("value"))
+            forvalues _alk = 1/`_alv_n' {
+                local _alnl 0
+                if `_alv_ok`_alk'' {
+                    capture numlist "`_alv`_alk''"
+                    local _alnl = _rc
+                }
+                if !`_alv_ok`_alk'' | `_alnl' {
+                    mata: st_local("_alr", st_local("_alv_rest"))
+                    continue, break
+                }
+            }
+        }
+        if `"`macval(_alr)'"' != "" {
+            mata: _dash_say("err", "invalid label specifier, :  ", st_local("_alr"), ":")
+            exit 198
+        }
         // WP-28 S14 (GAPS2 B1): every numlist run of an axis-label option
         // expanded by Stata's own numlist (_dash_axis_expand); never a
         // refusal -- a run numlist cannot read is left as written and the

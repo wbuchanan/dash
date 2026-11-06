@@ -504,7 +504,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **PIC-12 Tracked:** Open (WP-44 section 44-01).
 - **DG-6 Tracked:** Open (WP-44 section 44-04).
 - **DG-4 Tracked:** Open (WP-44 section 44-04).
-- **DG-9 Tracked:** Open (WP-44 section 44-05).
+- **DG-9 Tracked:** Closed in WP-44, BUGS.md "A non-number in a label list (.a, a bare word) is noted and drawn; twoway refuses 'invalid label specifier'", commit pending.
 - **DG-13 Tracked:** Open (WP-44 section 44-03).
 - **PIC-4 Tracked:** Open (WP-45 section 45-01).
 - **PIC-7 Tracked:** Open (WP-45 section 45-01).

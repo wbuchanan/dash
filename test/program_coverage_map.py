@@ -562,8 +562,13 @@ COVERAGE = {
         "_dash_stray_quote_refusal": ("test_json_escaping.cscript:Q4305-12",),
         "_dash_layout_digits": ("test_option_validation.cscript:U39-01",),
         # WP-31 D6: the axis label forms twoway refuses.
-        "_dash_axlabel_refusal": ("test_option_validation.cscript:U33-07",),
+        "_dash_axlabel_refusal": ("test_option_validation.cscript:U33-07",
+                                  "test_option_validation.cscript:Q4405-2"),
         "_dash_axlabel_rule": ("test_option_validation.cscript:U33-07",),
+        # WP-44 DG-9: the list's head, leading rule and numlist runs.
+        "_dash_axlabel_head": ("test_option_validation.cscript:Q4405-2",),
+        "_dash_axlabel_lead": ("test_option_validation.cscript:Q4405-2",),
+        "_dash_axlabel_runs": ("test_option_validation.cscript:Q4405-2",),
         # WP-31 D7: two scale copies' alt toggles.
         "_dash_rep_alt": ("test_wp31_truth.cscript:U33-06",),
         "_dash_rep_has_alt": ("test_wp31_truth.cscript:U33-06",),

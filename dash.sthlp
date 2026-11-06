@@ -5264,7 +5264,11 @@ The forms mix freely ({cmd:xlabel(1 2 3/5 8(2)12)}).  {cmd:dash} expands
 the list with Stata's own {cmd:numlist} before the dashboard is drawn, and
 the renderer reads the same grammar for a spec written by hand; a single
 quote is a character, not a string delimiter, and a word that is no value,
-form, rule or label is named in the note.  More than 2,000 ticks in any
+form, rule or label is refused as {cmd:twoway} refuses it ({cmd:invalid label specifier},
+{cmd:r(198)}): {cmd:twoway} reads the values between the labels as
+numlists, so {cmd:ylabel(10 abc 20)}, {cmd:ylabel(10 .a 20)},
+{cmd:ylabel(10 . 30)} and {cmd:xlabel(td(1jan2001))} are refused, on the
+minor label and tick options too.  More than 2,000 ticks in any
 form keep the axis's default ticks, with a note; {cmd:#}{it:N} above 2,000
 is taken as 2,000, silently, and {cmd:twoway} draws every tick it is asked
 for ({cmd:xtick(1500(1)5000)}: 3,501).  Each value is the one

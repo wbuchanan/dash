@@ -4229,6 +4229,83 @@ foreach _q5w in inside outside in out o i Inside OUTSIDE ins outs {
 }
 macro drop q4305_t q4305_d
 
+// ----------------------------------------------------------------
+// Q4405-2 / Q4405-3 (WP-44 section 44-05, DG-9): the words of an axis
+// label or tick list.  twoway reads each run of the list between its
+// labels with Stata's numlist (_gs_parse_and_log_tickset.ado,
+// NumTextList), so a bare word, .a, a missing value, a date function
+// (td(), tm() ...) or abc(1) is refused r(198), "invalid label
+// specifier, :  <the list after its leading rule>:".  Every probe of
+// test/fixtures/axis_misc_truth.json dg9.* (scripts/
+// extract_axis_misc_truth.do) is run through dash: Q4405-2, each one
+// twoway refuses, with twoway's rc and line; Q4405-3, each one twoway
+// draws, and test/fixtures/axis_look_truth.json ref_* (which records no
+// line), with twoway's rc.
+// ----------------------------------------------------------------
+python:
+def _q4405_rows():
+    import json, os
+    from sfi import Macro
+    rows = []
+    for fx, pre in (("axis_misc_truth.json", "dg9."),
+                    ("axis_look_truth.json", "ref_")):
+        with open(os.path.join("fixtures", fx), encoding="utf-8") as fh:
+            t = json.load(fh)
+        for k in sorted(t):
+            if not k.startswith(pre):
+                continue
+            r = t[k]
+            cmd = r["command"]
+            for tail in (" name(u44k, replace)", " name(u33k, replace)"):
+                if cmd.endswith(tail):
+                    cmd = cmd[:-len(tail)]
+            if cmd.startswith("twoway "):
+                cmd = cmd[len("twoway "):]
+            m = r.get("raw_message", "")
+            rows.append((k, "sp500" if "close date" in cmd else "auto", cmd,
+                         str(r["rc"]), m, "2" if r["rc"] and m else "3"))
+    Macro.setGlobal("q4405_n", str(len(rows)))
+    for i, (k, d, c, rc, m, x) in enumerate(rows, 1):
+        for name, v in (("k", k), ("d", d), ("c", c), ("r", rc), ("m", m),
+                        ("x", x)):
+            Macro.setGlobal("q4405_%s%d" % (name, i), v)
+
+
+def _q4405_said(path, want):
+    from sfi import Macro
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        lines = [ln.rstrip("\n") for ln in fh]
+    Macro.setLocal("q4405_has", "1" if want in lines else "0")
+end
+python: import __main__ as _q4405m; _q4405m._q4405_rows()
+local q4405_bad2 ""
+local q4405_bad3 ""
+local q4405_ls = c(linesize)
+set linesize 255
+local q4405_n $q4405_n
+forvalues i = 1/`q4405_n' {
+    quietly sysuse ${q4405_d`i'}, clear
+    capture dash clear
+    capture log close _q45log
+    quietly log using "`c(tmpdir)'dash_q4405.log", name(_q45log) text replace
+    capture noisily dash ${q4405_c`i'} name(q4405)
+    local drc = _rc
+    quietly log close _q45log
+    if ${q4405_x`i'} == 2 {
+        python: import __main__ as _q4405m; _q4405m._q4405_said(r"`c(tmpdir)'dash_q4405.log", __import__("sfi").Macro.getGlobal("q4405_m`i'"))
+        if `drc' != ${q4405_r`i'} | `q4405_has' != 1 local q4405_bad2 `"`q4405_bad2' [${q4405_k`i'}: twoway ${q4405_r`i'}, dash `drc', line `q4405_has']"'
+    }
+    else if `drc' != ${q4405_r`i'} local q4405_bad3 `"`q4405_bad3' [${q4405_k`i'}: twoway ${q4405_r`i'}, dash `drc']"'
+    macro drop q4405_k`i' q4405_d`i' q4405_c`i' q4405_r`i' q4405_m`i' q4405_x`i'
+}
+set linesize `q4405_ls'
+capture dash clear
+capture erase "`c(tmpdir)'dash_q4405.log"
+macro drop q4405_n
+sysuse auto, clear
+_u05_judge Q4405-2 `"`q4405_bad2'"' "a word twoway's numlist refuses in a label or tick list is refused r(198) in twoway's line"
+_u05_judge Q4405-3 `"`q4405_bad3'"' "every label and tick list twoway draws is drawn, and the ref_* forms keep twoway's rc"
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

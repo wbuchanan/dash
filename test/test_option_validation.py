@@ -466,6 +466,14 @@ class TestTheNewProgramsKeepTheirConstraints:
         # WP-35 basic:PT-13: a value list's elements counted and moved by
         # value (tokens, cols); each is read as a number by Stata's real().
         "tokens", "cols",
+        # WP-44 DG-9: an axis label list read as typed, before
+        # _dash_axis_expand expands its runs -- _dash_axlabel_refusal (WP-31
+        # D6's label forms) and _dash_axlabel_runs (the runs between the
+        # labels, set as locals by value); each run is read as numbers by
+        # Stata's numlist, as twoway reads it.  Flipped: the charter had no
+        # entry for them because the check ran after the runs were expanded,
+        # which read 10(10)40 "a" as a list twoway refuses.
+        "_dash_axlabel_refusal", "_dash_axlabel_runs",
     })
 
     @staticmethod

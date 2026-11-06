@@ -188,6 +188,9 @@
 *!   _dash_axlabel_refusal(text)
 *!       The part of an axis label value twoway refuses, or "" (WP-31 D6).
 *!
+*!   _dash_axlabel_runs(text)
+*!       An axis label value's runs of values, for numlist (WP-44 DG-9).
+*!
 *!   _dash_expand_plottype(abbrev, out_macro)
 *!       The plot type abbrev names, abbreviated as twoway allows, into
 *!       out_macro; "" when it names no type dash draws.
@@ -2543,16 +2546,55 @@ string scalar _dash_tabs_refusal(string scalar tabs, string scalar registry)
 // ytick() value twoway refuses with r(198) "invalid label specifier, :
 // <part>:", or "" when twoway draws it (WP-31 D6; measured,
 // test/fixtures/axis_look_truth.json ref_*).  After an optional leading
-// rule (#N, ##N, minmax, none or a lone a(b)c) twoway reads the rest of
-// the head as values each followed by at most one label: a quoted label
-// with no value before it ("a"; 1 "a" "b"), a second rule (#3 #4) or an
-// unfinished a(b)c (1(1)) is refused, and the part named is the head
-// after the leading rule.  Linear in the length of text.
+// rule (#N, ##N, minmax, none, a lone ".", or an a(b)c with a < c:
+// _dash_axlabel_lead) twoway reads the rest of the head as values each
+// followed by at most one label: a quoted label with no value before it
+// ("a"; 1 "a" "b"; 10(10)40 "a"), a second rule (#3 #4) or an unfinished
+// a(b)c (1(1)) is refused, and the part named is the head after the
+// leading rule.  The values themselves are numlists to twoway
+// (_dash_axlabel_runs; WP-44 DG-9).  Linear in the length of text.
 string scalar _dash_axlabel_refusal(string scalar text)
 {
     string rowvector w
     string scalar    head, rest, t, c
-    real scalar      n, i, k, in_dq, in_cq, nxt, cut, p1, p2, prev, bad
+    real scalar      i, p1, p2, prev, bad
+
+    head = _dash_axlabel_head(text)
+    if (!cols(_dash_rep_toks(subinstr(head, ",", " "), 0))) return("")
+    rest = strtrim(substr(head, _dash_axlabel_lead(head) + 1, .))
+    w = _dash_rep_toks(subinstr(rest, ",", " "), 0)
+    prev = 0
+    bad = 0
+    for (i = 1; i <= cols(w); i++) {
+        t = w[i]
+        c = substr(t, 1, 1)
+        if (c == char(34) | c == char(96)) {
+            // A label needs a value before it.
+            if (prev != 1) bad = 1
+            prev = 2
+        }
+        else if (c == "#") bad = 1
+        else {
+            p1 = strpos(t, "(")
+            p2 = strpos(t, "[")
+            // Only a number-led word is a rule: td(1jan2000) is a word
+            // numlist refuses (_dash_axlabel_runs).
+            if ((p1 | p2) & (strtoreal(substr(t, 1, 1)) < . |
+                c == "-" | c == "+" | c == ".") & !_dash_axlabel_rule(t)) bad = 1
+            prev = 1
+        }
+        if (bad) return(rest)
+    }
+    return("")
+}
+
+// _dash_axlabel_head(text) -- an axis label value's list, trimmed: the
+// text before the comma that starts its sub-options (a comma followed by
+// a letter, an underscore or nothing, outside quotes).
+string scalar _dash_axlabel_head(string scalar text)
+{
+    string scalar head, c
+    real scalar   n, i, k, in_dq, in_cq, nxt
 
     n = strlen(text)
     head = text
@@ -2576,39 +2618,90 @@ string scalar _dash_axlabel_refusal(string scalar text)
         }
         i++
     }
-    head = strtrim(head)
+    return(strtrim(head))
+}
+
+// _dash_axlabel_lead(head) -- the length of head's leading rule, which
+// twoway's Rules (_gs_parse_and_log_tickset.ado) reads before the list:
+// a first word #N or ##N, minmax, none or ".", or an a(b)c -- spaced or
+// not, (b) a parenthesised number -- with a < c; 0 when there is none.
+// a[b]c and a descending a(b)c are list values, not rules (measured,
+// test/fixtures/axis_misc_truth.json dg9.desc_rule_word).
+real scalar _dash_axlabel_lead(string scalar head)
+{
+    string rowvector w
+    string scalar    t, a, b, c
+    real scalar      n, i, j, k, q
+
     w = _dash_rep_toks(subinstr(head, ",", " "), 0)
-    if (!cols(w)) return("")
-    rest = head
-    cut = 0
+    if (!cols(w)) return(0)
     t = w[1]
-    if (substr(t, 1, 1) == "#" | t == "minmax" | t == "none") cut = 1
-    else if (cols(w) == 1 & _dash_axlabel_rule(t)) cut = 1
-    if (cut) {
-        rest = strtrim(substr(head, strpos(head, t) + strlen(t), .))
+    if (substr(t, 1, 1) == "#" | t == "minmax" | t == "none" | t == "." |
+        (cols(w) == 1 & _dash_axlabel_rule(t))) {
+        return(strpos(head, t) + strlen(t) - 1)
     }
-    prev = 0
-    bad = 0
-    for (i = cut + 1; i <= cols(w); i++) {
-        t = w[i]
+    // a, then "(" b ")", then c, blanks allowed between them.
+    n = strlen(head)
+    i = 1
+    while (i <= n & substr(head, i, 1) == " ") i++
+    j = i
+    while (j <= n & substr(head, j, 1) != " " & substr(head, j, 1) != "(") j++
+    a = substr(head, i, j - i)
+    while (j <= n & substr(head, j, 1) == " ") j++
+    if (a == "" | substr(head, j, 1) != "(") return(0)
+    k = strpos(substr(head, j + 1, .), ")")
+    if (!k) return(0)
+    b = substr(head, j + 1, k - 1)
+    q = j + k + 1
+    while (q <= n & substr(head, q, 1) == " ") q++
+    j = q
+    while (j <= n & !anyof((" ", "(", ")"), substr(head, j, 1))) j++
+    c = substr(head, q, j - q)
+    if (c == "") return(0)
+    if (!(strtoreal(a) < . & strtoreal(strtrim(b)) < . & strtoreal(c) < .))
+        return(0)
+    if (!(strtoreal(a) < strtoreal(c))) return(0)
+    return(j - 1)
+}
+
+// _dash_axlabel_runs(text) -- the value runs twoway puts to numlist (WP-44
+// DG-9): _gs_parse_and_log_tickset.ado's NumTextList reads the list after
+// its leading rule as runs of values between labels, each a numlist, so
+// a bare word, .a, a missing value, td() or abc(1) is refused, "invalid
+// label specifier, :  <the list after its rule>:", r(198) (measured,
+// test/fixtures/axis_misc_truth.json dg9.*).  Sets the caller's locals
+// _alv_n (the number of runs), _alv<i> (each run, its words joined by one
+// blank), _alv_ok<i> (0 when a run holds a byte that may not reach a
+// command line: a quote, backtick, dollar sign, backslash or control
+// byte -- numlist refuses such a run in twoway, so dash.ado refuses it
+// without running it) and _alv_rest (the part named).  Linear in the
+// length of text.
+void _dash_axlabel_runs(string scalar text)
+{
+    string rowvector w
+    string scalar    head, rest, run, t, c
+    real scalar      i, k
+
+    head = _dash_axlabel_head(text)
+    rest = strtrim(substr(head, _dash_axlabel_lead(head) + 1, .))
+    st_local("_alv_rest", rest)
+    w = _dash_rep_toks(subinstr(rest, ",", " "), 0)
+    k = 0
+    run = ""
+    for (i = 1; i <= cols(w) + 1; i++) {
+        t = (i <= cols(w) ? w[i] : char(34))
         c = substr(t, 1, 1)
         if (c == char(34) | c == char(96)) {
-            // A label needs a value before it.
-            if (prev != 1) bad = 1
-            prev = 2
+            if (run != "") {
+                k++
+                st_local("_alv" + strofreal(k), run)
+                st_local("_alv_ok" + strofreal(k), strofreal(!_dash_so_unsafe(run)))
+            }
+            run = ""
         }
-        else if (c == "#") bad = 1
-        else {
-            p1 = strpos(t, "(")
-            p2 = strpos(t, "[")
-            // Only a number-led word is a rule: td(1jan2000) is a date.
-            if ((p1 | p2) & (strtoreal(substr(t, 1, 1)) < . |
-                c == "-" | c == "+" | c == ".") & !_dash_axlabel_rule(t)) bad = 1
-            prev = 1
-        }
-        if (bad) return(rest)
+        else run = (run == "" ? t : run + " " + t)
     }
-    return("")
+    st_local("_alv_n", strofreal(k))
 }
 
 // _dash_axlabel_rule(t) -- 1 when the word t is a whole a(b)c or a[b]c.

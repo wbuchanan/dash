@@ -2941,7 +2941,6 @@ GAPS4_OPEN = {
     'PIC-12': "A right-hand y title reads top to bottom; twoway's reads upward (every economist graph, any yaxis(2))",
     'DG-6': '%tC ticks are placed and labelled in leap-second-corrected time (22 s off in 2001)',
     'DG-4': 'Parenthesised dates holding blanks ((1 jan 2001)) are refused in tlabel(), tline() and tscale(range())',
-    'DG-9': "A non-number in a label list (.a, a bare word) is noted and drawn; twoway refuses 'invalid label specifier'",
     'DG-13': "ylabel(minmax) on an empty scale draws Bokeh's default ticks; data spanning about ±8e307 give an OverflowError traceback (twoway gives r(199))",
     'PIC-4': "economist: a graph's note() is never painted (the Label targets a Title Node BokehJS does not resolve)",
     'PIC-7': 'economist widths: range, spike, dropline and pc lines at 1.2 (linewidth p) where twoway uses pother 0.8; the rarea outline at 0.8 centred where twoway uses parea 0.2 inside',
