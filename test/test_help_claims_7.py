@@ -395,9 +395,12 @@ class TestSecondaryAxisLabelGrammar:
         # Flipped (WP-30 P1.18a): labcolor() is drawn; labgap() is not.
         # Flipped (WP-31 D6): labgap() is drawn on every axis; a style
         # name, labstyle(), is still named.
-        _, caught = _render(mode, _Y2, {"ylabel2": "4000 8000, labstyle(x)"})
-        assert any("ylabel2() sub-option" in w and "labstyle(x)" in w
-                   for w in caught), caught
+        # Flipped (WP-44 AX-14): labstyle() is read from the scheme;
+        # labelkeepleadingzero is the label sub-option still named.
+        _, caught = _render(mode, _Y2,
+                            {"ylabel2": "4000 8000, labelkeepleadingzero"})
+        assert any("ylabel2() sub-option" in w
+                   and "labelkeepleadingzero" in w for w in caught), caught
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_value_label_pairs_still_label_the_ticks(self, mode):

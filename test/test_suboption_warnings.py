@@ -70,10 +70,15 @@ SUBOPTIONS = [
     # and off are drawn as twoway draws them, so each row names a word
     # dash still does not draw (labgap, outergap, extend).
     # Flipped (WP-31 D6): labgap() is drawn; a style name is named.
-    ("ylabel labcolor", {"ylabel": ", labcolor(red) labstyle(x)"}, None,
-     "ylabel", ["labstyle(x)"], ["labcolor"]),
-    ("ylabel labgap tlength", {"ylabel": "10(10)30, tstyle(x) tlength(3)"},
-     None, "ylabel", ["tstyle(x)"], ["tlength", "labgap"]),
+    # Flipped (WP-44 AX-14): labstyle() and tstyle() are read from the
+    # scheme and style files, so the rows name labelkeepleadingzero, the
+    # label sub-option still not drawn.
+    ("ylabel labcolor",
+     {"ylabel": ", labcolor(red) labelkeepleadingzero"}, None,
+     "ylabel", ["labelkeepleadingzero"], ["labcolor"]),
+    ("ylabel labgap tlength",
+     {"ylabel": "10(10)30, labelkeepleadingzero tlength(3)"},
+     None, "ylabel", ["labelkeepleadingzero"], ["tlength", "labgap"]),
     ("yscale reverse noline titlegap",
      # Flipped (WP-31 D7): outergap() and extend are drawn; logit and
      # log1m are not.
