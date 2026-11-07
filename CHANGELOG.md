@@ -1032,6 +1032,8 @@ and now matches Stata.
 - A %tC axis is ticked over its raw values and labelled to the second as twoway labels it, leap seconds included: thirty daily %tC times from 01jan2001 read 01jan2001 20:26:18 (was 20:26:40, 22 seconds off), before and after a filter move (WP-44, DG-6)
 - An added custom label option (ylabel(25 "x", add custom labcolor(red))) draws its label and tick edits on every label of the axis, where twoway styles the custom labels alone, as a documented difference (ruling D73): help dash, Differences from twoway, item 17 (WP-44, AX-5)
 - Reference lines outside the axis's range and the plot-region margin after a resize are documented differences from twoway (ruling D74): help dash, Differences from twoway, items 18 and 19; Resource limits is now item 20 (WP-44, AX-15)
+- A date axis that reaches past Stata's dates is ticked as twoway ticks it, by Stata's own _tsnatscale (evenly spaced ticks there, 02jan2001 2.50e+07 ... 1.00e+08), where dash drew natscale's round steps (WP-44, AX-15)
+- A variable's own %21x, %16H, %8H, %16L or %8L format, xvarformat()/yvarformat() of those or a string format, and zlabel(, format()) of them label the axis or colour key as twoway writes them; dash wrote %9.0g with a note (WP-44, AX-15)
 
 ### Fixed in WP-43
 

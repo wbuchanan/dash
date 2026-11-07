@@ -8998,8 +8998,9 @@ def _da_check(case, key, sp, dp, app):
                 ticks = list(getattr(ax.ticker, "ticks", []) or [])
                 _c, vals = dr._dash_secondary_values(f, "x_range_name",
                                                      "default")
-                want_t = dr._dash_off_date_ticks(min(vals), max(vals), 5,
-                                                 kind)
+                want_t = dr._dash_off_date_ticks(
+                    min(vals), max(vals), 5, kind,
+                    table=getattr(f, "_dash_stata_ticks", None))
                 fmt = "%td" if kind == "td" else "%ty"
                 from test_display_format_sites import js_texts
                 texts = js_texts(ax.formatter, ticks, "tick")

@@ -1535,6 +1535,11 @@ def _dash_load_columns(df, formats, string_vars, display_names=None):
                 # A %tb variable is held as its business-day numbers and
                 # written through its calendar (WP-31 G7).
                 numeric_formats[col] = fmt
+            elif _dash_fmt_dump_writes(fmt):
+                # WP-44 AX-15 residual: %21x, %16H, %8H, %16L, %8L and
+                # their left-aligned forms are written as Stata writes
+                # them (_dash_fmt_dump), on an axis as twoway writes them.
+                numeric_formats[col] = fmt
             elif fmt and _dash_fmt_kind(fmt) in ("x", "H"):
                 # A hexadecimal or IEEE dump the page cannot write (WP-28
                 # S04, BR-04.5): drawn in %9.0g, named once per build.
@@ -14965,7 +14970,10 @@ def _dash_key_format(zopts):
         fmt = fmt[1:-1].strip()
     if not fmt:
         return "%8.0gc", None
-    if len(fmt) <= 60 and _dash_fmt_refusal(fmt) is None:
+    if len(fmt) <= 60 and (_dash_fmt_refusal(fmt) is None
+                           or _dash_fmt_dump_writes(fmt)):
+        # WP-44 AX-15 residual: zlabel(, format(%21x)) and the IEEE-byte
+        # formats write the key as twoway writes it (_dash_fmt_dump).
         return fmt, None
     return "%9.0g", fmt[:60]
 
@@ -45725,7 +45733,7 @@ def _dash_axis_count_ticks(lo, hi, n, kind=None, table=None):
     b = _dash_unix_ms_to_unit(hi, unit)
     if a is None or b is None:
         # An axis reaching past Stata's dates (WP-30 P1.23a, D-35k).
-        return _dash_off_date_ticks(lo, hi, n, kind)
+        return _dash_off_date_ticks(lo, hi, n, kind, table=table)
     t = _dash_stata_or_model(table, a, b, n, unit)
     if not t:
         return None
@@ -45835,13 +45843,21 @@ def _dash_stata_or_model(table, lo, hi, n, unit):
     got = _dash_stata_pick(table, lo, hi, n, unit)
     if got:
         return got
-    got = _dash_stata_oracle(lo, hi, n, unit)
+    got = _dash_stata_oracle_kept(table, lo, hi, n, unit)
     if got:
-        if isinstance(table, list):
-            table.append((float(lo), float(hi), int(n), unit, tuple(got)))
         return got
     return (_dash_natscale_ticks(lo, hi, n) if unit == ""
             else _dash_tsnatscale_ticks(lo, hi, n, unit))
+
+
+def _dash_stata_oracle_kept(table, lo, hi, n, unit):
+    """:func:`_dash_stata_oracle`'s answer, kept in *table* when *table*
+    is a list (the asking graph's own), as :func:`_dash_stata_or_model`
+    keeps it; None for no answer (WP-44 AX-15 residual)."""
+    got = _dash_stata_oracle(lo, hi, n, unit)
+    if got and isinstance(table, list):
+        table.append((float(lo), float(hi), int(n), unit, tuple(got)))
+    return got or None
 
 
 def _dash_stata_num(v):
@@ -46191,17 +46207,28 @@ _DASH_ADO_ENTRY_POINTS = _DASH_ADO_ENTRY_POINTS + (_dash_stata_tick_plan,
                                                    _dash_embed_style_rows)
 
 
-def _dash_off_date_ticks(lo, hi, n, kind):
-    """natscale ticks over the Stata numbers of a date axis that reaches
-    past Stata's dates, each placed by ``_dash_literal_to_ms`` (WP-30
-    P1.23a, D-35k): Bokeh's year ticker builds ``Date.UTC(year, 0, 1)``,
-    which reads a year 0-99 as 1900-1999.  A period kind takes whole
-    periods only.  None when an end has no number or no tick is left."""
+def _dash_off_date_ticks(lo, hi, n, kind, table=None):
+    """The ticks of a date axis that reaches past Stata's dates, over its
+    Stata numbers, each placed by ``_dash_literal_to_ms`` (WP-30 P1.23a,
+    D-35k): Bokeh's year ticker builds ``Date.UTC(year, 0, 1)``, which
+    reads a year 0-99 as 1900-1999.  twoway ticks it by _tsnatscale in the
+    kind's unit (natscale over milliseconds for %tc and %tC), which past
+    Stata's dates spaces its ticks evenly (WP-44 AX-15 residual; measured:
+    test/fixtures/ax15_residual_truth.json, ``_tsnatscale 14977 100000000
+    5, daily`` lists 14977 25011233 ... 100000001): Stata's answer from
+    *table* or asked as the page is built (:func:`_dash_stata_or_model`),
+    else natscale over the numbers, as dash's model has no rule there.  A
+    period kind takes whole periods only.  None when an end has no number
+    or no tick is left."""
     a = _dash_stata_number_of(lo, kind)
     b = _dash_stata_number_of(hi, kind)
     if a is None or b is None:
         return None
-    t = _dash_natscale_ticks(min(a, b), max(a, b), n) or []
+    a, b = min(a, b), max(a, b)
+    unit = _DASH_TS_UNITS.get(kind, "")
+    t = ((_dash_stata_pick(table, a, b, n, unit)
+          or _dash_stata_oracle_kept(table, a, b, n, unit)) if a < b
+         else None) or _dash_natscale_ticks(a, b, n) or []
     if kind not in ("td", "tc", "tC"):
         t = [v for v in t if float(v) == math.floor(float(v))]
     if not t:
@@ -46241,7 +46268,9 @@ def _dash_finish_off_date_axes(fig):
                 continue
             nt = (getattr(fig, "_dash_numticks", None) or {}).get(letter, 5)
             ax.ticker = FixedTicker(
-                ticks=_dash_off_date_ticks(lo, hi, nt, kind) or [])
+                ticks=_dash_off_date_ticks(
+                    lo, hi, nt, kind,
+                    table=getattr(fig, "_dash_stata_ticks", None)) or [])
             changed += 1
     return changed
 
@@ -46749,11 +46778,12 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
     if fmt:
         _fk = _dash_fmt_kind(fmt) if fmt.isascii() else None
         if _fk not in ("f", "g", "e", "t") \
-                and not (typed and _dash_fmt_dump_writes(fmt)):
+                and not _dash_fmt_dump_writes(fmt):
             # Accepted by twoway (dash.ado refuses what it refuses), but
             # not a format the writer writes exactly: %9.0g, one note.
             # WP-44 AX-15: format(%21x), %16H, %8H, %16L, %8L and %#s
-            # are written as twoway writes them (_dash_fmt_dump).
+            # are written as twoway writes them (_dash_fmt_dump), and so
+            # is a variable's or a layer's own (the AX-15 residual).
             if typed:
                 shown = fmt[:80] + ("..." if len(fmt) > 80 else "")
                 _dash_warn_once(
@@ -50181,7 +50211,9 @@ def _dash_varformat_writable(fmt, by_option, dim):
     if not fmt or not by_option:
         return fmt
     _fk = _dash_fmt_kind(fmt) if fmt.isascii() else None
-    if _fk in ("f", "g", "e", "t"):
+    if _fk in ("f", "g", "e", "t") or _dash_fmt_dump_writes(fmt):
+        # WP-44 AX-15 residual: xvarformat(%21x), %16H, %8H, %16L, %8L
+        # and their left-aligned forms are written as twoway writes them.
         return fmt
     shown = fmt[:80] + ("..." if len(fmt) > 80 else "")
     if not fmt.startswith("%"):
@@ -78523,7 +78555,8 @@ class ServerAppBuilder:
                          # Stata's own #N ticks at build (WP-31 D15).
                          "_dash_stata_pick", "_dash_stata_tick_table",
                          "_dash_stata_or_model", "_dash_stata_num",
-                         "_dash_stata_oracle", "_dash_stata_ticks_of",
+                         "_dash_stata_oracle", "_dash_stata_oracle_kept",
+                         "_dash_stata_ticks_of",
                          # D1d: the outer axes' minor-label pool.
                          "_dash_minor_pool_size",
 
@@ -79035,12 +79068,15 @@ class ServerAppBuilder:
             # The dataset's Stata display formats, filtered to the ones that
             # mean something numerically.  A module-level constant because
             # _format_kpi is module-level here and has to resolve a KPI's
-            # effective format the same way the saved renderer does.
+            # effective format the same way the saved renderer does.  The
+            # dump formats _dash_load_columns keeps are kept too (WP-44
+            # AX-15 residual), so an axis is written alike in both modes.
             "_NUM_FORMATS = %r" % ({
                 str(_k): str(_v)
                 for _k, _v in (self.spec.get("build_options", {})
                                .get("formats", {}) or {}).items()
-                if _dash_fmt_writes_number(str(_v))},),
+                if _dash_fmt_writes_number(str(_v))
+                or _dash_fmt_dump_writes(str(_v))},),
             # The full display-format map, custom %t pictures included
             # (WP-28 S04): _NUM_FORMATS keeps only what the writer places.
             "_FORMATS = %r" % ({

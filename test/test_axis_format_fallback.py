@@ -456,10 +456,13 @@ class TestVarformat:
                                          xvarformat="%9.1f")],
                               xlabel=", format(%9.3f)"))
         assert _fmt_of(fig, "x") == "%9.3f"
+        # Flipped (WP-44 AX-15 residual): twoway writes xvarformat(%21x)
+        # in hexadecimal (ax15_residual_truth.json fmt_xvar21x); dash
+        # wrote %9.0g with a note.
         b = _built(mode, [_sc("mpg", "weight", xvarformat="%21x")])
         (fig,) = _figs(b)
-        assert _fmt_of(fig, "x") == "%9.0g"
-        assert len([w for w in b.warnings if "xvarformat(%21x)" in w]) == 1
+        assert _fmt_of(fig, "x") == "%21x"
+        assert not [w for w in b.warnings if "xvarformat(%21x)" in w]
 
 
 @pytest.mark.parametrize("mode", MODES)

@@ -600,10 +600,11 @@ class TestTheNotes:
 @pytest.mark.parametrize("mode", ["saved", "served"])
 class TestTheTsColumnNamesNeverReachTheUser:
     def test_case(self, mode):
-        """A base whose format the page cannot write (%21x) is named by its
-        expression in the note, never as __dasht1."""
+        """A base whose format the page cannot write (%10x) is named by its
+        expression in the note, never as __dasht1.  (Was %21x, which the
+        page writes since the WP-44 AX-15 residual.)"""
         spec, data = _inputs("T05")
-        spec["build_options"]["formats"]["__dasht1"] = "%21x"
+        spec["build_options"]["formats"]["__dasht1"] = "%10x"
         _, sp, dp = _write(spec, data)
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")

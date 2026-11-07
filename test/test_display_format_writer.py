@@ -225,16 +225,21 @@ class TestLoaders:
             df, {"p": "%8.0gc", "e": "%10.3e", "f": "%9.2f", "d": "%td"}, [])
         assert nf == {"p": "%8.0gc", "e": "%10.3e", "f": "%9.2f"}
 
-    def test_a_variables_own_x_format_falls_back_with_one_note(self):
+    def test_a_variables_own_x_format_is_kept(self):
+        # Flipped (WP-44 AX-15 residual): a variable's %21x, %16H, %8H,
+        # %16L and %8L are written as Stata writes them (twoway labels an
+        # axis so: ax15_residual_truth.json fmt_var21x, fmt_var8H,
+        # fmt_var16L); dash kept %9.0g with one note.
+        import warnings
         import pandas as pd
         dr._DASH_NOTED.clear() if hasattr(dr, "_DASH_NOTED") else None
-        df = pd.DataFrame({"h": [1.0]})
-        with pytest.warns(UserWarning) as rec:
-            _, nf = dr._dash_load_columns(df, {"h": "%21x"}, [])
-            dr._dash_load_columns(df.copy(), {"h": "%21x"}, [])
-        assert nf == {"h": "%9.0g"}
-        msgs = [str(w.message) for w in rec if "%21x" in str(w.message)]
-        assert len(msgs) == 1 and "'h'" in msgs[0]
+        for fmt in ("%21x", "%16H", "%8H", "%16L", "%8L"):
+            df = pd.DataFrame({"h": [1.0]})
+            with warnings.catch_warnings(record=True) as rec:
+                warnings.simplefilter("always")
+                _, nf = dr._dash_load_columns(df, {"h": fmt}, [])
+            assert nf == {"h": fmt}
+            assert not [w for w in rec if fmt in str(w.message)]
 
 
 class TestTheGuard:

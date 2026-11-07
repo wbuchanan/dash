@@ -385,12 +385,15 @@ class TestZlabelOnAColourKey:
                                     "15,400"]
 
     @pytest.mark.parametrize("mode", MODES)
-    def test_an_unwritable_format_draws_g_and_is_named(self, tmp_path, mode):
+    def test_a_hex_format_is_written(self, tmp_path, mode):
+        # Flipped (WP-44 AX-15 residual): twoway writes zlabel(,
+        # format(%21x)) in hexadecimal (ax15_residual_truth.json
+        # key_cv21x); dash wrote %9.0g and named it.
         root, w, _o = _build(tmp_path, mode, [_sc("date")], _KEY,
                              go={"zlabel": ", format(%21x)"})
-        assert _bar_texts(root) == ["15000", "15100", "15200", "15300",
-                                    "15400"]
-        assert len([x for x in w if "format(%21x)" in x]) == 1
+        assert _bar_texts(root) == [dr._dash_fmt_dump("%21x", v) for v in
+                                    (15000, 15100, 15200, 15300, 15400)]
+        assert not [x for x in w if "format(%21x)" in x]
 
 
 class TestANumberKeyIsInTwowaysCommaFormat:
@@ -556,8 +559,12 @@ class TestTheKeyHelpers:
         assert f({}) == ("%8.0gc", None)
         assert f({"zlabel": ", format(%td)"}) == ("%td", None)
         assert f({"zlabel": ', format("%9.2f")'}) == ("%9.2f", None)
-        assert f({"zlabel": ", format(%21x)"}) == ("%9.0g", "%21x")
-        assert f({"zlabel": ", format(%12s)"}) == ("%9.0g", "%12s")
+        # Flipped (WP-44 AX-15 residual): twoway writes the key in these
+        # (ax15_residual_truth.json key_cv21x, key_cv12s); dash wrote
+        # %9.0g and named them.
+        assert f({"zlabel": ", format(%21x)"}) == ("%21x", None)
+        assert f({"zlabel": ", format(%12s)"}) == ("%12s", None)
+        assert f({"zlabel": ", format(%10x)"}) == ("%9.0g", "%10x")
         assert f({"zlabel": ", format()"}) == ("%8.0gc", None)
         long = "%" + "9" * 199
         fmt, bad = f({"zlabel": ", format(%s)" % long})

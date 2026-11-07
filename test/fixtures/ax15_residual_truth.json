@@ -1,0 +1,682 @@
+{
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "0a72a5fa70a72262d5a92415ceeedd6f6a9d9487",
+  "extracted": " 6 Nov 2026 20:38:13",
+  "scheme": "stcolor",
+  "source": "scripts/extract_ax15_residual_truth.do",
+  "stata_version": "19.5"
+ },
+ "graphs": {
+  "fmt_var16L": {
+   "command": "scatter mpg weight,",
+   "data": "auto",
+   "prep": "format mpg %16L",
+   "rc": 0,
+   "right": [],
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "0000000000002440",
+    "0000000000003440",
+    "0000000000003e40",
+    "0000000000004440",
+    "Mileage (mpg)"
+   ]
+  },
+  "fmt_var21x": {
+   "command": "scatter mpg weight,",
+   "data": "auto",
+   "prep": "format weight %21x",
+   "rc": 0,
+   "right": [],
+   "x": [
+    "+1.f400000000000X+00a",
+    "+1.7700000000000X+00b",
+    "+1.f400000000000X+00b",
+    "+1.3880000000000X+00c",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ]
+  },
+  "fmt_var8H": {
+   "command": "scatter mpg weight,",
+   "data": "auto",
+   "prep": "format mpg %8H",
+   "rc": 0,
+   "right": [],
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "41200000",
+    "41a00000",
+    "41f00000",
+    "42200000",
+    "Mileage (mpg)"
+   ]
+  },
+  "fmt_xvar12s": {
+   "command": "scatter mpg weight, xvarformat(%12s)",
+   "data": "auto",
+   "prep": "",
+   "rc": 0,
+   "right": [],
+   "x": [
+    "2000",
+    "3000",
+    "4000",
+    "5000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ]
+  },
+  "fmt_xvar21x": {
+   "command": "scatter mpg weight, xvarformat(%21x)",
+   "data": "auto",
+   "prep": "",
+   "rc": 0,
+   "right": [],
+   "x": [
+    "+1.f400000000000X+00a",
+    "+1.7700000000000X+00b",
+    "+1.f400000000000X+00b",
+    "+1.3880000000000X+00c",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ]
+  },
+  "fmt_xvarl21x": {
+   "command": "scatter mpg weight, xvarformat(%-21x)",
+   "data": "auto",
+   "prep": "",
+   "rc": 0,
+   "right": [],
+   "x": [
+    "2.00000000000000e+03",
+    "3.00000000000000e+03",
+    "4.00000000000000e+03",
+    "5.00000000000000e+03",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ]
+  },
+  "fmt_yvar16H": {
+   "command": "scatter mpg weight, yvarformat(%16H)",
+   "data": "auto",
+   "prep": "",
+   "rc": 0,
+   "right": [],
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "4024000000000000",
+    "4034000000000000",
+    "403e000000000000",
+    "4044000000000000",
+    "Mileage (mpg)"
+   ]
+  },
+  "key_cv12s": {
+   "command": "scatter mpg weight, colorvar(price) zlabel(, format(%12s))",
+   "data": "auto",
+   "prep": "",
+   "rc": 0,
+   "right": [
+    "0",
+    "5000",
+    "10000",
+    "15000",
+    "Price"
+   ],
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ]
+  },
+  "key_cv21x": {
+   "command": "scatter mpg weight, colorvar(price) zlabel(, format(%21x))",
+   "data": "auto",
+   "prep": "",
+   "rc": 0,
+   "right": [
+    "+0.0000000000000X-3ff",
+    "+1.3880000000000X+00c",
+    "+1.3880000000000X+00d",
+    "+1.d4c0000000000X+00d",
+    "Price"
+   ],
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ]
+  },
+  "key_cv8L": {
+   "command": "scatter mpg weight, colorvar(price) zlabel(, format(%8L))",
+   "data": "auto",
+   "prep": "",
+   "rc": 0,
+   "right": [
+    "00000000",
+    "00409c45",
+    "00401c46",
+    "00606a46",
+    "Price"
+   ],
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ]
+  },
+  "key_cvvar21x": {
+   "command": "scatter mpg weight, colorvar(price)",
+   "data": "auto",
+   "prep": "format price %21x",
+   "rc": 0,
+   "right": [
+    "0",
+    "5,000",
+    "10,000",
+    "15,000",
+    "Price"
+   ],
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ]
+  },
+  "key_var21x": {
+   "command": "twoway contour depth northing easting,",
+   "data": "sandstone",
+   "prep": "format depth %21x",
+   "rc": 0,
+   "right": [
+    "7,600",
+    "7,700",
+    "7,800",
+    "7,900",
+    "8,000",
+    "8,100",
+    "Depth (ft.)"
+   ],
+   "x": [
+    "30,000",
+    "35,000",
+    "40,000",
+    "45,000",
+    "50,000",
+    "Easting"
+   ],
+   "y": [
+    "60,000",
+    "70,000",
+    "80,000",
+    "90,000",
+    "Northing"
+   ]
+  },
+  "key_z16H": {
+   "command": "twoway contour depth northing easting, zlabel(, format(%16H))",
+   "data": "sandstone",
+   "prep": "",
+   "rc": 0,
+   "right": [
+    "40bdb00000000000",
+    "40be140000000000",
+    "40be780000000000",
+    "40bedc0000000000",
+    "40bf400000000000",
+    "40bfa40000000000",
+    "Depth (ft.)"
+   ],
+   "x": [
+    "30,000",
+    "35,000",
+    "40,000",
+    "45,000",
+    "50,000",
+    "Easting"
+   ],
+   "y": [
+    "60,000",
+    "70,000",
+    "80,000",
+    "90,000",
+    "Northing"
+   ]
+  },
+  "key_z21x": {
+   "command": "twoway contour depth northing easting, zlabel(, format(%21x))",
+   "data": "sandstone",
+   "prep": "",
+   "rc": 0,
+   "right": [
+    "+1.db00000000000X+00c",
+    "+1.e140000000000X+00c",
+    "+1.e780000000000X+00c",
+    "+1.edc0000000000X+00c",
+    "+1.f400000000000X+00c",
+    "+1.fa40000000000X+00c",
+    "Depth (ft.)"
+   ],
+   "x": [
+    "30,000",
+    "35,000",
+    "40,000",
+    "45,000",
+    "50,000",
+    "Easting"
+   ],
+   "y": [
+    "60,000",
+    "70,000",
+    "80,000",
+    "90,000",
+    "Northing"
+   ]
+  },
+  "past_hi10000": {
+   "command": "twoway (line close date) (scatteri 1300 2936550),",
+   "data": "sp500",
+   "prep": "",
+   "rc": 0,
+   "right": [
+    "Closing price",
+    "y"
+   ],
+   "x": [
+    "03jan2001",
+    "03oct4000",
+    "03jul6000",
+    "02apr8000",
+    "2936550"
+   ],
+   "y": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400"
+   ]
+  },
+  "past_hi8": {
+   "command": "twoway (line close date) (scatteri 1300 100000000),",
+   "data": "sp500",
+   "prep": "",
+   "rc": 0,
+   "right": [
+    "Closing price",
+    "y"
+   ],
+   "x": [
+    "02jan2001",
+    "2.50e+07",
+    "5.00e+07",
+    "7.50e+07",
+    "1.00e+08"
+   ],
+   "y": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400"
+   ]
+  },
+  "past_hi8_n8": {
+   "command": "twoway (line close date) (scatteri 1300 100000000), xlabel(#8)",
+   "data": "sp500",
+   "prep": "",
+   "rc": 0,
+   "right": [
+    "Closing price",
+    "y"
+   ],
+   "x": [
+    "02jan2001",
+    "1.25e+07",
+    "2.50e+07",
+    "3.75e+07",
+    "5.00e+07",
+    "6.25e+07",
+    "7.50e+07",
+    "8.75e+07",
+    "1.00e+08"
+   ],
+   "y": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400"
+   ]
+  },
+  "past_lo": {
+   "command": "twoway (line close date) (scatteri 1300 -1500000),",
+   "data": "sp500",
+   "prep": "",
+   "rc": 0,
+   "right": [
+    "Closing price",
+    "y"
+   ],
+   "x": [
+    "-1500000",
+    "-1121165",
+    "-742330",
+    "13oct0964",
+    "31dec2001"
+   ],
+   "y": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400"
+   ]
+  },
+  "past_m": {
+   "command": "twoway (line close m, xvarformat(%tm)) (scatteri 1300 -6000),",
+   "data": "sp500",
+   "prep": "generate m = mofd(date) + mod(_n, 3)",
+   "rc": 0,
+   "right": [
+    "Closing price",
+    "y"
+   ],
+   "x": [
+    "1460m1",
+    "1595m7",
+    "1731m1",
+    "1866m7",
+    "2002m1"
+   ],
+   "y": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400"
+   ]
+  },
+  "past_ty": {
+   "command": "twoway (line close yr, xvarformat(%ty)) (scatteri 1300 -500),",
+   "data": "sp500",
+   "prep": "generate yr = 2001 + mod(_n, 5)",
+   "rc": 0,
+   "right": [
+    "Closing price",
+    "y"
+   ],
+   "x": [
+    "-5.0e+02",
+    "0",
+    "0500",
+    "1000",
+    "1500",
+    "2000"
+   ],
+   "y": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400"
+   ]
+  },
+  "past_y": {
+   "command": "twoway (line date close) (scatteri 100000000 1300),",
+   "data": "sp500",
+   "prep": "",
+   "rc": 0,
+   "right": [
+    "Date",
+    "y"
+   ],
+   "x": [
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400"
+   ],
+   "y": [
+    "02jan2001",
+    "2.50e+07",
+    "5.00e+07",
+    "7.50e+07",
+    "1.00e+08"
+   ]
+  }
+ },
+ "tsnatscale": {
+  "d_hi10000": {
+   "delta": null,
+   "hi": 2936550.0,
+   "list": [
+    14978.0,
+    745371.0,
+    1475764.0,
+    2206157.0,
+    2936550.0
+   ],
+   "lo": 14977.0,
+   "max": 2936550.0,
+   "min": 14978.0,
+   "n": 5,
+   "rc": 0,
+   "unit": "daily"
+  },
+  "d_hi8": {
+   "delta": null,
+   "hi": 100000000.0,
+   "list": [
+    14977.0,
+    25011233.0,
+    50007489.0,
+    75003745.0,
+    100000001.0
+   ],
+   "lo": 14977.0,
+   "max": 100000001.0,
+   "min": 14977.0,
+   "n": 5,
+   "rc": 0,
+   "unit": "daily"
+  },
+  "d_hi8_n8": {
+   "delta": null,
+   "hi": 100000000.0,
+   "list": [
+    14977.0,
+    12513105.0,
+    25011233.0,
+    37509361.0,
+    50007489.0,
+    62505617.0,
+    75003745.0,
+    87501873.0,
+    100000001.0
+   ],
+   "lo": 14977.0,
+   "max": 100000001.0,
+   "min": 14977.0,
+   "n": 8,
+   "rc": 0,
+   "unit": "daily"
+  },
+  "d_hi9": {
+   "delta": null,
+   "hi": 1000000000.0,
+   "list": [
+    14977.0,
+    250011233.0,
+    500007489.0,
+    750003745.0,
+    1000000001.0
+   ],
+   "lo": 14977.0,
+   "max": 1000000001.0,
+   "min": 14977.0,
+   "n": 5,
+   "rc": 0,
+   "unit": "daily"
+  },
+  "d_inside": {
+   "delta": null,
+   "hi": 15340.0,
+   "list": [
+    14976.0,
+    15066.0,
+    15157.0,
+    15249.0,
+    15341.0
+   ],
+   "lo": 14977.0,
+   "max": 15341.0,
+   "min": 14976.0,
+   "n": 5,
+   "rc": 0,
+   "unit": "daily"
+  },
+  "d_lo": {
+   "delta": null,
+   "hi": 15340.0,
+   "list": [
+    -1500000.0,
+    -1121165.0,
+    -742330.0,
+    -363495.0,
+    15340.0
+   ],
+   "lo": -1500000.0,
+   "max": 15340.0,
+   "min": -1500000.0,
+   "n": 5,
+   "rc": 0,
+   "unit": "daily"
+  },
+  "m_lo": {
+   "delta": 1626.0,
+   "hi": 503.0,
+   "list": [],
+   "lo": -6000.0,
+   "max": 504.0,
+   "min": -6000.0,
+   "n": 5,
+   "rc": 0,
+   "unit": "monthly"
+  },
+  "q_hi": {
+   "delta": 9959.0,
+   "hi": 40000.0,
+   "list": [],
+   "lo": 164.0,
+   "max": 40000.0,
+   "min": 164.0,
+   "n": 5,
+   "rc": 0,
+   "unit": "quarterly"
+  },
+  "y_lo": {
+   "delta": 500.0,
+   "hi": 2005.0,
+   "list": [],
+   "lo": -500.0,
+   "max": 2000.0,
+   "min": -500.0,
+   "n": 5,
+   "rc": 0,
+   "unit": "yearly"
+  },
+  "y_lo_da": {
+   "delta": 500.0,
+   "hi": 2001.0,
+   "list": [],
+   "lo": -500.0,
+   "max": 2000.0,
+   "min": -500.0,
+   "n": 5,
+   "rc": 0,
+   "unit": "yearly"
+  }
+ }
+}
