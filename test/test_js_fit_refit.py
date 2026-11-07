@@ -519,7 +519,10 @@ class TestTheSavedPageRefits:
 @requires_node
 class TestADateFitRefits:
     def test_td_x_round_trips(self):
-        spec = _spec([plot_for("lfit", yvar="mpg", xvar="when")],
+        # A scatter first: a lone lfit's axis labels Stata days (WP-44
+        # AX-18), and this is the fit on a date axis.
+        spec = _spec([plot_for("scatter", yvar="mpg", xvar="when"),
+                      plot_for("lfit", yvar="mpg", xvar="when")],
                      {"filter": _MOVES[1][1], "formats": {"when": "%td"}})
         r = _render(spec)
         cfg = [x for x in r.figures["g1"].renderers

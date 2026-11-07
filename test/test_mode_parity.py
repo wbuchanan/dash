@@ -3382,6 +3382,11 @@ DATE_CORPUS = [
           go={"yscale": "style(vertical_nogrid)"}),
     _case("ylabel minmax empty (WP-44 44-03)", [_sc()],
           go={"xlabel": "#5", "ylabel": "minmax"}, if_expr="price < 0"),
+    # WP-44 WE (AX-20): an offset bar ticked over its x.  (AX-19's rows
+    # need a missing value, which this frame has none of: both modes are
+    # held to twoway in test_axis_rows_p9.py.)
+    _case("bar baroffset (WP-44 AX-20)",
+          [plot_for("bar", {"baroffset": "3"}, yvar="mpg", xvar="rep")]),
 ]
 
 #: The entries a report is the point of, with the report each must make.

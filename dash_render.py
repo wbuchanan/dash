@@ -20006,6 +20006,10 @@ class GlyphMapper:
         x_field, width_spec, _bar_ext = self._bar_extent(
             xvar, df[xvar], bar_width, fig=fig, options=options,
             offset=_bar_off or 0.0)
+        # WP-44 AX-20: an offset bar's scale, twoway's (yxview.class).
+        _bar_ext = dict(_bar_ext, **self._bar_offset_span(
+            xvar, df[xvar], bar_width, fig=fig, options=options,
+            offset=_bar_off or 0.0))
         if _bar_ext:
             df = df.assign(**_bar_ext)
         # base() sets the bar bottom; with none, a tagged column that
@@ -20058,6 +20062,8 @@ class GlyphMapper:
             # period's middle; its tick input is its date, as twoway ticks
             # bar D.gnp96 date over the dates (1970q1(40)2000q1).
             r._dash_tick_fields = {"x": (xvar,)}
+        elif _bar_off and xvar in df and self._BAR_LO in df:
+            self._stamp_bar_offset(r, xvar)
         # The named style first, then the user's colours (D-32e), each read
         # per role: the fill from the area's options, the outline from its.
         self._style_restyle(r, options, ("area", "aline"))
@@ -20241,6 +20247,62 @@ class GlyphMapper:
             return self._BAR_XC, self._BAR_W, {self._BAR_XC: xc,
                                                self._BAR_W: bw}
         return _moved(w) if off else (xvar, w, {})
+
+    _BAR_LO = _DASH_RP + "_bar_lo"
+    _BAR_HI = _DASH_RP + "_bar_hi"
+
+    def _bar_offset_span(self, xvar, xs, width, fig=None, options=None,
+                         offset=0.0):
+        """``{_BAR_LO: lo, _BAR_HI: hi}``, the scale twoway gives a
+        baroffset() bar, or ``{}`` with no offset (WP-44 AX-20).
+
+        twoway widens a bar's scale half a bar and |baroffset()| bars each
+        way of its x, whichever way the bars move (yxview.class
+        minmax_range: ``serset min/max -+ bar_size/2 + |offset*bar_size|``;
+        axis_rows_truth.json ax20_n_three: 1-8 by 3 spans -2.5 to 11.5),
+        and ticks the x itself.  In *xvar*'s axis units, as
+        :meth:`_bar_extent` draws them: a day is 86,400,000 ms on %td, a
+        period kind's ends are its periods'.  NaN where x is missing.
+        Never raises."""
+        try:
+            off = abs(float(offset))
+            w = float(width)
+        except (TypeError, ValueError):
+            return {}
+        if not off or not math.isfinite(off):
+            return {}
+        if not math.isfinite(w) or w < 0:
+            w = 1.0
+        d = w / 2.0 + off * w
+        kind = self._unit_kind(fig, xvar, "x", options)
+        try:
+            x = np.asarray(_dash_float_values(xs), dtype=float)
+        except Exception:  # noqa: BLE001 -- never raises
+            return {}
+        with np.errstate(all="ignore"):
+            if kind == "td":
+                lo, hi = x - d * 86_400_000.0, x + d * 86_400_000.0
+            elif kind in ("tw", "tm", "tq", "th", "ty"):
+                try:
+                    u = np.asarray(_dash_date_units(xs, kind), dtype=float)
+                except Exception:  # noqa: BLE001 -- never raises
+                    return {}
+                ulo, uhi = _dash_date_units(
+                    np.array([_STATA_MS_MIN, _STATA_MS_MAX], dtype=float)
+                    + _STATA_EPOCH_UNIX_MS, kind)
+                lo = _dash_units_to_axis(np.clip(u - d, ulo, uhi), kind)
+                hi = _dash_units_to_axis(np.clip(u + d, ulo, uhi), kind)
+            else:
+                lo, hi = x - d, x + d
+        return {self._BAR_LO: np.asarray(lo, dtype=float),
+                self._BAR_HI: np.asarray(hi, dtype=float)}
+
+    def _stamp_bar_offset(self, r, xvar):
+        """A baroffset() bar's tick input is its x and its span the
+        columns :meth:`_bar_offset_span` wrote (WP-44 AX-20), as a
+        histogram's (WP-34 AX-4)."""
+        r._dash_tick_fields = {"x": (xvar,)}
+        r._dash_span_fields = {"x": (self._BAR_LO, self._BAR_HI)}
 
     def map_spike(
         self,
@@ -24327,6 +24389,10 @@ class GlyphMapper:
         x_field, width_spec, _rb_ext = self._bar_extent(
             xvar, source.data[xvar], bar_width, fig=fig,
             options=options, offset=_rb_off or 0.0)
+        # WP-44 AX-20: an offset bar's scale, twoway's (yxview.class).
+        _rb_ext = dict(_rb_ext, **self._bar_offset_span(
+            xvar, source.data[xvar], bar_width, fig=fig, options=options,
+            offset=_rb_off or 0.0))
         if _rb_ext:
             source.data.update(_rb_ext)
         _fill_base, _f = self._rbar_fill_base(options, color_idx)
@@ -24353,6 +24419,8 @@ class GlyphMapper:
         if view is not None:
             _rbar_kwargs["view"] = view
         r = fig.vbar(**_rbar_kwargs)
+        if _rb_off and self._BAR_LO in source.data:
+            self._stamp_bar_offset(r, xvar)
         self._rbar_finish(r, options, _fill_base, _f)
         # colorvar() (WP-31 C8a): each bar.
         self._colorvar_layer(fig, [(r, source)], options)
@@ -46063,12 +46131,6 @@ _DASH_STATA_TICK_SKIP = frozenset((
     "histogram", "kdensity", "function", "scatteri", "pci", "pcarrowi"))
 
 
-#: WP-34 TR-4: range types the renderers draw one series per y of (a row
-#: counts for an axis when that y and the x are present), and those whose
-#: axes read each variable over its own rows (TestTheRowRule).
-_DASH_STATA_TICK_PER_Y = frozenset(("rline", "rconnected", "rscatter",
-                                    "tsrline"))
-_DASH_STATA_TICK_OWN_ROWS = frozenset(("rbar", "rspike", "rcap", "rcapsym"))
 
 
 def _dash_stata_tick_requests(graphs, formats, frame_cols=None):
@@ -46082,13 +46144,15 @@ def _dash_stata_tick_requests(graphs, formats, frame_cols=None):
     each (the by() variable).  Only Stata names and dash's ``__dashq<k>``
     columns are returned: the qualifier text is never read (DECISIONS A25).
 
-    WP-34 TR-4: a row counts for an axis only when every variable of its
-    series is non-missing -- the rows the renderers draw (measured on both,
-    test_stata_ticks.py::TestTheRowRule): a ``yvar``/``xvar`` layer, and
-    rline, rconnected, rscatter and tsrline, is one series per y (that y
-    and the x variables); rarea and the pc types one series of every
-    variable they name; rbar, rspike, rcap and rcapsym read each variable
-    over its own rows (no complete-case variable)."""
+    WP-44 AX-19: each variable of a layer is read over the layer's own
+    rows, a row its partner misses included, as twoway reads it and the
+    renderers draw the axis (:func:`_dash_layer_rows_vars`; measured,
+    axis_rows_truth.json): its series name no complete-case variable.
+    lowess, fpfit and fpfitci read x so and y one series per y over the
+    rows holding that y and the x; the fits twoway ticks over the rows
+    they fit (lfit, qfit, lpoly, the ci fits, mband, mspline) are one
+    series per y (that y and the x variables) -- WP-34 TR-4's rule, the
+    renderers' rows (test_stata_ticks.py::TestTheRowRule)."""
     out = []
     fm = formats if isinstance(formats, dict) else {}
     fcols = frame_cols if isinstance(frame_cols, dict) else {}
@@ -46147,10 +46211,19 @@ def _dash_stata_tick_requests(graphs, formats, frame_cols=None):
             simple = not any(str(p.get(k, "") or "").strip() for k in
                              ("yvar1", "yvar2", "y1var", "y2var",
                               "x1var", "x2var"))
-            if ys and (simple or pt in _DASH_STATA_TICK_PER_Y):
+            # WP-44 AX-19: each variable over the layer's own rows.
+            own = _dash_layer_rows_vars(p)
+            if own["x"] or own["y"]:
+                series = []
+                if ys and own["y"]:
+                    series.append((tuple(ys), (), ()))
+                elif ys:
+                    series += [((y,), (), (y,) + tuple(xs)) for y in ys]
+                if xs:
+                    series.append(((), tuple(xs), ()) if own["x"]
+                                  else ((), tuple(xs), tuple(ys + xs)))
+            elif ys and simple:
                 series = [((y,), tuple(xs), (y,) + tuple(xs)) for y in ys]
-            elif pt in _DASH_STATA_TICK_OWN_ROWS:
-                series = [(tuple(ys), tuple(xs), ())]
             else:
                 series = [(tuple(ys), tuple(xs), tuple(ys + xs))]
             for sy, sx, cc in series:
@@ -51072,6 +51145,10 @@ def _dash_transpose_layer(fig, renderers, annotations, ptype=""):
         if hf:
             r._dash_hull_fields = {("y" if k == "x" else "x"): v
                                    for k, v in hf.items()}
+        # WP-44 AX-19: the rows each variable is read over.
+        rh = getattr(r, "_dash_rows_hull", None)
+        if isinstance(rh, dict):
+            rh["x"], rh["y"] = rh.get("y", []), rh.get("x", [])
         # WP-34 AX-4: a histogram's tick input and span columns too.
         for _att in ("_dash_tick_fields", "_dash_span_fields"):
             tf = getattr(r, _att, None)
@@ -51372,6 +51449,14 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
         src = getattr(r, "data_source", None)
         if g is None or src is None or _dash_is_swatch(r):
             continue
+        # WP-44 AX-19: each variable over the layer's own rows, a row its
+        # partner misses included (a dot layer's too).
+        if role == "data" and getattr(r, range_attr, "default") == name:
+            col = _dash_rows_hull_values(r, range_attr[0], kind)
+            if col.size:
+                a, b = float(col.min()), float(col.max())
+                lo = a if lo is None else min(lo, a)
+                hi = b if hi is None else max(hi, b)
         # WP-31 B5b: dot's rows are drawn from the scale, not part of it.
         if "dash_dots" in (getattr(r, "tags", None) or ()):
             continue
@@ -51511,6 +51596,185 @@ def _dash_tag_hull_roles(renderers, ptype, options):
         bs = _dash_base_spec(r)
         if bs and not bs["auto"]:
             r._dash_base = (bs["prop"],)
+
+
+#: WP-44 AX-19: the fits twoway ticks over the complete rows they fit
+#: (lfit, qfit, lpoly and the ci fits) or over their own curve (mband,
+#: mspline), and the ones whose x it ticks over the layer's rows
+#: (axis_rows_truth.json ax19_*).
+_DASH_ROWS_CC_TYPES = frozenset(("lfit", "qfit", "lpoly", "lfitci", "qfitci",
+                                 "lpolyci", "mband", "mspline"))
+_DASH_ROWS_X_ONLY = frozenset(("lowess", "fpfit", "fpfitci"))
+#: The served rows-hull source's tag: left out of the brush wiring.
+_DASH_ROWS_HULL_TAG = "dash_rows_hull"
+#: The layers that draw no variable of their own on an axis.
+_DASH_ROWS_NONE = frozenset(("histogram", "kdensity", "function", "scatteri",
+                             "pci", "pcarrowi", "contour", "contourline"))
+
+
+def _dash_layer_rows_vars(plot):
+    """``{"x": [...], "y": [...]}``: the variables of one layer that
+    twoway reads on each axis over the layer's own rows, whether or not
+    the layer's other variables are present there (WP-44 AX-19; measured:
+    ``scatter y x`` with y missing past row 20 ticks x 0(20)100, ``scatter
+    yy x2`` with x2 missing past row 20 ticks y 0(20)100).  Letters before
+    ``horizontal`` turns them.  Empty for the layers that draw no variable
+    of their own (histogram, kdensity, function, the immediate types,
+    contour) and the fits of :data:`_DASH_ROWS_CC_TYPES`; x only for
+    :data:`_DASH_ROWS_X_ONLY`."""
+    out = {"x": [], "y": []}
+    if not isinstance(plot, dict):
+        return out
+    t = str(plot.get("type", "") or "").strip().lower()
+    if t in _DASH_ROWS_NONE or t in _DASH_ROWS_CC_TYPES:
+        return out
+    for letter in ("x", "y"):
+        if letter == "y" and t in _DASH_ROWS_X_ONLY:
+            continue
+        for k in _DASH_AXIS_VAR_KEYS.get(letter, ()):
+            v = plot.get(k)
+            for name in (v if isinstance(v, (list, tuple))
+                         else str(v or "").split()):
+                if name and name not in out[letter]:
+                    out[letter].append(str(name))
+    return out
+
+
+def _dash_stamp_layer_rows(renderers, plot, source, view=None, static=False,
+                           checked=False):
+    """Stamp a layer's first renderer with the rows its axes read
+    (WP-44 AX-19): ``_dash_rows_hull = {"source", "view", "x", "y",
+    "peers", "static"}``, the variables of :func:`_dash_layer_rows_vars`
+    that *source* holds, read through *view* by
+    :func:`_dash_rows_hull_values` and by the saved page as a layer of the
+    axis plan.  *peers* are the layer's renderers, whose glyph fields say a
+    variable's date units.  *static* (a saved page with no filter, whose
+    rows never move): the plan carries the values' ends as numbers, so the
+    page does not embed *source* for them.  The first renderer that is no
+    dot row (``dash_dots``, drawn from the scale) is stamped, and only when
+    a row holds a variable of the layer and misses another
+    (:func:`_dash_rows_partial`; *checked*: the caller found one).  Returns
+    the stamped renderer or None.  Python attributes only."""
+    want = _dash_layer_rows_vars(plot)
+    data = getattr(source, "data", None)
+    if data is None:
+        return None
+    want = {k: [v for v in vs if v in data] for k, vs in want.items()}
+    if not (want["x"] or want["y"]):
+        return None
+    if not checked and not _dash_rows_partial(plot, data):
+        # Every row holds all the layer's variables or none: the rows the
+        # glyphs draw are the rows twoway reads, and no move adds a row.
+        return None
+    rs = [r for r in renderers or ()
+          if getattr(r, "glyph", None) is not None
+          and getattr(r, "data_source", None) is not None
+          and not _dash_is_swatch(r)]
+    own = [r for r in rs if "dash_dots" not in (getattr(r, "tags", None)
+                                                or ())]
+    if not own:
+        return None
+    own[0]._dash_rows_hull = {"source": source, "view": view,
+                              "x": want["x"], "y": want["y"],
+                              "peers": list(rs), "static": bool(static)}
+    return own[0]
+
+
+def _dash_rows_partial(plot, data):
+    """True when some row of *data* holds a variable of layer *plot* and
+    misses another (WP-44 AX-19): only then does twoway read rows the
+    layer's glyphs do not draw.  *data* is a source's ``data`` or a
+    frame."""
+    names = []
+    for k in _DASH_AXIS_VAR_KEYS["x"] + _DASH_AXIS_VAR_KEYS["y"]:
+        v = plot.get(k) if isinstance(plot, dict) else None
+        for name in (v if isinstance(v, (list, tuple))
+                     else str(v or "").split()):
+            if name and name in data and name not in names:
+                names.append(name)
+    if len(names) < 2:
+        return False
+    have = np.column_stack([np.isfinite(_dash_float_values(data[v],
+                                                           coerce=True))
+                            for v in names])
+    return bool((have.any(axis=1) & ~have.all(axis=1)).any())
+
+
+def _dash_rows_source(frame, plot):
+    """The served app's rows-hull source of one layer (WP-44 AX-19): the
+    columns of :func:`_dash_layer_rows_vars` over every row of *frame*
+    (the layer's qualified rows), a row its partner misses included, with
+    the frame's row labels as ``index`` -- the form of a layer source, so
+    a filter move rewrites it as it rewrites them
+    (:func:`_dash_refresh_unlinked`).  None when the layer reads none."""
+    want = _dash_layer_rows_vars(plot)
+    cols = [c for c in dict.fromkeys(want["x"] + want["y"])
+            if c in getattr(frame, "columns", ())]
+    if not cols or not _dash_rows_partial(plot, frame):
+        return None
+    # Tagged: no glyph draws it, so a brush never selects on it.
+    return ColumnDataSource(frame[cols], tags=[_DASH_ROWS_HULL_TAG])
+
+
+def _dash_rows_hull_units(rh, field):
+    """The date units the layer's glyphs draw *field* through, or None
+    (WP-30 P1.23a)."""
+    for p in rh.get("peers") or ():
+        g = getattr(p, "glyph", None)
+        if g is None:
+            continue
+        for attr in _DASH_X_COORDS + _DASH_Y_COORDS:
+            if attr not in g.properties():
+                continue
+            v = getattr(g, attr)
+            fld = (v if isinstance(v, str)
+                   else v.get("field") if isinstance(v, dict)
+                   else getattr(v, "field", None))
+            if fld == field:
+                u = _dash_spec_units(v)
+                if u:
+                    return u
+    return None
+
+
+def _dash_rows_hull_values(r, letter, kind=None):
+    """The finite values renderer *r*'s ``_dash_rows_hull`` puts on axis
+    *letter*: each variable over the rows its view keeps, in its Stata
+    units where a glyph draws it through dash's date transform; positive
+    ones only on ``"log"`` (WP-44 AX-19).  An empty array when *r* has
+    none."""
+    rh = getattr(r, "_dash_rows_hull", None)
+    if not isinstance(rh, dict) or not rh.get(letter):
+        return np.asarray([], dtype=float)
+    data = getattr(rh.get("source"), "data", None) or {}
+    first = next(iter(data), None)
+    n = len(data[first]) if first else 0
+    filt = getattr(rh.get("view"), "filter", None)
+    rows = None
+    if filt is not None:
+        idx = _dash_prop(filt, "indices")
+        if idx is None:
+            bools = _dash_prop(filt, "booleans")
+            if bools is not None:
+                rows = np.flatnonzero(np.asarray(list(bools)[:n], dtype=bool))
+        else:
+            rows = np.asarray(list(idx), dtype=np.int64)
+            rows = rows[(rows >= 0) & (rows < n)]
+    out = []
+    for field in rh[letter]:
+        if field not in data:
+            continue
+        col = _dash_float_values(data[field], coerce=True)
+        if rows is not None:
+            col = col[rows[rows < len(col)]]
+        u = _dash_rows_hull_units(rh, field)
+        if u:
+            col = _dash_date_units(col, u)
+        col = col[np.isfinite(col)]
+        if kind == "log":
+            col = col[col > 0]
+        out.append(col)
+    return np.concatenate(out) if out else np.asarray([], dtype=float)
 
 
 def _dash_refinish_axes(figures, facet_map):
@@ -51789,6 +52053,54 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                     src = getattr(r, "data_source", None)
                     if g is None or src is None or _dash_is_swatch(r):
                         continue
+                    # WP-44 AX-19: each variable over the layer's own
+                    # rows, through the layer's view (a dot layer's too).
+                    _rh = getattr(r, "_dash_rows_hull", None)
+                    if isinstance(_rh, dict) and _rh.get(letter) \
+                            and getattr(r, range_attr, "default") == name \
+                            and _rh.get("static"):
+                        # No filter: the rows never move; the ends.
+                        _hv = _dash_rows_hull_values(r, letter)
+                        _ri = index.get(id(src))
+                        if _ri is None:
+                            _ri = index[id(src)] = len(models)
+                            models.append(src)
+                        if _hv.size:
+                            layers.append({"src": _ri, "filt": -1, "fk": "",
+                                           "fields": [],
+                                           "consts": [float(_hv.min()),
+                                                      float(_hv.max())],
+                                           "bfields": [], "bconsts": [],
+                                           "units": [], "hfields": []})
+                    elif isinstance(_rh, dict) and _rh.get(letter) \
+                            and getattr(r, range_attr, "default") == name \
+                            and _rh.get("source") is not None:
+                        _hs = _rh["source"]
+                        hi_ = index.get(id(_hs))
+                        if hi_ is None:
+                            hi_ = index[id(_hs)] = len(models)
+                            models.append(_hs)
+                        _hf = getattr(_rh.get("view"), "filter", None)
+                        _hk = ("idx" if isinstance(_hf, IndexFilter) else
+                               "bool" if isinstance(_hf, BooleanFilter)
+                               else "")
+                        _hfi = -1
+                        if _hk:
+                            _hfi = index.get(id(_hf))
+                            if _hfi is None:
+                                _hfi = index[id(_hf)] = len(models)
+                                models.append(_hf)
+                        _hfl = [str(v) for v in _rh[letter]
+                                if v in _hs.data]
+                        _hu = [[v, _dash_rows_hull_units(_rh, v)]
+                               for v in _hfl
+                               if _dash_rows_hull_units(_rh, v)]
+                        if _hfl:
+                            layers.append({"src": hi_, "filt": _hfi,
+                                           "fk": _hk, "fields": _hfl,
+                                           "consts": [], "bfields": [],
+                                           "bconsts": [], "units": _hu,
+                                           "hfields": []})
                     # WP-31 B5b: dot's rows are drawn from the scale;
                     # WP-31 B5c: the page rebuilds them over it.
                     if "dash_dots" in (getattr(r, "tags", None) or ()):
@@ -74375,6 +74687,10 @@ class DashRenderer:
             _dash_cvar_bins_layer(_layer_renderers)
             # Each layer's role in the axis hull (WP-30 P1.3a, D-21g).
             _dash_tag_hull_roles(_layer_renderers, ptype, popts)
+            # WP-44 AX-19: the rows each of its variables is read over.
+            _dash_stamp_layer_rows(
+                _layer_renderers, plot, source_for_plot, _plot_view,
+                static=not getattr(self, "_dash_page_filtered", True))
             # A layer the saved page computes at build and does not refit
             # carries ONE tag on every renderer: its kind, variables,
             # weight rule and member rows (WP-29 P0.17).  Private to the
@@ -75351,6 +75667,9 @@ class DashRenderer:
                 self._facet_masks, self._facet_total_keys,
                 self.agg_source_registry
         """
+        # WP-44 AX-19: a page with no filter keeps each layer's rows hull
+        # as numbers; with one, the page holds the graphs' sources anyway.
+        self._dash_page_filtered = bool(filters_cfg)
         # A renderer a test made without __init__ has none yet.
         if not hasattr(self, "_facet_total_keys"):
             self._facet_total_keys = set()
@@ -78042,6 +78361,8 @@ class ServerAppBuilder:
                       "_DASH_NUMLIST_TOL",
                       # WP-32: the empty axis's extent.
                       "_DASH_EMPTY_SCALE", "_DASH_CLEAR_TEXT",
+                      "_DASH_ROWS_CC_TYPES", "_DASH_ROWS_X_ONLY",
+                      "_DASH_ROWS_NONE", "_DASH_ROWS_HULL_TAG",
                       # WP-32: the served stale cue's texts.
                       "_DASH_STALE_CUE_TEXT", "_DASH_STALE_SUFFIX",
                       "_DASH_STALE_SERVED_HTML",
@@ -78485,6 +78806,11 @@ class ServerAppBuilder:
                          "_dash_axis_plan", "_dash_layer_extent",
                          "_dash_has", "_dash_prop",
                          "_dash_tag_hull_roles", "_dash_refinish_axes",
+                         # WP-44 AX-19: each variable over its layer's rows.
+                         "_dash_layer_rows_vars", "_dash_stamp_layer_rows",
+                         "_dash_rows_source", "_dash_rows_hull_units",
+                         "_dash_rows_partial",
+                         "_dash_rows_hull_values",
                          # WP-31 D10: an emptied by() panel is hidden.
                          "_dash_panel_source_rows", "_dash_panel_visibility",
                          # WP-30 P1.17b: twoway's default base.
@@ -81149,6 +81475,11 @@ class ServerAppBuilder:
             "        _dash_cvar_bins_layer(fig.renderers[_before:])",
             "        # A yaxis(2)/xaxis(2) layer draws on the secondary range, its",
             "        # marker labels and arrowheads with it.",
+            "        # WP-44 AX-19: the rows each of its variables is read over, on a",
+            "        # source of its own a filter move rewrites (graph_sources).",
+            "        _rh_src = _dash_rows_source(g_df, plot)",
+            "        if _rh_src is not None:",
+            "            _dash_stamp_layer_rows(fig.renderers[_before:], plot, _rh_src, checked=True)",
             "        # A horizontal layer, drawn upright, is turned once (WP-30 P1.9a).",
             "        if _dash_is_horizontal(plot):",
             "            _dash_transpose_layer(fig, fig.renderers[_before:],",
@@ -81595,6 +81926,12 @@ class ServerAppBuilder:
             "                graph_sources[gname].append(_ly_src)",
             "            for _rs in _r_srcs:",
             "                graph_sources[gname].append(_rs)",
+            "            # WP-44 AX-19: the layer's rows-hull source, rewritten by a",
+            "            # move as a layer source is (_dash_refresh_unlinked).",
+            "            for _rr in fig.renderers:",
+            "                _rhs = (getattr(_rr, '_dash_rows_hull', None) or {}).get('source')",
+            "                if _rhs is not None and all(_rhs is not _x for _x in graph_sources[gname]):",
+            "                    graph_sources[gname].append(_rhs)",
             "            if _r_srcs and any(_rs is not _ly_src for _rs in _r_srcs):",
             "                # A source the mapper BUILT -- a fitted line, a histogram,",
             "                # a line in its join order -- cannot be refreshed by swapping",
@@ -82843,6 +83180,9 @@ class ServerAppBuilder:
             "                if id(_bsrc) in _brush_wired:",
             "                    continue",
             "                if 'index' not in getattr(_bsrc, 'data', {}):",
+            "                    continue",
+            "                # WP-44 AX-19: a rows-hull source draws nothing.",
+            "                if _DASH_ROWS_HULL_TAG in (getattr(_bsrc, 'tags', None) or []):",
             "                    continue",
             "                _brush_wired.add(id(_bsrc))",
             "                # A token bucket of its own, as each filter has: a client",

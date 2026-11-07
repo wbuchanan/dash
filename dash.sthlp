@@ -4515,7 +4515,10 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     each bar moved {it:#} bar widths, negative to the left, {cmd:rbar}'s
     as {cmd:bar}'s.  {cmd:twoway} also takes it on {cmd:area},
     {cmd:spike}, {cmd:dropline} and {cmd:dot}, where it draws nothing
-    different.  Beside {cmd:rbar}'s {cmd:mwidth} each marker-wide bar is
+    different.  The axis is ticked over the bars' own x and spans half a
+    bar and |{it:#}| bars each way of every bar, as {cmd:twoway}'s
+    ({cmd:bar y t, baroffset(3)} over t 1 to 8 labels 0(2)8 and runs from
+    -2.5 to 11.5).  Beside {cmd:rbar}'s {cmd:mwidth} each marker-wide bar is
     moved {it:#} of its own widths to the {it:left} on the screen, as
     {cmd:twoway} moves it, whatever the zoom, and turned by
     {cmd:horizontal} {it:#} of its heights down{p_end}
@@ -5355,7 +5358,7 @@ for ({cmd:xtick(1500(1)5000)}: 3,501).  Each value is the one
 {cmd:ylabel(-.3(.1).3)}, labels its middle tick 0.
 
 {pstd}
-A default axis, or one labelled {cmd:#}{it:N}, is ticked where Stata's own {cmd:_natscale} and {cmd:_tsnatscale} tick it, asked of Stata over the range each layer draws when {cmd:dash} builds the page; after a filter move the saved page and the served app place {cmd:twoway}'s rule with a fitted model that agrees with Stata on 58-98% of ranges (measured), and a move back to all the data restores Stata's ticks. {cmd:xtick(#}{it:N}{cmd:)} and {cmd:xlabel(minmax)} follow a move the same way. As in {cmd:twoway}, the rows a layer draws include what it evaluates where it draws no point: a {cmd:lowess}, {cmd:qfit}, {cmd:fpfit}, {cmd:lpoly} or {cmd:lpolyci} whose smooth is missing (one or two observations, or a bandwidth that leaves the grid missing) still spans its observations' x on the x axis, and a {cmd:histogram} of no observations runs its y axis from -1 to 1; the other axis is left empty.  A layer with {cmd:range()}, {cmd:recast()} or a date variable spans only the points it draws.
+A default axis, or one labelled {cmd:#}{it:N}, is ticked where Stata's own {cmd:_natscale} and {cmd:_tsnatscale} tick it, asked of Stata over the range each layer draws when {cmd:dash} builds the page; after a filter move the saved page and the served app place {cmd:twoway}'s rule with a fitted model that agrees with Stata on 58-98% of ranges (measured), and a move back to all the data restores Stata's ticks. {cmd:xtick(#}{it:N}{cmd:)} and {cmd:xlabel(minmax)} follow a move the same way. As in {cmd:twoway}, the rows a layer draws include what it evaluates where it draws no point: a {cmd:lowess}, {cmd:qfit}, {cmd:fpfit}, {cmd:lpoly} or {cmd:lpolyci} whose smooth is missing (one or two observations, or a bandwidth that leaves the grid missing) still spans its observations' x on the x axis, and a {cmd:histogram} of no observations runs its y axis from -1 to 1; the other axis is left empty.  A layer with {cmd:range()}, {cmd:recast()} or a date variable spans only the points it draws. Each variable of a layer is read over the layer's own rows, as {cmd:twoway} reads it, whether or not the layer's other variables are there: {cmd:scatter y x} with {cmd:y} missing past observation 20 of 100 labels x 0(20)100, as {cmd:twoway} does, and the {cmd:y} of an observation whose {cmd:x} is missing counts for the y axis -- for every type that draws its own variables, the range and paired-coordinate types too, and for the x of {cmd:lowess}, {cmd:fpfit} and {cmd:fpfitci}; {cmd:lfit}, {cmd:qfit}, {cmd:lpoly} and the {cmd:ci} fits span the observations they fit, and {cmd:mband} and {cmd:mspline} their own curve, as in {cmd:twoway}.
 Every count axis is asked so at build -- a {cmd:by()} panel at its own count, {cmd:xmtick(#}{it:N}{cmd:)} and {cmd:xmlabel(#}{it:N}{cmd:)}, a {cmd:histogram}, {cmd:kdensity} or {cmd:function} axis, a fit's grid and band, an immediate layer's and every colour key; {cmd:dash serve} draws the figures once more inside Stata to ask for them, so the served app opens with the same ticks and colour keys.  At most 256 ranges are asked a build; a page rendered outside Stata, and any range past that bound, use the model. A {cmd:histogram}'s bin axis is ticked over its first and last bin midpoints, as {cmd:twoway} ticks it, and spans the bars' edges: {cmd:histogram mpg} labels 15 20 25 30 35 40. {it:Difference from twoway:} the plot-region margin is a fraction of the frame fixed when the page is built, where {cmd:twoway}'s is an absolute size, so a page resized well beyond its built width places the data up to about 1.3% of the plot width from where {cmd:twoway} would at each end (measured below). On an axis with no rule, {cmd:range()} widens the axis but not its ticks, as in {cmd:twoway}: {cmd:yscale(range(0))} on {cmd:mpg} labels 10 20 30 40 over an axis from 0; with {cmd:#}{it:N}, or in a {cmd:by()} graph, the ticks are placed over the data and the range together.
 
 {pstd}
@@ -5577,10 +5580,10 @@ with no rule, and a second date axis with none, is ticked as {cmd:#5} (the
 scheme's tick count) by {cmd:twoway}'s calendar rule, asked of Stata when
 the page is built and modelled after a filter move, with no minor ticks: {cmd:line close date} on {cmd:sp500} labels
 01jan2001 01apr2001 01jul2001 01oct2001 01jan2002, as {cmd:twoway} does.
-Each axis is asked of Stata over the rows a layer draws, so a series whose
-first or last value is missing -- every {cmd:L.} or {cmd:D.} series -- is
-ticked as {cmd:twoway} ticks it ({cmd:area d.gnp96 date} labels 1970q1 ...
-2000q1).
+Each axis is asked of Stata over the rows each of a layer's variables is
+read over, so a series whose first or last value is missing -- every
+{cmd:L.} or {cmd:D.} series -- is ticked as {cmd:twoway} ticks it
+({cmd:area d.gnp96 date} labels 1970q1 ... 2000q1).
 The model agrees with Stata on about 58-66% of daily to half-yearly ranges
 and 98% of yearly ones; otherwise it chooses another calendar step or end
 tick.  A date that shares an axis with a plain number is ticked on the

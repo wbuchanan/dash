@@ -1147,6 +1147,37 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w44_run' {
 }
 * ==== end S03 ====
 
+* ==== S03 AX-19: each variable over the layer's own rows ====
+capture program drop _q4403_cut
+program define _q4403_cut
+    // The 20 lightest cars keep their mpg; the other 54 miss it.
+    sort weight
+    quietly replace mpg = . if _n > 20
+end
+local only : env WP44_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w44_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03 "`w44_work'/s03f"
+    capture mkdir "`q03'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4403-13: a row whose y is missing still counts for x, and one whose
+    // x is missing for y, as twoway reads each variable over the layer's
+    // rows (WP-44 AX-19; axis_rows_truth.json), saved and served -- the
+    // export asking Stata over the same rows.
+    _q4403_reg "`q03'" 1 xticks _q4403_cut scatter mpg weight,
+    _w44_expect Q4403-13 `"("${q4403_s}" == "${q4403_tw}" & "${q4403_v}" == "${q4403_tw}")"' `"scatter mpg weight, mpg on 20 rows: twoway x ${q4403_tw}, saved ${q4403_s}, served ${q4403_v}"'
+    _q4403_reg "`q03'" 2 yticks _q4403_cut line weight mpg,
+    _w44_expect Q4403-13 `"("${q4403_s}" == "${q4403_tw}" & "${q4403_v}" == "${q4403_tw}")"' `"line weight mpg, mpg on 20 rows: twoway y ${q4403_tw}, saved ${q4403_s}, served ${q4403_v}"'
+    _w44_done Q4403-13 "each variable is read over the layer's own rows"
+
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // S04 helpers (WP-44 44-04).  _q4404_reg <dir> <k> <key> <axis> <dash
 // command...>: registers the dash graph, builds it saved and served, and
 // writes each mode's <axis> axis as "<axis type>|<label texts>"
@@ -1482,6 +1513,35 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w44_run' {
 
     dash clear
     capture graph drop _all
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
+* ==== S04 AX-20: a baroffset() bar is ticked over its x ====
+capture program drop _q4404_bars
+program define _q4404_bars
+    quietly keep in 1/8
+    quietly generate t = _n
+end
+local only : env WP44_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w44_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    local q04 "`w44_work'/s04x"
+    capture mkdir "`q04'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4404-6: bar and rbar with baroffset(3) are ticked over the bars' x
+    // (1-8: 0(2)8), as twoway ticks them (yxview.class minmax_range;
+    // axis_rows_truth.json ax20_n_three), saved and served.
+    _q4403_reg "`q04'" 1 xticks _q4404_bars bar mpg t, baroffset(3)
+    _w44_expect Q4404-6 `"("${q4403_s}" == "${q4403_tw}" & "${q4403_v}" == "${q4403_tw}")"' `"bar mpg t, baroffset(3): twoway ${q4403_tw}, saved ${q4403_s}, served ${q4403_v}"'
+    _q4403_reg "`q04'" 2 xticks _q4404_bars rbar mpg price t, baroffset(-2)
+    _w44_expect Q4404-6 `"("${q4403_s}" == "${q4403_tw}" & "${q4403_v}" == "${q4403_tw}")"' `"rbar mpg price t, baroffset(-2): twoway ${q4403_tw}, saved ${q4403_s}, served ${q4403_v}"'
+    _w44_done Q4404-6 "a baroffset() bar is ticked over its x"
+
+    capture graph drop _all
+    dash clear
     display as text "S04 end " c(current_date) " " c(current_time)
 }
 * ==== end S04 ====

@@ -249,10 +249,10 @@ class TestTheRequests:
                         "options": {"yaxis": "2"}}], "graph_options": {}}
         ys = [r["layers"] for r in dr._dash_stata_tick_requests([g], {})
               if r["layers"][0][0] in (("a",), ("b",))]
-        # Flipped (WP-34 TR-4): a layer's token carries the variables its
-        # rows need, so a row with a missing y counts for no axis.
-        assert [(("a",), (), ("a", "t"))] in ys \
-            and [(("b",), (), ("b", "t"))] in ys
+        # Flipped (WP-44 AX-19): each variable is asked over the layer's
+        # rows, as twoway reads it (axis_rows_truth.json): no complete-case
+        # variable.
+        assert [(("a",), (), ())] in ys and [(("b",), (), ())] in ys
 
     def test_by_panels_are_asked(self):
         g = {"plots": [{"type": "scatter", "yvar": "price",
@@ -283,11 +283,13 @@ class TestTheRequests:
 
 class TestTheCompleteCaseTokens:
     def test_complete_case_tokens(self):
-        """WP-34 TR-4: each series of a layer carries the variables its rows
-        need, the rows the renderers draw (TestTheRowRule): one token per y
-        of a multi-y layer or of rline (that y and the x); one with every
-        variable for rarea and a pc layer; none for rcap, whose axes read
-        each variable over its own rows."""
+        """Each series of a layer names the variables its rows need, the
+        rows the renderers draw (TestTheRowRule).  Flipped (WP-44 AX-19):
+        a layer that draws its own variables reads each over the layer's
+        rows, as twoway does (axis_rows_truth.json) -- a multi-y layer,
+        rarea, rline, a pc layer, rcap -- so it names none; lowess's y is
+        one series per y with the x; an lfit's every series names its y and
+        x (twoway ticks it over the rows it fits)."""
         g = {"plots": [{"type": "scatter", "yvar": "a b", "xvar": "t",
                         "options": {}},
                        {"type": "rarea", "yvar1": "lo", "yvar2": "hi",
@@ -297,23 +299,22 @@ class TestTheCompleteCaseTokens:
                        {"type": "rline", "yvar1": "m", "yvar2": "n",
                         "xvar": "t", "options": {}},
                        {"type": "rcap", "yvar1": "u", "yvar2": "v",
-                        "xvar": "t", "options": {}}],
+                        "xvar": "t", "options": {}},
+                       {"type": "lowess", "yvar": "w", "xvar": "t",
+                        "options": {}},
+                       {"type": "lfit", "yvar": "f", "xvar": "t",
+                        "options": {}}],
              "graph_options": {}}
         got = {}
         for r in dr._dash_stata_tick_requests([g], {}):
             got.setdefault(r["layers"][0][0] in (("t",), ("q", "s"))
                            and "x" or "y", set()).update(r["layers"])
-        assert got["y"] >= {(("a",), (), ("a", "t")),
-                            (("b",), (), ("b", "t")),
-                            (("lo", "hi"), (), ("lo", "hi", "t")),
-                            (("p", "r"), (), ("p", "r", "q", "s")),
-                            (("m",), (), ("m", "t")), (("n",), (), ("n", "t")),
-                            (("u", "v"), (), ())}
-        assert got["x"] >= {(("t",), (), ("a", "t")),
-                            (("t",), (), ("b", "t")),
-                            (("t",), (), ("lo", "hi", "t")),
-                            (("q", "s"), (), ("p", "r", "q", "s")),
-                            (("t",), (), ("m", "t")), (("t",), (), ())}
+        assert got["y"] == {(("a", "b"), (), ()), (("lo", "hi"), (), ()),
+                            (("p", "r"), (), ()), (("m", "n"), (), ()),
+                            (("u", "v"), (), ()), (("w",), (), ("w", "t")),
+                            (("f",), (), ("f", "t"))}
+        assert got["x"] == {(("t",), (), ()), (("q", "s"), (), ()),
+                            (("t",), (), ("f", "t"))}
 
 
 #: WP-34 TR-4: a frame whose first y and last x are missing (y2's least
@@ -517,10 +518,10 @@ class TestTheExportHelpers:
         line = dr._dash_stata_tick_plan("_qg_1", json.dumps(
             {"date": "%td"}))
         reqs = line.split(";")
-        # Flipped (WP-34 TR-4): a layer's token carries the variables its
-        # rows need, so a row with a missing y counts for no axis.
-        assert "4 d - date:__dashq1:close+date" in reqs \
-            and "5 - - close:__dashq1:close+date" in reqs
+        # Flipped (WP-44 AX-19): each variable over the layer's rows, as
+        # twoway reads it: no complete-case part.
+        assert "4 d - date:__dashq1:" in reqs \
+            and "5 - - close:__dashq1:" in reqs
         assert re.fullmatch(r"[A-Za-z0-9_ ;:+-]+", line)
         assert dr._dash_stata_tick_plan("_qg_9", "{}") == ""
 

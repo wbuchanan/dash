@@ -495,8 +495,8 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-14 Tracked:** Closed in WP-44, BUGS.md "tstyle(), labstyle(), gstyle(), tlstyle(), glstyle() and nogextend are named", commit fb75e9a.
 - **AX-15 Tracked:** Documented in WP-44, BUGS.md "Documented: xtick and xmtick share one tick length; out-of-range reflines are clipped from the margin; string/hex formats drawn %9.0g, dates past the browser range, margin fixed at build", commit e8c98b5.
 - **AX-18 Tracked:** Closed in WP-44, BUGS.md "A date axis is kept where twoway labels Stata numbers (first layer lfit/qfit/ci/kdensity/lpoly/function/immediates); xscale(log) on a date axis is drawn linear", commit 5432452.
-- **AX-19 Tracked:** Open (WP-44 section 44-03).
-- **AX-20 Tracked:** Open (WP-44 section 44-04).
+- **AX-19 Tracked:** Closed in WP-44, BUGS.md "A range type (rbar, rspike, rcap, rcapsym) widens the x axis over rows where both bounds are missing; twoway leaves those rows out of the axis", commit pending.
+- **AX-20 Tracked:** Closed in WP-44, BUGS.md "A bar with baroffset() on a date (period) axis uses its drawn centre as the tick input, so the axis ticks move with the offset; twoway ticks the date", commit pending.
 - **MS-14 Tracked:** Closed in WP-44, BUGS.md "xscale(range()) on a log axis adds a tick at the range end", commit 5b0d7e7.
 - **MS-12 Tracked:** Closed in WP-44, BUGS.md "A graph whose only plot is on yaxis(2) is drawn with y gridlines; twoway draws none", commit de3e00e.
 - **MS-11 Tracked:** Closed in WP-44, BUGS.md "twoway's '<first title>...' x title (different x across y-axis groups, or upright plus turned layers) is not drawn", commit ef8dc01.

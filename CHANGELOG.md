@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- Each variable of a layer counts on its axis over the layer's own rows, as twoway reads it, a row its partner misses included: scatter y x with y missing past observation 20 of 100 labels x 0(20)100, as twoway does, where dash labelled 0(5)20; the same for every type that draws its own variables and the x of lowess, fpfit and fpfitci (WP-44, AX-19)
 - Two transform words in one xscale(), yscale() or tscale() copy are refused, r(198), in twoway's words -- yscale(log nolog) "only one of options nolog or log is allowed", yscale(atanh log), yscale(log log) "log or log1m" -- where dash drew the graph; yscale(nolog nolog) is drawn, as in twoway (WP-44, AX-10)
 - xscale(), yscale(), tscale() and zscale() with atanh, logit or log1m (any abbreviation) are refused with r(199), "unrecognized command", as twoway's graph fails on them -- scatter mpg weight, yscale(logit) -- where dash drew a linear axis with a note; a later copy's log, nolog or no form clears them, and noatanh, nologit and nolog1m alone draw the plain axis with no note, as in twoway (ruling D75) (WP-44, AX-9)
 - custom on an axis label or tick option with a label or tick edit and no listed value -- ylabel(, custom labcolor(red)), ylabel(10(10)40, custom labcolor(red)), ylabel(#5, custom angle(45)), ytick(, custom tlcolor(red)) -- is refused, r(198), tick_styles[-1] invalid name, as twoway refuses it; dash drew the edits on every label (WP-44, AX-5)
@@ -1018,6 +1019,7 @@ and now matches Stata.
 
 ### Fixed in WP-44
 
+- A baroffset() bar or rbar is ticked over its own x and its scale spans half a bar and |baroffset()| bars each way, as twoway draws it -- bar y t, baroffset(3) over t 1 to 8 labels 0(2)8 and runs from -2.5 to 11.5 -- where dash ticked the moved bars, 4(2)12 (WP-44, AX-20)
 - ylabel(minmax) on a graph with no observation writes twoway's labels, 1.e+300 at the bottom and -1.e+300 at the top (1.e+300 alone on a log axis), where dash drew Bokeh's default ticks; a scale whose span is past the largest double (y at 8e307 and -8e307) is refused, r(199), as twoway's graph fails on it, where dash built the page (WP-44, DG-13)
 - A log axis over values at or below 0 is ticked as twoway ticks it, over every finite value with the ticks at or below 0 left out -- gen z = mpg - 25, scatter z weight, yscale(log) labels 10 20, where dash drew 5 10 15 -- in the saved page, the served app and after a filter move; twoway's degenerate picture of those values is a documented difference (help dash, Differences from twoway, item 20) (WP-44, AX-11)
 - xscale(style()) and yscale(style()) read Stata's axis style file as twoway does -- yscale(style(vertical_nogrid)) draws no y grid, xscale(style(horizontal_noline)) no x axis line and no x grid -- where dash named the sub-option and drew the plain axis (WP-44, AX-9)

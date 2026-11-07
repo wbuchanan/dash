@@ -311,6 +311,7 @@ GENERATORS = {
     "axis_format_truth.json": "scripts/extract_axis_format_truth.do",
     "axis_look_truth.json": "scripts/extract_axis_look_truth.do",
     "axis_misc_truth.json": "scripts/extract_axis_misc_truth.do",
+    "axis_rows_truth.json": "scripts/extract_axis_rows_truth.do",
     "axis_scale_truth.json": "scripts/extract_axis_scale_truth.do",
     "axis_title_truth.json": "scripts/extract_axis_title_truth.do",
     "axis_subopt_truth.json": "scripts/extract_axis_subopt_truth.do",

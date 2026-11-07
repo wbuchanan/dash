@@ -2922,8 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'AX-20': 'A bar with baroffset() on a date (period) axis uses its drawn centre as the tick input, so the axis ticks move with the offset; twoway ticks the date',
-    'AX-19': 'A range type (rbar, rspike, rcap, rcapsym) widens the x axis over rows where both bounds are missing; twoway leaves those rows out of the axis',
     'PIC-4': "economist: a graph's note() is never painted (the Label targets a Title Node BokehJS does not resolve)",
     'PIC-7': 'economist widths: range, spike, dropline and pc lines at 1.2 (linewidth p) where twoway uses pother 0.8; the rarea outline at 0.8 centred where twoway uses parea 0.2 inside',
     'ST-1': "Style-word abbreviations and names twoway reads are not read: compass2dir (nor, N, rig ...), tb_orientstyle (hor, vertic), clockdir names (top, bottom, left ...: title position(bottom) drawn above), gridringstyle (inside/outside; title ring(in) accepted where twoway refuses), anglestyle (v, rv, rh), connectstyle (st, up, no drawn direct); twoway-worded notes are invented for them, and justification(l)'s note is missing",

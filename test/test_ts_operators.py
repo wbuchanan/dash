@@ -444,9 +444,14 @@ class TestAFilterMoveKeepsTheComputedSeries:
             if "columns" in data:
                 # WP-34 TR-4: the regenerated fixture's data are the
                 # column layout dash writes now (dataFormat dash-columns-1).
+                # The export embeds the rows the graph draws (WP-29
+                # P0.11; regenerated 07nov2026): t > 100, the last of
+                # sp500's 248 rows, so the first is row 249 - n.
+                n = data["numberOfRecords"]
+                first = 249 - n if n < 248 else 1
                 data["columns"].pop("__dashq1")
                 data["columns"]["t"] = dr._dash_pack_column(
-                    [float(i + 1) for i in range(data["numberOfRecords"])])
+                    [float(first + i) for i in range(n)])
             else:
                 data["values"] = [dict({k: v for k, v in r.items()
                                         if k != "__dashq1"}, t=float(i + 1))
@@ -494,8 +499,9 @@ class TestTheDateAxisTicks:
     @pytest.mark.parametrize("mode", ["saved", "served"])
     def test_every_tick_probe(self, mode):
         """Both modes draw twoway's x ticks on every probe of 20oct2026
-        that twoway draws (flag T): a missing y in the first or last row
-        (D., L., F., S4., or a missing value) counts for no axis, so the
+        that twoway draws (flag T): the date of a row whose y is missing
+        (D., L., F., S4., or a missing value) counts for x, as twoway
+        reads each variable over the layer's rows (WP-44 AX-19), so the
         export's range is the drawn range and Stata's ticks are drawn."""
         assert len(_T) == 20
         bad = []
@@ -534,12 +540,15 @@ class TestTheDateAxisTicks:
 class TestTheHelp:
     def test_the_rows_sentence(self):
         """WP-34 TR-4: the date-axis paragraph says an axis is asked of Stata
-        over the rows a layer draws, with twoway's help example."""
+        over the rows each variable is read over (WP-44 AX-19), with
+        twoway's help example."""
         from test_help_claims_1 import _between, _help
         para = " ".join(_between(
             _help(), "A {cmd:%td}, {cmd:%tw}", "The model agrees").split())
-        assert ("Each axis is asked of Stata over the rows a layer draws, "
-                "so a series whose first or last value is missing -- every "
+        # Flipped (WP-44 AX-19): each variable over the layer's rows.
+        assert ("Each axis is asked of Stata over the rows each of a "
+                "layer's variables is read over, so a series whose first "
+                "or last value is missing -- every "
                 "{cmd:L.} or {cmd:D.} series -- is ticked as {cmd:twoway} "
                 "ticks it ({cmd:area d.gnp96 date} labels 1970q1 ... "
                 "2000q1).") in para
