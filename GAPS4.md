@@ -497,7 +497,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-18 Tracked:** Closed in WP-44, BUGS.md "A date axis is kept where twoway labels Stata numbers (first layer lfit/qfit/ci/kdensity/lpoly/function/immediates); xscale(log) on a date axis is drawn linear", commit 5432452.
 - **AX-19 Tracked:** Open (WP-44 section 44-03).
 - **AX-20 Tracked:** Open (WP-44 section 44-04).
-- **MS-14 Tracked:** Open (WP-44 section 44-03).
+- **MS-14 Tracked:** Closed in WP-44, BUGS.md "xscale(range()) on a log axis adds a tick at the range end", commit pending.
 - **MS-12 Tracked:** Closed in WP-44, BUGS.md "A graph whose only plot is on yaxis(2) is drawn with y gridlines; twoway draws none", commit de3e00e.
 - **MS-11 Tracked:** Closed in WP-44, BUGS.md "twoway's '<first title>...' x title (different x across y-axis groups, or upright plus turned layers) is not drawn", commit ef8dc01.
 - **MS-13 Tracked:** Closed in WP-44, BUGS.md "ytitle(A) ytitle(B, suffix) is joined on one line; twoway draws two lines for axis titles", commit c1a4a93.

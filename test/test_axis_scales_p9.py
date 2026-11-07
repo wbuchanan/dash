@@ -395,3 +395,28 @@ def test_the_log_rule_sentence():
     assert ("{help dash##log_nonpositive:item 20} under Differences from "
             "twoway") in h
     assert "{marker log_nonpositive}" in h
+
+
+# ---------------------------------------------------------------------------
+# MS-14: range() on a log axis
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestLogRange:
+    @pytest.mark.parametrize("key, letter, plots, go", [
+        ("ms14_b04", "x", [P("scatter", "mpg", "weight")],
+         {"xscale": "range(1000) log"}),
+        ("ms14_b2", "y", [P("scatter", "weight", "mpg")],
+         {"yscale": "log range(1000 20000)"}),
+        ("ms14_with_n", "y", [P("scatter", "weight", "mpg")],
+         {"yscale": "log range(1000 20000)", "ylabel": "#5"}),
+    ])
+    def test_no_end_tick(self, mode, key, letter, plots, go):
+        """range() on a log axis adds no tick at the range's end: B04
+        (xscale(range(1000)) xscale(log)) and b2 are ticked 2,000-5,000
+        over the data, as twoway ticks them; under ylabel(#5) the range
+        joins the ticks (0 5,000 ... 20,000 in twoway, whose 0 a log axis
+        cannot place)."""
+        f, _m = _figs(mode, plots, go)
+        want = [v for v in _ticks_of(key, letter) if v > 0]
+        assert tda._ticks(f, letter) == want

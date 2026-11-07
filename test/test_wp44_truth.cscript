@@ -920,9 +920,14 @@ def _q4403_tw(case, svg):
               if abs(ln["y1"] - pr["bottom"]) < 0.5
               and abs(ln["x2"] - ln["x1"]) > 0.5 * (pr["right"] - pr["left"])]
         return "line" if on else "none"
-    if case == "yticks":
-        vals = [_q4403_num(t["text"]) for t in doc["texts"]
-                if t["x"] is not None and t["x"] < pr["left"]]
+    if case in ("yticks", "xticks"):
+        if case == "yticks":
+            vals = [_q4403_num(t["text"]) for t in doc["texts"]
+                    if t["x"] is not None and t["x"] < pr["left"]]
+        else:
+            vals = [_q4403_num(t["text"]) for t in doc["texts"]
+                    if t["y"] is not None and t["y"] > pr["bottom"]
+                    and t["rotate"] is None]
         return " ".join("%g" % v for v in sorted(v for v in vals
                                                    if v is not None))
     return "?"
@@ -948,8 +953,9 @@ def _q4403_dash(figs, case):
     if case == "xline":
         ax = [m for m in f.below if isinstance(m, Axis)][0]
         return "none" if ax.axis_line_color is None else "line"
-    if case == "yticks":
-        ax = [m for m in f.left if isinstance(m, Axis)][0]
+    if case in ("yticks", "xticks"):
+        side = f.left if case == "yticks" else f.below
+        ax = [m for m in side if isinstance(m, Axis)][0]
         t = list(getattr(ax.ticker, "ticks", None) or [])
         return " ".join("%g" % v for v in sorted(t))
     return "?"
@@ -1070,6 +1076,31 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w44_run' {
     _q4403_reg "`q03'" 2 yticks - scatter mpg weight, yscale(log)
     _w44_expect Q4403-7 `"("${q4403_s}" == "${q4403_tw}" & "${q4403_v}" == "${q4403_tw}")"' `"scatter mpg weight, yscale(log): twoway ${q4403_tw}, saved ${q4403_s}, served ${q4403_v}"'
     _w44_done Q4403-7 "a log axis is ticked over every finite value, as twoway ticks it"
+
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+* ==== S03 MS-14: log range() ticks over the data ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w44_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03 "`w44_work'/s03d"
+    capture mkdir "`q03'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4403-8 / Q4403-9: range() on a log axis adds no tick at the
+    // range's end (B04 on x, b2 on y), as twoway ticks them over the
+    // data, saved and served (34-03's range rule; pinned by WP-44 MS-14).
+    _q4403_reg "`q03'" 1 xticks - scatter mpg weight, xscale(range(1000)) xscale(log)
+    _w44_expect Q4403-8 `"("${q4403_s}" == "${q4403_tw}" & "${q4403_v}" == "${q4403_tw}")"' `"xscale(range(1000)) xscale(log): twoway ${q4403_tw}, saved ${q4403_s}, served ${q4403_v}"'
+    _w44_done Q4403-8 "xscale(range()) on a log axis adds no end tick"
+    _q4403_reg "`q03'" 2 yticks - scatter weight mpg, yscale(log range(1000 20000))
+    _w44_expect Q4403-9 `"("${q4403_s}" == "${q4403_tw}" & "${q4403_v}" == "${q4403_tw}")"' `"yscale(log range(1000 20000)): twoway ${q4403_tw}, saved ${q4403_s}, served ${q4403_v}"'
+    _w44_done Q4403-9 "yscale(log range()) adds no end tick"
 
     capture graph drop _all
     dash clear
