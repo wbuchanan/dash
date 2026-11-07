@@ -1018,6 +1018,7 @@ and now matches Stata.
 
 ### Fixed in WP-44
 
+- ylabel(minmax) on a graph with no observation writes twoway's labels, 1.e+300 at the bottom and -1.e+300 at the top (1.e+300 alone on a log axis), where dash drew Bokeh's default ticks; a scale whose span is past the largest double (y at 8e307 and -8e307) is refused, r(199), as twoway's graph fails on it, where dash built the page (WP-44, DG-13)
 - A log axis over values at or below 0 is ticked as twoway ticks it, over every finite value with the ticks at or below 0 left out -- gen z = mpg - 25, scatter z weight, yscale(log) labels 10 20, where dash drew 5 10 15 -- in the saved page, the served app and after a filter move; twoway's degenerate picture of those values is a documented difference (help dash, Differences from twoway, item 20) (WP-44, AX-11)
 - xscale(style()) and yscale(style()) read Stata's axis style file as twoway does -- yscale(style(vertical_nogrid)) draws no y grid, xscale(style(horizontal_noline)) no x axis line and no x grid -- where dash named the sub-option and drew the plain axis (WP-44, AX-9)
 - xscale(off fill) and yscale(off fill) keep the axis's space with nothing of it drawn, as twoway does, so the plot region keeps the plain graph's edge; dash drew them as off and took the space (WP-44, AX-7)

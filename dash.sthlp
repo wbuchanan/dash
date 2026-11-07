@@ -1761,8 +1761,8 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:twoway} ticks such an axis as {cmd:dash} does, but draws a
     degenerate picture: the values at or below 0 on the bottom edge, the
     rest squashed together at the top, and under {cmd:ylabel(#}{it:N}{cmd:)}
-    a 0 label off its scale ({cmd:gen z = mpg - 25}, {cmd:scatter z weight,
-    yscale(log)}).  {cmd:dash} draws the positive values on the axis and
+    a 0 label off its scale ({cmd:gen z = mpg - 25},
+    {cmd:scatter z weight, yscale(log)}).  {cmd:dash} draws the positive values on the axis and
     leaves out the rest and the 0 tick, which a log axis cannot place.
 
 {phang2}21.  {ul:Resource limits.}  {cmd:twoway} draws any amount of data
@@ -5485,7 +5485,12 @@ a later copy's {cmd:log}, {cmd:nolog} or {cmd:no} form clears them, and
 {cmd:twoway} reads as {cmd:log1m}) are refused, {cmd:r(198)}, with
 {cmd:twoway}'s "only one of options ... is allowed"; across copies the last
 counts ({cmd:yscale(log) yscale(nolog)} draws a linear axis), and a
-{cmd:no} form given twice is one.  {cmd:style(}{it:axisstyle}{cmd:)} reads Stata's axis style
+{cmd:no} form given twice is one.  {cmd:ylabel(minmax)} on a graph with no
+observation writes {cmd:twoway}'s two labels, 1.e+300 at the bottom and
+-1.e+300 at the top (1.e+300 alone on a log axis), and a scale whose span
+is past the largest double ({cmd:y} at 8e307 and -8e307, in one plot or
+two) is refused when the page is built, {cmd:r(199)}, as {cmd:twoway}'s
+graph fails on it.  {cmd:style(}{it:axisstyle}{cmd:)} reads Stata's axis style
 file as {cmd:twoway} does: {cmd:yscale(style(vertical_nogrid))} draws no y
 grid, and {cmd:xscale(style(horizontal_noline))} no x axis line and, as
 its file names a grid key no scheme declares, no x grid, with
@@ -5538,8 +5543,8 @@ draws a tick more or fewer at an end.  {cmd:xtick(#}{it:N}{cmd:)} and
 the same: a log axis is ticked over every finite value its layers draw, as
 {cmd:twoway} ticks it, and the ticks at or below 0 are left out, which a
 log axis cannot draw: {cmd:yscale(log) ylabel(#5)} on {cmd:price} labels
-5,000 10,000 15,000, and over {cmd:z = mpg - 25} ({cmd:scatter z weight,
-yscale(log)}) 10 and 20; the axis spans the positive values.
+5,000 10,000 15,000, and over {cmd:z = mpg - 25}
+({cmd:scatter z weight, yscale(log)}) 10 and 20; the axis spans the positive values.
 {cmd:twoway}'s own picture of non-positive values on a log scale, the rest
 squashed to the top and a 0 label written off its scale under
 {cmd:ylabel(#5)}, is not copied (see

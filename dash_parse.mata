@@ -308,10 +308,6 @@
 *!       merged); the caller's local _rp_refuse names a unique option
 *!       given twice.
 *!
-*!   _dash_scale_exclusive(words, kept)
-*!       twoway's refusal of one scale copy's transform words (two of the
-*!       eight, as -syntax- binds them), or "" (WP-44 AX-10).
-*!
 *!   _dash_scale_untransformable(v)
 *!       1 when the last transform word of a merged scale value is atanh,
 *!       logit or log1m, which twoway's graph fails on (WP-44 AX-9, D75).

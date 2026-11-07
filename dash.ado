@@ -9151,6 +9151,41 @@ program define _dash_zero_obs_check
         _dash_zo_line `k' "`t'" "`name'" 0
         exit `_zo_rc'
     }
+    // WP-44 DG-13 (DG-11): a scale whose span is past the largest double
+    // -- y at 8e307 and -8e307, in one plot or two -- is one twoway cannot
+    // draw: "unrecognized command", r(199) (measured,
+    // test/fixtures/axis_scale_truth.json dg11_*; 4.4e307 and -4.4e307
+    // draw).  Over the rows each plot draws, the minimum and the maximum
+    // of its y variables and of its x variable, joined across the plots,
+    // in Stata's double arithmetic.
+    tempname _zo_ylo _zo_yhi _zo_xlo _zo_xhi
+    foreach s in ylo yhi xlo xhi {
+        scalar `_zo_`s'' = .
+    }
+    forvalues k = 1/`_zo_n' {
+        local t `_zo_type_`k''
+        if `: list t in _pt_literal' continue
+        local _zo_c "1"
+        if "`_zo_qual_col_`k''" != "" local _zo_c "`_zo_c' & `_zo_qual_col_`k'' == 1"
+        if "`_zo_gq'" != "" local _zo_c "`_zo_c' & `_zo_gq' == 1"
+        foreach L in y x {
+            foreach v of local _zo_`L'var_`k' {
+                capture confirm numeric variable `v'
+                if _rc continue
+                capture quietly summarize `v' if `_zo_c', meanonly
+                if _rc continue
+                if r(N) == 0 continue
+                scalar `_zo_`L'lo' = min(`_zo_`L'lo', r(min))
+                scalar `_zo_`L'hi' = max(`_zo_`L'hi', r(max))
+            }
+        }
+    }
+    foreach L in y x {
+        if !missing(`_zo_`L'lo') & !missing(`_zo_`L'hi') & missing(`_zo_`L'hi' - `_zo_`L'lo') {
+            display as error "unrecognized command"
+            exit 199
+        }
+    }
 end
 
 // _dash_contour_gen <scalar> <name>  -- twoway's own contour polygons

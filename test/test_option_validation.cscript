@@ -4429,7 +4429,7 @@ program define _q4403_dg11
     quietly generate double y2 = cond(_n == 2, `b', .)
     quietly generate x = _n
 end
-python: import __main__ as _q4403m; _q4403m._q4403_rows([("Q4403-2", "ax9_"), ("Q4403-6", "ax10_")])
+python: import __main__ as _q4403m; _q4403m._q4403_rows([("Q4403-2", "ax9_"), ("Q4403-6", "ax10_"), ("Q4403-12", "dg11_")])
 local q4403_ls = c(linesize)
 set linesize 255
 local q4403_n $q4403_n
@@ -4447,7 +4447,13 @@ forvalues i = 1/`q4403_n' {
     capture dash clear
     capture log close _q43log
     quietly log using "`c(tmpdir)'dash_q4403.log", name(_q43log) text replace
-    capture noisily dash ${q4403_c`i'} name(q4403)
+    // A span is checked when the page is built (_dash_zero_obs_check), so
+    // Q4403-12's rows build one; the others are refused at registration.
+    if "`id'" == "Q4403-12" {
+        capture erase "`c(tmpdir)'dash_q4403.html"
+        capture noisily dash ${q4403_c`i'} saving("`c(tmpdir)'dash_q4403.html", replace)
+    }
+    else capture noisily dash ${q4403_c`i'} name(q4403)
     local drc = _rc
     quietly log close _q43log
     local said 1
@@ -4462,10 +4468,12 @@ forvalues i = 1/`q4403_n' {
 set linesize `q4403_ls'
 capture dash clear
 capture erase "`c(tmpdir)'dash_q4403.log"
+capture erase "`c(tmpdir)'dash_q4403.html"
 macro drop q4403_n
 sysuse auto, clear
 _u05_judge Q4403-2 `"`q4403_bad_Q4403_2'"' "atanh, logit and log1m on a scale option are refused r(199) as twoway's graph refuses them, and the forms twoway draws are drawn"
 _u05_judge Q4403-6 `"`q4403_bad_Q4403_6'"' "two transform words in one scale copy are refused r(198) in twoway's opts_exclusive line; across copies they merge"
+_u05_judge Q4403-12 `"`q4403_bad_Q4403_12'"' "a scale whose span is past the largest double is refused r(199) as twoway refuses it; spans that fit are drawn"
 
 // Summary
 // ----------------------------------------------------------------

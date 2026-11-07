@@ -3380,6 +3380,8 @@ DATE_CORPUS = [
           go={"yscale": "noatanh"}),
     _case("yscale style vertical_nogrid (WP-44 44-03)", [_sc()],
           go={"yscale": "style(vertical_nogrid)"}),
+    _case("ylabel minmax empty (WP-44 44-03)", [_sc()],
+          go={"xlabel": "#5", "ylabel": "minmax"}, if_expr="price < 0"),
 ]
 
 #: The entries a report is the point of, with the report each must make.

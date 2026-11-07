@@ -505,7 +505,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **DG-6 Tracked:** Closed in WP-44, BUGS.md "%tC ticks are placed and labelled in leap-second-corrected time (22 s off in 2001)", commit 26a1f1a.
 - **DG-4 Tracked:** Closed in WP-44, BUGS.md "Parenthesised dates holding blanks ((1 jan 2001)) are refused in tlabel(), tline() and tscale(range())", commit aa829fa.
 - **DG-9 Tracked:** Closed in WP-44, BUGS.md "A non-number in a label list (.a, a bare word) is noted and drawn; twoway refuses 'invalid label specifier'", commit fd34f03.
-- **DG-13 Tracked:** Open (WP-44 section 44-03).
+- **DG-13 Tracked:** Closed in WP-44, BUGS.md "ylabel(minmax) on an empty scale draws Bokeh's default ticks; data spanning about ±8e307 give an OverflowError traceback (twoway gives r(199))", commit pending.
 - **PIC-4 Tracked:** Open (WP-45 section 45-01).
 - **PIC-7 Tracked:** Open (WP-45 section 45-01).
 - **ST-1 Tracked:** Open (WP-45 section 45-02).

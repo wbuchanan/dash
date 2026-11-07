@@ -920,6 +920,14 @@ def _q4403_tw(case, svg):
               if abs(ln["y1"] - pr["bottom"]) < 0.5
               and abs(ln["x2"] - ln["x1"]) > 0.5 * (pr["right"] - pr["left"])]
         return "line" if on else "none"
+    if case == "ylabtext":
+        # The y labels' texts, bottom to top; the axis title, the
+        # outermost text, left out (labels may be turned under s2color).
+        left = [t for t in doc["texts"] if t["x"] is not None
+                and t["y"] is not None and t["x"] < pr["left"]]
+        far = min(t["x"] for t in left) if left else 0
+        got = [(t["y"], t["text"]) for t in left if t["x"] > far]
+        return " ".join(txt for _y, txt in sorted(got, reverse=True))
     if case in ("yticks", "xticks"):
         if case == "yticks":
             vals = [_q4403_num(t["text"]) for t in doc["texts"]
@@ -953,6 +961,11 @@ def _q4403_dash(figs, case):
     if case == "xline":
         ax = [m for m in f.below if isinstance(m, Axis)][0]
         return "none" if ax.axis_line_color is None else "line"
+    if case == "ylabtext":
+        ax = [m for m in f.left if isinstance(m, Axis)][0]
+        ov = {float(k): v for k, v in dict(ax.major_label_overrides).items()}
+        t = sorted(getattr(ax.ticker, "ticks", None) or [])
+        return " ".join(str(ov.get(float(v), v)) for v in t)
     if case in ("yticks", "xticks"):
         side = f.left if case == "yticks" else f.below
         ax = [m for m in side if isinstance(m, Axis)][0]
@@ -1101,6 +1114,32 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w44_run' {
     _q4403_reg "`q03'" 2 yticks - scatter weight mpg, yscale(log range(1000 20000))
     _w44_expect Q4403-9 `"("${q4403_s}" == "${q4403_tw}" & "${q4403_v}" == "${q4403_tw}")"' `"yscale(log range(1000 20000)): twoway ${q4403_tw}, saved ${q4403_s}, served ${q4403_v}"'
     _w44_done Q4403-9 "yscale(log range()) adds no end tick"
+
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+* ==== S03 DG-13: empty minmax and overflowing spans ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w44_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03 "`w44_work'/s03e"
+    capture mkdir "`q03'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4403-10 / Q4403-11: ylabel(minmax) on a graph with no observation
+    // writes twoway's labels, 1.e+300 at the bottom and -1.e+300 at the
+    // top, and 1.e+300 alone on a log axis, saved and served.  (The span
+    // refusal is Q4403-12, in test_option_validation.cscript.)
+    _q4403_reg "`q03'" 1 ylabtext - scatter mpg weight if price < 0, xlabel(#5) ylabel(minmax)
+    _w44_expect Q4403-10 `"("${q4403_s}" == "${q4403_tw}" & "${q4403_v}" == "${q4403_tw}")"' `"ylabel(minmax), no row: twoway ${q4403_tw}, saved ${q4403_s}, served ${q4403_v}"'
+    _w44_done Q4403-10 "minmax on an empty scale writes twoway's two labels"
+    _q4403_reg "`q03'" 2 ylabtext - scatter mpg weight if price < 0, xlabel(#5) ylabel(minmax) yscale(log)
+    _w44_expect Q4403-11 `"("${q4403_s}" == "${q4403_tw}" & "${q4403_v}" == "${q4403_tw}")"' `"ylabel(minmax) yscale(log), no row: twoway ${q4403_tw}, saved ${q4403_s}, served ${q4403_v}"'
+    _w44_done Q4403-11 "minmax on an empty log scale writes twoway's label"
 
     capture graph drop _all
     dash clear

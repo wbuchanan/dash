@@ -44372,8 +44372,14 @@ def _dash_natscale_ticks(lo, hi, n):
     z_lo = math.floor(math.log10(rng / (n + 2))) - 1
     z_hi = math.ceil(math.log10(rng)) + 1
     for z in range(z_lo, z_hi + 1):
+        try:
+            # WP-44 DG-13: a span near the largest double asks for a power
+            # of ten past it; that candidate is skipped, never raised.
+            p10 = 10.0 ** z
+        except OverflowError:
+            continue
         for m in (1, 2, 5):
-            d = m * 10.0 ** z
+            d = m * p10
             if not math.isfinite(d) or d <= 0:
                 continue
             fl, fh = lo / d, hi / d
@@ -46851,6 +46857,29 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                 axis_obj.ticker = FixedTicker(
                     ticks=[float(vals.min()), float(vals.max())],
                     tags=[_DASH_COUNT_TAG + "1", _DASH_MINMAX_TAG])
+            else:
+                # WP-44 DG-13: an empty scale's minmax is twoway's two
+                # labels, "1.e+300" at the bottom and "-1.e+300" at the
+                # top (its empty scale runs from 1e300 to -1e300 in %9.0g;
+                # axis_scale_truth.json dg13_s07), the bottom one alone on
+                # a log axis (dg13_log_empty), at dash's empty scale's
+                # ends.  Not counted: a graph empty when the page is built
+                # stays empty after every move.
+                from bokeh.models import LogAxis
+                # axis_obj is an axis or the figure's list of them.
+                try:
+                    _axs = list(axis_obj)
+                except TypeError:
+                    _axs = [axis_obj]
+                kind = ("log" if _axs and all(isinstance(a, LogAxis)
+                                              for a in _axs) else "linear")
+                e_lo, e_hi = _DASH_EMPTY_SCALE[kind]
+                ends = {e_lo: "1.e+300"}
+                if kind != "log":
+                    ends[e_hi] = "-1.e+300"
+                axis_obj.ticker = FixedTicker(ticks=sorted(ends))
+                overrides = dict(overrides or {})
+                overrides.update(ends)
         if overrides:
             axis_obj.major_label_overrides = overrides
     elif mode == "count":

@@ -683,6 +683,12 @@ def _digest(model):
 # (hidden) legend takes the scheme's key geometry, its grid and its
 # panel location from twoway's clock table.
 _PLAIN_DIGESTS = {
+    # WP-44 AX-11: the finish code's dash_axis_extent reads every finite
+    # value as a log axis's tick input, which moves every row: plain
+    # 7a0827b1... -> df36ca65... (saved) and 2b2d3f05... -> cb2e0754...
+    # (served); yaxis2 b8f86ce0... -> b72f9d52... and 3e942cf1... ->
+    # 9f8feced....  With the two AX-11 hunks taken out of
+    # _DASH_AXIS_FINISH_JS the old four are given: finish JS text only.
     # WP-44 AX-15: the Stata writer's dash_fmt_dump in _DASH_FMT_JS (the
     # %21x, %16H, %8H, %16L, %8L and %#s axis formats) moves every row:
     # plain ff506fe8... -> 7a0827b1... (saved) and d88403ed... ->
@@ -704,13 +710,13 @@ _PLAIN_DIGESTS = {
     # null y grid).  A masked model diff against the tree before 44-04
     # differs in the x range's finish callback code alone, in both cases.
     ("saved", "plain"):
-        "7a0827b13c8d23c037b735194ea5753d3609bfb34a2f01ed3f8965afd02391bf",
+        "df36ca65cba7f855c4c55856d380a2aebb9513a335b63aad4ec791676b77dab7",
     ("saved", "yaxis2"):
-        "b8f86ce0296aba75ae7e42209ae8906610f5b658429c5605cccd2986f74f5dc7",
+        "b72f9d52a55725196b08c21b8860b5f910f3ee93e861a8d52f0fab6ce699609a",
     ("served", "plain"):
-        "2b2d3f05522bc84900c0b64cd9d4c32af9ccd744bf0ecbee09cc92271a4ac699",
+        "cb2e0754ccc894f552417d0c608eb3426eddca68a15bd42e755780855397402a",
     ("served", "yaxis2"):
-        "3e942cf1d9dfd04f3be10c5f1288223b5c7fe5728691d34f8a0240846d70dc60",
+        "9f8fecedb0d076af41b8a181a40796605f45b7ae84be89762b9806f098f88e67",
 }
 
 

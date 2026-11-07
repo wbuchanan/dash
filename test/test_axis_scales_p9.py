@@ -420,3 +420,84 @@ class TestLogRange:
         f, _m = _figs(mode, plots, go)
         want = [v for v in _ticks_of(key, letter) if v > 0]
         assert tda._ticks(f, letter) == want
+
+
+# ---------------------------------------------------------------------------
+# DG-13: minmax on an empty scale; spans that overflow
+# ---------------------------------------------------------------------------
+
+def _empty_figs(mode, go):
+    """The first panel of scatter mpg weight if price < 0 (no row)."""
+    spec = tda._spec([P("scatter", "mpg", "weight")], go, if_expr="price < 0",
+                     formats=_FORMATS)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        tag, sp, dp = _write(spec)
+        if mode == "saved":
+            r = render_models(dr.DashRenderer(sp, dp))
+            return tb._panels(list(r.figures.values()))[0]
+        from bokeh.document import Document
+        ap = os.path.join(tb._TMP, "as_app_%d.py" % tag)
+        dr.ServerAppBuilder(sp, dp).build(ap)
+        mod = tb.load_app(ap, "_as_app_%d" % tag, draw=False)
+        doc = Document()
+        mod.make_document(doc)
+        return tb._panels(tb._figs_of(doc.roots))[0]
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestEmptyMinmax:
+    def test_labels(self, mode):
+        """ylabel(minmax) on an empty scale writes twoway's two labels,
+        1.e+300 at the bottom and -1.e+300 at the top (dg13_s07: its empty
+        scale runs from 1e300 down to -1e300), and xlabel(#5) none, where
+        dash drew Bokeh's default ticks."""
+        row = _G["dg13_s07"]
+        assert [t for t, _y in sorted(row["y_pos"], key=lambda p: -p[1])
+                if not t[:1].isalpha()] == ["1.e+300", "-1.e+300"]
+        assert _labels("dg13_s07", "x") == []
+        f = _empty_figs(mode, {"xlabel": "#5", "ylabel": "minmax"})
+        lo, hi = dr._DASH_EMPTY_SCALE["linear"]
+        assert tda._ticks(f, "y") == [lo, hi]
+        ov = {float(k): v for k, v in
+              dict(tda._axis(f, "y").major_label_overrides).items()}
+        assert ov == {lo: "1.e+300", hi: "-1.e+300"}
+        assert tda._ticks(f, "x") == []
+
+    def test_log_empty(self, mode):
+        """On an empty log scale twoway writes the one label 1.e+300
+        (dg13_log_empty)."""
+        assert _labels("dg13_log_empty", "y") == ["1.e+300"]
+        f = _empty_figs(mode, {"xlabel": "#5", "ylabel": "minmax",
+                               "yscale": "log"})
+        lo, _hi = dr._DASH_EMPTY_SCALE["log"]
+        assert tda._ticks(f, "y") == [lo]
+        ov = {float(k): v for k, v in
+              dict(tda._axis(f, "y").major_label_overrides).items()}
+        assert ov == {lo: "1.e+300"}
+
+
+def test_natscale_guard():
+    """_dash_natscale_ticks over a span past the largest double returns
+    ticks (its lowest finite candidate step, or the two ends), never an
+    OverflowError; one that fits is unchanged."""
+    t = dr._dash_natscale_ticks(-8e307, 8e307, 5)
+    assert isinstance(t, list) and t and all(abs(v) < 1e309 for v in t)
+    assert dr._dash_natscale_ticks(-13, 16, 5) == [-20.0, -10.0, 0.0,
+                                                  10.0, 20.0]
+
+
+def test_the_empty_and_span_sentences():
+    """The help states the empty minmax labels and the span refusal
+    (dg13_s07; dg11_pm8e307 r(199), dg11_pm4_4e307 drawn)."""
+    assert _G["dg11_pm8e307"]["rc"] == 199
+    assert _G["dg11_pm8e307"]["error"] == "unrecognized command"
+    assert _G["dg11_pm4_4e307"]["rc"] == 0
+    with open(os.path.join(_HERE, "..", "dash.sthlp"), encoding="utf-8") as fh:
+        h = " ".join(fh.read().split())
+    assert ("{cmd:ylabel(minmax)} on a graph with no observation writes "
+            "{cmd:twoway}'s two labels, 1.e+300 at the bottom and -1.e+300 "
+            "at the top") in h
+    assert ("is past the largest double ({cmd:y} at 8e307 and -8e307, in "
+            "one plot or two) is refused when the page is built, "
+            "{cmd:r(199)}") in h

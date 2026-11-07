@@ -246,7 +246,9 @@ COVERAGE = {
                               "test_qualifier_in_stata.cscript:QS-21"),
         # WP-37 DG-1: twoway's answer to a plot with no observation, at
         # export, and the line that names the plot.
-        "_dash_zero_obs_check": ("test_wp37_truth.cscript:Q3701-3",),
+        # WP-44 DG-13: and its span step (test_option_validation Q4403-12).
+        "_dash_zero_obs_check": ("test_wp37_truth.cscript:Q3701-3",
+                                 "test_option_validation.cscript:Q4403-12"),
         "_dash_cv_value_check": ("test_option_validation.cscript:OV-96",),
         "_dash_contour_gen": ("test_wp37_truth.cscript:Q3703-1",),
         "_dash_zo_line": ("test_wp37_truth.cscript:Q3701-3",),
