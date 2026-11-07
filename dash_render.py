@@ -46263,21 +46263,10 @@ _DASH_MINOR_RULE_RE = re.compile(r"\A\s*##\s*(\d{1,9})(?=\s|\Z)")
 
 
 #: WP-44 AX-5: the parts of a custom option twoway logs nowhere (its
-#: gridstyle edits) and those it gives to the custom ticks alone (the
-#: ticksetstyle and tickstyle edits), as spec keys and the typed names
-#: that set them (_gs_parse_and_log_tickset.ado, "log the edit").
+#: gridstyle edits), as spec keys (_gs_parse_and_log_tickset.ado, "log
+#: the edit").
 _DASH_CUSTOM_GRID_KEYS = ("glwidth", "glcolor", "glpattern", "gmin", "gmax",
                           "gextend")
-_DASH_CUSTOM_TICK_EDITS = (
-    ("angle", ("angle",)), ("angle_bad", ()), ("alternate", ("alternate",)),
-    ("altgap", ("altgap",)), ("tlength", ("tlength",)),
-    ("tposition", ("tposition",)), ("labgap", ("labgap",)),
-    ("show_ticks", ("ticks", "noticks")),
-    ("show_labels", ("labels", "nolabels", "showlabels", "noshowlabels")),
-    ("labsize", ("labsize",)), ("labcolor", ("labcolor",)),
-    ("labjust", ("labjustification",)), ("labalign", ("labalignment",)),
-    ("tlwidth", ("tlwidth",)), ("tlcolor", ("tlcolor",)),
-    ("tlpattern", ("tlpattern",)))
 
 
 def _dash_axis_custom(out, tick=False):
@@ -46289,21 +46278,14 @@ def _dash_axis_custom(out, tick=False):
     tick edits style the option's own ticks only: on a tick option
     (*tick*) those are the option's positions, drawn with their own look;
     on a label option without ``add`` they are the axis's labels, all
-    styled (``ax5_custom_full``); with ``add`` the axis's other labels
-    keep their look (``ax5_add_custom_lab``) and, as Bokeh draws one
-    label and tick look per axis, the custom ticks' edits are named in
-    the note instead of drawn on every label.  Edits *out* in place."""
+    styled (``ax5_custom_full``).  With ``add`` twoway keeps the axis's
+    other labels in their look (``ax5_add_custom_lab``); Bokeh draws one
+    label and tick look per axis, so dash draws the edits on every label
+    of the axis (ruling D73, dash.sthlp Differences from twoway item 17).
+    Edits *out* in place."""
     out["custom"] = True
     for k in _DASH_CUSTOM_GRID_KEYS:
         out[k] = None
-    if tick or not out.get("add"):
-        return
-    typed = out.get("typed") or {}
-    for k, names in _DASH_CUSTOM_TICK_EDITS:
-        out[k] = False if k == "alternate" else None
-        for nm in names:
-            if nm in typed:
-                out["unsupported"].append(typed.pop(nm))
 
 
 #: WP-44 AX-14/AX-8: the style sub-options an axis option's text is
@@ -77699,7 +77681,7 @@ class ServerAppBuilder:
                       # WP-31 D1: minor ticks and minor labels.
                       "_DASH_MINOR_RULE_RE", "_DASH_MTICK_JS",
                       # WP-44 AX-5: a custom option's edits.
-                      "_DASH_CUSTOM_GRID_KEYS", "_DASH_CUSTOM_TICK_EDITS",
+                      "_DASH_CUSTOM_GRID_KEYS",
                       # WP-44 AX-8: labelminlen()'s formatter.
                       "_DASH_LABEL_MINLEN_JS",
                       # WP-44 AX-14: the axis style names.

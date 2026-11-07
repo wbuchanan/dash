@@ -485,7 +485,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **LT-24 Tracked:** Closed in WP-43, BUGS.md "title() whose text is an apostrophe and 90s inside double quotes is drawn where twoway gives r(100)", commit 40e9946.
 - **RH-13 Tracked:** Closed in WP-43, BUGS.md "A horizontal kdensity (and function) is keyed by its name; twoway keys it by the grid variable 'x'", commit 4a20773.
 - **AX-13 Tracked:** Closed in WP-44, BUGS.md "Axis title textbox sub-options other than size/color are named: orientation() (Bokeh axis_label_orientation never set), justification(), placement(), box, margin() ...", commit c139429.
-- **AX-5 Tracked:** Open (WP-44 section 44-02).
+- **AX-5 Tracked:** Documented in WP-44, BUGS.md "custom on xlabel()/ylabel() is ignored: its styles reach every label and the grid; custom with no list is accepted (twoway r(198))", commit pending.
 - **AX-6 Tracked:** Closed in WP-44, BUGS.md "Gridlines of xtick()/xmtick() are drawn in the minor style (dotted); twoway uses the major gridstyle", commit a122c3c.
 - **AX-7 Tracked:** Open (WP-44 section 44-03).
 - **AX-8 Tracked:** Closed in WP-44, BUGS.md "Label sub-options twoway draws are named: labelminlen(), noshowlabels/showlabels, nopgmgrid/pgmgrid, style(); showlabels nolabels hides labels", commit 7567150.
@@ -493,7 +493,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-10 Tracked:** Open (WP-44 section 44-03).
 - **AX-11 Tracked:** Open (WP-44 section 44-03).
 - **AX-14 Tracked:** Closed in WP-44, BUGS.md "tstyle(), labstyle(), gstyle(), tlstyle(), glstyle() and nogextend are named", commit fb75e9a.
-- **AX-15 Tracked:** Open (WP-44 section 44-02).
+- **AX-15 Tracked:** Documented in WP-44, BUGS.md "Documented: xtick and xmtick share one tick length; out-of-range reflines are clipped from the margin; string/hex formats drawn %9.0g, dates past the browser range, margin fixed at build", commit pending.
 - **AX-18 Tracked:** Closed in WP-44, BUGS.md "A date axis is kept where twoway labels Stata numbers (first layer lfit/qfit/ci/kdensity/lpoly/function/immediates); xscale(log) on a date axis is drawn linear", commit 5432452.
 - **AX-19 Tracked:** Open (WP-44 section 44-03).
 - **AX-20 Tracked:** Open (WP-44 section 44-04).

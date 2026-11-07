@@ -723,16 +723,19 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w44_run' {
     global q4401_repo : env DASH_REPO
     if `"${q4401_repo}"' == "" global q4401_repo ".."
 
-    // Q4402-1: ylabel(25 "x", add custom labcolor(red)) leaves the other
-    // y labels in the axis's colour and a custom option's glcolor()
-    // changes no gridline, as twoway draws them, saved and served.
+    // Q4402-1: ylabel(25 "x", add custom labcolor(red)) draws every y
+    // label red, where twoway leaves the other labels in the axis's
+    // colour (ruling D73, a documented difference: Bokeh draws one label
+    // look per axis), and a custom option's glcolor() changes no
+    // gridline, as twoway draws them, saved and served.
     _q4402_reg "`q02'" 1 "ycol:x" scatter mpg weight, ylabel(25 "x", add custom labcolor(red) labsize(large))
-    _q4402_same Q4402-1 "add custom labcolor(red): the other labels"
+    _w44_expect Q4402-1 `"("${q4402_s}" == "#ff0000")"' `"add custom labcolor(red): saved ${q4402_s} (D73: every label), twoway ${q4402_tw}"'
+    _w44_expect Q4402-1 `"("${q4402_v}" == "#ff0000")"' `"add custom labcolor(red): served ${q4402_v} (D73: every label), twoway ${q4402_tw}"'
     _q4402_reg "`q02'" 2 "ygrid" scatter mpg weight, ylabel(25, add custom labcolor(red) grid glcolor(red))
     _q4402_same Q4402-1 "add custom glcolor(red): the gridlines"
     _q4402_reg "`q02'" 3 "ygrid" scatter mpg weight, ylabel(, custom grid glcolor(red))
     _q4402_same Q4402-1 "custom grid glcolor(red): the gridlines"
-    _w44_done Q4402-1 "custom styles its own ticks only and its grid edits change nothing"
+    _w44_done Q4402-1 "add custom styles every label (D73) and its grid edits change nothing"
 
     capture graph drop _all
     dash clear

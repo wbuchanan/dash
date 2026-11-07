@@ -95,17 +95,18 @@ class TestCustom:
         f, msgs = _figs(mode, {"ylabel": '25 "x", add custom '
                                          'labcolor(red) labsize(large)'})
         ax, ax0 = tda._axis(f, "y"), tda._axis(plain, "y")
-        # The other labels keep the axis's look, as twoway draws them.
-        assert ax.major_label_text_color == ax0.major_label_text_color
-        assert ax.major_label_text_font_size == \
+        # Ruling D73: Bokeh draws one label look per axis, so dash draws
+        # the custom option's edits on every label of the axis (twoway
+        # styles the custom tick alone), documented and not named.
+        assert ax.major_label_text_color == "#ff0000"
+        assert ax.major_label_text_font_size != \
             ax0.major_label_text_font_size
         # The custom value is drawn with its text.
         assert ax.major_label_overrides.get(25.0) == "x"
         assert 25.0 in list(getattr(ax, "_dash_extra_ticks", []))
-        # Its own look is not drawn on that tick alone, so it is named.
         noted = [m for m in msgs if "not implemented" in m]
-        assert any("labcolor(red)" in m and "labsize(large)" in m
-                   for m in noted), msgs
+        assert not [m for m in noted if "labcolor" in m
+                    or "labsize" in m], msgs
 
     def test_grid_edit_ignored(self, mode):
         assert _grid_strokes(_T["ax5_add_custom_grid"]) == \
@@ -723,3 +724,31 @@ class TestTickLengths:
                 % (json.dumps(_stub(m.ticker)), rng.start, rng.end))
             lo, hi = sorted((rng.start, rng.end))
             assert sorted(v for v in gmaj if lo <= v <= hi) == labels
+
+
+class TestDocumentedDifferences:
+    """Rulings D73 and D74: AX-5's add-custom look and AX-15's margin
+    reference lines and resize margin are Differences from twoway items
+    17-19, each led to from the paragraph that draws it."""
+
+    _ITEMS = (
+        ("add_custom", "17", "custom with add styles every label of the "
+                             "axis."),
+        ("margin_reflines", "18", "Reference lines outside the axis's "
+                                  "range are not drawn."),
+        ("resize_margin", "19", "The plot-region margin is fixed when the "
+                                "page is built."))
+
+    def test_items(self):
+        with open(os.path.join(_HERE, "..", "dash.sthlp"),
+                  encoding="utf-8") as fh:
+            text = fh.read()
+        diff = text[text.index("{title:Differences from twoway}"):
+                    text.index("{phang2}20.  {ul:Resource limits.}")]
+        for marker, num, head in self._ITEMS:
+            item = "{marker %s}{...}\n{phang2}%s.  {ul:%s}" % (
+                marker, num, head)
+            assert item in diff, marker
+            # Led to from outside the Differences list.
+            rest = text.replace(diff, "")
+            assert "{help dash##%s:item %s}" % (marker, num) in rest, marker

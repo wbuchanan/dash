@@ -1721,7 +1721,42 @@ there, is an invalid point.  The literal is read as data and never run.
     it; {cmd:bexpand} on {cmd:text()}, on the legend's own {cmd:title()}
     and on a {cmd:by()} panel's label is drawn as {cmd:twoway} draws it.
 
-{phang2}17.  {ul:Resource limits.}  {cmd:twoway} draws any amount of data
+{marker add_custom}{...}
+{phang2}17.  {ul:custom with add styles every label of the axis.}
+    {cmd:twoway} draws an added {cmd:custom} option's labels and ticks
+    alone in that option's look: {cmd:ylabel(25 "x", add custom labcolor(red))}
+    draws only {cmd:x} red and the axis's other labels in their own
+    colour.  {cmd:dash} draws the option's label and tick edits
+    ({cmd:labcolor()}, {cmd:labsize()}, {cmd:angle()}, {cmd:tlength()} and
+    the others) on every label and tick of the axis, so all the y labels
+    are red.  Bokeh draws one label and tick look per axis.  Without
+    {cmd:add}, the custom list is the axis's labels and both draw them
+    all in the option's look; a custom option's grid-line edits change
+    nothing in either; see {help dash##axis_options:Axis options}.
+
+{marker margin_reflines}{...}
+{phang2}18.  {ul:Reference lines outside the axis's range are not drawn.}
+    {cmd:twoway} draws an {cmd:xline()} or {cmd:yline()} past the axis's
+    range where it falls on the graph's canvas, in the graph region's
+    margin beside the plot region ({cmd:xline(5100)} on
+    {cmd:scatter mpg weight}).  {cmd:dash} draws every reference line
+    within the plot region: Bokeh clips the lines it draws in a plot to the
+    plot's frame, so a line in that margin is not seen.  Lines within the
+    axis's range are drawn as {cmd:twoway} draws them.
+
+{marker resize_margin}{...}
+{phang2}19.  {ul:The plot-region margin is fixed when the page is built.}
+    {cmd:twoway} draws its plot-region margin, 2.2% of the graph's smaller
+    side at each end of an axis (0.6% under {cmd:economist}), for the size
+    the graph is drawn at.  {cmd:dash} computes it once, for the size the
+    page is built at, so a graph the browser draws wider or narrower than
+    that places the margin up to about 1.3% of the plot width from
+    {cmd:twoway}'s at each end (measured on {cmd:scatter mpg weight, ysize(4)}:
+    1.87% of the width a side at {cmd:xsize(5.5)}, 2.74% at 2 to 4 inches,
+    0.86% at 11, 0.58% at 16).  Recomputing it at each resize would need
+    code that runs as the browser lays out the page.
+
+{phang2}20.  {ul:Resource limits.}  {cmd:twoway} draws any amount of data
     and any number of plots, panels, lines and texts; {cmd:dash} also takes
     data of any size; it refuses, trims or rebins only beyond the limits in
     {help dash##limits:Resource limits} -- its count limits and its fixed
@@ -5361,9 +5396,9 @@ listed value ({cmd:ylabel(, custom labcolor(red))}, or after a rule,
 {cmd:twoway}'s {cmd:tick_styles[-1] invalid name}.
 {it:Difference from twoway:} with {cmd:add}, {cmd:twoway} draws the
 custom ticks alone in their own look ({cmd:ylabel(25 "x", add custom labcolor(red))}
-draws only {cmd:x} red); {cmd:dash} draws them in the axis's look and
-names their edits in a note, because Bokeh draws one label and tick look
-per axis.  {cmd:showlabels} and {cmd:noshowlabels} are {cmd:labels} and
+draws only {cmd:x} red); {cmd:dash} draws the edits on every label and
+tick of the axis, because Bokeh draws one label and tick look per axis
+(see {help dash##add_custom:item 17} under Differences from twoway).  {cmd:showlabels} and {cmd:noshowlabels} are {cmd:labels} and
 {cmd:nolabels} (the positive word wins within one option);
 {cmd:pgmgrid} and {cmd:nopgmgrid} turn the gridlines on and off,
 {cmd:grid} and {cmd:nogrid} winning over them; and
@@ -5450,7 +5485,8 @@ scales it), in log units on a log axis.  The margin is fixed when the page
 is built, so a page drawn wider or narrower than it was built places it up
 to about 1.3% of the plot width from {cmd:twoway}'s at each end (measured,
 {cmd:scatter mpg weight, ysize(4)}: 1.87% of the width a side at
-{cmd:xsize(5.5)}, 2.74% at 2 to 4 inches, 0.86% at 11, 0.58% at 16).  After a filter move a default or {cmd:#}{it:N} axis, a second
+{cmd:xsize(5.5)}, 2.74% at 2 to 4 inches, 0.86% at 11, 0.58% at 16; see
+{help dash##resize_margin:item 19} under Differences from twoway).  After a filter move a default or {cmd:#}{it:N} axis, a second
 axis included, is ticked and spanned again over the rows kept, in the saved
 page and the served app alike, and an axis with explicit positions keeps them
 and spans its data again; {cmd:xtick(#}{it:N}{cmd:)}/{cmd:ytick(#}{it:N}{cmd:)}
@@ -5906,7 +5942,8 @@ the canvas or at a wrapped coordinate (its {cmd:xline(10000)} appears
 near 2,136).  dash draws every line within
 the plot region: Bokeh clips the lines it draws in a plot to its frame,
 and only a data layer drawn over the markers would paint outside it, so
-a line in that margin strip is not seen.  See {cmd:$dash_max_reflines} under
+a line in that margin strip is not seen (see
+{help dash##margin_reflines:item 18} under Differences from twoway).  See {cmd:$dash_max_reflines} under
 {it:Resource limits}.
 
 {pstd}

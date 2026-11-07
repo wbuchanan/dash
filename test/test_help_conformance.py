@@ -1597,4 +1597,8 @@ class TestInternalLinksResolve:
         # partial_markup back (WP-43 ST-14, D71).
         # old -> new: 188 -> 189 links, 53 -> 54 markers: the legend
         # paragraph links item 17's new marker bexpand (WP-43 LT-7, D72).
-        assert len(refs) == 189 and len(set(refs)) == 54
+        # old -> new: 189 -> 193 links, 54 -> 57 markers: Differences
+        # items 17-19 get the markers add_custom, margin_reflines and
+        # resize_margin, each linked from its axis or reference-line
+        # paragraph, and item 17 links Axis options (WP-44, D73, D74).
+        assert len(refs) == 193 and len(set(refs)) == 57
