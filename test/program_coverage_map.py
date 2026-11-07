@@ -776,6 +776,8 @@ COVERAGE = {
         "_dash_rep_merge_locals": ("test_twoway_option_parity.cscript:TP-14",),
         "_dash_rep_lines": ("test_wp44_truth.cscript:Q4401-5",),
         "_dash_rep_reduce": ("test_twoway_option_parity.cscript:TP-14",),
+        # WP-44 AX-9 (ruling D75): atanh, logit and log1m refused r(199).
+        "_dash_scale_untransformable": ("test_option_validation.cscript:Q4403-2",),
         # direct and e2e: TP-14f asks twoway for each row's verdict and
         # calls the scan and the cross check on their own.
         "_dash_rep_und_tab": ("test_twoway_option_parity.cscript:TP-14",),

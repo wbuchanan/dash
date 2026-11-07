@@ -903,6 +903,23 @@ def _q4403_tw(case, svg):
         return "%.1f" % pr["left"]
     if case == "xbottom":
         return "%.1f" % pr["bottom"]
+    if case in ("ygrid", "xgrid"):
+        # twoway writes a dashed grid line as short segments: the rows
+        # (columns) of non-black lines inside the plot region.
+        if case == "ygrid":
+            got = {round(ln["y1"], 1) for ln in doc["hlines"]
+                   if pr["top"] + 0.5 < ln["y1"] < pr["bottom"] - 0.5
+                   and ln["stroke"] not in (None, "#000000")}
+        else:
+            got = {round(ln["x1"], 1) for ln in doc["vlines"]
+                   if pr["left"] + 0.5 < ln["x1"] < pr["right"] - 0.5
+                   and ln["stroke"] not in (None, "#000000")}
+        return "grid" if got else "none"
+    if case == "xline":
+        on = [ln for ln in doc["hlines"]
+              if abs(ln["y1"] - pr["bottom"]) < 0.5
+              and abs(ln["x2"] - ln["x1"]) > 0.5 * (pr["right"] - pr["left"])]
+        return "line" if on else "none"
     if case == "yticks":
         vals = [_q4403_num(t["text"]) for t in doc["texts"]
                 if t["x"] is not None and t["x"] < pr["left"]]
@@ -921,6 +938,16 @@ def _q4403_dash(figs, case):
             return "hidden"
         return ("kept" if str(ax.major_label_text_color) == "#00000000"
                 and ax.axis_line_color is None else "plain")
+    if case in ("ygrid", "xgrid"):
+        from bokeh.models import Grid
+        dim = 1 if case == "ygrid" else 0
+        on = [g for g in list(f.renderers) + list(f.center)
+              if isinstance(g, Grid) and g.dimension == dim and g.visible
+              and g.grid_line_color is not None]
+        return "grid" if on else "none"
+    if case == "xline":
+        ax = [m for m in f.below if isinstance(m, Axis)][0]
+        return "none" if ax.axis_line_color is None else "line"
     if case == "yticks":
         ax = [m for m in f.left if isinstance(m, Axis)][0]
         t = list(getattr(ax.ticker, "ticks", None) or [])
@@ -990,6 +1017,34 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w44_run' {
         _w44_expect Q4403-1 `"("${q4403_s}" == "hidden" & "${q4403_v}" == "hidden")"' `"`L'scale(off): saved ${q4403_s}, served ${q4403_v}"'
     }
     _w44_done Q4403-1 "off fill keeps the axis's space; off alone takes it"
+
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+* ==== S03 AX-9: scale styles ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w44_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03 "`w44_work'/s03b"
+    capture mkdir "`q03'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4403-5: yscale(style(vertical_nogrid)) draws no y grid and
+    // xscale(style(horizontal_noline)) no x axis line and no x grid (its
+    // file names a grid key no scheme declares), as twoway draws them,
+    // saved and served, under stcolor.
+    local k 0
+    foreach c in "ygrid yscale(style(vertical_nogrid))" "xgrid yscale(style(vertical_nogrid))" "xline xscale(style(horizontal_noline))" "xgrid xscale(style(horizontal_noline))" {
+        local ++k
+        gettoken case opt : c
+        _q4403_reg "`q03'" `k' `case' - scatter mpg weight, `opt' scheme(stcolor)
+        _w44_expect Q4403-5 `"("${q4403_s}" == "${q4403_tw}" & "${q4403_v}" == "${q4403_tw}")"' `"`opt' `case': twoway ${q4403_tw}, saved ${q4403_s}, served ${q4403_v}"'
+    }
+    _w44_done Q4403-5 "scale style() reads Stata's axis style file as twoway does"
 
     capture graph drop _all
     dash clear

@@ -230,9 +230,10 @@ class TestTheUnreadStyleFiles:
                       r'\s*([^)]*)\)', _render())
         classes = re.findall(r'"(\w+)"', m.group(1))
         # old -> new: tickstyle, ticksetstyle, gridstyle (WP-44 AX-14);
+        # old -> new: axisstyle (WP-44 AX-9);
         # textboxstyle and color stay unread.
         assert classes == ["seriesstyle", "markerstyle", "areastyle",
                            "linestyle", "shadestyle", "tickstyle",
-                           "ticksetstyle", "gridstyle"]
+                           "ticksetstyle", "gridstyle", "axisstyle"]
         assert ('f"{prefix}: {head} is not a recognised {what}; using '
                 '{using}.",') in _render()

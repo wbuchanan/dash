@@ -505,7 +505,7 @@ program define _dash_require_mata
         _dash_fpts_path _dash_fpts_put _dash_fpts_drop _dash_fpts_clear ///
         _dash_fit_points_json _dash_fit_opt_bad _dash_recast_canon ///
         _dash_fit_panel_key _dash_fit_panel_add ///
-        _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
+        _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals _dash_scale_untransformable ///
         _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
         _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_paren _dash_stylelist_eqlead _dash_subopt_colour_comma _dash_colour_comma _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
         _dash_connect_canon ///
@@ -10129,6 +10129,20 @@ program define _dash_plot
               zlabel ztitle zscale ztick zmlabel zmtick aspectplacement xoverhangs yoverhangs nodraw play replace table {
         if `: length local _gafter_`gk'' {
             mata: _dash_rep_merge_locals(st_local("gk"), "g_`gk'", "_gafter_`gk'", "g_`gk'")
+        }
+    }
+
+    // ---- atanh, logit and log1m on a scale (WP-44 AX-9, ruling D75) ----
+    // twoway's parser takes them, but its graph fails on an axis that
+    // keeps one, "unrecognized command", r(199); a later copy's log, nolog
+    // or no form clears it (_dash_scale_untransformable, over each scale
+    // option's copies merged in the order typed).
+    foreach gk in xscale yscale xscale2 yscale2 tscale tscale2 zscale {
+        if !`: length local g_`gk'' continue
+        mata: st_local("_sc_tr", strofreal(_dash_scale_untransformable(st_local("g_`gk'"))))
+        if `_sc_tr' {
+            display as error "unrecognized command"
+            exit 199
         }
     }
 

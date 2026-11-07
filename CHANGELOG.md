@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- xscale(), yscale(), tscale() and zscale() with atanh, logit or log1m (any abbreviation) are refused with r(199), "unrecognized command", as twoway's graph fails on them -- scatter mpg weight, yscale(logit) -- where dash drew a linear axis with a note; a later copy's log, nolog or no form clears them, and noatanh, nologit and nolog1m alone draw the plain axis with no note, as in twoway (ruling D75) (WP-44, AX-9)
 - custom on an axis label or tick option with a label or tick edit and no listed value -- ylabel(, custom labcolor(red)), ylabel(10(10)40, custom labcolor(red)), ylabel(#5, custom angle(45)), ytick(, custom tlcolor(red)) -- is refused, r(198), tick_styles[-1] invalid name, as twoway refuses it; dash drew the edits on every label (WP-44, AX-5)
 - A word that is no number in an axis label or tick list -- ylabel(abc), xlabel(1/5 .a), ylabel(10 . 30), ylabel(abc(1)), xlabel(td(1jan2001)), ylabel(10(10)40 "a") -- is refused, r(198), "invalid label specifier, :  <the list>:", as twoway refuses it, on every x and y label and tick option, the minor ones included; dash named the word in a note and drew the graph (WP-44, DG-9)
 - A date in parentheses holding blanks is read in tlabel(), ttick(), tmlabel(), tmtick(), tline() and tscale(range()), as twoway reads it: tlabel((1 jan 2001) (1 jul 2001)), tline((15 jun 2001)) and tscale(range((1 dec 2000) (31 jan 2002))) were refused r(198) or r(121) and are now drawn (WP-44, DG-4)
@@ -1016,6 +1017,7 @@ and now matches Stata.
 
 ### Fixed in WP-44
 
+- xscale(style()) and yscale(style()) read Stata's axis style file as twoway does -- yscale(style(vertical_nogrid)) draws no y grid, xscale(style(horizontal_noline)) no x axis line and no x grid -- where dash named the sub-option and drew the plain axis (WP-44, AX-9)
 - xscale(off fill) and yscale(off fill) keep the axis's space with nothing of it drawn, as twoway does, so the plot region keeps the plain graph's edge; dash drew them as off and took the space (WP-44, AX-7)
 - An axis format() of %21x, %16H, %8H, %16L, %8L, their left-aligned forms or a string format such as %12s writes each label as twoway writes it -- format(%21x) writes 10 as +1.4000000000000X+003, %16H as 4024000000000000, %12s writes 33.3333333 as 33.333333 (%10.0g) -- where dash wrote %9.0g with a note (WP-44, AX-15)
 - xtick() beside xmtick() or xmlabel() draws its positions as long as the labelled ticks and the minor ones half as long, as twoway draws them -- xtick(2500 4500) xmtick(3500) draws 3500 at half the length -- where dash drew all of them at the major length (WP-44, AX-15)

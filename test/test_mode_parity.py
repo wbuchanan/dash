@@ -3376,6 +3376,10 @@ DATE_CORPUS = [
     # WP-44 44-03: scales.
     _case("yscale off fill (WP-44 44-03)", [_sc()],
           go={"yscale": "off fill"}),
+    _case("yscale noatanh (WP-44 44-03)", [_sc()],
+          go={"yscale": "noatanh"}),
+    _case("yscale style vertical_nogrid (WP-44 44-03)", [_sc()],
+          go={"yscale": "style(vertical_nogrid)"}),
 ]
 
 #: The entries a report is the point of, with the report each must make.

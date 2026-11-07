@@ -4366,6 +4366,106 @@ macro drop q4402_n
 sysuse auto, clear
 _u05_judge Q4402-2 `"`q4402_bad'"' "custom with a label or tick edit and no value list is refused r(198) in twoway's line; the custom forms twoway draws are drawn"
 
+// ----------------------------------------------------------------
+// Q4403-2 / Q4403-6 / Q4403-12 (WP-44 section 44-03): the scale words
+// and spans twoway's graph refuses.  Every probe of
+// test/fixtures/axis_scale_truth.json (scripts/
+// extract_axis_scale_truth.do) whose key starts with a prefix below is
+// run through dash with twoway's rc, and a refused one with twoway's
+// line: Q4403-2 (AX-9, ruling D75) atanh, logit and log1m on any scale
+// option, refused r(199) "unrecognized command" as twoway's graph fails
+// on them, and the forms twoway draws (a later copy's transform word or
+// no form clears them); Q4403-6 (AX-10) two transform words in one copy
+// refused r(198) in twoway's opts_exclusive line; Q4403-12 (DG-13) a
+// span past c(maxdouble) refused r(199).  The style() and drawn keys
+// are pinned elsewhere (test_axis_scales_p9.py, test_wp44_truth.cscript).
+// ----------------------------------------------------------------
+python:
+def _q4403_rows(groups):
+    import json, os
+    from sfi import Macro
+    with open(os.path.join("fixtures", "axis_scale_truth.json"),
+              encoding="utf-8") as fh:
+        t = json.load(fh)["graphs"]
+    rows = []
+    for case, pre in groups:
+        for k in sorted(t):
+            if not k.startswith(pre) or "_style_" in k:
+                continue
+            r = t[k]
+            cmd = r["command"].rstrip()
+            if cmd.endswith(","):
+                cmd = cmd[:-1].rstrip()
+            if cmd.startswith("twoway "):
+                cmd = cmd[len("twoway "):]
+            if "," not in cmd:
+                cmd += ","
+            # A copy with two transform words is AX-10's whichever probe
+            # set records it.
+            ex = (r.get("error") or "").startswith("only one of options")
+            rows.append(("Q4403-6" if ex else case, k, r["data"], r["prep"],
+                         cmd, str(r["rc"]),
+                         r.get("error") or ""))
+    Macro.setGlobal("q4403_n", str(len(rows)))
+    for i, (case, k, d, p, c, rc, m) in enumerate(rows, 1):
+        for name, v in (("i", case), ("k", k), ("d", d), ("p", p),
+                        ("c", c), ("r", rc), ("m", m)):
+            Macro.setGlobal("q4403_%s%d" % (name, i), v)
+
+
+def _q4403_said(path, want):
+    from sfi import Macro
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        lines = [ln.strip() for ln in fh]
+    Macro.setLocal("q4403_has", "1" if want in lines else "0")
+end
+capture program drop _q4403_dg11
+program define _q4403_dg11
+    args a b
+    clear
+    quietly set obs 2
+    quietly generate double y = cond(_n == 1, `a', `b')
+    quietly generate double y1 = cond(_n == 1, `a', .)
+    quietly generate double y2 = cond(_n == 2, `b', .)
+    quietly generate x = _n
+end
+python: import __main__ as _q4403m; _q4403m._q4403_rows([("Q4403-2", "ax9_")])
+local q4403_ls = c(linesize)
+set linesize 255
+local q4403_n $q4403_n
+local q4403_ids ""
+forvalues i = 1/`q4403_n' {
+    local id ${q4403_i`i'}
+    if !`: list id in q4403_ids' {
+        local q4403_ids `q4403_ids' `id'
+        local q4403_bad_`: subinstr local id "-" "_"' ""
+    }
+    if "${q4403_d`i'}" != "-" quietly sysuse ${q4403_d`i'}, clear
+    local prep ${q4403_p`i'}
+    local prep : subinstr local prep "_as_dg11" "_q4403_dg11"
+    if `"`prep'"' != "" quietly `prep'
+    capture dash clear
+    capture log close _q43log
+    quietly log using "`c(tmpdir)'dash_q4403.log", name(_q43log) text replace
+    capture noisily dash ${q4403_c`i'} name(q4403)
+    local drc = _rc
+    quietly log close _q43log
+    local said 1
+    if ${q4403_r`i'} {
+        python: import __main__ as _q4403m; _q4403m._q4403_said(r"`c(tmpdir)'dash_q4403.log", __import__("sfi").Macro.getGlobal("q4403_m`i'"))
+        local said `q4403_has'
+    }
+    local b = subinstr("`id'", "-", "_", 1)
+    if `drc' != ${q4403_r`i'} | `said' != 1 local q4403_bad_`b' `"`q4403_bad_`b'' [${q4403_k`i'}: twoway ${q4403_r`i'}, dash `drc', line `said']"'
+    macro drop q4403_i`i' q4403_k`i' q4403_d`i' q4403_p`i' q4403_c`i' q4403_r`i' q4403_m`i'
+}
+set linesize `q4403_ls'
+capture dash clear
+capture erase "`c(tmpdir)'dash_q4403.log"
+macro drop q4403_n
+sysuse auto, clear
+_u05_judge Q4403-2 `"`q4403_bad_Q4403_2'"' "atanh, logit and log1m on a scale option are refused r(199) as twoway's graph refuses them, and the forms twoway draws are drawn"
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

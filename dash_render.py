@@ -10668,10 +10668,12 @@ class SchemeParser:
     #: 200 lines of at most 400 bytes from a file (Stata's longest of the
     #: 161 option-class files has 21 lines), 400 files in the memo.
     #: WP-44 AX-14/AX-8: the axis option's tickstyle, ticksetstyle and
-    #: gridstyle files too (SchemeParser.axis_style_tokens).
+    #: gridstyle files too (SchemeParser.axis_style_tokens); WP-44 AX-9:
+    #: xscale()/yscale() style()'s axisstyle files
+    #: (SchemeParser.axis_scale_style_tokens).
     _STYLE_FILE_CLASSES: "tuple[str, ...]" = (
         "seriesstyle", "markerstyle", "areastyle", "linestyle", "shadestyle",
-        "tickstyle", "ticksetstyle", "gridstyle")
+        "tickstyle", "ticksetstyle", "gridstyle", "axisstyle")
     _STYLE_FILE_MAX_LINES: int = 200
     _STYLE_FILE_MAX_LINE_BYTES: int = 400
     _STYLE_FILE_MEMO_MAX: int = 400
@@ -14125,6 +14127,72 @@ class SchemeParser:
                 self._style_note(cls, s, "unknown")
             return []
         return got
+
+    def axis_scale_style_tokens(self, name: Any, letter: str = "y",
+                                note: bool = True) -> tuple:
+        """``(scale_tokens, label_tokens)`` xscale()/yscale() style(*name*)
+        stands for (WP-44 AX-9, D-44-03.c): axisstyle file *name* read
+        against the axis's own default (``vertical_default`` on a y axis,
+        ``horizontal_default`` on x), so only what the name changes is
+        returned.  ``draw_major_grid`` gives ``grid``/``nogrid`` on the
+        axis's label option (a scheme key no scheme declares is twoway's
+        note and no grid: measured, axis_scale_truth.json
+        ``ax9_style_noline``, whose file names ``draw_major__nl_hgrid``);
+        ``linestyle none`` gives ``noline`` and another line style
+        ``lstyle()`` on the scale; ``majorstyle`` gives the label option's
+        ``style()`` (its ticksetstyle, read by :meth:`axis_style_tokens`).
+        A name with no file prints twoway's named-style note, unless not
+        *note*, and adds nothing.  Values come from style files and the
+        scheme only; *name* is shown through ``_dash_display`` only."""
+        s = str(name or "").strip()
+        if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
+            s = s[1:-1].strip()
+        if not s:
+            return [], []
+        a = (self._axis_rows("axisstyle", s)
+             if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,63}", s) else None)
+        if a is None:
+            if note:
+                self._style_note("axisstyle", s, "unknown")
+            return [], []
+        d = self._axis_rows("axisstyle", "vertical_default" if letter == "y"
+                            else "horizontal_default") or {}
+        scale, label = [], []
+        # draw_major_grid: a literal yes/no, else a scheme yesno key.
+        g = dg = gkey = None
+        for rows, which in ((a, "a"), (d, "d")):
+            r = rows.get("draw_major_grid")
+            if r is None:
+                continue
+            v = (r[1] if r[0] == "literal"
+                 else self._axis_leaf("yesno", r[1]))
+            if which == "a":
+                g, gkey = v, (None if r[0] == "literal" else r[1])
+            else:
+                dg = v
+        if a.get("draw_major_grid") != d.get("draw_major_grid"):
+            if g is None and gkey is not None:
+                if note:
+                    _dash_warn_once(
+                        ("yesno-scheme", gkey),
+                        f"dash: yesno {gkey} not found in scheme, default "
+                        f"attributes used")
+                label.append("nogrid")
+            elif g in ("yes", "no") and g != dg:
+                label.append("grid" if g == "yes" else "nogrid")
+        r = a.get("linestyle")
+        if r is not None and r != d.get("linestyle"):
+            if r == ("literal", "none"):
+                scale.append("noline")
+            else:
+                v = self._axis_val(a, "linestyle", "linestyle", hop=True)
+                if v is not None:
+                    scale.append(f"lstyle({v})")
+        v = self._axis_val(a, "majorstyle", "ticksetstyle", hop=True)
+        if v is not None and v != self._axis_val(d, "majorstyle",
+                                                 "ticksetstyle", hop=True):
+            label.append(f"style({v})")
+        return scale, label
 
     def _style_named(self, cls: str, stata_class: str, s: str,
                      kind: str) -> dict:
@@ -38009,8 +38077,9 @@ _DASH_MAX_SCHEME_DIRS = 64
 
 _DASH_STYLE_ROW_KEY_RE = re.compile(
     r"(seriesstyle|markerstyle|areastyle|linestyle|shadestyle|"
-    # WP-44 AX-14/AX-8: the axis style reader's classes.
-    r"tickstyle|ticksetstyle|gridstyle) "
+    # WP-44 AX-14/AX-8: the axis style reader's classes; AX-9: the
+    # scale's axisstyle.
+    r"tickstyle|ticksetstyle|gridstyle|axisstyle) "
     r"([A-Za-z_][A-Za-z0-9_]{0,63}|p#[a-z_]{0,40})")
 _DASH_STYLE_ROW_TOKEN_RE = re.compile(
     r"[A-Za-z_][A-Za-z0-9_#]{0,40}|[0-9]{0,8}\.?[0-9]{1,8}|")
@@ -38019,7 +38088,7 @@ _DASH_STYLE_ROW_TOKEN_RE = re.compile(
 def _dash_style_rows_of(build_options: dict) -> dict:
     """``build_options["_style_rows"]`` (WP-31 E10, DECISIONS A24) as
     ``{"<class> <file>": ((attr, kind, value), ...)}``: at most 400 keys of
-    at most 200 rows, each key a class of the eight and a style name, each
+    at most 200 rows, each key a class of the nine and a style name, each
     row three tokens a style file's ``set`` line could hold and kind
     ``scheme`` or ``literal``.  Anything else is dropped; never raises."""
     try:
@@ -46365,6 +46434,35 @@ def _dash_axis_style_text(text, scheme, letter="y", minor=False, tick=False,
     return head + ", " + " ".join(add + toks)
 
 
+def _dash_scale_style_expand(raw, scheme, letter, note=True):
+    """``(scale_value, label_tokens)`` for an xscale()/yscale() value
+    holding style() (WP-44 AX-9, D-44-03.c): the value without its
+    style() tokens, the axisstyle's scale tokens before the rest (the
+    explicit sub-options win), and the label option's tokens
+    (:meth:`SchemeParser.axis_scale_style_tokens`; the last style() of the
+    value is read, as its copies are merged).  None when the value holds
+    no style()."""
+    toks = _dash_by_tokens(str(raw or "").strip())
+    styles = [t for t in toks if _dash_scale_name(t) == "style" and "(" in t]
+    if not styles:
+        return None
+    rest = [t for t in toks if not (_dash_scale_name(t) == "style"
+                                    and "(" in t)]
+    sc, lab = scheme.axis_scale_style_tokens(
+        _dash_subopt_arg(styles[-1]), letter, note=note)
+    return " ".join(list(sc) + rest), list(lab)
+
+
+def _dash_label_tokens_first(raw, toks):
+    """An axis label option's value *raw* with sub-option tokens *toks*
+    first among its sub-options (an explicit one after them wins), its
+    rule or list kept: ``""`` with ``["nogrid"]`` is ``", nogrid"``."""
+    head, tail = _dash_axis_head_split(str(raw or ""))
+    rest = tail.lstrip(",").strip()
+    return head.rstrip() + ", " + " ".join(list(toks) + ([rest] if rest
+                                                         else []))
+
+
 def _dash_axis_styles_expand(graph_opts, scheme, note=True):
     """*graph_opts* with every axis label and tick option's style names
     expanded (:func:`_dash_axis_style_text`): ``xlabel``, ``xtick``,
@@ -46375,6 +46473,22 @@ def _dash_axis_styles_expand(graph_opts, scheme, note=True):
     if not isinstance(graph_opts, dict) or scheme is None:
         return graph_opts
     out = None
+    # WP-44 AX-9: xscale()/yscale() style() first, so the label option's
+    # style() it gives is expanded below with the rest.
+    for letter in ("x", "y"):
+        for sfx in ("", "2"):
+            v = graph_opts.get(letter + "scale" + sfx)
+            if not isinstance(v, str) or "sty" not in v.lower():
+                continue
+            got = _dash_scale_style_expand(v, scheme, letter, note)
+            if got is None:
+                continue
+            out = dict(graph_opts) if out is None else out
+            out[letter + "scale" + sfx] = got[0]
+            if got[1]:
+                lk = letter + "label" + sfx
+                out[lk] = _dash_label_tokens_first(
+                    str(out.get(lk, "") or ""), got[1])
     for letter in ("x", "y"):
         for fam in ("label", "tick", "mlabel", "mtick"):
             for k in (letter + fam, letter + fam + "2"):
@@ -65866,7 +65980,11 @@ def _dash_by_side_grid(grid, side, nrows, ncols):
 
 
 #: xscale()/yscale() sub-options dash honours.
-_DASH_SCALE_SUBOPTS = frozenset({"log", "reverse", "range"})
+#: WP-44 AX-9: the no forms of the transform words twoway's graph fails
+#: on draw the plain graph, as twoway draws them, so they are taken
+#: silently (the words themselves are refused in dash.ado, ruling D75).
+_DASH_SCALE_SUBOPTS = frozenset({"log", "reverse", "range", "noatanh",
+                                 "nologit", "nolog1m"})
 
 
 def _dash_scale_spec(raw, option="", seen=None, key=""):
@@ -78283,6 +78401,9 @@ class ServerAppBuilder:
                          "_dash_value_labels_for",
                          "_dash_hover_text_column", "_dash_add_hover_text",
                          "_dash_primary_axes", "_dash_apply_tick_option",
+                         # WP-44 AX-9: xscale()/yscale() style().
+                         "_dash_scale_style_expand",
+                         "_dash_label_tokens_first",
                          # WP-31 D1: minor ticks and minor labels.
                          "_dash_note_major_between", "_dash_minor_dated",
                          "_dash_minor_rule",

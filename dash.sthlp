@@ -5464,7 +5464,19 @@ takes a line style's colour, width and pattern ({cmd:lcolor()},
 draw the plain axis, as in {cmd:twoway}, and so does {cmd:fill} alone;
 {cmd:off fill} keeps the axis's space with nothing of it drawn, so the plot
 region keeps the plain graph's edge, as in {cmd:twoway}; a second
-{cmd:yscale(alt)} toggles the axis back, as in {cmd:twoway}.  The default
+{cmd:yscale(alt)} toggles the axis back, as in {cmd:twoway}.
+{cmd:log} is the only transform a scale takes: {cmd:atanh},
+{cmd:logit} and {cmd:log1m} (any abbreviation), which {cmd:twoway}'s
+graph fails on, are refused with its {cmd:unrecognized command}, {cmd:r(199)},
+on {cmd:xscale()}, {cmd:yscale()}, {cmd:tscale()} and {cmd:zscale()};
+a later copy's {cmd:log}, {cmd:nolog} or {cmd:no} form clears them, and
+{cmd:noatanh}, {cmd:nologit} and {cmd:nolog1m} draw the plain axis, as in
+{cmd:twoway}.  {cmd:style(}{it:axisstyle}{cmd:)} reads Stata's axis style
+file as {cmd:twoway} does: {cmd:yscale(style(vertical_nogrid))} draws no y
+grid, and {cmd:xscale(style(horizontal_noline))} no x axis line and, as
+its file names a grid key no scheme declares, no x grid, with
+{cmd:twoway}'s note; a label sub-option given with the axis's label
+option wins, and an unknown name is {cmd:twoway}'s named-style note.  The default
 gap between an axis's labels and its title is the scheme's
 {cmd:gsize axis_title_gap} ({cmd:minuscule}, 1 point, under {cmd:s2color});
 {cmd:titlegap(*}{it:#}{cmd:)} multiplies it.  {cmd:zlabel()} and

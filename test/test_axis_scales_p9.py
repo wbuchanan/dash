@@ -55,10 +55,20 @@ def _write(spec):
     return tag, sp, dp
 
 
-def _figs(mode, plots, go=None):
+#: Stata's own style files, on the ado-path dash.ado passes (scheme_dirs).
+_BASE = "/Applications/StataNow/ado/base"
+_needs_base = pytest.mark.skipif(
+    not os.path.isdir(os.path.join(_BASE, "style")),
+    reason="Stata's style files are not here")
+
+
+def _figs(mode, plots, go=None, scheme="", base=False):
     """The first panel of the page *plots* and graph options *go* draw
-    over auto (with ``z = mpg - 25``), and the notes it printed."""
-    spec = tda._spec(plots, go or {}, formats=_FORMATS)
+    over auto (with ``z = mpg - 25``), and the notes it printed; under
+    *scheme*, with Stata's style files on the ado-path when *base*."""
+    spec = tda._spec(plots, go or {}, scheme=scheme, formats=_FORMATS)
+    if base:
+        spec["build_options"]["scheme_dirs"] = [_BASE]
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         tag, sp, dp = _write(spec)
@@ -160,3 +170,119 @@ def test_scale_look_reads_fill():
     assert dr._dash_scale_look("off fillspace")["fill"] is True
     assert dr._dash_scale_look("off fill nofill")["fill"] is False
     assert dr._dash_scale_look("off")["fill"] is False
+
+
+# ---------------------------------------------------------------------------
+# AX-9 (ruling D75): the transform words; scale style()
+# ---------------------------------------------------------------------------
+
+def _grid_on(f, dim):
+    from bokeh.models import Grid
+    gs = [g for g in list(f.renderers) + list(f.center)
+          if isinstance(g, Grid) and g.dimension == dim]
+    return any(g.visible and g.grid_line_color is not None for g in gs)
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestTransformWords:
+    @pytest.mark.parametrize("word", ["noatanh", "nologit", "nolog1m"])
+    def test_no_forms_silent(self, mode, word):
+        """A no form alone draws the plain graph in twoway (ax9_noatanh,
+        ax9_nolog1m_x) and is taken with no note; the axis is the plain
+        one."""
+        assert _G["ax9_noatanh"]["y"] == _G["ax7_plain"]["y"]
+        f0, _m = _figs(mode, [P("scatter", "mpg", "weight")])
+        f, msgs = _figs(mode, [P("scatter", "mpg", "weight")],
+                        {"yscale": word})
+        assert not [m for m in msgs if word in m], msgs
+        assert tda._ticks(f, "y") == tda._ticks(f0, "y")
+        assert type(tda._axis(f, "y")).__name__ == "LinearAxis"
+
+
+def test_the_help_sentence():
+    """The xscale()/yscale() paragraph says log is the only transform and
+    that atanh, logit and log1m are refused as twoway's graph refuses
+    them (ruling D75)."""
+    with open(os.path.join(_HERE, "..", "dash.sthlp"), encoding="utf-8") as fh:
+        h = " ".join(fh.read().split())
+    assert ("{cmd:log} is the only transform a scale takes: {cmd:atanh}, "
+            "{cmd:logit} and {cmd:log1m}") in h
+    assert "{cmd:unrecognized command}, {cmd:r(199)}" in h
+
+
+def _sfigs(mode, go):
+    """_figs under stcolor (the fixture's scheme) with Stata's files."""
+    return _figs(mode, [P("scatter", "mpg", "weight")], go,
+                 scheme="stcolor", base=True)
+
+
+@_needs_base
+@pytest.mark.parametrize("mode", _MODES)
+class TestScaleStyle:
+    def test_vertical_nogrid(self, mode):
+        """yscale(style(vertical_nogrid)) draws no y grid and keeps the x
+        grid, as twoway draws it (ax9_style_nogrid: no grid row, the
+        plain graph's columns), with no note."""
+        assert _G["ax9_style_nogrid"]["hgrid"] == 0
+        assert _G["ax9_style_nogrid"]["vgrid"] == _G["ax7_plain"]["vgrid"]
+        assert _G["ax7_plain"]["hgrid"] > 0
+        f, msgs = _sfigs(mode, {"yscale": "style(vertical_nogrid)"})
+        assert not _grid_on(f, 1)
+        assert _grid_on(f, 0)
+        assert not [m for m in msgs if "style" in m], msgs
+
+    def test_horizontal_noline(self, mode):
+        """xscale(style(horizontal_noline)) draws no x axis line and, as
+        its file names a grid key no scheme declares, no x grid, with
+        twoway's note for the key (ax9_style_noline)."""
+        row = _G["ax9_style_noline"]
+        assert row["bottom_line"] == [] and row["vgrid"] == 0
+        assert any("draw_major__nl_hgrid not found in scheme" in n
+                   for n in row["notes"])
+        f, msgs = _sfigs(mode, {"xscale": "style(horizontal_noline)"})
+        assert tda._axis(f, "x").axis_line_color is None
+        assert not _grid_on(f, 0)
+        assert _grid_on(f, 1)
+        assert [m for m in msgs
+                if "yesno draw_major__nl_hgrid not found in scheme" in m]
+
+    def test_unknown_notes(self, mode):
+        """An unknown name is twoway's named-style note (ax9_style_bogus)
+        and the plain axis."""
+        assert any("bogus_style not found in class axisstyle" in n
+                   for n in _G["ax9_style_bogus"]["notes"])
+        f, msgs = _sfigs(mode, {"yscale": "style(bogus_style)"})
+        assert [m for m in msgs
+                if "bogus_style not found in class axisstyle" in m], msgs
+        assert _grid_on(f, 1)
+
+    def test_explicit_wins(self, mode):
+        """An explicit label sub-option after the style's wins:
+        ylabel(, grid) beside yscale(style(vertical_nogrid)) draws the
+        grid."""
+        f, _m = _sfigs(mode, {"yscale": "style(vertical_nogrid)",
+                              "ylabel": ", grid"})
+        assert _grid_on(f, 1)
+
+
+@_needs_base
+def test_scale_style_expand():
+    """_dash_scale_style_expand: the value less its style(), the style's
+    scale tokens first; the label tokens apart; None with no style()."""
+    sp = dr.SchemeParser("stcolor", ado_dirs=(_BASE,))
+    v, lab = dr._dash_scale_style_expand(
+        "style(horizontal_noline) log", sp, "x", note=False)
+    assert v == "noline log" and lab == ["nogrid"]
+    v, lab = dr._dash_scale_style_expand("sty(vertical_nogrid)", sp, "y")
+    assert v == "" and lab == ["nogrid"]
+    assert dr._dash_scale_style_expand("log", sp, "y") is None
+
+
+def test_label_tokens_first():
+    """_dash_label_tokens_first puts the tokens before the explicit
+    sub-options and keeps the rule."""
+    assert dr._dash_label_tokens_first("", ["nogrid"]) == ", nogrid"
+    assert dr._dash_label_tokens_first(
+        "#5, labsize(small)", ["nogrid"]) == "#5, nogrid labsize(small)"
+    assert dr._dash_label_tokens_first('10 "a, b" 20', ["grid"]) == \
+        '10 "a, b" 20, grid'

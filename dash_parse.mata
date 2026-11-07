@@ -308,6 +308,10 @@
 *!       merged); the caller's local _rp_refuse names a unique option
 *!       given twice.
 *!
+*!   _dash_scale_untransformable(v)
+*!       1 when the last transform word of a merged scale value is atanh,
+*!       logit or log1m, which twoway's graph fails on (WP-44 AX-9, D75).
+*!
 *!   _dash_stylelist_keys()
 *!       The style options read as stylelists across an expanded varlist.
 *!
@@ -14677,6 +14681,36 @@ string scalar _dash_rep_reduce(string scalar opts, string scalar ptype)
         out = out + " " + toks[i]
     }
     return(strtrim(out))
+}
+
+// _dash_scale_untransformable(v) -- 1 when the last of twoway's eight
+// transform words (nolog log noatanh atanh nologit logit nolog1m log1m,
+// any abbreviation: log1 is log1m) in the scale value v is atanh, logit or
+// log1m.  v is the option's copies merged in the order typed
+// (_dash_rep_merge keeps a word given again last and drops a word its no
+// form cancels).  twoway's parser takes the three words, but its graph
+// fails on an axis that keeps one, "unrecognized command", r(199) -- on
+// xscale(), yscale(), tscale() and zscale(), alt beside it or a later copy
+// without a transform word -- and draws the plain graph when a later copy
+// gives log, nolog or a no form (WP-44 AX-9, ruling D75: Stata's scales
+// are linear or log; test/fixtures/axis_scale_truth.json ax9_*).  A word
+// holding a parenthesis (range(), lcolor()) is no transform word.
+real scalar _dash_scale_untransformable(string scalar v)
+{
+    string rowvector toks, words
+    string scalar    nm, last
+    real scalar      i
+
+    words = ("nolog", "log", "noatanh", "atanh", "nologit", "logit",
+             "nolog1m", "log1m")
+    toks = _dash_rep_toks(v, 0)
+    last = ""
+    for (i = 1; i <= cols(toks); i++) {
+        if (strpos(toks[i], "(")) continue
+        nm = _dash_so_canon(strtrim(toks[i]), "axscale")
+        if (anyof(words, nm)) last = nm
+    }
+    return(anyof(("atanh", "logit", "log1m"), last))
 }
 
 // _dash_spec_types_in(s, allowed) -- 1 when the graph spec s names a plot
