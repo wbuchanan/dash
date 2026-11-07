@@ -286,3 +286,24 @@ def test_label_tokens_first():
         "#5, labsize(small)", ["nogrid"]) == "#5, nogrid labsize(small)"
     assert dr._dash_label_tokens_first('10 "a, b" 20', ["grid"]) == \
         '10 "a, b" 20, grid'
+
+
+# ---------------------------------------------------------------------------
+# AX-10: two transform words in one copy (Stata side: Q4403-6)
+# ---------------------------------------------------------------------------
+
+def test_the_exclusive_sentence():
+    """The help states twoway's refusal of two transform words in one copy
+    and the merge across copies (ax10_*: yscale(log nolog) "only one of
+    options nolog or log is allowed", yscale(log) yscale(nolog) drawn)."""
+    assert _G["ax10_log_nolog"]["error"] == \
+        "only one of options nolog or log is allowed"
+    assert _G["ax10_across"]["rc"] == 0
+    assert _G["ax10_log_log"]["error"] == \
+        "only one of options log or log1m is allowed"
+    with open(os.path.join(_HERE, "..", "dash.sthlp"), encoding="utf-8") as fh:
+        h = " ".join(fh.read().split())
+    assert ("Two transform words in one copy ({cmd:yscale(log nolog)}, "
+            "{cmd:yscale(atanh log)}, and {cmd:yscale(log log)}") in h
+    assert ("{cmd:twoway}'s \"only one of options ... is allowed\"; across "
+            "copies the last counts") in h

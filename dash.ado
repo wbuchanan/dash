@@ -10132,20 +10132,6 @@ program define _dash_plot
         }
     }
 
-    // ---- atanh, logit and log1m on a scale (WP-44 AX-9, ruling D75) ----
-    // twoway's parser takes them, but its graph fails on an axis that
-    // keeps one, "unrecognized command", r(199); a later copy's log, nolog
-    // or no form clears it (_dash_scale_untransformable, over each scale
-    // option's copies merged in the order typed).
-    foreach gk in xscale yscale xscale2 yscale2 tscale tscale2 zscale {
-        if !`: length local g_`gk'' continue
-        mata: st_local("_sc_tr", strofreal(_dash_scale_untransformable(st_local("g_`gk'"))))
-        if `_sc_tr' {
-            display as error "unrecognized command"
-            exit 199
-        }
-    }
-
     // ---- Two omit options in one command (WP-35 basic:PT-8) ----
     // twoway refuses omitanymiss, omitallmiss, omitdupmiss and omitnothing
     // given twice or more anywhere in the command -- one list, two lists,
@@ -10494,6 +10480,20 @@ program define _dash_plot
     // one-line if's command again, macval() or not (JSE-69).
     if `: length local g_legend' {
         _dash_check_legend `"`macval(g_legend)'"'
+    }
+    // ---- atanh, logit and log1m on a scale (WP-44 AX-9, ruling D75) ----
+    // twoway's parser takes them, so its syntax refusals above come
+    // first, but its graph fails when it draws an axis that keeps one,
+    // "unrecognized command", r(199); a later copy's log, nolog or no form
+    // clears it (_dash_scale_untransformable, over each scale option's
+    // copies merged in the order typed).
+    foreach gk in xscale yscale xscale2 yscale2 tscale tscale2 zscale {
+        if !`: length local g_`gk'' continue
+        mata: st_local("_sc_tr", strofreal(_dash_scale_untransformable(st_local("g_`gk'"))))
+        if `_sc_tr' {
+            display as error "unrecognized command"
+            exit 199
+        }
     }
 
     // ---- A by() graph: its panels, as twoway answers them ----

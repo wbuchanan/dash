@@ -5471,7 +5471,12 @@ graph fails on, are refused with its {cmd:unrecognized command}, {cmd:r(199)},
 on {cmd:xscale()}, {cmd:yscale()}, {cmd:tscale()} and {cmd:zscale()};
 a later copy's {cmd:log}, {cmd:nolog} or {cmd:no} form clears them, and
 {cmd:noatanh}, {cmd:nologit} and {cmd:nolog1m} draw the plain axis, as in
-{cmd:twoway}.  {cmd:style(}{it:axisstyle}{cmd:)} reads Stata's axis style
+{cmd:twoway}.  Two transform words in one copy ({cmd:yscale(log nolog)},
+{cmd:yscale(atanh log)}, and {cmd:yscale(log log)}, whose second {cmd:log}
+{cmd:twoway} reads as {cmd:log1m}) are refused, {cmd:r(198)}, with
+{cmd:twoway}'s "only one of options ... is allowed"; across copies the last
+counts ({cmd:yscale(log) yscale(nolog)} draws a linear axis), and a
+{cmd:no} form given twice is one.  {cmd:style(}{it:axisstyle}{cmd:)} reads Stata's axis style
 file as {cmd:twoway} does: {cmd:yscale(style(vertical_nogrid))} draws no y
 grid, and {cmd:xscale(style(horizontal_noline))} no x axis line and, as
 its file names a grid key no scheme declares, no x grid, with

@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "14 Oct 2026",
-  "dash_commit": "1c0cf09bcedddaac6bb5c60b10b77450be2ba59c",
-  "extracted": " 7 Nov 2026 08:50:27",
+  "dash_commit": "852a50234d3434c34cfb25ebe33d3bd578dff78b",
+  "extracted": " 7 Nov 2026 09:19:13",
   "scheme": "stcolor",
   "source": "scripts/extract_axis_scale_truth.do",
   "stata_version": "19.5"
@@ -67,6 +67,14 @@
     ]
    ]
   },
+  "ax10_atanh_atanh": {
+   "command": "scatter mpg weight, yscale(atanh atanh)",
+   "data": "auto",
+   "error": "option atanh not allowed",
+   "notes": [],
+   "prep": "",
+   "rc": 198
+  },
   "ax10_atanh_log": {
    "command": "scatter mpg weight, yscale(atanh log)",
    "data": "auto",
@@ -75,8 +83,32 @@
    "prep": "",
    "rc": 198
   },
+  "ax10_log1m_log1m": {
+   "command": "scatter mpg weight, yscale(log1m log1m)",
+   "data": "auto",
+   "error": "option log1m not allowed",
+   "notes": [],
+   "prep": "",
+   "rc": 198
+  },
+  "ax10_log_lo": {
+   "command": "scatter mpg weight, yscale(log lo)",
+   "data": "auto",
+   "error": "option lo not allowed",
+   "notes": [],
+   "prep": "",
+   "rc": 198
+  },
   "ax10_log_log": {
    "command": "scatter mpg weight, yscale(log log)",
+   "data": "auto",
+   "error": "only one of options log or log1m is allowed",
+   "notes": [],
+   "prep": "",
+   "rc": 198
+  },
+  "ax10_log_log_log": {
+   "command": "scatter mpg weight, yscale(log log log)",
    "data": "auto",
    "error": "only one of options log or log1m is allowed",
    "notes": [],
@@ -106,6 +138,124 @@
    "notes": [],
    "prep": "",
    "rc": 198
+  },
+  "ax10_noatanh_noatanh": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(noatanh noatanh)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax10_nolog1m_nolog1m": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(nolog1m nolog1m)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
   },
   "ax10_nolog_nolog": {
    "bottom_line": [
@@ -165,6 +315,73 @@
      305.05
     ]
    ]
+  },
+  "ax10_nologit_nologit": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(nologit nologit)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax10_off_off": {
+   "command": "scatter mpg weight, yscale(off off)",
+   "data": "auto",
+   "error": "option off not allowed",
+   "notes": [],
+   "prep": "",
+   "rc": 198
   },
   "ax10_three": {
    "command": "scatter mpg weight, yscale(log logit atanh)",

@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- Two transform words in one xscale(), yscale() or tscale() copy are refused, r(198), in twoway's words -- yscale(log nolog) "only one of options nolog or log is allowed", yscale(atanh log), yscale(log log) "log or log1m" -- where dash drew the graph; yscale(nolog nolog) is drawn, as in twoway (WP-44, AX-10)
 - xscale(), yscale(), tscale() and zscale() with atanh, logit or log1m (any abbreviation) are refused with r(199), "unrecognized command", as twoway's graph fails on them -- scatter mpg weight, yscale(logit) -- where dash drew a linear axis with a note; a later copy's log, nolog or no form clears them, and noatanh, nologit and nolog1m alone draw the plain axis with no note, as in twoway (ruling D75) (WP-44, AX-9)
 - custom on an axis label or tick option with a label or tick edit and no listed value -- ylabel(, custom labcolor(red)), ylabel(10(10)40, custom labcolor(red)), ylabel(#5, custom angle(45)), ytick(, custom tlcolor(red)) -- is refused, r(198), tick_styles[-1] invalid name, as twoway refuses it; dash drew the edits on every label (WP-44, AX-5)
 - A word that is no number in an axis label or tick list -- ylabel(abc), xlabel(1/5 .a), ylabel(10 . 30), ylabel(abc(1)), xlabel(td(1jan2001)), ylabel(10(10)40 "a") -- is refused, r(198), "invalid label specifier, :  <the list>:", as twoway refuses it, on every x and y label and tick option, the minor ones included; dash named the word in a note and drew the graph (WP-44, DG-9)

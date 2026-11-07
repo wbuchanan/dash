@@ -308,6 +308,10 @@
 *!       merged); the caller's local _rp_refuse names a unique option
 *!       given twice.
 *!
+*!   _dash_scale_exclusive(words, kept)
+*!       twoway's refusal of one scale copy's transform words (two of the
+*!       eight, as -syntax- binds them), or "" (WP-44 AX-10).
+*!
 *!   _dash_scale_untransformable(v)
 *!       1 when the last transform word of a merged scale value is atanh,
 *!       logit or log1m, which twoway's graph fails on (WP-44 AX-9, D75).
@@ -10869,7 +10873,8 @@ void _dash_axreq_add(string scalar opts, real scalar seg)
     string rowvector toks, words
     string matrix    fam, blk
     string rowvector snames
-    string scalar    d, v, body, dcw, badw, sm, lb, lb2, ls2, lnone
+    string scalar    d, v, body, dcw, badw, sm, sm2, lb, lb2, ls2, lnone
+    string rowvector kept
     real scalar      i, j, k, r, nax, n, axpos, sat, nex
 
     _dash_subreq_add(opts, seg)
@@ -10893,8 +10898,11 @@ void _dash_axreq_add(string scalar opts, real scalar seg)
                                  snames, sm, sat) == 0) sm = ""
         }
         else if (fam[r, 1] == "scale" & cols(words)) {
-            if (_dash_so_resolve(words, J(1, cols(words), 1), "axscale",
-                                 snames, sm, sat) == 0) sm = ""
+            // WP-44 AX-10: the transform words as twoway's syntax binds
+            // them, then its opts_exclusive over them, in one copy.
+            sm = _dash_scale_exclusive(words, kept)
+            if (_dash_so_resolve(kept, J(1, cols(kept), 1), "axscale",
+                                 snames, sm2, sat) != 0) sm = sm2
         }
         // Columns 11-12 (WP-30 P1.21a): a line's positions, stripped, and
         // "1" when there are none to check.  twoway's
@@ -14681,6 +14689,64 @@ string scalar _dash_rep_reduce(string scalar opts, string scalar ptype)
         out = out + " " + toks[i]
     }
     return(strtrim(out))
+}
+
+// _dash_scale_exclusive(words, kept) -- twoway's refusal of one scale
+// copy's transform words, or "" (WP-44 AX-10; axis_scale_truth.json
+// ax10_*, ax9_no_forms).  _gs_parse_and_log_axoptions.ado reads the copy
+// with -syntax- (NOLOG LOG NOATANH ATANH NOLOGIT LOGIT NOLOG1m LOG1m),
+// then runs opts_exclusive over the eight in that order.  As -syntax-
+// binds them: a no form given again sets the same local (nolog nolog is
+// drawn); a second log binds LOG1m, whose shortest form is log (log log is
+// "log or log1m"); any other word given again is left for
+// _dash_so_resolve ("option logit not allowed").  kept is words less the
+// no forms given again, a second log written log1m.  Two or more names
+// give opts_exclusive's line: "only one of options a or b is allowed",
+// "only one of options a, b, or c is allowed".
+string scalar _dash_scale_exclusive(string rowvector words,
+                                    string rowvector kept)
+{
+    string rowvector order, seen, got
+    string scalar    nm, msg
+    real scalar      i, n
+
+    order = ("nolog", "log", "noatanh", "atanh", "nologit", "logit",
+             "nolog1m", "log1m")
+    kept = J(1, 0, "")
+    seen = J(1, 0, "")
+    for (i = 1; i <= cols(words); i++) {
+        nm = (strpos(words[i], "(") ? "" :
+              _dash_so_canon(strtrim(words[i]), "axscale"))
+        if (!anyof(order, nm)) {
+            kept = kept, words[i]
+            continue
+        }
+        if (anyof(seen, nm)) {
+            if (substr(nm, 1, 2) == "no") continue
+            if (nm == "log") {
+                if (!anyof(seen, "log1m")) {
+                    seen = seen, "log1m"
+                    kept = kept, "log1m"
+                }
+                continue
+            }
+            kept = kept, words[i]
+            continue
+        }
+        seen = seen, nm
+        kept = kept, words[i]
+    }
+    got = J(1, 0, "")
+    for (i = 1; i <= cols(order); i++) {
+        if (anyof(seen, order[i])) got = got, order[i]
+    }
+    n = cols(got)
+    if (n < 2) return("")
+    if (n == 2) return("only one of options " + got[1] + " or " + got[2] +
+                       " is allowed")
+    msg = "only one of options "
+    for (i = 1; i < n; i++) msg = msg + got[i] + ", "
+    return(msg + "or " + got[n] + " is allowed")
 }
 
 // _dash_scale_untransformable(v) -- 1 when the last of twoway's eight
