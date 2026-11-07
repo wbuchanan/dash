@@ -113,7 +113,7 @@ dash is a Stata package: `dash.ado` and `dash_parse.mata` parse twoway syntax in
 - **44-04 Date axes: numbers where twoway labels numbers, %tC, dates with blanks** [yellow] -- items: AX-18, DG-6, DG-4; batch 44.1.
 - **44-05 Lone second-axis gridlines; non-numbers in label lists refused** [green] -- items: MS-12, DG-9; batch 44.1.
 - **44-02 Label and tick sub-options: custom, grid styles, style words** [yellow] -- items: AX-5, AX-6, AX-8, AX-14, AX-15; batch 44.2.
-- **44-03 Scales: off fill, transforms, contradictions, log edges, empty minmax** [red] -- items: AX-7, AX-9, AX-10, AX-11, MS-14, DG-13; batch 44.3.
+- **44-03 Scales: off fill, transform words refused, contradictions, log edges, empty minmax** [red] -- items: AX-7, AX-9, AX-10, AX-11, MS-14, DG-13; batch 44.3.
 
 ### WP-45 · Schemes, styles and figure geometry
 

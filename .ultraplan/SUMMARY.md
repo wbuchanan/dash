@@ -43,7 +43,7 @@ Every shortcoming the drop-in audit of 19 October 2026 found is closed, so a Sta
 - [Red] 43-02 Legend ring(0) bplacement, holes, all/draw/nodraw
 - [Red] 43-04 Legend keys: size, shapes, merging, horizontal names
 - [Red] 43-07 Partial SMCL markup drawn as styled runs
-- [Red] 44-03 Scales: off fill, transforms, contradictions, log edges, empty minmax
+- [Red] 44-03 Scales: off fill, transform words refused, contradictions, log edges, empty minmax
 - [Red] 45-04 Figure proportions, size units, graph-region outline and margin, inner box
 - [Red] 47-03 Outline, marker and dot alignment
 - [Red] 47-05 Noted options twoway draws, drawn
