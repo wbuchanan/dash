@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'AX-7': "yscale(off fill) is drawn as off; twoway keeps the axis's space",
     'AX-9': 'xscale/yscale atanh, logit, log1m and style() are named and drawn linear',
     'AX-10': 'Contradictory transforms in one copy (log nolog, atanh log) are accepted; twoway refuses r(198)',
     'AX-11': "A log axis over data with non-positive values is ticked over positive values only (twoway's whole drawing is degenerate there)",

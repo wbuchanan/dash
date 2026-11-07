@@ -594,6 +594,7 @@ FUNCTIONS = {
  '_dash_stata_or_model': 'test/test_stata_ticks.py::TestTheRangeRule::test_mismatch_falls_to_model',
  '_dash_stata_oracle': 'test/test_stata_ticks.py::TestTheOracle::test_command_order_and_restore',
  '_dash_stata_oracle_kept': 'test/test_ax15_residual.py::TestTheOracle::test_the_kept_answer',
+ '_dash_clear_off_fill': 'test/test_axis_scales_p9.py::TestOffFill::test_space_kept',
  '_dash_stata_num': 'test/test_stata_ticks.py::TestTheRangeRule::test_a_bad_table_is_none',
  '_dash_stata_unit_of': 'test/test_stata_ticks.py::TestTheRequests::test_counts_units_and_markers',
  '_dash_stata_tick_table': 'test/test_stata_ticks.py::TestTheRangeRule::test_a_bad_table_is_none',

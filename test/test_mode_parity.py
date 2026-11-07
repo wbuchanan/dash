@@ -3373,6 +3373,9 @@ DATE_CORPUS = [
     # %tC milliseconds: the corpus frame holds no 1972-or-later time).
     _case("tC ticks", [plot_for("scatter", yvar="mpg", xvar="price")],
           {"formats": {"price": "%tC"}}),
+    # WP-44 44-03: scales.
+    _case("yscale off fill (WP-44 44-03)", [_sc()],
+          go={"yscale": "off fill"}),
 ]
 
 #: The entries a report is the point of, with the report each must make.

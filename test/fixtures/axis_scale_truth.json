@@ -1,0 +1,1712 @@
+{
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "1c0cf09bcedddaac6bb5c60b10b77450be2ba59c",
+  "extracted": " 7 Nov 2026 08:50:27",
+  "scheme": "stcolor",
+  "source": "scripts/extract_axis_scale_truth.do",
+  "stata_version": "19.5"
+ },
+ "graphs": {
+  "ax10_across": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(log) yscale(nolog)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax10_atanh_log": {
+   "command": "scatter mpg weight, yscale(atanh log)",
+   "data": "auto",
+   "error": "only one of options log or atanh is allowed",
+   "notes": [],
+   "prep": "",
+   "rc": 198
+  },
+  "ax10_log_log": {
+   "command": "scatter mpg weight, yscale(log log)",
+   "data": "auto",
+   "error": "only one of options log or log1m is allowed",
+   "notes": [],
+   "prep": "",
+   "rc": 198
+  },
+  "ax10_log_nolog": {
+   "command": "scatter mpg weight, yscale(log nolog)",
+   "data": "auto",
+   "error": "only one of options nolog or log is allowed",
+   "notes": [],
+   "prep": "",
+   "rc": 198
+  },
+  "ax10_logit_logit": {
+   "command": "scatter mpg weight, yscale(logit logit)",
+   "data": "auto",
+   "error": "option logit not allowed",
+   "notes": [],
+   "prep": "",
+   "rc": 198
+  },
+  "ax10_noatanh_atanh": {
+   "command": "scatter mpg weight, yscale(noatanh atanh)",
+   "data": "auto",
+   "error": "only one of options noatanh or atanh is allowed",
+   "notes": [],
+   "prep": "",
+   "rc": 198
+  },
+  "ax10_nolog_nolog": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(nolog nolog)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax10_three": {
+   "command": "scatter mpg weight, yscale(log logit atanh)",
+   "data": "auto",
+   "error": "only one of options log, atanh, or logit is allowed",
+   "notes": [],
+   "prep": "",
+   "rc": 198
+  },
+  "ax10_x_log_nolog": {
+   "command": "scatter mpg weight, xscale(nolog log)",
+   "data": "auto",
+   "error": "only one of options nolog or log is allowed",
+   "notes": [],
+   "prep": "",
+   "rc": 198
+  },
+  "ax11_c20": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter z weight, yscale(log)",
+   "data": "auto",
+   "hgrid": 2,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "generate z = mpg - 25",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "z"
+   ],
+   "y_pos": [
+    [
+     "10",
+     226.41
+    ],
+    [
+     "20",
+     224.05
+    ]
+   ]
+  },
+  "ax11_positive": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(log)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1501.49
+    ],
+    [
+     "30",
+     779.91
+    ],
+    [
+     "40",
+     268.09
+    ]
+   ]
+  },
+  "ax11_with_n": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter z weight, yscale(log) ylabel(#5)",
+   "data": "auto",
+   "hgrid": 3,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 561.77,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "generate z = mpg - 25",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "0",
+    "10",
+    "20",
+    "z"
+   ],
+   "y_pos": [
+    [
+     "0",
+     2733.02
+    ],
+    [
+     "10",
+     226.41
+    ],
+    [
+     "20",
+     224.05
+    ]
+   ]
+  },
+  "ax7_fill": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(fill)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax7_off": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(off)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 113.4,
+    "right": 5286.599999999999,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [],
+   "y_pos": []
+  },
+  "ax7_off_fill": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(off fill)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [],
+   "y_pos": []
+  },
+  "ax7_plain": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight,",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax7_x_off": {
+   "bottom_line": [],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, xscale(off)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 3126.6,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     3094.82
+    ],
+    [
+     "20",
+     2168.72
+    ],
+    [
+     "30",
+     1242.79
+    ],
+    [
+     "40",
+     316.69
+    ]
+   ]
+  },
+  "ax7_x_off_fill": {
+   "bottom_line": [],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, xscale(off fill)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax9_alt_atanh": {
+   "command": "scatter mpg weight, yscale(alt atanh)",
+   "data": "auto",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "",
+   "rc": 199
+  },
+  "ax9_atanh_then_no": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(atanh) yscale(noatanh)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax9_atanh_x": {
+   "command": "scatter mpg weight, xscale(atanh)",
+   "data": "auto",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "",
+   "rc": 199
+  },
+  "ax9_atanh_y": {
+   "command": "scatter mpg weight, yscale(atanh)",
+   "data": "auto",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "",
+   "rc": 199
+  },
+  "ax9_axis2": {
+   "command": "twoway (scatter mpg weight) (scatter price weight, yaxis(2)), yscale(axis(2) logit)",
+   "data": "auto",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "",
+   "rc": 199
+  },
+  "ax9_log1_y": {
+   "command": "scatter mpg weight, yscale(log1)",
+   "data": "auto",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "",
+   "rc": 199
+  },
+  "ax9_log1m_then_no": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(log1m) yscale(nolog1m)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax9_log1m_y": {
+   "command": "scatter mpg weight, yscale(log1m)",
+   "data": "auto",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "",
+   "rc": 199
+  },
+  "ax9_log_then_logit": {
+   "command": "scatter mpg weight, yscale(log) yscale(logit)",
+   "data": "auto",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "",
+   "rc": 199
+  },
+  "ax9_logit_then_alt": {
+   "command": "scatter mpg weight, yscale(logit) yscale(alt)",
+   "data": "auto",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "",
+   "rc": 199
+  },
+  "ax9_logit_then_log": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(logit) yscale(log)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1501.49
+    ],
+    [
+     "30",
+     779.91
+    ],
+    [
+     "40",
+     268.09
+    ]
+   ]
+  },
+  "ax9_logit_then_nolog": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(logit) yscale(nolog)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax9_logit_y": {
+   "command": "scatter mpg weight, yscale(logit)",
+   "data": "auto",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "",
+   "rc": 199
+  },
+  "ax9_no_forms": {
+   "command": "scatter mpg weight, yscale(noatanh nologit nolog1m)",
+   "data": "auto",
+   "error": "only one of options noatanh, nologit, or nolog1m is allowed",
+   "notes": [],
+   "prep": "",
+   "rc": 198
+  },
+  "ax9_noatanh": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(noatanh)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax9_nolog1m_x": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, xscale(nolog1m)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax9_style_bogus": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(style(bogus_style))",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [
+    "(note:  named style bogus_style not found in class axisstyle, default attributes used)"
+   ],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax9_style_nogrid": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, yscale(style(vertical_nogrid))",
+   "data": "auto",
+   "hgrid": 0,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax9_style_noline": {
+   "bottom_line": [],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, xscale(style(horizontal_noline))",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [
+    "(note:  yesno draw_major__nl_hgrid not found in scheme, default attributes used)",
+    "(note:  yesno not found in scheme, default attributes used)",
+    "(note:  yesno draw_minor__nl_hgrid not found in scheme, default attributes used)",
+    "(note:  yesno not found in scheme, default attributes used)",
+    "(note:  yesno draw_majornl__nl_hgrid not found in scheme, default attributes used)",
+    "(note:  yesno not found in scheme, default attributes used)",
+    "(note:  yesno draw_minornl__nl_hgrid not found in scheme, default attributes used)",
+    "(note:  yesno not found in scheme, default attributes used)"
+   ],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 0,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ax9_t_atanh": {
+   "command": "tsline close, tscale(atanh)",
+   "data": "sp500",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "tsset date",
+   "rc": 199
+  },
+  "ax9_z_colorvar": {
+   "command": "scatter mpg weight, colorvar(price) zscale(logit)",
+   "data": "auto",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "",
+   "rc": 199
+  },
+  "ax9_z_contour": {
+   "command": "twoway contour depth northing easting, zscale(atanh)",
+   "data": "sandstone",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "",
+   "rc": 199
+  },
+  "dg11_one_signed": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter y x,",
+   "data": "-",
+   "hgrid": 5,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 942.13,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "_as_dg11 0 8e307",
+   "rc": 0,
+   "vgrid": 6,
+   "x": [
+    "1",
+    "1.2",
+    "1.4",
+    "1.6",
+    "1.8",
+    "2",
+    "x"
+   ],
+   "y": [
+    "0",
+    "2.00e+307",
+    "4.00e+307",
+    "6.00e+307",
+    "8.00e+307",
+    "y"
+   ],
+   "y_pos": [
+    [
+     "0",
+     2734.71
+    ],
+    [
+     "2.00e+307",
+     2107.13
+    ],
+    [
+     "4.00e+307",
+     1479.38
+    ],
+    [
+     "6.00e+307",
+     851.8
+    ],
+    [
+     "8.00e+307",
+     224.05
+    ]
+   ]
+  },
+  "dg11_pm4_4e307": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter y x,",
+   "data": "-",
+   "hgrid": 5,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 981.11,
+    "right": 5286.599999999999,
+    "top": 113.4
+   },
+   "prep": "_as_dg11 4.4e307 -4.4e307",
+   "rc": 0,
+   "vgrid": 6,
+   "x": [
+    "1",
+    "1.2",
+    "1.4",
+    "1.6",
+    "1.8",
+    "2",
+    "x"
+   ],
+   "y": [
+    "-4.00e+307",
+    "-2.00e+307",
+    "0",
+    "2.00e+307",
+    "4.00e+307",
+    "y"
+   ],
+   "y_pos": [
+    [
+     "-4.00e+307",
+     2620.64
+    ],
+    [
+     "-2.00e+307",
+     2050.09
+    ],
+    [
+     "0",
+     1479.38
+    ],
+    [
+     "2.00e+307",
+     908.84
+    ],
+    [
+     "4.00e+307",
+     338.29
+    ]
+   ]
+  },
+  "dg11_pm4_5e307": {
+   "command": "scatter y x,",
+   "data": "-",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "_as_dg11 4.5e307 -4.5e307",
+   "rc": 199
+  },
+  "dg11_pm8e307": {
+   "command": "scatter y x,",
+   "data": "-",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "_as_dg11 8e307 -8e307",
+   "rc": 199
+  },
+  "dg11_two_plots": {
+   "command": "twoway (scatter y1 x) (scatter y2 x),",
+   "data": "-",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "_as_dg11 8e307 -8e307",
+   "rc": 199
+  },
+  "dg11_x_axis": {
+   "command": "scatter x y,",
+   "data": "-",
+   "error": "unrecognized command",
+   "notes": [],
+   "prep": "_as_dg11 8e307 -8e307",
+   "rc": 199
+  },
+  "dg13_log_empty": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight if price < 0, xlabel(#5) ylabel(minmax) yscale(log)",
+   "data": "auto",
+   "hgrid": 1,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 853.54,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 0,
+   "x": [
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "1.e+300",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "1.e+300",
+     2734.71
+    ]
+   ]
+  },
+  "dg13_s07": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight if price < 0, xlabel(#5) ylabel(minmax)",
+   "data": "auto",
+   "hgrid": 2,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 853.54,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 0,
+   "x": [
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "1.e+300",
+    "-1.e+300",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "1.e+300",
+     2734.71
+    ],
+    [
+     "-1.e+300",
+     224.05
+    ]
+   ]
+  },
+  "ms14_b04": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter mpg weight, xscale(range(1000)) xscale(log)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 522.79,
+    "right": 5286.6,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y_pos": [
+    [
+     "10",
+     2734.71
+    ],
+    [
+     "20",
+     1924.88
+    ],
+    [
+     "30",
+     1115.05
+    ],
+    [
+     "40",
+     305.05
+    ]
+   ]
+  },
+  "ms14_b2": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter weight mpg, yscale(log range(1000 20000))",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 684.62,
+    "right": 5286.599999999999,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "Weight (lbs.)"
+   ],
+   "y_pos": [
+    [
+     "2,000",
+     2153.87
+    ],
+    [
+     "3,000",
+     1814.01
+    ],
+    [
+     "4,000",
+     1572.87
+    ],
+    [
+     "5,000",
+     1385.89
+    ]
+   ]
+  },
+  "ms14_with_n": {
+   "bottom_line": [
+    "#000000"
+   ],
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0,
+    "x": 0.0,
+    "y": 0.0
+   },
+   "command": "scatter weight mpg, yscale(log range(1000 20000)) ylabel(#5)",
+   "data": "auto",
+   "hgrid": 4,
+   "left_line": [
+    "#000000"
+   ],
+   "notes": [],
+   "plotregion": {
+    "bottom": 2766.6600000000003,
+    "left": 748.41,
+    "right": 5286.599999999999,
+    "top": 113.4
+   },
+   "prep": "",
+   "rc": 0,
+   "vgrid": 4,
+   "x": [
+    "0",
+    "10",
+    "20",
+    "30",
+    "40",
+    "Mileage (mpg)"
+   ],
+   "y": [
+    "0",
+    "5,000",
+    "10,000",
+    "15,000",
+    "20,000",
+    "Weight (lbs.)"
+   ],
+   "y_pos": [
+    [
+     "0",
+     4735.41
+    ],
+    [
+     "5,000",
+     575.56
+    ],
+    [
+     "10,000",
+     399.89
+    ],
+    [
+     "15,000",
+     297.12
+    ],
+    [
+     "20,000",
+     224.05
+    ]
+   ]
+  }
+ }
+}

@@ -5460,8 +5460,10 @@ line, ticks, labels and title go; the grid stays), {cmd:noline} and
 size less {cmd:twoway}'s default 2 points; {cmd:noextend} runs the axis
 line from the first tick to the last; {cmd:lstyle(}{it:linestyle}{cmd:)}
 takes a line style's colour, width and pattern ({cmd:lcolor()},
-{cmd:lwidth()} and {cmd:lpattern()} win); {cmd:extend}, {cmd:fextend} and
-{cmd:fill} draw the plain axis, as in {cmd:twoway}; a second
+{cmd:lwidth()} and {cmd:lpattern()} win); {cmd:extend} and {cmd:fextend}
+draw the plain axis, as in {cmd:twoway}, and so does {cmd:fill} alone;
+{cmd:off fill} keeps the axis's space with nothing of it drawn, so the plot
+region keeps the plain graph's edge, as in {cmd:twoway}; a second
 {cmd:yscale(alt)} toggles the axis back, as in {cmd:twoway}.  The default
 gap between an axis's labels and its title is the scheme's
 {cmd:gsize axis_title_gap} ({cmd:minuscule}, 1 point, under {cmd:s2color});

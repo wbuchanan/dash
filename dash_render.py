@@ -47237,7 +47237,13 @@ def _dash_apply_scale_look(fig, axis_obj, look, option, number=1,
     if not look:
         return
     if look.get("off") and not by_graph:
-        axis_obj.visible = False
+        if look.get("fill"):
+            # WP-44 AX-7: off fill keeps the axis's space (twoway's plot
+            # region keeps the plain graph's edge, axis_scale_truth
+            # ax7_off_fill); nothing of it paints (_dash_clear_off_fill).
+            axis_obj._dash_off_fill = True
+        else:
+            axis_obj.visible = False
     v = look.get("lstyle")
     if v is not None:
         # WP-31 D7: a line style's colour, width and pattern (measured:
@@ -52893,6 +52899,29 @@ def _dash_empty_ticks(e):
     e["base"] = fixed
 
 
+#: A text colour that paints nothing but keeps its text laid out: BokehJS
+#: measures an axis's labels and title only while their colour is set and
+#: their alpha is not 0 (Text.doit), so an alpha of 0 would drop the space.
+_DASH_CLEAR_TEXT = "#00000000"
+
+
+def _dash_clear_off_fill(fig):
+    """Paint nothing of an axis xscale(off fill)/yscale(off fill) keeps
+    (WP-44 AX-7, ``_dash_off_fill`` from :func:`_dash_apply_scale_look`):
+    no line, no ticks, its labels and title in a clear colour, so the axis
+    keeps its laid-out space as twoway's does.  Run when the figure is
+    finished, after every label, tick and title colour was set."""
+    for ax in list(fig.left) + list(fig.right) + list(fig.below) + \
+            list(fig.above):
+        if not getattr(ax, "_dash_off_fill", False):
+            continue
+        ax.axis_line_color = None
+        ax.major_tick_line_color = None
+        ax.minor_tick_line_color = None
+        ax.major_label_text_color = _DASH_CLEAR_TEXT
+        ax.axis_label_text_color = _DASH_CLEAR_TEXT
+
+
 def _dash_finish_count_ticks(fig, refinish=False, skip=()):
     """Put twoway's ``#N`` ticks on every axis that asked for them, then
     give every axis its extent.
@@ -52921,6 +52950,7 @@ def _dash_finish_count_ticks(fig, refinish=False, skip=()):
     letters a by() graph shares: their ticks and range are left to
     :func:`_dash_common_count_ticks`.
     """
+    _dash_clear_off_fill(fig)
     entries = _dash_count_axes(fig, every_axis=True, refinish=refinish)
     for e in entries:
         if e["letter"] in (skip or ()):
@@ -65876,11 +65906,15 @@ def _dash_scale_look(raw):
     re-enables the line in twoway), ``line_on``, the last ``lcolor()``,
     ``lwidth()``, ``lpattern()`` and ``titlegap()`` argument (or None) and
     ``alternate``.  ``off`` beside ``on`` in one copy is off, as twoway
-    draws it.  It never notes and never reads range(), so reading the look
-    again prints no second note."""
+    draws it.  ``fill`` is whether the last of ``fillspace`` and
+    ``nofillspace`` in the copy is ``fillspace`` (WP-44 AX-7).  It never
+    notes and never reads range(), so reading the look again prints no
+    second note."""
     toks = _dash_by_tokens(str(raw or "").strip())
     names = [_dash_scale_name(t) for t in toks]
+    _fills = [n for n in names if n in ("fillspace", "nofillspace")]
     out = {"off": "off" in names,
+           "fill": bool(_fills) and _fills[-1] == "fillspace",
            "line_off": "noline" in names and "lcolor" not in names,
            "line_on": "line" in names,
            "lcolor": None, "lwidth": None, "lpattern": None,
@@ -77844,7 +77878,7 @@ class ServerAppBuilder:
                       # WP-34 DG-3: numlist's relative tolerance.
                       "_DASH_NUMLIST_TOL",
                       # WP-32: the empty axis's extent.
-                      "_DASH_EMPTY_SCALE",
+                      "_DASH_EMPTY_SCALE", "_DASH_CLEAR_TEXT",
                       # WP-32: the served stale cue's texts.
                       "_DASH_STALE_CUE_TEXT", "_DASH_STALE_SUFFIX",
                       "_DASH_STALE_SERVED_HTML",
@@ -78276,7 +78310,8 @@ class ServerAppBuilder:
                          "_dash_assign_axis_ranges",
                          # twoway's #N ticks (BUGS.md, S3).
                          "_dash_natscale_ticks", "_dash_count_ticker",
-                         "_dash_count_of", "_dash_finish_count_ticks",
+                         "_dash_count_of",
+                         "_dash_clear_off_fill", "_dash_finish_count_ticks",
                          # WP-30 P1.3a: default axes and the re-finish.
                          "_dash_default_ticker", "_dash_plot_margin",
                          "_dash_graph_margin",

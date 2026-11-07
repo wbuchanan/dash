@@ -1016,6 +1016,7 @@ and now matches Stata.
 
 ### Fixed in WP-44
 
+- xscale(off fill) and yscale(off fill) keep the axis's space with nothing of it drawn, as twoway does, so the plot region keeps the plain graph's edge; dash drew them as off and took the space (WP-44, AX-7)
 - An axis format() of %21x, %16H, %8H, %16L, %8L, their left-aligned forms or a string format such as %12s writes each label as twoway writes it -- format(%21x) writes 10 as +1.4000000000000X+003, %16H as 4024000000000000, %12s writes 33.3333333 as 33.333333 (%10.0g) -- where dash wrote %9.0g with a note (WP-44, AX-15)
 - xtick() beside xmtick() or xmlabel() draws its positions as long as the labelled ticks and the minor ones half as long, as twoway draws them -- xtick(2500 4500) xmtick(3500) draws 3500 at half the length -- where dash drew all of them at the major length (WP-44, AX-15)
 - style() on axis label and tick options reads its ticksetstyle file as twoway does -- ylabel(, style(major_vert_nolabel)) draws no labels, style(major_vert_notick) no ticks -- where it was named in a note (WP-44, AX-8)

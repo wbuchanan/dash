@@ -879,6 +879,124 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w44_run' {
 }
 * ==== end S02 ====
 
+// ----------------------------------------------------------------
+// S03 helpers (WP-44 section 44-03, scales).  _q4403_reg draws one
+// command in twoway (an SVG) and in dash (the saved page and the served
+// app, through _q4401_docs) and sets q4403_tw, q4403_s and q4403_v to
+// what <case> reads of each: yleft/xbottom the plot region's edge in
+// twoway and, in dash, whether the axis is "kept" (laid out, painting
+// nothing), "hidden" or "plain"; yticks the y axis's tick values.
+// ----------------------------------------------------------------
+python:
+def _q4403_num(s):
+    try:
+        return float(str(s).replace(",", ""))
+    except ValueError:
+        return None
+
+
+def _q4403_tw(case, svg):
+    import svg_truth
+    doc = svg_truth.svg_document(svg)
+    pr = doc["plotregion"]
+    if case == "yleft":
+        return "%.1f" % pr["left"]
+    if case == "xbottom":
+        return "%.1f" % pr["bottom"]
+    if case == "yticks":
+        vals = [_q4403_num(t["text"]) for t in doc["texts"]
+                if t["x"] is not None and t["x"] < pr["left"]]
+        return " ".join("%g" % v for v in sorted(v for v in vals
+                                                   if v is not None))
+    return "?"
+
+
+def _q4403_dash(figs, case):
+    from bokeh.models import Axis
+    f = [g for g in figs if getattr(g, "left", None) is not None][0]
+    if case in ("yleft", "xbottom"):
+        side = f.left if case == "yleft" else f.below
+        ax = [m for m in side if isinstance(m, Axis)][0]
+        if ax.visible is False:
+            return "hidden"
+        return ("kept" if str(ax.major_label_text_color) == "#00000000"
+                and ax.axis_line_color is None else "plain")
+    if case == "yticks":
+        ax = [m for m in f.left if isinstance(m, Axis)][0]
+        t = list(getattr(ax.ticker, "ticks", None) or [])
+        return " ".join("%g" % v for v in sorted(t))
+    return "?"
+
+
+def _q4403_check(sp, dp, app, svg, case):
+    import os
+    import sys
+    from sfi import Macro
+    repo = os.path.abspath(Macro.getGlobal("q4401_repo"))
+    for d in (repo, os.path.join(repo, "scripts")):
+        if d not in sys.path:
+            sys.path.insert(0, d)
+    a, b, _na, _nb = _q4401_docs(sp, dp, app)
+    Macro.setGlobal("q4403_tw", _q4403_tw(case, svg))
+    Macro.setGlobal("q4403_s", _q4403_dash(a, case))
+    Macro.setGlobal("q4403_v", _q4403_dash(b, case))
+end
+
+capture program drop _q4403_reg
+program define _q4403_reg
+    // _q4403_reg <dir> <k> <case> <prep|-> <command with options...>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken case 0 : 0
+    gettoken prep 0 : 0
+    sysuse auto, clear
+    if `"`prep'"' != "-" {
+        `prep'
+    }
+    capture graph drop q4403t
+    quietly twoway `0' name(q4403t, replace)
+    capture erase "`dir'/t`k'.svg"
+    quietly graph export "`dir'/t`k'.svg", replace
+    graph drop q4403t
+    dash clear
+    quietly dash `0' name(zq4403`k')
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _q4403_m; _q4403_m._q4403_check("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg", "`case'")
+end
+
+* ==== S03 AX-7: off fill keeps the space ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w44_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03 "`w44_work'/s03"
+    capture mkdir "`q03'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4403-1: yscale(off fill) and xscale(off fill) keep the axis's
+    // space, as twoway keeps the plain graph's plot-region edge, with
+    // nothing of the axis painted, saved and served; off alone hides it.
+    foreach L in y x {
+        local case = cond("`L'" == "y", "yleft", "xbottom")
+        _q4403_reg "`q03'" `L'1 `case' - scatter mpg weight,
+        local plain "${q4403_tw}"
+        _q4403_reg "`q03'" `L'2 `case' - scatter mpg weight, `L'scale(off fill)
+        _w44_expect Q4403-1 `"("${q4403_tw}" == "`plain'")"' `"`L'scale(off fill): twoway's edge ${q4403_tw}, the plain graph's `plain'"'
+        _w44_expect Q4403-1 `"("${q4403_s}" == "kept")"' `"`L'scale(off fill): saved ${q4403_s}"'
+        _w44_expect Q4403-1 `"("${q4403_v}" == "kept")"' `"`L'scale(off fill): served ${q4403_v}"'
+        _q4403_reg "`q03'" `L'3 `case' - scatter mpg weight, `L'scale(off)
+        _w44_expect Q4403-1 `"("${q4403_tw}" != "`plain'")"' `"`L'scale(off): twoway's edge ${q4403_tw} moves"'
+        _w44_expect Q4403-1 `"("${q4403_s}" == "hidden" & "${q4403_v}" == "hidden")"' `"`L'scale(off): saved ${q4403_s}, served ${q4403_v}"'
+    }
+    _w44_done Q4403-1 "off fill keeps the axis's space; off alone takes it"
+
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // S04 helpers (WP-44 44-04).  _q4404_reg <dir> <k> <key> <axis> <dash
 // command...>: registers the dash graph, builds it saved and served, and
 // writes each mode's <axis> axis as "<axis type>|<label texts>"

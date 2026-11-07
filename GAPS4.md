@@ -487,7 +487,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-13 Tracked:** Closed in WP-44, BUGS.md "Axis title textbox sub-options other than size/color are named: orientation() (Bokeh axis_label_orientation never set), justification(), placement(), box, margin() ...", commit c139429.
 - **AX-5 Tracked:** Documented in WP-44, BUGS.md "custom on xlabel()/ylabel() is ignored: its styles reach every label and the grid; custom with no list is accepted (twoway r(198))", commit e8c98b5.
 - **AX-6 Tracked:** Closed in WP-44, BUGS.md "Gridlines of xtick()/xmtick() are drawn in the minor style (dotted); twoway uses the major gridstyle", commit a122c3c.
-- **AX-7 Tracked:** Open (WP-44 section 44-03).
+- **AX-7 Tracked:** Closed in WP-44, BUGS.md "yscale(off fill) is drawn as off; twoway keeps the axis's space", commit pending.
 - **AX-8 Tracked:** Closed in WP-44, BUGS.md "Label sub-options twoway draws are named: labelminlen(), noshowlabels/showlabels, nopgmgrid/pgmgrid, style(); showlabels nolabels hides labels", commit 7567150.
 - **AX-9 Tracked:** Open (WP-44 section 44-03).
 - **AX-10 Tracked:** Open (WP-44 section 44-03).
