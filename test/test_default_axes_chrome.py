@@ -149,3 +149,44 @@ class TestTheHundredPanelBudget:
         print("hundred panels (default axes): shared %s s" % secs)
         assert secs is not None and secs <= _BASE_SETTLE_S + 1.0, secs
         assert {(r[1], r[2]) for r in after} != ys
+
+
+_FRAME_LEFT_JS = r"""
+(() => {
+  const out = [];
+  const seen = new Set();
+  const walk = (v) => {
+    if (!v || seen.has(v)) return;
+    seen.add(v);
+    if (v.frame && v.frame.bbox && v.model && v.model.renderers) {
+      out.push(v.frame.bbox.left);
+    }
+    for (const k of ["child_views", "renderer_views"]) {
+      const c = v[k];
+      if (!c) continue;
+      if (typeof c.values === "function") for (const x of c.values()) walk(x);
+      else if (Array.isArray(c)) c.forEach(walk);
+    }
+  };
+  for (const v of Object.values(Bokeh.index)) walk(v);
+  return JSON.stringify(out);
+})()
+"""
+
+
+class TestOffFill:
+    def test_painted(self):
+        """WP-44 AX-7: in BokehJS, yscale(off fill) keeps the plain axis's
+        space -- its frame starts where the plain graph's does, the clear
+        labels and title still measured -- and yscale(off) gives it up."""
+        import test_default_axes as tda
+        left = {}
+        for case, go in (("plain", {}), ("fill", {"yscale": "off fill"}),
+                         ("off", {"yscale": "off"})):
+            out = _page(tda._spec(tda._SC, go))
+            with range_probe.RangeProbe(out, timeout=120) as p:
+                p.wait_settled(10)
+                left[case] = json.loads(p._eval(_FRAME_LEFT_JS))[0]
+                assert p.js_errors() == []
+        assert abs(left["fill"] - left["plain"]) < 1.0, left
+        assert left["off"] < left["plain"] - 10, left

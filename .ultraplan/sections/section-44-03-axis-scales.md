@@ -2,6 +2,14 @@
 
 > Part of: WP-44 (Axes, audit package 9) · Items: AX-7, AX-9, AX-10, AX-11, MS-14, DG-13 · Risk: red · Batch: 44.3 · Depends on: 44-02 · Blocks: none (WE) · Tasks: 13, 6 commits · Case-id prefix: Q4403
 
+**Executed 07nov2026 on s3-bugs** (commits 55726b5 AX-7, 852a502 AX-9, 67405fd AX-10, fc8eb54 AX-11, 5b0d7e7 MS-14, f391788 DG-13; fixture test/fixtures/axis_scale_truth.json). Where the work departs from the text below:
+- D-44-03.a: an alpha of 0 drops the space (BokehJS measures text only while Text.doit, color set and alpha not 0), so an off fill axis's labels and title take the clear colour `#00000000`, set by `_dash_clear_off_fill` at the start of `_dash_finish_count_ticks`, after every other label colour.
+- AX-9: one case, Q4403-2, holds every transform-word probe; Q4403-3 and Q4403-4 are not used. The measured across-copy rule is the last transform word of the merged value (a later `log` clears `logit`). The refusal runs after the draw-time checks, so `-syntax-`'s own refusals come first.
+- AX-10: twoway's `-syntax-` binds a no form given twice as one and a second `log` as `log1m` (measured `ax10_*`), which `_dash_scale_exclusive` copies. It runs in `_dash_axreq_add`, not `_dash_rep_reduce`.
+- AX-11: under `ylabel(#5)` twoway also writes a 0 label off its scale; a log axis cannot place it, so it is part of the documented picture (Differences item 20).
+- MS-14 passed at the 44.3 base and failed at 090d928: closed as a pin, no code.
+- DG-13: the empty minmax labels are set when the page is built (a graph empty then stays empty); a graph moved to no row draws no minmax label in either mode, filed as its own open BUGS.md entry (S3). The span refusal is checked when the page is built, so Q4403-12's rows build a page.
+
 ## Overview
 
 **What is wrong today.**

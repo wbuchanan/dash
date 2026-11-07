@@ -487,17 +487,17 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-13 Tracked:** Closed in WP-44, BUGS.md "Axis title textbox sub-options other than size/color are named: orientation() (Bokeh axis_label_orientation never set), justification(), placement(), box, margin() ...", commit c139429.
 - **AX-5 Tracked:** Documented in WP-44, BUGS.md "custom on xlabel()/ylabel() is ignored: its styles reach every label and the grid; custom with no list is accepted (twoway r(198))", commit e8c98b5.
 - **AX-6 Tracked:** Closed in WP-44, BUGS.md "Gridlines of xtick()/xmtick() are drawn in the minor style (dotted); twoway uses the major gridstyle", commit a122c3c.
-- **AX-7 Tracked:** Closed in WP-44, BUGS.md "yscale(off fill) is drawn as off; twoway keeps the axis's space", commit pending.
+- **AX-7 Tracked:** Closed in WP-44, BUGS.md "yscale(off fill) is drawn as off; twoway keeps the axis's space", commit 55726b5.
 - **AX-8 Tracked:** Closed in WP-44, BUGS.md "Label sub-options twoway draws are named: labelminlen(), noshowlabels/showlabels, nopgmgrid/pgmgrid, style(); showlabels nolabels hides labels", commit 7567150.
-- **AX-9 Tracked:** Closed in WP-44, BUGS.md "xscale/yscale atanh, logit, log1m and style() are named and drawn linear", commit pending.
-- **AX-10 Tracked:** Closed in WP-44, BUGS.md "Contradictory transforms in one copy (log nolog, atanh log) are accepted; twoway refuses r(198)", commit pending.
-- **AX-11 Tracked:** Documented in WP-44, BUGS.md "A log axis over data with non-positive values is ticked over positive values only (twoway's whole drawing is degenerate there)", commit pending.
+- **AX-9 Tracked:** Closed in WP-44, BUGS.md "xscale/yscale atanh, logit, log1m and style() are named and drawn linear", commit 852a502.
+- **AX-10 Tracked:** Closed in WP-44, BUGS.md "Contradictory transforms in one copy (log nolog, atanh log) are accepted; twoway refuses r(198)", commit 67405fd.
+- **AX-11 Tracked:** Documented in WP-44, BUGS.md "A log axis over data with non-positive values is ticked over positive values only (twoway's whole drawing is degenerate there)", commit fc8eb54.
 - **AX-14 Tracked:** Closed in WP-44, BUGS.md "tstyle(), labstyle(), gstyle(), tlstyle(), glstyle() and nogextend are named", commit fb75e9a.
 - **AX-15 Tracked:** Documented in WP-44, BUGS.md "Documented: xtick and xmtick share one tick length; out-of-range reflines are clipped from the margin; string/hex formats drawn %9.0g, dates past the browser range, margin fixed at build", commit e8c98b5.
 - **AX-18 Tracked:** Closed in WP-44, BUGS.md "A date axis is kept where twoway labels Stata numbers (first layer lfit/qfit/ci/kdensity/lpoly/function/immediates); xscale(log) on a date axis is drawn linear", commit 5432452.
 - **AX-19 Tracked:** Open (WP-44 section 44-03).
 - **AX-20 Tracked:** Open (WP-44 section 44-04).
-- **MS-14 Tracked:** Closed in WP-44, BUGS.md "xscale(range()) on a log axis adds a tick at the range end", commit pending.
+- **MS-14 Tracked:** Closed in WP-44, BUGS.md "xscale(range()) on a log axis adds a tick at the range end", commit 5b0d7e7.
 - **MS-12 Tracked:** Closed in WP-44, BUGS.md "A graph whose only plot is on yaxis(2) is drawn with y gridlines; twoway draws none", commit de3e00e.
 - **MS-11 Tracked:** Closed in WP-44, BUGS.md "twoway's '<first title>...' x title (different x across y-axis groups, or upright plus turned layers) is not drawn", commit ef8dc01.
 - **MS-13 Tracked:** Closed in WP-44, BUGS.md "ytitle(A) ytitle(B, suffix) is joined on one line; twoway draws two lines for axis titles", commit c1a4a93.
@@ -505,7 +505,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **DG-6 Tracked:** Closed in WP-44, BUGS.md "%tC ticks are placed and labelled in leap-second-corrected time (22 s off in 2001)", commit 26a1f1a.
 - **DG-4 Tracked:** Closed in WP-44, BUGS.md "Parenthesised dates holding blanks ((1 jan 2001)) are refused in tlabel(), tline() and tscale(range())", commit aa829fa.
 - **DG-9 Tracked:** Closed in WP-44, BUGS.md "A non-number in a label list (.a, a bare word) is noted and drawn; twoway refuses 'invalid label specifier'", commit fd34f03.
-- **DG-13 Tracked:** Closed in WP-44, BUGS.md "ylabel(minmax) on an empty scale draws Bokeh's default ticks; data spanning about ±8e307 give an OverflowError traceback (twoway gives r(199))", commit pending.
+- **DG-13 Tracked:** Closed in WP-44, BUGS.md "ylabel(minmax) on an empty scale draws Bokeh's default ticks; data spanning about ±8e307 give an OverflowError traceback (twoway gives r(199))", commit f391788.
 - **PIC-4 Tracked:** Open (WP-45 section 45-01).
 - **PIC-7 Tracked:** Open (WP-45 section 45-01).
 - **ST-1 Tracked:** Open (WP-45 section 45-02).
