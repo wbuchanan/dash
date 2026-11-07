@@ -1722,9 +1722,12 @@ def _du_curve_bad(doc, xcol, ycol, pre, label):
     _p, ys = _du_col(doc, ycol)
     if not _du_same(ys, _du_nums(pre + "_y"), 1e-9):
         bad.append("%s: y %r, Stata %r" % (label, ys, _du_nums(pre + "_y")))
-    if not _du_same(xs, _du_nums(pre + "_xms"), 1e-12):
-        bad.append("%s: x %r, Stata (ms) %r" % (label, xs,
-                                                 _du_nums(pre + "_xms")))
+    # Flipped (WP-44 AX-18): a lone kdensity or lpoly of a date is drawn on
+    # a numeric axis in Stata days, as twoway labels it
+    # (date_axis_rule_truth.json), so x is compared in days.
+    days = [v / 86400000.0 + 3653.0 for v in _du_nums(pre + "_xms")]
+    if not _du_same(xs, days, 1e-12):
+        bad.append("%s: x %r, Stata (days) %r" % (label, xs, days))
     return bad, p
 end
 
@@ -1798,7 +1801,8 @@ end
 
     // ------------------------------------------------------------
     // DU-03: kdensity date, bwidth(10) range(14900 15400) n(5): y is
-    // twoway__kdensity_gen's, x its grid in epoch ms, on a date axis.
+    // twoway__kdensity_gen's, x its grid in Stata days on a numeric axis,
+    // as twoway labels it (WP-44 AX-18; was epoch ms on a date axis).
     // ------------------------------------------------------------
     twoway__kdensity_gen date, gen(dud dux) n(5) range(14900 15400) bwidth(10)
     generate double duxms = (dux - td(01jan1970))*86400000
@@ -1815,7 +1819,9 @@ end
     python:
 _d = _du_read(_M.getLocal("du3"))
 _bad, _p = _du_curve_bad(_d, "x", "y", "du3", "DU-03")
-if _p is None or _du_axes(_p)[0] != "DatetimeAxis":
+# Flipped (WP-44 AX-18): twoway labels a lone kdensity's date
+# axis in Stata numbers.
+if _p is None or _du_axes(_p)[0] != "LinearAxis":
     _bad.append("axes %r" % (None if _p is None else _du_axes(_p),))
 _M.setGlobal("du_bad", "; ".join(_bad))
 _M.setGlobal("du_nbad", str(len(_bad)))
@@ -1826,7 +1832,8 @@ end
 
     // ------------------------------------------------------------
     // DU-04: lpoly close date, bwidth(30) n(5): Stata's curve, at its
-    // grid in epoch ms, on a date axis.
+    // grid in Stata days on a numeric axis, as twoway labels it (WP-44
+    // AX-18; was epoch ms on a date axis).
     // ------------------------------------------------------------
     quietly lpoly close date, nograph gen(dux duy) n(5) bwidth(30)
     generate double duxms = (dux - td(01jan1970))*86400000
@@ -1843,7 +1850,9 @@ end
     python:
 _d = _du_read(_M.getLocal("du4"))
 _bad, _p = _du_curve_bad(_d, "x_lp", "y_lp", "du4", "DU-04")
-if _p is None or _du_axes(_p)[0] != "DatetimeAxis":
+# Flipped (WP-44 AX-18): twoway labels a lone lpoly's date
+# axis in Stata numbers.
+if _p is None or _du_axes(_p)[0] != "LinearAxis":
     _bad.append("axes %r" % (None if _p is None else _du_axes(_p),))
 _M.setGlobal("du_bad", "; ".join(_bad))
 _M.setGlobal("du_nbad", str(len(_bad)))
@@ -4372,12 +4381,13 @@ if inlist("`only'", "", "S11") {
     _w29_done LW-04 "uslifeexp le on year at degree 0 and 2: Stata's default lpoly"
 
     // LW-05: sp500 close on date (%td) at degree 0 and 2.  The bandwidth is
-    // in days (S05, Stata units); dash draws x in epoch ms on its date
-    // axis, so Stata's gx is compared as (gx - td(01jan1970))*86400000.
+    // in days (S05, Stata units); a lone lpoly of a date is drawn on a
+    // numeric axis in Stata days, as twoway labels it (WP-44 AX-18; it was
+    // epoch ms on a date axis), so Stata's gx is compared as it is.
     sysuse sp500, clear
     foreach d in 0 2 {
         local f = cond(`d' < 2, 1e-6, 1e-4)
-        _lw_case LW-05 "`s11d'/lw05" "lpoly close date, degree(`d') name(lw05)" "close date, degree(`d')" `f' 0 `=td(01jan1970)' 86400000
+        _lw_case LW-05 "`s11d'/lw05" "lpoly close date, degree(`d') name(lw05)" "close date, degree(`d')" `f' 0 0 1
     }
     _w29_done LW-05 "sp500 close on date at degree 0 and 2: Stata's default lpoly, drawn at its dates"
 
