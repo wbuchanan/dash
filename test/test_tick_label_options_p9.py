@@ -744,7 +744,8 @@ class TestDocumentedDifferences:
                   encoding="utf-8") as fh:
             text = fh.read()
         diff = text[text.index("{title:Differences from twoway}"):
-                    text.index("{phang2}20.  {ul:Resource limits.}")]
+                    # Item 21 since WP-44 44-03 added item 20.
+                    text.index("{phang2}21.  {ul:Resource limits.}")]
         for marker, num, head in self._ITEMS:
             item = "{marker %s}{...}\n{phang2}%s.  {ul:%s}" % (
                 marker, num, head)

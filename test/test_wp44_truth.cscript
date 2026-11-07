@@ -1147,13 +1147,14 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w44_run' {
 }
 * ==== end S03 ====
 
-* ==== S03 AX-19: each variable over the layer's own rows ====
+// WP-44 WE: the prep of the block below.
 capture program drop _q4403_cut
 program define _q4403_cut
     // The 20 lightest cars keep their mpg; the other 54 miss it.
     sort weight
     quietly replace mpg = . if _n > 20
 end
+* ==== S03 AX-19: each variable over the layer's own rows ====
 local only : env WP44_ONLY
 if inlist("`only'", "", "S03") & `: list posof "S03" in w44_run' {
     display as text "S03 start " c(current_date) " " c(current_time)
@@ -1517,12 +1518,13 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w44_run' {
 }
 * ==== end S04 ====
 
-* ==== S04 AX-20: a baroffset() bar is ticked over its x ====
+// WP-44 WE: the prep of the block below.
 capture program drop _q4404_bars
 program define _q4404_bars
     quietly keep in 1/8
     quietly generate t = _n
 end
+* ==== S04 AX-20: a baroffset() bar is ticked over its x ====
 local only : env WP44_ONLY
 if inlist("`only'", "", "S04") & `: list posof "S04" in w44_run' {
     display as text "S04 start " c(current_date) " " c(current_time)

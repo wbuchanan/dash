@@ -46207,7 +46207,6 @@ def _dash_stata_tick_requests(graphs, formats, frame_cols=None):
                                                 and _m.group(1) == "q")(
                                                     _DASH_ANY_COL_RE.match(q))]
             # WP-34 TR-4: the series and the variables each one's rows need.
-            pt = str(p.get("type", "")).strip().lower()
             simple = not any(str(p.get(k, "") or "").strip() for k in
                              ("yvar1", "yvar2", "y1var", "y2var",
                               "x1var", "x2var"))
@@ -52876,8 +52875,7 @@ def _dash_place_count_ticks(e, lo, hi, common=False):
     here; it is kept for its callers.  An entry marked ``hold`` keeps its
     ticks."""
     from bokeh.models import FixedTicker
-    ax, t, base, every, kind = (e["ax"], e["t"], e["base"], e["every"],
-                                e["kind"])
+    ax, t, base, every = e["ax"], e["t"], e["base"], e["every"]
     held = bool(e.get("hold"))
     # WP-31 D15: Stata's own ticks where the range is one the export
     # summarized (the figure's stata table), else the model.

@@ -439,7 +439,13 @@ python: _q37M.setLocal("dig", _q37_digest(_q37M.getLocal("q37s"), _q37M.getLocal
 // (edc071a) ships in dash-stcolor.scheme; with the tree paths masked
 // the spec differs from 49e75a3's by that key alone and the data not at
 // all (measured 05nov2026).
-local base_digest "171ce87436c83daeb51acf4cd363a21cc165ca228156d71758ed5f603aea0be0"
+// 171ce874... -> be199f00...: the spec's build_options._stata_props
+// gains stcolor's anglestyle, gridstyle, gsize, horizontal,
+// ticksetstyle, tickstyle and yesno rows, the scheme rows WP-44's axis
+// style readers take (AX-5, AX-14, AX-9); with those keys taken out the
+// spec is 05db2ea's and the data are byte for byte the same (measured
+// 07nov2026, at WP-44's closeout).
+local base_digest "be199f004c40eac0b60809a6057fa6b84c6cb0fde060a5c4940626a4ae530bea"
 display "Q3307-5 digest `dig'"
 assert "`dig'" == "`base_digest'"
 display "Q3307-5 PASS: a build whose graphs share its frame writes the same spec and data"

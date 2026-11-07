@@ -25,10 +25,12 @@
 *!          drawn, a style name is named; WP-44 AX-14: labstyle() is
 *!          read from the scheme, so the check names labelkeepleadingzero,
 *!          the label sub-option still not drawn).
-*!   SR-04  yscale(reverse noline titlegap(2) outergap(1) logit) names
-*!          logit, not the drawn reverse, noline, titlegap() and
-*!          outergap() (flipped, WP-30 P1.18a; WP-31 D7: outergap()
-*!          is drawn).
+*!   SR-04  yscale(reverse noline titlegap(2) outergap(1)) names none of
+*!          the drawn reverse, noline, titlegap() and outergap() (flipped,
+*!          WP-30 P1.18a; WP-31 D7: outergap() is drawn; WP-44 AX-9,
+*!          ruling D75: logit, the word it named, is refused r(199) as
+*!          twoway's graph refuses it -- test_option_validation.cscript
+*!          Q4403-2).
 *!   SR-05  xtitle("Weight", orientation(vertical) bexpand) names bexpand
 *!          and titles the axis "Weight" -- not "Weight, orientation(...)"
 *!          (flipped, WP-44 AX-13: orientation() is drawn; bexpand stays
@@ -254,15 +256,15 @@ if r(bad) {
 }
 else display as text "SR-03 PASS: ylabel(, labelkeepleadingzero) is named, the drawn labgap() is not"
 
-_sr_render `"dash scatter mpg weight, yscale(reverse noline titlegap(2) outergap(1) logit)"'
+_sr_render `"dash scatter mpg weight, yscale(reverse noline titlegap(2) outergap(1))"'
 local lg `"`r(logfile)'"'
 assert r(rc) == 0
-_sr_check SR-04 "`lg'" yscale "logit" "reverse noline titlegap outergap"
+_sr_check SR-04 "`lg'" yscale "" "reverse noline titlegap outergap"
 if r(bad) {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-04"
 }
-else display as text "SR-04 PASS: yscale(logit) is named, reverse noline titlegap outergap are not"
+else display as text "SR-04 PASS: reverse noline titlegap outergap are drawn, none named"
 
 _sr_render `"dash scatter mpg weight, xtitle("Weight", orientation(vertical) bexpand)"'
 local lg `"`r(logfile)'"'

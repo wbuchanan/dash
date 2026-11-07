@@ -10522,9 +10522,9 @@ program define _dash_plot
     // "unrecognized command", r(199); a later copy's log, nolog or no form
     // clears it (_dash_scale_untransformable, over each scale option's
     // copies merged in the order typed).
-    foreach gk in xscale yscale xscale2 yscale2 tscale tscale2 zscale {
-        if !`: length local g_`gk'' continue
-        mata: st_local("_sc_tr", strofreal(_dash_scale_untransformable(st_local("g_`gk'"))))
+    foreach sk in xscale yscale xscale2 yscale2 tscale tscale2 zscale {
+        if !`: length local g_`sk'' continue
+        mata: st_local("_sc_tr", strofreal(_dash_scale_untransformable(st_local("g_`sk'"))))
         if `_sc_tr' {
             display as error "unrecognized command"
             exit 199

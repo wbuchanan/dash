@@ -520,7 +520,9 @@ class TestTheUnitFunctions:
                         "lcolor": "red", "lwidth": None, "lpattern": None,
                         "titlegap": "5", "alternate": True,
                         # WP-31 D7: the outer gap, line style and extent.
-                        "outergap": None, "lstyle": None, "noextend": None}
+                        "outergap": None, "lstyle": None, "noextend": None,
+                        # WP-44 AX-7: fill, the last of fill/nofill.
+                        "fill": False}
         assert dr._dash_scale_name("OFF") == "OFF"
         assert dr._dash_scale_name("alt") == "alternate"
         assert dr._dash_scale_name("re") == "re"

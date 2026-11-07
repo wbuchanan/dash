@@ -95,6 +95,10 @@ _WORKER_AUDIT = {
     # spec's frame_cols map, the callback's frame and its panel-to-graph
     # map -- each built before any session and never written after.
     "_frame_cols", "_df_ref_all", "_gfac_to_orig",
+    # WP-44 AX-19: a redrawn layer's rows hull names its variables through
+    # the plot keys of each axis -- a module constant, read and never
+    # written.
+    "_DASH_AXIS_VAR_KEYS",
 }
 
 
