@@ -47710,9 +47710,10 @@ function dash_axis_col(data, field) {
 function dash_axis_num(v) {
     return (typeof v === "number" && isFinite(v)) ? v : null;
 }
-function dash_axis_extent(a, models, base) {
+function dash_axis_extent(a, models, base, every) {
+    // every (WP-44 AX-11): every finite value, a log axis's tick input.
     let lo = null, hi = null;
-    const log = a.kind === "log";
+    const log = a.kind === "log" && !every;
     const take = (v) => {
         if (v === null || (log && !(v > 0))) return;
         if (lo === null || v < lo) lo = v;
@@ -48050,6 +48051,11 @@ function dash_axis_compute(plan, models) {
                 const s = {a: a, lo: ext ? ext[0] : null, hi: ext ? ext[1] : null,
                            bases: bx ? bx : []};
                 let lo = s.lo, hi = s.hi;
+                // WP-44 AX-11: a log axis ticked over every finite value.
+                if (a.kind === "log" && lo !== null) {
+                    const tx = dash_axis_extent(a, models, false, true);
+                    if (tx) { lo = tx[0]; hi = tx[1]; }
+                }
                 // A default date axis is ticked over its data alone (P1.3b).
                 const tsd = a.dflt && typeof a.kind === "string"
                     && (Object.prototype.hasOwnProperty.call(DASH_TS_UNITS, a.kind)
@@ -52459,6 +52465,12 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
                     if kind is None:
                         continue        # a date axis of no known unit
                 ext = _dash_layer_extent(pool, range_attr, name, kind)
+                # WP-44 AX-11: a log axis is ticked over every finite value
+                # its layers draw, as twoway ticks it (natscale over them,
+                # the ticks at or below 0 left out; axis_scale_truth.json
+                # ax11_c20); its hull keeps the positive ones (ext).
+                tin = (_dash_layer_extent(pool, range_attr, name, None)
+                       if kind == "log" else None)
                 bext = _dash_layer_extent(pool, range_attr, name, kind,
                                           role="base")
                 # WP-34 AX-4: a histogram's span (hull only).
@@ -52486,6 +52498,7 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
                                                             FixedTicker)),
                             "lo": ext[0] if ext else None,
                             "hi": ext[1] if ext else None,
+                            "tin": list(tin) if tin else None,
                             "bases": list(bext) if bext else [],
                             "span": list(sext) if sext else [],
                             # WP-31 D15: Stata's answers for the page.
@@ -53077,6 +53090,9 @@ def _dash_finish_count_ticks(fig, refinish=False, skip=()):
     scale_vals2 = getattr(fig, "_dash_scale_values2", None) or {}
     for e in counted:
         lo, hi = e["lo"], e["hi"]
+        if e["kind"] == "log" and e.get("tin") and lo is not None:
+            # WP-44 AX-11: every finite value is the log axis's tick input.
+            lo, hi = e["tin"]
         extra = (list(scale_vals.get(e["letter"], []))
                  if e["name"] == "default"
                  else list(scale_vals2.get(e["name"], [])))

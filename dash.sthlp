@@ -1756,7 +1756,16 @@ there, is an invalid point.  The literal is read as data and never run.
     0.86% at 11, 0.58% at 16).  Recomputing it at each resize would need
     code that runs as the browser lays out the page.
 
-{phang2}20.  {ul:Resource limits.}  {cmd:twoway} draws any amount of data
+{marker log_nonpositive}{...}
+{phang2}20.  {ul:A log axis over values at or below 0 is drawn over its positive values.}
+    {cmd:twoway} ticks such an axis as {cmd:dash} does, but draws a
+    degenerate picture: the values at or below 0 on the bottom edge, the
+    rest squashed together at the top, and under {cmd:ylabel(#}{it:N}{cmd:)}
+    a 0 label off its scale ({cmd:gen z = mpg - 25}, {cmd:scatter z weight,
+    yscale(log)}).  {cmd:dash} draws the positive values on the axis and
+    leaves out the rest and the 0 tick, which a log axis cannot place.
+
+{phang2}21.  {ul:Resource limits.}  {cmd:twoway} draws any amount of data
     and any number of plots, panels, lines and texts; {cmd:dash} also takes
     data of any size; it refuses, trims or rebins only beyond the limits in
     {help dash##limits:Resource limits} -- its count limits and its fixed
@@ -5526,9 +5535,15 @@ model fitted to Stata's answers that agrees with 261 of 264 axes
 {cmd:twoway} drew and with 98% of random ranges, and where it differs it
 draws a tick more or fewer at an end.  {cmd:xtick(#}{it:N}{cmd:)} and
 {cmd:ylabel(#}{it:N}{cmd:, axis(2))} use the same rule.  On a log axis the rule is
-the same, over the data's own values, and a tick at or below zero, which a
-log axis cannot draw, is left out: {cmd:yscale(log) ylabel(#5)} on
-{cmd:price} labels 5,000 10,000 15,000.  A {cmd:%tc} axis takes the same
+the same: a log axis is ticked over every finite value its layers draw, as
+{cmd:twoway} ticks it, and the ticks at or below 0 are left out, which a
+log axis cannot draw: {cmd:yscale(log) ylabel(#5)} on {cmd:price} labels
+5,000 10,000 15,000, and over {cmd:z = mpg - 25} ({cmd:scatter z weight,
+yscale(log)}) 10 and 20; the axis spans the positive values.
+{cmd:twoway}'s own picture of non-positive values on a log scale, the rest
+squashed to the top and a 0 label written off its scale under
+{cmd:ylabel(#5)}, is not copied (see
+{help dash##log_nonpositive:item 20} under Differences from twoway).  A {cmd:%tc} axis takes the same
 rule over Stata's milliseconds.  A {cmd:%td}, {cmd:%tw}, {cmd:%tm},
 {cmd:%tq}, {cmd:%th} or {cmd:%ty} axis is ticked on calendar boundaries
 (days, weeks, the first days of months, quarters and years) by

@@ -1601,4 +1601,7 @@ class TestInternalLinksResolve:
         # items 17-19 get the markers add_custom, margin_reflines and
         # resize_margin, each linked from its axis or reference-line
         # paragraph, and item 17 links Axis options (WP-44, D73, D74).
-        assert len(refs) == 193 and len(set(refs)) == 57
+        # old -> new: 193 -> 194 links, 57 -> 58 markers: Differences item
+        # 20 gets the marker log_nonpositive, linked from the log rule
+        # paragraph (WP-44 AX-11, A-5).
+        assert len(refs) == 194 and len(set(refs)) == 58

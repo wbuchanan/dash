@@ -307,3 +307,91 @@ def test_the_exclusive_sentence():
             "{cmd:yscale(atanh log)}, and {cmd:yscale(log log)}") in h
     assert ("{cmd:twoway}'s \"only one of options ... is allowed\"; across "
             "copies the last counts") in h
+
+
+# ---------------------------------------------------------------------------
+# AX-11: a log axis over non-positive data
+# ---------------------------------------------------------------------------
+
+def _ticks_of(key, letter="y"):
+    """twoway's tick values of a fixture row (its labels as numbers)."""
+    return [float(s.replace(",", "")) for s in _labels(key, letter)]
+
+
+def _moved(mode, plots, go, filt, kind, value):
+    """The first panel after a filter move, on the page _figs builds."""
+    spec = tda._spec(plots, go or {}, filt=filt, formats=_FORMATS)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        tag, sp, dp = _write(spec)
+        if mode == "saved":
+            r = render_models(dr.DashRenderer(sp, dp))
+            return tda._move_saved(r, kind, value)[0]
+        from bokeh.document import Document
+        ap = os.path.join(tb._TMP, "as_app_%d.py" % tag)
+        dr.ServerAppBuilder(sp, dp).build(ap)
+        mod = tb.load_app(ap, "_as_app_%d" % tag, draw=False)
+        doc = Document()
+        mod.make_document(doc)
+        return tda._move_served(doc, kind, value)[0]
+
+
+@pytest.mark.parametrize("mode", _MODES)
+class TestLogTicks:
+    def test_nonpositive(self, mode):
+        """A log axis over values at or below 0 is ticked as twoway ticks
+        it: natscale over every finite value, the ticks at or below 0 left
+        out -- gen z = mpg - 25, scatter z weight, yscale(log) labels 10
+        20 (ax11_c20), where dash ticked the positive values alone (5 10
+        15).  Under ylabel(#5) twoway also writes a 0 label off its scale
+        (ax11_with_n: 0 10 20); a log axis cannot place 0, so dash draws
+        10 20 (the degenerate picture is documented, ruling A-5)."""
+        assert _ticks_of("ax11_c20") == [10.0, 20.0]
+        assert _ticks_of("ax11_with_n") == [0.0, 10.0, 20.0]
+        f, _m = _figs(mode, [P("scatter", "z", "weight")], {"yscale": "log"})
+        assert tda._ticks(f, "y") == [10.0, 20.0]
+        f, _m = _figs(mode, [P("scatter", "z", "weight")],
+                      {"yscale": "log", "ylabel": "#5"})
+        assert tda._ticks(f, "y") == [v for v in _ticks_of("ax11_with_n")
+                                      if v > 0]
+
+    def test_positive_data_unchanged(self, mode):
+        """A log axis over positive values keeps twoway's ticks
+        (ax11_positive: 10 20 30 40) and its hull keeps positive values."""
+        f, _m = _figs(mode, [P("scatter", "mpg", "weight")],
+                      {"yscale": "log"})
+        assert tda._ticks(f, "y") == _ticks_of("ax11_positive")
+        f, _m = _figs(mode, [P("scatter", "z", "weight")], {"yscale": "log"})
+        rng = f.y_range
+        assert min(rng.start, rng.end) > 0
+
+    def test_after_a_move(self, mode):
+        """After a filter move the log axis is ticked again over every
+        finite value the rows kept draw (the saved page's dash_axis_finish
+        under node, the served app's refinish)."""
+        f = _moved(mode, [P("scatter", "z", "weight")], {"yscale": "log"},
+                   "foreign, type(dropdown)", "Select", "Domestic")
+        df = tb._frame("auto")
+        z = (df["mpg"] - 25.0)[df["foreign"] == 0]
+        want = dr._dash_axis_count_ticks(float(z.min()), float(z.max()), 5,
+                                         "log")
+        # Over -13 to 9: 5 10; over the positive values alone, 2 4 6 8.
+        assert want == [5.0, 10.0]
+        pos = z[z > 0]
+        assert dr._dash_axis_count_ticks(float(pos.min()), float(pos.max()),
+                                         5, "log") != want
+        assert tda._ticks(f, "y") == want
+
+
+def test_the_log_rule_sentence():
+    """The log rule paragraph says ticks are over every finite value and
+    that twoway's degenerate picture is not copied, with its Differences
+    line (ruling A-5)."""
+    with open(os.path.join(_HERE, "..", "dash.sthlp"), encoding="utf-8") as fh:
+        h = " ".join(fh.read().split())
+    assert ("a log axis is ticked over every finite value its layers draw, "
+            "as {cmd:twoway} ticks it, and the ticks at or below 0 are "
+            "left out") in h
+    assert ("{help dash##log_nonpositive:item 20} under Differences from "
+            "twoway") in h
+    assert "{marker log_nonpositive}" in h

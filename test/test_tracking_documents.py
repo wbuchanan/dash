@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'AX-11': "A log axis over data with non-positive values is ticked over positive values only (twoway's whole drawing is degenerate there)",
     'AX-20': 'A bar with baroffset() on a date (period) axis uses its drawn centre as the tick input, so the axis ticks move with the offset; twoway ticks the date',
     'AX-19': 'A range type (rbar, rspike, rcap, rcapsym) widens the x axis over rows where both bounds are missing; twoway leaves those rows out of the axis',
     'MS-14': 'xscale(range()) on a log axis adds a tick at the range end',

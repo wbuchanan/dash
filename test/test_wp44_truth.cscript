@@ -1052,6 +1052,31 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w44_run' {
 }
 * ==== end S03 ====
 
+* ==== S03 AX-11: log ticks over every value ====
+local only : env WP44_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w44_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local q03 "`w44_work'/s03c"
+    capture mkdir "`q03'"
+    global q4401_repo : env DASH_REPO
+    if `"${q4401_repo}"' == "" global q4401_repo ".."
+
+    // Q4403-7: a log axis over values at or below 0 is ticked as twoway
+    // ticks it, over every finite value (z = mpg - 25: 10 20, where dash
+    // drew 5 10 15), and a log axis over positive values keeps its ticks,
+    // saved and served.  twoway's degenerate picture is documented (A-5).
+    _q4403_reg "`q03'" 1 yticks "generate z = mpg - 25" scatter z weight, yscale(log)
+    _w44_expect Q4403-7 `"("${q4403_s}" == "${q4403_tw}" & "${q4403_v}" == "${q4403_tw}")"' `"scatter z weight, yscale(log): twoway ${q4403_tw}, saved ${q4403_s}, served ${q4403_v}"'
+    _q4403_reg "`q03'" 2 yticks - scatter mpg weight, yscale(log)
+    _w44_expect Q4403-7 `"("${q4403_s}" == "${q4403_tw}" & "${q4403_v}" == "${q4403_tw}")"' `"scatter mpg weight, yscale(log): twoway ${q4403_tw}, saved ${q4403_s}, served ${q4403_v}"'
+    _w44_done Q4403-7 "a log axis is ticked over every finite value, as twoway ticks it"
+
+    capture graph drop _all
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // S04 helpers (WP-44 44-04).  _q4404_reg <dir> <k> <key> <axis> <dash
 // command...>: registers the dash graph, builds it saved and served, and
 // writes each mode's <axis> axis as "<axis type>|<label texts>"

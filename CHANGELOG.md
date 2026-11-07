@@ -1018,6 +1018,7 @@ and now matches Stata.
 
 ### Fixed in WP-44
 
+- A log axis over values at or below 0 is ticked as twoway ticks it, over every finite value with the ticks at or below 0 left out -- gen z = mpg - 25, scatter z weight, yscale(log) labels 10 20, where dash drew 5 10 15 -- in the saved page, the served app and after a filter move; twoway's degenerate picture of those values is a documented difference (help dash, Differences from twoway, item 20) (WP-44, AX-11)
 - xscale(style()) and yscale(style()) read Stata's axis style file as twoway does -- yscale(style(vertical_nogrid)) draws no y grid, xscale(style(horizontal_noline)) no x axis line and no x grid -- where dash named the sub-option and drew the plain axis (WP-44, AX-9)
 - xscale(off fill) and yscale(off fill) keep the axis's space with nothing of it drawn, as twoway does, so the plot region keeps the plain graph's edge; dash drew them as off and took the space (WP-44, AX-7)
 - An axis format() of %21x, %16H, %8H, %16L, %8L, their left-aligned forms or a string format such as %12s writes each label as twoway writes it -- format(%21x) writes 10 as +1.4000000000000X+003, %16H as 4024000000000000, %12s writes 33.3333333 as 33.333333 (%10.0g) -- where dash wrote %9.0g with a note (WP-44, AX-15)

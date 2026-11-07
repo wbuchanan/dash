@@ -491,7 +491,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **AX-8 Tracked:** Closed in WP-44, BUGS.md "Label sub-options twoway draws are named: labelminlen(), noshowlabels/showlabels, nopgmgrid/pgmgrid, style(); showlabels nolabels hides labels", commit 7567150.
 - **AX-9 Tracked:** Closed in WP-44, BUGS.md "xscale/yscale atanh, logit, log1m and style() are named and drawn linear", commit pending.
 - **AX-10 Tracked:** Closed in WP-44, BUGS.md "Contradictory transforms in one copy (log nolog, atanh log) are accepted; twoway refuses r(198)", commit pending.
-- **AX-11 Tracked:** Open (WP-44 section 44-03).
+- **AX-11 Tracked:** Documented in WP-44, BUGS.md "A log axis over data with non-positive values is ticked over positive values only (twoway's whole drawing is degenerate there)", commit pending.
 - **AX-14 Tracked:** Closed in WP-44, BUGS.md "tstyle(), labstyle(), gstyle(), tlstyle(), glstyle() and nogextend are named", commit fb75e9a.
 - **AX-15 Tracked:** Documented in WP-44, BUGS.md "Documented: xtick and xmtick share one tick length; out-of-range reflines are clipped from the margin; string/hex formats drawn %9.0g, dates past the browser range, margin fixed at build", commit e8c98b5.
 - **AX-18 Tracked:** Closed in WP-44, BUGS.md "A date axis is kept where twoway labels Stata numbers (first layer lfit/qfit/ci/kdensity/lpoly/function/immediates); xscale(log) on a date axis is drawn linear", commit 5432452.

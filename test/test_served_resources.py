@@ -716,7 +716,11 @@ _SAVED_DIGEST = (
     # %#s axis formats; writer JS text only: with the old _DASH_FMT_JS
     # spliced into the new tree the old digest is given); the same under
     # Bokeh 3.8 and 3.9.
-    "07b7917350736b87a054d3e3f5dde707477eb024639c0f2b3ec71c8f75879f5e")
+    # 07b79173... -> 0a7ba62d...: WP-44 AX-11, the finish code's
+    # dash_axis_extent reads every finite value as a log axis's tick input
+    # (finish JS text only: with the AX-11 edit stashed the old digest is
+    # given; this page draws no log axis).
+    "0a7ba62dd71626a6381de54feca51633dea9f7d5d3f826e1c3ba7718f9eddba2")
 
 
 # ===========================================================================
