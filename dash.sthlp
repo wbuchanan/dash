@@ -5049,7 +5049,15 @@ Colors take Stata's grammar (see {help dash##colours:Colours}):
 {it:color}{cmd:%}{it:#} draws at that opacity over it, and an unknown
 color is named in a note and drawn black.  {cmd:lstyle(none)} removes
 the outline until a color gives it back.  The graph region's outline is
-drawn when an outline sub-option is given.  Repeated copies combine as
+drawn as {cmd:twoway} draws it, inside the graph's edge, in the scheme's
+graph-region line unless an outline sub-option is given -- so
+{cmd:graphregion(fcolor(red))} under {cmd:stcolor} keeps a thin white
+line round the red, a {cmd:by()} graph's included; {cmd:style(none)} and
+{cmd:color(none)} draw none.  The scheme's graph margin
+({cmd:margin graph}, 3.5% of the graph's smaller side) is drawn round
+every graph, one at its {cmd:xsize()}/{cmd:ysize()} box included:
+{cmd:xsize(4) ysize(4)} is 384 pixels square with 13.44 pixels of margin
+inside it.  Repeated copies combine as
 {cmd:twoway} combines them, each copy editing the last:
 {cmd:plotregion(color(red))} {cmd:plotregion(c(blue))} is blue.
 

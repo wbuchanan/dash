@@ -49,9 +49,13 @@ _COMMANDS = {
                        "xtitle": '"X"', "note": '"N"'}),
 }
 
-#: The figure view's bbox and frame bbox [top, left, bottom, right], in
+#: The graph's box and the frame's [top, left, bottom, right], in page
 #: CSS px (test-only use of BokehJS view internals): the Plot view is
-#: found under the root views Bokeh.index holds.
+#: found under the root views Bokeh.index holds.  Flipped (WP-45 GW-6):
+#: the graph's box was the figure view's own bbox, inside the graph
+#: region box that draws the scheme's margin round it (so the margin was
+#: never seen, SCALE_FRAME_KNOWN's GW-6 intercept rows); it is that box
+#: (tagged dash_graph_region) when the page has one.
 _INSETS_JS = r"""
 (() => {
   const seen = new Set();
@@ -71,9 +75,16 @@ _INSETS_JS = r"""
   };
   for (const v of Object.values(Bokeh.index)) walk(v);
   if (!hit) return null;
-  const b = hit.bbox, f = hit.frame.bbox;
-  return JSON.stringify([b.top, b.left, b.bottom, b.right,
-                         f.top, f.left, f.bottom, f.right].map(Math.round));
+  const e = hit.el.getBoundingClientRect(), f = hit.frame.bbox;
+  let g = e;
+  for (let q = hit.parent; q != null; q = q.parent) {
+    if (q.model && q.el && (q.model.tags || []).includes("dash_graph_region")) {
+      g = q.el.getBoundingClientRect(); break;
+    }
+  }
+  return JSON.stringify([g.top, g.left, g.bottom, g.right,
+                         e.top + f.top, e.left + f.left, e.top + f.bottom,
+                         e.left + f.right].map(Math.round));
 })()
 """
 

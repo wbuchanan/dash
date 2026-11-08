@@ -92,10 +92,21 @@ class TestTheThreeCases:
     ])
     def test_box(self, probe, go, mode):
         w_in, h_in = _truth()[probe]["inches"]
-        _, figs = _figs(mode, go)
+        roots, figs = _figs(mode, go)
         f = figs[0]
         assert f.sizing_mode == "fixed"
-        assert (f.width, f.height) == (round(w_in * 96), round(h_in * 96))
+        # Flipped (WP-45 GW-6): the figure was the whole box; twoway draws
+        # the scheme's graph margin inside it (G_xs44: the plot region's
+        # top 100.8 of 2880 units), so the figure is what the margin
+        # leaves and its graph region box, padded by the margin, is the
+        # box at 96 px an inch.
+        m = 3.5 * min(w_in, h_in) / 100.0 * 96.0
+        assert (f.width, f.height) == (round(w_in * 96 - 2 * m),
+                                       round(h_in * 96 - 2 * m))
+        pad = [float(v[:-2]) for v in
+               _region_of(roots).styles["padding"].split()]
+        assert f.width + pad[1] + pad[3] == pytest.approx(w_in * 96, abs=1)
+        assert f.height + pad[0] + pad[2] == pytest.approx(h_in * 96, abs=1)
         assert f.min_height is None and f.max_height is None
         assert f.aspect_ratio is None
 
@@ -478,6 +489,90 @@ class TestGraphRegion:
         assert foot.styles["margin-top"] == \
             "calc(-%.4gpx * var(--dash-by-k, 1))" % (9 - 0.7 * u)
 
+
+
+def _region_of(roots):
+    """The one graph region box of a page (a model tagged
+    ``dash_graph_region``)."""
+    boxes = [m for r in roots for m in r.references()
+             if "dash_graph_region" in (getattr(m, "tags", None) or [])]
+    assert len(boxes) == 1, boxes
+    return boxes[0]
+
+
+def _outline_of(styles):
+    """``(colour, width px at k = 1, style, offset px at k = 1)`` of a
+    region box's CSS outline, or None."""
+    import re
+    o = str(styles.get("outline", "") or "")
+    m = re.match(r"calc\(var\(--dash-k, [0-9.]+\) \* ([0-9.]+)px\) "
+                 r"(solid|dashed|dotted) (#[0-9a-f]{6}|rgba\([^)]*\))$", o)
+    if not m:
+        return None
+    off = re.match(r"calc\(var\(--dash-k, [0-9.]+\) \* (-?[0-9.]+)px\)$",
+                   str(styles.get("outline-offset", "") or ""))
+    return (m.group(3), float(m.group(1)), m.group(2),
+            float(off.group(1)) if off else None)
+
+
+class TestGraphRegionOutline:
+    """WP-45 GW-6 residual: twoway strokes the graph region's outline in
+    the scheme's graphregion line, unasked, inside the graph's edge
+    (figure_geometry_truth.json M_stcolor: a #ffffff rect at 3.24 of
+    width 6.48 SVG units, 3240 tall; M_stcolor_red: graphregion(fcolor(
+    red)) fills red and keeps the white line; I_gla: lcolor(red)
+    lwidth(thick) strokes red at the edge), and draws the scheme's graph
+    margin round a graph at its xsize()/ysize() box too (G_xs44: the
+    plot region's top 100.8 of 2880 units, 3.5% of the 4 in side).
+    Before: no outline unless asked, and then on the figure's own canvas
+    edge, inside the margin; no margin round a box."""
+
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("probe,go", [
+        ("M_stcolor", {}),
+        ("M_stcolor_red", {"graphregion": "fcolor(red)"}),
+        ("I_gla", {"graphregion": "lalign(inside) lcolor(red) lwidth(thick)"}),
+        ("G_xs44", {"xsize": "4", "ysize": "4"}),
+        ("M_by_stcolor", {"by": "foreign"}),
+    ])
+    def test_the_outline(self, probe, go, mode):
+        t = _truth()[probe]
+        line = [r for r in t["rects"] if r["fill"] == "none"][0]
+        assert line["x"] == pytest.approx(line["sw"] / 2, abs=0.01)
+        roots, figs = _figs(mode, go)
+        box = _region_of(roots)
+        got = _outline_of(dict(box.styles or {}))
+        assert got is not None, box.styles
+        colour, width, style, off = got
+        assert colour == line["stroke"], (got, line)
+        assert style == "solid"
+        # Drawn inside the edge: offset by its own width.
+        assert off == pytest.approx(-width)
+        # The width is the region's line as dash draws a line (its thin
+        # default, or thick), at the 4-inch reference.
+        T = dr.OptionTranslator
+        want = T.translate_lwidth("thick" if "thick" in str(go) else
+                                  "thin", ref_in=T.size_ref_of(figs[0]))
+        assert width == pytest.approx(want, rel=0.01)
+        for f in figs:
+            assert f.border_line_color is None, f.border_line_color
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_the_box_margin(self, mode):
+        t = _truth()["G_xs44"]
+        plot = [r for r in t["rects"] if r["fill"] == "#ffffff"
+                and r["stroke"] is None and r["w"] < 2880][0]
+        m = plot["y"] / 2880.0 * 384.0
+        assert m == pytest.approx(13.44, abs=0.01)
+        roots, figs = _figs(mode, {"xsize": "4", "ysize": "4"})
+        box = _region_of(roots)
+        st = dict(box.styles or {})
+        # The right and bottom take the figure's whole-px rounding (357
+        # px of 384 - 26.88): the box is exact.
+        assert st["padding"] == "13.44px 13.56px 13.56px 13.44px", st
+        f = figs[0]
+        assert f.sizing_mode == "fixed"
+        assert (f.width, f.height) == (357, 357)
 
 
 class TestTheLookupWalk:

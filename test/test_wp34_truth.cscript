@@ -436,8 +436,13 @@ def _q3404_cmp(svg, page, ar):
             bad.append("twoway's region ratio %.4f is not %s" % (tw, ar))
         if dw is not None and abs(dw - tw) > 0.02 * tw:
             bad.append("ratios differ: dash %.4f twoway %.4f" % (dw, tw))
-        if f.get("width") is None or abs(f["width"] - tw_w) > 1 \
-                or f.get("height") is None or abs(f["height"] - tw_h) > 1:
+        # Flipped (WP-45 GW-6): the figure was twoway's whole graph; twoway
+        # draws the scheme's graph margin (3.5 units of the smaller side)
+        # inside it, which dash's graph region box draws round the figure.
+        gm = 0.035 * min(tw_w, tw_h)
+        if f.get("width") is None or abs(f["width"] - (tw_w - 2 * gm)) > 1 \
+                or f.get("height") is None \
+                or abs(f["height"] - (tw_h - 2 * gm)) > 1:
             bad.append("figure %sx%s, twoway's graph %.1fx%.1f px"
                        % (f.get("width"), f.get("height"), tw_w, tw_h))
     Macro.setGlobal("q3404_bad", "; ".join(bad)[:1500])

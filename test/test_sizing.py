@@ -355,7 +355,13 @@ class TestAspect:
         assert f.sizing_mode == "fixed"
         assert f.frame_width == f.frame_height
         w, h = f._dash_frame_box
-        assert (w, h) == (768, 384)
+        # Flipped (WP-45 GW-6): the figure was the whole
+        # xsize()/ysize() box; twoway draws the scheme's graph
+        # margin inside it (figure_geometry_truth.json G_xs44), so
+        # the figure is what the margin leaves and the box is it
+        # plus the margin: the frame box is the box less the margin.
+        bm = f._dash_box_margin
+        assert (w, h) == (round(768 - bm[0] - bm[1]), round(384 - bm[2] - bm[3]))
         assert f.min_border_top + f.frame_height + f.min_border_bottom \
             == pytest.approx(h, abs=1)
         assert f.min_border_left + f.frame_width + f.min_border_right \

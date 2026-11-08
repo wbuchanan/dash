@@ -159,11 +159,21 @@ def _saved_rows(r, page):
     from bokeh.document import Document as _Doc
     from bokeh.models import Column
     from test_embedded_rows import _page_docs
+    # Flipped (WP-45 GW-6): the figure was the column's first child; a box
+    # now has its graph region column (the scheme's margin) between, so a
+    # column takes the name of the first child that has one, however deep.
     for docs in _page_docs(page):
         for dd in docs.values():
-            for m in _Doc.from_json(dd).select({"type": Column}):
-                if m.children and m.children[0].id in names:
-                    names[m.id] = names[m.children[0].id]
+            cols = list(_Doc.from_json(dd).select({"type": Column}))
+            for _ in range(len(cols)):
+                grew = False
+                for m in cols:
+                    if m.id not in names and m.children \
+                            and m.children[0].id in names:
+                        names[m.id] = names[m.children[0].id]
+                        grew = True
+                if not grew:
+                    break
     body = page[page.index('<div class="db-container">'):]
     rows = []
     for chunk in body.split(_ROW)[1:]:

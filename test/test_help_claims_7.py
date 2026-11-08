@@ -1202,8 +1202,14 @@ class TestTheHeightBand:
         fig, _ = _render(mode, [plot_for("scatter")], go)
         assert (fig.min_height, fig.max_height) == (None, None)
         if "xsize" in go:
-            assert (fig.sizing_mode, fig.width, fig.height) == (
-                "fixed", 960, 192)
+            # Flipped (WP-45 GW-6): the figure was the whole
+            # xsize()/ysize() box; twoway draws the scheme's
+            # graph margin inside it (figure_geometry_truth.json
+            # G_xs44), so the figure is what the margin leaves
+            # and the box is it plus the margin.
+            bm = fig._dash_box_margin
+            assert (fig.sizing_mode, round(fig.width + bm[0] + bm[1]),
+                    round(fig.height + bm[2] + bm[3])) == ("fixed", 960, 192)
         else:
             # Flipped (BUGS.md "A graph's canvas ended before its own x axis, x title and
             # colour key labels"): the figure keeps what the graph margin leaves; its

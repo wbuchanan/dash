@@ -732,8 +732,15 @@ class TestTheLayoutIsUnchanged:
                                           yvar="mpg", xvar="weight")],
                           {"xsize": "6", "ysize": "4", "aspectratio": "1"})
         (fig,), (cell,) = _figs_and_cells(root)
-        assert fig.width + cell.width == 576
-        assert fig.height == 384 and cell.height == 384
+        # Flipped (WP-45 GW-6): the figure was the whole
+        # xsize()/ysize() box; twoway draws the scheme's graph
+        # margin inside it (figure_geometry_truth.json G_xs44), so
+        # the figure is what the margin leaves and the box is it
+        # plus the margin; the figure and its key fill what the
+        # margin leaves.
+        bm = fig._dash_box_margin
+        assert fig.width + cell.width == round(576 - bm[0] - bm[1])
+        assert fig.height == round(384 - bm[2] - bm[3]) == cell.height
         assert abs(fig.frame_width - fig.frame_height) <= 1
 
     def test_scale_reaches_the_key(self, mode):

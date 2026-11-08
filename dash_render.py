@@ -8335,6 +8335,11 @@ def _dash_apply_regions(fig, graph_opts, scheme, seen=None, key=""):
         gfill = _dash_region_blend(g["ifill"], g.get("ifill_alpha"), gfill)
     fig.border_fill_color = gfill
     fig.border_fill_alpha = 1.0
+    # WP-45 GW-6: the graph region's line as graphregion() leaves it (the
+    # scheme's, or None for style(none) and color(none), as twoway draws
+    # them), for the outline its graph region box strokes.
+    fig._dash_gline = (g["line"], g["line_alpha"], g["line_width"],
+                       g["line_dash"])
     _dash_graph_margin(fig, sch, go)
     table = _dash_region_table()
     outline = {"style", "lstyle", "lcolor", "lwidth", "lpattern", "color"}
@@ -29934,6 +29939,19 @@ if (!(W > 0) || !(nominal > 0)) { return; }
 const k = W / nominal * unit;
 if (state.k != null && Math.abs(k - state.k) < 0.005 * state.k) { return; }
 state.k = k;
+if (typeof Bokeh !== "undefined" && Bokeh.index != null) {
+  // WP-45 GW-6: the factor for CSS lengths on the graph region box round
+  // the anchor (its outline).
+  let rv = null;
+  try { rv = Bokeh.index.find_one(anchor); } catch (e) { rv = null; }
+  for (let q = rv; q != null; q = q.parent) {
+    if (q.model != null && q.el != null
+        && (q.model.tags || []).includes("dash_graph_region")) {
+      q.el.style.setProperty("--dash-k", String(k));
+      break;
+    }
+  }
+}
 for (const [m, p, b, kind] of entries) {
   const v = b * k;
   if (kind === "pair") {
@@ -30093,9 +30111,33 @@ def _dash_apply_frame_aspect(fig, graph_opts, scheme_x=None, scheme_y=None):
         return
     width = box[0] * 96.0
     height = box[1] * 96.0
-    fig._dash_frame_box = (int(round(width)), int(round(height)))
+    # WP-45 GW-6: the box less the scheme's graph margin, which its graph
+    # region box draws round the figure.
+    ml, mr, mb, mt = _dash_box_margin_px(fig, int(round(width)))
+    bw, bh = int(round(width)), int(round(height))
+    width = float(int(round(width - ml - mr)))
+    height = float(int(round(height - mt - mb)))
+    fig._dash_box_margin = [ml, bw - ml - width, bh - mt - height, mt]
+    fig._dash_frame_box = (int(width), int(height))
     _dash_frame_sizes(fig, ar, go.get("aspectplacement", "") or "c",
                       width, height)
+
+
+def _dash_box_margin_px(fig, width_px):
+    """The scheme's graph margin ``[left, right, bottom, top]`` in px of a
+    graph at its xsize()/ysize() box *width_px* wide (WP-45 GW-6):
+    ``fig._dash_gmargin``'s percentages of the graph's width (its
+    min(W, H) share, ``_dash_graph_margin_pct``), recorded as
+    ``fig._dash_box_margin``; zeros when the figure has none."""
+    pct = getattr(fig, "_dash_gmargin", None) or [0.0, 0.0, 0.0, 0.0]
+    try:
+        out = [max(0.0, float(v)) / 100.0 * float(width_px) for v in pct]
+    except (TypeError, ValueError):
+        out = [0.0] * 4
+    if len(out) != 4 or not all(math.isfinite(v) for v in out):
+        out = [0.0] * 4
+    fig._dash_box_margin = out
+    return out
 
 
 def _dash_graph_box_in(graph_opts, scheme_x=None, scheme_y=None):
@@ -30221,8 +30263,16 @@ def _dash_apply_figure_size(fig, graph_opts, scheme_x=None, scheme_y=None):
         if ar is not None:
             _dash_apply_frame_aspect(fig, go, gx, gy)
             return
+        # WP-45 GW-6: the scheme's graph margin inside the box (G_xs44:
+        # 3.5% of the 4 in side, 13.44 px); the figure is what it leaves.
+        ml, mr, mb, mt = _dash_box_margin_px(fig, w)
         fig.sizing_mode = "fixed"
-        fig.width, fig.height = w, h
+        fig.width = max(1, int(round(w - ml - mr)))
+        fig.height = max(1, int(round(h - mt - mb)))
+        # The right and bottom margins take the rounding: figure and
+        # margin are the box exactly.
+        fig._dash_box_margin = [ml, w - ml - fig.width, h - mt - fig.height,
+                                mt]
         fig.min_height = None
         fig.max_height = None
         fig.aspect_ratio = None
@@ -58154,6 +58204,10 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
                 go, _sch if _sch is not None else SchemeParser.fallback())
             cell = _dash_graph_region_box(cell, _gm,
                                           figs[0].border_fill_color)
+            # WP-45 GW-6: the graph region's outline round the array, in
+            # the scheme's line (by()'s own regions are the panels').
+            _dash_graph_outline(cell, None, _sch,
+                                OptionTranslator.size_ref_of(figs[0]) / 4.0)
             if _fxy_wrap:
                 _gs = getattr(figs[0], "_dash_gsize", None) or (7.5, 4.5)
                 cell.styles = {**dict(cell.styles or {}),
@@ -58221,6 +58275,10 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
                         _f.height_policy = "fit"
                     _cell = column(_kw, sizing_mode="stretch_width")
                     _dash_graph_region_box(_cell, _gm, _f.border_fill_color)
+                    # WP-45 GW-6: the graph region's outline at its edge.
+                    _dash_graph_outline(
+                        _cell, _f, getattr(_f, "_dash_scheme", None),
+                        OptionTranslator.size_ref_of(_f) / 4.0)
                     _f._dash_region_cell = _cell
                 # D66: the graph drawn as one picture (the figure's width
                 # against what the margin leaves of the graph's inch width).
@@ -58249,11 +58307,35 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
                     _wcb.args["entries"]) + _dash_key_scale_entries(_kcell)
                     + _fb)
         elif _nom:
-            # A box at 96 px an inch: twoway's unit only.
+            # A box at 96 px an inch: twoway's unit only (the figure's
+            # width is what the box's graph margin leaves, WP-45 GW-6).
+            _bm = getattr(figures[name], "_dash_box_margin", None) or [0.0] * 4
             _dash_width_scale(figures[name], [figures[name]],
-                              float(_nom[0]),
+                              float(_nom[0]) - _bm[0] - _bm[1],
                               OptionTranslator.size_ref_of(figures[name]))
         if getattr(figures[name], "sizing_mode", None) == "fixed":
+            _bm = getattr(figures[name], "_dash_box_margin", None)
+            if _bm and any(v > 0 for v in _bm):
+                # WP-45 GW-6: the box's graph region -- the scheme's
+                # margin in px round the figure, its fill and outline.
+                _f = figures[name]
+                _rc = getattr(_f, "_dash_region_cell", None)
+                if _rc is None:
+                    # Its own size is the figure's and the padding's (a
+                    # fixed sizing mode would ask for a width and height).
+                    _rc = column(_kw)
+                    _rc.styles = {
+                        "padding": "%.4gpx %.4gpx %.4gpx %.4gpx" % (
+                            _bm[3], _bm[1], _bm[2], _bm[0]),
+                        "box-sizing": "content-box",
+                        "background-color": str(_f.border_fill_color),
+                        "flex": "0 0 auto"}
+                    _rc.tags = ["dash_graph_region"]
+                    _dash_graph_outline(
+                        _rc, _f, getattr(_f, "_dash_scheme", None),
+                        OptionTranslator.size_ref_of(_f) / 4.0)
+                    _f._dash_region_cell = _rc
+                _kw = _rc
             # WP-45 VF-4: a figure at its xsize()/ysize() box keeps its
             # size in a narrower cell, which scrolls sideways (the page
             # does not).
@@ -66488,6 +66570,62 @@ def _dash_graph_region_box(item, pct, fill):
     item.styles = st
     if "dash_graph_region" not in (item.tags or []):
         item.tags = list(item.tags or []) + ["dash_graph_region"]
+    return item
+
+
+def _dash_graph_outline(item, fig=None, scheme=None, unit=1.0):
+    """The graph region's outline on its box *item* (WP-45 GW-6): twoway
+    strokes it unasked, in the scheme's graphregion line, inside the
+    graph's edge (figure_geometry_truth.json M_*: a rect half its width
+    in from the edge; graphregion(fcolor(red)) keeps the scheme's line).
+    ``fig._dash_gline`` -- the line :func:`_dash_apply_regions` read from
+    graphregion(), None for style(none) or color(none) -- gives it, else
+    the scheme's background colour at ``thin``; the figure's own border
+    line is cleared, as it would stroke the canvas inside the margin.  Drawn as
+    the box's CSS ``outline`` with an equal negative ``outline-offset``
+    (no layout change), its width times ``--dash-k``, the width scale
+    :data:`_DASH_WIDTH_SCALE_JS` writes on the box (D66; *unit*, twoway's
+    unit for the reference side, before it does).  Returns *item*."""
+    T = OptionTranslator
+    sch = scheme if scheme is not None else SchemeParser.fallback()
+    ref_in = T.size_ref_of(fig) if fig is not None else 4.0
+    read = getattr(fig, "_dash_gline", None) if fig is not None else None
+    if fig is not None:
+        fig.border_line_color = None
+    if read is not None:
+        col, alpha, width, dash = read
+        dash = list(dash or [])
+        if col is None:
+            return item  # graphregion(style(none)), color(none)
+    else:
+        col, alpha, dash = sch.background_color, 1.0, []
+        width = T.translate_lwidth("thin", ref_in=ref_in)
+    try:
+        width = float(width)
+        alpha = 1.0 if alpha is None else float(alpha)
+    except (TypeError, ValueError):
+        return item
+    hx = str(col or "").strip().lower()
+    if not re.fullmatch(r"#[0-9a-f]{6}", hx) or not (width > 0) \
+            or not (alpha > 0):
+        return item
+    if alpha < 1.0:
+        hx = "rgba(%d,%d,%d,%.4g)" % (int(hx[1:3], 16), int(hx[3:5], 16),
+                                      int(hx[5:7], 16), alpha)
+    kind = "solid"
+    if dash:
+        kind = "dotted" if max(float(v) for v in dash) <= 2 else "dashed"
+    try:
+        u = float(unit)
+    except (TypeError, ValueError):
+        u = 1.0
+    u = u if math.isfinite(u) and u > 0 else 1.0
+    st = dict(item.styles or {})
+    st["outline"] = "calc(var(--dash-k, %.6g) * %.6gpx) %s %s" % (
+        u, width, kind, hx)
+    st["outline-offset"] = "calc(var(--dash-k, %.6g) * %.6gpx)" % (
+        u, -width)
+    item.styles = st
     return item
 
 
@@ -79614,6 +79752,8 @@ class ServerAppBuilder:
                          # WP-45 GW-6: the graph region's margin box.
                          "_dash_graph_margin_pct", "_dash_inner_ratio",
                          "_dash_graph_region_box",
+                         # WP-45 GW-6: its outline, and a box's margin.
+                         "_dash_graph_outline",
                          "_dash_by_array_styles",
                          # A tab's own layout() (WP-31 D14).
                          "_dash_tab_layout", "_dash_tab_grid",
@@ -80101,6 +80241,7 @@ class ServerAppBuilder:
                     _dash_by_fxy_px,
                     # WP-45 VF-4: the box, the unit and the follow.
                     _dash_graph_box_in, _dash_graph_follow,
+                    _dash_box_margin_px,
                     _dash_border_base, _dash_frame_slack,
                     _dash_apply_figure_size,
                     # D66: the graph drawn as one picture.

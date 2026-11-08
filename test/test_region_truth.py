@@ -116,6 +116,26 @@ def _outlined(go):
                for k in dr._dash_by_tokens(go.get("graphregion", "")))
 
 
+def _graph_line(f):
+    """``(colour, alpha, width, dashed)`` of the outline dash draws round
+    figure *f*'s graph region (its box's CSS outline, WP-45 GW-6), or
+    ``(None, None, None, None)``."""
+    import re
+    box = getattr(f, "_dash_region_cell", None)
+    o = str(dict(getattr(box, "styles", None) or {}).get("outline", ""))
+    m = re.match(r"calc\(var\(--dash-k, [0-9.]+\) \* ([0-9.]+)px\) "
+                 r"(solid|dashed|dotted) (#[0-9a-f]{6}|rgba\(([0-9]+),"
+                 r"([0-9]+),([0-9]+),([0-9.]+)\))$", o)
+    if not m:
+        return None, None, None, None
+    if m.group(3).startswith("#"):
+        col, alpha = m.group(3), 1.0
+    else:
+        col = "#%02x%02x%02x" % tuple(int(m.group(i)) for i in (4, 5, 6))
+        alpha = float(m.group(7))
+    return col, alpha, float(m.group(1)), m.group(2) != "solid"
+
+
 def _near(a, b):
     return (a is not None and b is not None and all(
         abs(int(a[i:i + 2], 16) - int(b[i:i + 2], 16)) <= 1 for i in (1, 3, 5)))
@@ -182,17 +202,20 @@ class TestAgainstTwoway:
                     pass
                 elif not _near(f.background_fill_color, p):
                     bad.append((scheme, pid, "plot", f.background_fill_color, p))
+                # WP-45 GW-6: the graph's outline is its graph region
+                # box's CSS outline, at the graph's edge.
+                gcol, galpha, gwidth, gdash = _graph_line(f)
                 for role, want, col, alpha, width, dash, tw0, d0 in (
                         ("plot_line", pl, f.outline_line_color,
                          f.outline_line_alpha, f.outline_line_width,
                          f.outline_line_dash, base_tw["plot_line"]["width"],
                          base.outline_line_width),
-                        ("graph_line", gl, f.border_line_color,
-                         f.border_line_alpha, f.border_line_width,
-                         f.border_line_dash, base_tw["graph_line"]["width"],
-                         dr.OptionTranslator.translate_lwidth("thin"))):
-                    if role == "graph_line" and not _outlined(go):
-                        continue    # dash draws no graph outline unasked
+                        ("graph_line", gl, gcol, galpha, gwidth, gdash,
+                         base_tw["graph_line"]["width"],
+                         _graph_line(base)[2])):
+                    # Flipped (WP-45 GW-6): the skip "dash draws no graph
+                    # outline unasked" is gone -- twoway strokes it in the
+                    # scheme's colour, and so does dash now.
                     if (col is None) != (want is None):
                         bad.append((scheme, pid, role, col, want))
                         continue

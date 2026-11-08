@@ -116,8 +116,15 @@ def _ratio(fig):
             return 1.0 / (w / float(fig.aspect_ratio)
                           + (gm[2] + gm[3]) / 100.0)
         return float(fig.aspect_ratio)
+    # Flipped (WP-45 GW-6): the figure was the whole xsize()/ysize()
+    # box; twoway draws the scheme's graph margin inside it
+    # (figure_geometry_truth.json G_xs44), so the figure is what the
+    # margin leaves and the box is it plus the margin
+    # (fig._dash_box_margin, left right bottom top).
     if fig.width and fig.height:
-        return float(fig.width) / float(fig.height)
+        bm = getattr(fig, "_dash_box_margin", None) or [0.0] * 4
+        return (float(fig.width) + bm[0] + bm[1]) / (
+            float(fig.height) + bm[2] + bm[3])
     if fig.frame_width and fig.frame_height:
         return float(fig.frame_width) / float(fig.frame_height)
     return None
@@ -298,7 +305,14 @@ class TestResponsiveness:
         unsized figure is still responsive."""
         dr, _ = _render({"xsize": "6", "ysize": "4"})
         fig = dr.figures["g1"]
-        assert (fig.sizing_mode, fig.width, fig.height) == ("fixed", 576, 384)
+        # Flipped (WP-45 GW-6): the figure was the whole
+        # xsize()/ysize() box; twoway draws the scheme's graph
+        # margin inside it (figure_geometry_truth.json G_xs44), so
+        # the figure is what the margin leaves and the box is it
+        # plus the margin.
+        bm = fig._dash_box_margin
+        assert (fig.sizing_mode, round(fig.width + bm[0] + bm[1]),
+                round(fig.height + bm[2] + bm[3])) == ("fixed", 576, 384)
         dr, _ = _render()
         assert dr.figures["g1"].sizing_mode in (
             "stretch_width", "scale_width", "stretch_both", "scale_both")
@@ -317,7 +331,12 @@ class TestResponsiveness:
         # graph's shape at any size (VF-4, DECISIONS A-1): xsize()/ysize() are the exact box at 96 px an inch
         # (the ratio 1.5 kept), and the proportions without them a ratio.
         assert fig.aspect_ratio is None
-        assert fig.width / fig.height == pytest.approx(1.5)
+        # Flipped (WP-45 GW-6): the figure was the whole
+        # xsize()/ysize() box; twoway draws the scheme's graph
+        # margin inside it (figure_geometry_truth.json G_xs44), so
+        # the figure is what the margin leaves and the box is it
+        # plus the margin.
+        assert _ratio(fig) == pytest.approx(1.5)
         dr, _ = _render()
         assert dr.figures["g1"].aspect_ratio is not None
 

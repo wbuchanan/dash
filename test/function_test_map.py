@@ -676,6 +676,8 @@ FUNCTIONS = {
  '_dash_graph_margin_pct': 'test/test_figure_geometry.py::TestGraphRegion::test_the_inner_ratio',
  '_dash_inner_ratio': 'test/test_figure_geometry.py::TestGraphRegion::test_the_inner_ratio',
  '_dash_graph_region_box': 'test/test_figure_geometry.py::TestGraphRegion::test_the_margin_box',
+ '_dash_graph_outline': 'test/test_figure_geometry.py::TestGraphRegionOutline::test_the_outline',
+ '_dash_box_margin_px': 'test/test_figure_geometry.py::TestGraphRegionOutline::test_the_box_margin',
  '_dash_by_ruler_column': 'test/test_figure_geometry.py::TestGraphRegion::test_the_ruler_column',
  '_dash_by_panel_borders': 'test/test_figure_geometry.py::TestGraphRegion::test_the_panel_borders_and_row_gaps',
  '_dash_by_row_gaps': 'test/test_figure_geometry.py::TestGraphRegion::test_the_panel_borders_and_row_gaps',

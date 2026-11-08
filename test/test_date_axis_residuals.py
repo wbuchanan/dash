@@ -710,13 +710,18 @@ _PLAIN_DIGESTS = {
     # null y grid).  A masked model diff against the tree before 44-04
     # differs in the x range's finish callback code alone, in both cases.
     ("saved", "plain"):
-        "df36ca65cba7f855c4c55856d380a2aebb9513a335b63aad4ec791676b77dab7",
+        # WP-45 GW-6: the graph region box's outline and the width
+        # scale's --dash-k on the box: df36ca65... -> 26179bc0... (saved)
+        # and cb2e0754... -> f08c9445... (served); yaxis2 b72f9d52... ->
+        # f6d4fc4a... and 9f8feced... -> edc34f85..., under Bokeh 3.8 and
+        # 3.9.
+        "26179bc0c35aad05aaafdcb521415faf814a0bf6966f90331e14ade4cde7c7b0",
     ("saved", "yaxis2"):
-        "b72f9d52a55725196b08c21b8860b5f910f3ee93e861a8d52f0fab6ce699609a",
+        "f6d4fc4ae079e6a6b6ab708b6d1aa17863df27a17659fb554f20dd0d4a16909e",
     ("served", "plain"):
-        "cb2e0754ccc894f552417d0c608eb3426eddca68a15bd42e755780855397402a",
+        "f08c944598b0e6f69ee81890a35d19136b000bfda3d23e88646da3ff32b7d4fa",
     ("served", "yaxis2"):
-        "9f8fecedb0d076af41b8a181a40796605f45b7ae84be89762b9806f098f88e67",
+        "edc34f85c872f3ef672b8fa06214bee2994a379c094246abcb1b2aa6ebd3d049",
 }
 
 

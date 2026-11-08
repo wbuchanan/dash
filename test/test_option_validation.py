@@ -1363,8 +1363,15 @@ class TestGraphSizeOptionsAgreeAcrossModes:
         # Flipped (WP-45 VF-4): both carried aspect_ratio 1.5; the figure was held in a 160-560 px band; twoway draws its
         # graph's shape at any size (VF-4, DECISIONS A-1): both
         # draw the exact 6 x 4 in box at 96 px an inch.
+        # Flipped (WP-45 GW-6): the figure was the whole
+        # xsize()/ysize() box; twoway draws the scheme's graph
+        # margin inside it (figure_geometry_truth.json G_xs44), so
+        # the figure is what the margin leaves and the box is it
+        # plus the margin.
         for f in (std, srv):
-            assert (f.sizing_mode, f.width, f.height) == ("fixed", 576, 384)
+            bm = f._dash_box_margin
+            assert (f.sizing_mode, round(f.width + bm[0] + bm[1]),
+                    round(f.height + bm[2] + bm[3])) == ("fixed", 576, 384)
 
     def test_aspectratio_is_inverted_in_both_modes(self):
         # Stata's aspectratio() is height/width; Bokeh's is width/height.

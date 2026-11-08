@@ -22,18 +22,19 @@ the comparison against SCALE_FRAME_KNOWN.
 # showindex and region styles; these legend-widening rows under scale()
 # are none of them, so they stay as LT-6 (residual) until the item that
 # draws twoway's widening takes them (reported to the orchestrator).
+# WP-45 GW-6 (08nov2026): the comparison reads the graph region box, the
+# scheme's margin drawn round the figure, so A:top, B:left and B:top's
+# intercepts agree and their rows are gone; the other intercepts are
+# Bokeh's own 5 px border inside the margin (GW-6's residual).
 SCALE_FRAME_KNOWN = {
-    "A:bottom:intercept": "GW-6 (residual)",  # D43: twoway 13.44 / dash 5.72 px
-    "A:left:intercept": "GW-6 (residual)",  # D43: twoway 13.44 / dash 5.72 px
-    "A:right:intercept": "GW-6 (residual)",  # D43: twoway 13.46 / dash 5.00 px
-    "A:top:intercept": "GW-6 (residual)",  # D43: twoway 13.44 / dash -0.96 px
+    "A:bottom:intercept": "GW-6 (residual)",  # twoway 13.44 / dash 19.72 px (08nov2026)
+    "A:left:intercept": "GW-6 (residual)",  # twoway 13.44 / dash 18.72 px (08nov2026)
+    "A:right:intercept": "GW-6 (residual)",  # twoway 13.46 / dash 19.00 px (08nov2026)
     "A:top:slope": "VF-4 (residual)",  # D43: twoway 23.28 / dash 32.31 px per unit
-    "B:bottom:intercept": "GW-6 (residual)",  # D43: twoway 13.44 / dash 6.20 px
-    "B:bottom:linear": "LT-6 (residual)",  # D43: twoway residual 0.01 / dash 2.93 px
-    "B:left:intercept": "GW-6 (residual)",  # D43: twoway 19.23 / dash 5.72 px
+    "B:bottom:intercept": "GW-6 (residual)",  # twoway 13.44 / dash 21.15 px (08nov2026)
+    "B:bottom:linear": "LT-6 (residual)",  # D43: twoway residual 0.01 / dash 2.86 px
     "B:left:slope": "LT-6 (residual)",  # D43: twoway 31.50 (legend widens) / dash 36.41
-    "B:right:intercept": "GW-6 (residual)",  # D43: twoway 13.46 / dash 5.00 px
-    "B:top:intercept": "GW-6 (residual)",  # D43: twoway 13.44 / dash -0.97 px
+    "B:right:intercept": "GW-6 (residual)",  # twoway 13.46 / dash 19.00 px (08nov2026)
     "B:top:slope": "VF-4 (residual)",  # D43: twoway 42.55 / dash 59.45 px per unit
 }
 

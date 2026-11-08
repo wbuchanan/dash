@@ -1299,6 +1299,45 @@ def _w45s04_fxy(sp, dp, app, probe):
             shape.append("True")
     Macro.setGlobal("w45s04_got", " ".join(got))
     Macro.setGlobal("w45s04_shape", " ".join(shape))
+
+
+def _w45s04_region(sp, dp, app, probe):
+    """Q4504-3: twoway's graph-region line (its colour, and that it lies
+    half its width in from the edge) and, for G_xs44, its margin in px of
+    the 384 px box; each mode's graph region box: its outline colour and
+    whether it is drawn inside (offset minus its width), and its padding.
+    Globals w45s04_tw, w45s04_got (one per mode, | between)."""
+    import json, re
+    from sfi import Macro
+    with open(_w45s04_os.path.join("fixtures", "figure_geometry_truth.json"),
+              encoding="utf-8") as fh:
+        t = json.load(fh)["probes"][probe]
+    line = [r for r in t["rects"] if r["fill"] == "none"][0]
+    inside = abs(line["x"] - line["sw"] / 2) < 0.01
+    tw = "%s inside=%s" % (line["stroke"], inside)
+    if probe == "G_xs44":
+        plot = [r for r in t["rects"] if r["fill"] == "#ffffff"
+                and r["stroke"] is None and r["w"] < 2880][0]
+        tw += " margin=%.2f" % (plot["y"] / 2880.0 * 384.0)
+    Macro.setGlobal("w45s04_tw", tw)
+    got = []
+    for models in _w45s04_models(sp, dp, app):
+        box = [m for m in models if "dash_graph_region"
+               in (getattr(m, "tags", None) or [])]
+        st = dict(box[0].styles or {}) if box else {}
+        m = re.match(r"calc\(var\(--dash-k, [0-9.]+\) \* ([0-9.]+)px\) "
+                     r"solid (#[0-9a-f]{6})$", str(st.get("outline", "")))
+        o = re.match(r"calc\(var\(--dash-k, [0-9.]+\) \* (-?[0-9.]+)px\)$",
+                     str(st.get("outline-offset", "")))
+        g = "%s inside=%s" % (m.group(2) if m else "none",
+                              bool(m and o and abs(float(o.group(1))
+                                                   + float(m.group(1)))
+                                   < 1e-9))
+        if probe == "G_xs44":
+            pad = str(st.get("padding", "")).split()
+            g += " margin=%s" % (pad[0][:-2] if pad else "none")
+        got.append(g)
+    Macro.setGlobal("w45s04_got", "|".join(got))
 end
 
 * ==== S04 VF-4: fxsize() and fysize() at the scheme's reference side ====
@@ -1338,6 +1377,44 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w45_run' {
     capture dash clear
     macro drop w45s04_*
     foreach f in w45s04p.json w45s04p_d.json a.py {
+        capture erase "`s04d'/`f'"
+    }
+    capture rmdir "`s04d'"
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
+* ==== S04 GW-6: the graph region's outline and a box's margin ====
+local only : env WP45_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w45_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    local s04d "`w45_work'/s04g"
+    capture mkdir "`s04d'"
+
+    // ------------------------------------------------------------
+    // Q4504-3: twoway strokes the graph region's outline unasked, half
+    // its width in from the edge, in the scheme's line (M_stcolor), kept
+    // under graphregion(fcolor(red)) (M_stcolor_red), red under
+    // lcolor(red) (I_gla), round a by() array (M_by_stcolor) and a box
+    // (G_xs44), whose 13.44 px margin it draws inside the box; dash's
+    // graph region box is the same in each mode.
+    // ------------------------------------------------------------
+    foreach pr in "M_stcolor|" "M_stcolor_red|graphregion(fcolor(red))" "I_gla|graphregion(lalign(inside) lcolor(red) lwidth(thick))" "M_by_stcolor|by(foreign)" "G_xs44|xsize(4) ysize(4)" {
+        gettoken s04p s04o : pr, parse("|")
+        local s04o = substr("`s04o'", 2, .)
+        _w45s04_dash "`s04d'" w45s04q scatter mpg weight, `s04o' scheme(stcolor)
+        _w45_expect Q4504-3 "(${w45s04_drc} == 0)" "dash rc ${w45s04_drc}: `s04o'"
+        if !${w45s04_drc} {
+            python: import __main__ as _w45m; _w45m._w45s04_region("`s04d'/w45s04q.json", "`s04d'/w45s04q_d.json", "`s04d'/a.py", "`s04p'")
+            local s04_ok = (`"${w45s04_got}"' == `"${w45s04_tw}|${w45s04_tw}"')
+            _w45_expect Q4504-3 "(`s04_ok')" "`s04p': saved|served ${w45s04_got}, twoway ${w45s04_tw}"
+        }
+    }
+    _w45_done Q4504-3 "the graph region's outline and a box's margin are twoway's, saved and served"
+
+    capture dash clear
+    macro drop w45s04_*
+    foreach f in w45s04q.json w45s04q_d.json a.py {
         capture erase "`s04d'/`f'"
     }
     capture rmdir "`s04d'"

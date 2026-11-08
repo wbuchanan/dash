@@ -1036,7 +1036,11 @@ def _w41_s05_geometry():
             _bad.append("probe %d: a figure carries a height bound" % _k)
         if _k == 1:
             _f = _figs[0]
-            if (_f.sizing_mode, _f.width, _f.height) != ("fixed", round(_w * 96), round(_h * 96)):
+            # Flipped (WP-45 GW-6): the figure was the whole box; twoway draws
+            # the scheme's graph margin (3.5 units of the smaller side)
+            # inside it, which dash's graph region box draws round the figure.
+            _gm = 0.035 * min(_w, _h) * 96
+            if (_f.sizing_mode, _f.width, _f.height) != ("fixed", round(_w * 96 - 2 * _gm), round(_h * 96 - 2 * _gm)):
                 _bad.append("xsize(4) ysize(4): %s %s x %s, twoway %s x %s in" % (_f.sizing_mode, _f.width, _f.height, _w, _h))
         elif _k == 2:
             _f = _figs[0]

@@ -720,7 +720,10 @@ _SAVED_DIGEST = (
     # dash_axis_extent reads every finite value as a log axis's tick input
     # (finish JS text only: with the AX-11 edit stashed the old digest is
     # given; this page draws no log axis).
-    "0a7ba62dd71626a6381de54feca51633dea9f7d5d3f826e1c3ba7718f9eddba2")
+    # WP-45 GW-6: the graph region box's outline (the scheme's line, a CSS
+    # outline in its styles) and the width scale's --dash-k on the box:
+    # 0a7ba62d... -> 11a6ea31..., the same under Bokeh 3.8 and 3.9.
+    "11a6ea3118ba8c63f06afb5e0dc40e01bf7ab787e91ee0e69041e2665dc6c432")
 
 
 # ===========================================================================

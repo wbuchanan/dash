@@ -569,3 +569,72 @@ class TestFxFyInChrome:
             # twoway's plot region starts at the box's top, and its x axis
             # is 6 px taller than twoway's 93.
             assert abs(ft - 210) <= 12 and abs(fh - 326.7) <= 18, rec
+
+
+#: The graph region box's laid-out size and its computed outline, and
+#: every plot frame, in page px.
+_OUTLINE_JS = r"""
+<script>
+addEventListener('load', () => setTimeout(() => {
+  let region = null; const frames = [];
+  const visit = (v) => {
+    if (!v) return;
+    if (v.model && v.el && region === null
+        && (v.model.tags || []).includes('dash_graph_region')) {
+      const q = v.el.getBoundingClientRect(), c = getComputedStyle(v.el);
+      region = [q.left, q.top, q.width, q.height,
+                parseFloat(c.outlineWidth), c.outlineColor,
+                parseFloat(c.outlineOffset), c.outlineStyle];
+    }
+    if (v.frame && v.model && v.el) {
+      const r = v.el.getBoundingClientRect(), f = v.frame.bbox;
+      if (f.width > 20) frames.push([r.left + f.x0, r.top + f.y0]);
+    }
+    for (const c of (v.child_views || [])) visit(c);
+  };
+  for (const v of Object.values(Bokeh.index)) { if (!v.parent) visit(v); }
+  parent.postMessage('DASHPROBE' + JSON.stringify({W: innerWidth, region,
+                                                   frames}), '*');
+}, 3000));
+</script>
+"""
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestGraphOutlineInChrome:
+    """WP-45 GW-6 residual: at 1400 px a stcolor graph's region outline is
+    drawn inside its edge in the scheme's white, also under
+    graphregion(fcolor(red)) (figure_geometry_truth.json M_stcolor_red:
+    6.48 of 3240 SVG units, 1.68 px at 840 px tall; Chrome draws an
+    outline in whole px), red and thick under lcolor(red) lwidth(thick)
+    (I_gla: 25.92 units, 6.72 px); a graph at xsize(4) ysize(4) is its
+    384 px box with the scheme's 13.44 px margin inside it (G_xs44)."""
+
+    def _probe(self, mode, go, tmp_path):
+        html = TestTheThreeCasesInChrome._page(mode, go, tmp_path)
+        mp = pytest.MonkeyPatch()
+        mp.setattr(responsive_probe, "PROBE_JS", _OUTLINE_JS)
+        try:
+            return responsive_probe.measure_many(html, (1400,))[1400]
+        finally:
+            mp.undo()
+
+    @pytest.mark.parametrize("go,colour,px", [
+        ({"graphregion": "fcolor(red)"}, "rgb(255, 255, 255)", 1.68),
+        ({"graphregion": "lcolor(red) lwidth(thick)"}, "rgb(255, 0, 0)",
+         6.72)], ids=["fcolor", "lcolor"])
+    def test_the_outline(self, go, colour, px, mode, tmp_path):
+        rec = self._probe(mode, go, tmp_path)
+        l, t, w, h, ow, oc, off, sty = rec["region"]
+        assert abs(w - 1400) <= 2 and abs(h - 840) <= 3, rec
+        assert oc == colour and sty == "solid", rec
+        assert abs(ow - px) <= 1 and off == -ow, rec
+
+    def test_the_box_margin(self, mode, tmp_path):
+        rec = self._probe(mode, {"xsize": "4", "ysize": "4"}, tmp_path)
+        l, t, w, h = rec["region"][:4]
+        assert abs(w - 384) <= 1 and abs(h - 384) <= 1, rec
+        # The plot region's top: the 13.44 px margin and Bokeh's own 5 px
+        # border above the frame (as on a stretched graph).
+        fl, ft = rec["frames"][0]
+        assert abs(ft - t - (13.44 + 5)) <= 1.5, rec
