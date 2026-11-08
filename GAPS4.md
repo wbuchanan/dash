@@ -510,7 +510,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **PIC-7 Tracked:** Closed in WP-45, BUGS.md "economist widths: range, spike, dropline and pc lines at 1.2 (linewidth p) where twoway uses pother 0.8; the rarea outline at 0.8 centred where twoway uses parea 0.2 inside", commit 719ae9f.
 - **ST-1 Tracked:** Closed in WP-45, BUGS.md "Style-word abbreviations and names twoway reads are not read: compass2dir (nor, N, rig ...), tb_orientstyle (hor, vertic), clockdir names (top, bottom, left ...: title position(bottom) drawn above), gridringstyle (inside/outside; title ring(in) accepted where twoway refuses), anglestyle (v, rv, rh), connectstyle (st, up, no drawn direct); twoway-worded notes are invented for them, and justification(l)'s note is missing", commit 30a7168.
 - **ST-7 Tracked:** Closed in WP-45, BUGS.md "Leaf style files on the ado-path (linepattern, linewidth, symbolsize, gsize, intensity, anglestyle, margin) are not read", commit pending.
-- **ST-15 Tracked:** Open (WP-45 section 45-03).
+- **ST-15 Tracked:** Closed in WP-45, BUGS.md "color-*.style and textboxstyle-*.style files are not read (mcolor(mine) draws black)", commit pending.
 - **ST-17 Tracked:** Open (WP-45 section 45-03).
 - **ST-10 Tracked:** Open (WP-45 section 45-03).
 - **ST-16 Tracked:** Open (WP-45 section 45-03).

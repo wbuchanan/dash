@@ -205,24 +205,20 @@ class TestTheUnreadStyleFiles:
         # Measured 18oct2026 with a color-zqred.style (set rgb "255 0 0")
         # and a textboxstyle-zqbig.style (set size huge, set color red) on
         # the ado-path: twoway draws red markers, and huge red marker labels
-        # and titles; dash draws black markers with "mcolor(zqred) is not a
-        # recognised colour; using black.", the body text style with
-        # "mlabtextstyle(zqbig) is not a recognised text style; using the
-        # body text style." and a title in the default style with "named
-        # style zqbig not found in class textboxstyle, default attributes
-        # used".
+        # and titles.
+        # Flipped (WP-45 ST-15): the two classes are read now, as twoway
+        # reads them (ST-15; test/fixtures/style_leaf_truth.json L_color,
+        # L_textboxstyle, L_mlabtextstyle), so the paragraph says so.
         h = _flat(_help())
-        i = h.index("The {cmd:textboxstyle} and {cmd:color} style files are "
-                    "not read")
+        i = h.index("The {cmd:color-*.style} and {cmd:textboxstyle-*.style} "
+                    "files are read as {cmd:twoway} reads them")
         para = h[i:h.index("{phang2}", i)]
-        assert "{cmd:color-mine.style}" in para
-        assert "{cmd:textboxstyle-mine.style}" in para
-        # Flipped (18oct2026): the note is twoway's, naming the colour.
-        assert ("named style mine not found in class color, default "
-                "attributes used") in para
-        assert "not found in class textboxstyle, default attributes used" \
+        assert "{cmd:mcolor(mine)} draws that colour" in para
+        assert "{cmd:mlabtextstyle(mine)} draw the file's size and colour" \
             in para
-        assert "using the body text style" in para
+        assert "with no note" in para
+        assert "not found in class textboxstyle, default attributes used" \
+            not in para
 
     def test_the_reader_still_skips_both_classes(self):
         # The day SchemeParser reads either class, this paragraph is wrong.
@@ -232,11 +228,13 @@ class TestTheUnreadStyleFiles:
         # old -> new: tickstyle, ticksetstyle, gridstyle (WP-44 AX-14);
         # old -> new: axisstyle (WP-44 AX-9);
         # old -> new: ST-7 seven leaf classes read (WP-45 ST-7);
-        # textboxstyle and color stay unread.
+        # old -> new: ST-15 color and textboxstyle read (WP-45 ST-15): the
+        # two classes are read now, as twoway reads them.
         assert classes == ["seriesstyle", "markerstyle", "areastyle",
                            "linestyle", "shadestyle", "tickstyle",
                            "ticksetstyle", "gridstyle", "axisstyle",
                            "linepattern", "linewidth", "symbolsize", "gsize",
-                           "intensity", "anglestyle", "margin"]
+                           "intensity", "anglestyle", "margin", "color",
+                           "textboxstyle"]
         assert ('f"{prefix}: {head} is not a recognised {what}; using '
                 '{using}.",') in _render()

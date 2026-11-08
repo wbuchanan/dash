@@ -9246,6 +9246,11 @@ class OptionTranslator:
                 return "ok", hx, alpha
             return "ok", ("#ffffff" if scheme else None), alpha
         st, hx = T._colour_base(base, context, background, foreground)
+        if st == "unknown" and not scheme:
+            # WP-45 ST-15: a color-<name>.style file's set rgb.
+            alt = _dash_leaf_value("color", base.strip())
+            if alt is not None:
+                st, hx = T._colour_base(alt, context, background, foreground)
         if st == "malformed":
             return keep
         if st == "unknown":
@@ -10828,16 +10833,17 @@ class SchemeParser:
     #: gridstyle files too (SchemeParser.axis_style_tokens); WP-44 AX-9:
     #: xscale()/yscale() style()'s axisstyle files
     #: (SchemeParser.axis_scale_style_tokens).  WP-45 ST-7: the seven
-    #: leaf classes' files (``SchemeParser.leaf_value``).
+    #: leaf classes' files (``SchemeParser.leaf_value``); ST-15: color
+    #: files (``leaf_value``) and textboxstyle files (``textbox_style``).
     _STYLE_FILE_CLASSES: "tuple[str, ...]" = (
         "seriesstyle", "markerstyle", "areastyle", "linestyle", "shadestyle",
         "tickstyle", "ticksetstyle", "gridstyle", "axisstyle",
         "linepattern", "linewidth", "symbolsize", "gsize", "intensity",
-        "anglestyle", "margin")
-    #: The leaf classes ``leaf_value`` reads (WP-45 ST-7).
+        "anglestyle", "margin", "color", "textboxstyle")
+    #: The leaf classes ``leaf_value`` reads (WP-45 ST-7, ST-15).
     _LEAF_CLASSES: "tuple[str, ...]" = (
         "linepattern", "linewidth", "symbolsize", "gsize", "intensity",
-        "anglestyle", "margin")
+        "anglestyle", "margin", "color")
     _STYLE_FILE_MAX_LINES: int = 200
     _STYLE_FILE_MAX_LINE_BYTES: int = 400
     _STYLE_FILE_MEMO_MAX: int = 400
@@ -12123,7 +12129,7 @@ class SchemeParser:
                     self._color(f"color {ck}", self.body_color))
         m = re.fullmatch(r"p([1-9]|1[0-5])(barlabel|boxlabel)?", name)
         if m is None:
-            return None
+            return self._textbox_file_style(name)
         i = int(m.group(1)) - 1
         size, color = self.p_label_sizes[i], self.p_label_colors[i]
         stub = m.group(2)
@@ -12134,6 +12140,40 @@ class SchemeParser:
                 if self._props.get(f"color {key}", "").strip():
                     color = self._color(f"color {key}", color)
         return size, color
+
+    def _textbox_file_style(self, name) -> "tuple[str, str] | None":
+        """``(size, colour)`` of a ``textboxstyle-<name>.style`` file on
+        the ado-path or embedded at registration, or None (WP-45 ST-15):
+        its ``set size`` and ``set color`` rows, each a value (a gsize name
+        or number; a colour name or RGB) or ``scheme <key>`` (the scheme's
+        ``gsize``/``color`` key), as BASE's own text box styles write them;
+        an absent or unreadable row is body's, as in :meth:`textbox_style`.
+        """
+        if not self._style_name_ok("textboxstyle", name):
+            return None
+        rows = self._style_file_rows("textboxstyle", name)
+        if rows is None:
+            return None
+        size, colour = self.body_font_size, self.body_color
+        for attr, kind, v in rows:
+            if attr == "size" and kind == "scheme" and v:
+                size = self._gsize(f"gsize {v}", size)
+            elif attr == "size" and kind == "literal":
+                if v in self._GSIZE_PT:
+                    size = self._GSIZE_PT[v]
+                else:
+                    n = OptionTranslator.stata_number(v)
+                    if n is not None and 0 < n * OptionTranslator.PT_PER_RS \
+                            <= self._GSIZE_MAX_PT:
+                        pt = round(n * OptionTranslator.PT_PER_RS, 3)
+                        size = f"{pt:.3f}".rstrip("0").rstrip(".") + "pt"
+            elif attr == "color" and kind == "scheme" and v:
+                colour = self._color(f"color {v}", colour)
+            elif attr == "color" and kind == "literal":
+                st, hx, _a = OptionTranslator.stata_colour(v)
+                if st == "ok" and hx:
+                    colour = hx
+        return size, colour
 
     def _legend_text_style(self, box, default) -> str:
         """The text box style ``textboxstyle leg_<box>`` names in this
@@ -13752,6 +13792,12 @@ class SchemeParser:
                 sides.append(v)
             if sides:
                 out = " ".join(sides)
+        elif stata_class == "color":
+            # WP-45 ST-15: set rgb "200 30 40".
+            v = lit.get("rgb")
+            if v is not None and len(v.split()) == 3 and all(
+                    num(t) for t in v.split()):
+                out = " ".join(v.split())
         memo[key] = out
         return out
 
@@ -13777,6 +13823,11 @@ class SchemeParser:
                 _dash_style_word("anglestyle", w))
         if stata_class == "margin":
             return w in self._MARGINSTYLES
+        if stata_class == "color":
+            return T._colour_base(w, "option", None, None)[0] == "ok"
+        if stata_class == "textboxstyle":
+            return w in self._TEXTBOX_STYLES or re.fullmatch(
+                r"p([1-9]|1[0-5])(barlabel|boxlabel)?", w) is not None
         return False
 
     #: A word of a spec's option values a leaf style file may be named by.
@@ -13803,7 +13854,7 @@ class SchemeParser:
                     if w not in words and len(words) < 400:
                         words.append(w)
         for w in words:
-            for c in self._LEAF_CLASSES:
+            for c in self._LEAF_CLASSES + ("textboxstyle",):
                 if self._style_name_ok(c, w) and not self._leaf_native(c, w):
                     self._style_file_rows(c, w)
 
@@ -38476,8 +38527,9 @@ _DASH_STYLE_ROW_KEY_RE = re.compile(
     # WP-44 AX-14/AX-8: the axis style reader's classes; AX-9: the
     # scale's axisstyle.
     r"tickstyle|ticksetstyle|gridstyle|axisstyle|"
-    # WP-45 ST-7: the leaf classes.
-    r"linepattern|linewidth|symbolsize|gsize|intensity|anglestyle|margin) "
+    # WP-45 ST-7: the leaf classes; ST-15: color and textboxstyle.
+    r"linepattern|linewidth|symbolsize|gsize|intensity|anglestyle|margin|"
+    r"color|textboxstyle) "
     r"([A-Za-z_][A-Za-z0-9_]{0,63}|p#[a-z_]{0,40})")
 _DASH_STYLE_ROW_TOKEN_RE = re.compile(
     r"[A-Za-z_][A-Za-z0-9_#]{0,40}|[0-9]{0,8}\.?[0-9]{1,8}|"

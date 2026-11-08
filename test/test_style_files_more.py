@@ -222,3 +222,31 @@ class TestTheLeafReader:
                       "plotregion": "margin(2 4 8 6)"}, mode, ())
         assert not _notes(probe), _notes(probe)
         assert _sig(probe) == _sig(ref)
+
+
+#: ST-15's probes: a color-zqc.style (set rgb "200 30 40") and a
+#: textboxstyle-zqt.style (heading's lines with set size huge and set
+#: color red), each against its value typed.
+COLOUR_TEXTBOX = {
+    "L_color": ((_sc(mcolor="zqc"), {}), (_sc(mcolor='"200 30 40"'), {})),
+    "L_lcolor": ((_ln(lcolor="zqc"), {}), (_ln(lcolor='"200 30 40"'), {})),
+    "L_textboxstyle": ((_sc(), {"title": '"T", tstyle(zqt)'}),
+                       (_sc(), {"title": '"T", size(huge) color(red)'})),
+    "L_mlabtextstyle": ((_sc(mlabel="mpg", mlabtextstyle="zqt"), {}),
+                        (_sc(mlabel="mpg", mlabsize="huge",
+                             mlabcolor="red"), {})),
+}
+
+
+class TestColourAndTextboxFiles:
+    """ST-15: color-*.style and textboxstyle-*.style files are read."""
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("key", sorted(COLOUR_TEXTBOX))
+    def test_class(self, key, mode, tmp_path):
+        d = _files_dir(tmp_path)
+        (pp, pg), (rp, rg) = COLOUR_TEXTBOX[key]
+        probe = _drawn(pp, pg, mode, (d,))
+        ref = _drawn(rp, rg, mode, (d,))
+        assert not _notes(probe), (key, _notes(probe))
+        assert _sig(probe) == _sig(ref), key

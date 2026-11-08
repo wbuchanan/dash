@@ -7167,18 +7167,13 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     ado-path) a name Stata knows outside the lists above draws the same
     defaults, with
     {cmd:(note: dash: named style} {it:name} {cmd:of class} {it:class} {cmd:is not drawn by dash; default attributes used)}.
-    The {cmd:textboxstyle} and {cmd:color} style files are not read, so
-    one of your own draws the default where {cmd:twoway} draws the file.
-    With a {cmd:color-mine.style} on the ado-path, {cmd:twoway} draws
-    {cmd:mcolor(mine)} in its colour; {cmd:dash} draws black markers, with
-    {cmd:(note:  dash: named style mine not found in class color, default attributes used)}.
-    With a {cmd:textboxstyle-mine.style}, {cmd:twoway} draws
-    {cmd:title("T", tstyle(mine))} and {cmd:mlabtextstyle(mine)} in the
-    file's size and colour; {cmd:dash} draws the title in its default
-    style, with
-    {cmd:(note: dash: named style mine not found in class textboxstyle, default attributes used)},
-    and the labels in the body text style, with
-    {cmd:(note: dash: mlabtextstyle(mine) is not a recognised text style; using the body text style.)}.
+    The {cmd:color-*.style} and {cmd:textboxstyle-*.style} files are read
+    as {cmd:twoway} reads them: with a {cmd:color-mine.style} holding
+    {cmd:set rgb "200 30 40"} on the ado-path, {cmd:mcolor(mine)} draws
+    that colour, and with a {cmd:textboxstyle-mine.style},
+    {cmd:title("T", tstyle(mine))} and {cmd:mlabtextstyle(mine)} draw the
+    file's size and colour (its {cmd:set size} and {cmd:set color} rows, a
+    value or a {cmd:scheme} key), with no note.
 
 {phang2}{ul:Grids.}  A major grid is drawn on an axis only where the
     scheme says so ({cmd:yesno draw_major_hgrid} for the x axis,

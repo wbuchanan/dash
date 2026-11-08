@@ -1463,6 +1463,7 @@ FUNCTIONS = {
  'SchemeParser._style_file_rows': 'test/test_style_files.py::TestTheReaderIsMemoised::test_one_read_per_file',
  'SchemeParser.leaf_value': 'test/test_style_files_more.py::TestTheLeafReader::test_leaf_value',
  'SchemeParser._leaf_native': 'test/test_style_files_more.py::TestTheLeafReader::test_leaf_native',
+ 'SchemeParser._textbox_file_style': 'test/test_style_files_more.py::TestColourAndTextboxFiles::test_class',
  'SchemeParser._leaf_rows_for_spec': 'test/test_style_files_more.py::TestTheLeafReader::test_rows_travel',
  'SchemeParser._style_parse_rows': 'test/test_style_files.py::TestHostileStyleFiles::test_a_path_like_value_is_skipped',
  'SchemeParser._style_rows': 'test/test_style_files.py::TestDirectives::test_redefines',

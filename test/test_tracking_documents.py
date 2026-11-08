@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'ST-15': 'color-*.style and textboxstyle-*.style files are not read (mcolor(mine) draws black)',
     'ST-17': 'Scheme directives read but not drawn: clockdir p/p#, title textboxstyle, legend_col_gap, title clocks 2-4/8-10; a scheme name must not be a path; files over 1 MB or linked out are skipped',
     'ST-10': 'A shipped-name scheme placed before BASE (adopath ++) is ignored; dash always uses its own translation',
     'ST-16': 'An unknown scheme() is refused r(198) where twoway notes and draws s2color',
