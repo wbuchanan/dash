@@ -8130,7 +8130,10 @@ def _dash_region_spec(raw, option, base, scheme=None, ref_in=4.0):
         elsewhere = {"margin", "istyle", "icolor", "ifcolor", "ilstyle",
                      "ilcolor", "ilwidth", "ilpattern"}
     else:
-        elsewhere = {"margin"}
+        # WP-45 ST-21: the inner box's line and both alignments are drawn
+        # (_dash_graph_inner_line, _dash_graph_outline).
+        elsewhere = {"margin", "istyle", "ilstyle", "ilcolor", "ilwidth",
+                     "ilpattern", "ilalign", "lalign"}
         drawn |= {"ishadestyle", "icolor", "ifcolor", "iintensity"}
     s = {k: base.get(k) for k in ("fill", "fill_alpha", "line",
                                   "line_alpha", "line_width", "line_dash")}
@@ -8329,6 +8332,10 @@ def _dash_apply_regions(fig, graph_opts, scheme, seen=None, key=""):
         "line_dash": []}, scheme, ref_in)
     gfill = (canvas if g["fill"] is None
              else _dash_region_blend(g["fill"], g["fill_alpha"], canvas))
+    # WP-45 ST-21: the margin keeps the region's own fill; the inner box's
+    # fill is the figure's border (inside the margin, under the plot).
+    fig._dash_gfill_outer = gfill
+    _dash_graph_inner_line(fig, raw_g, sch, scheme, ref_in)
     if g.get("ifill") is not None:
         # The inner box's fill (WP-31 D11, D-37.b): Bokeh paints the
         # margin and the inner box as one border, so both take it.
@@ -8340,6 +8347,7 @@ def _dash_apply_regions(fig, graph_opts, scheme, seen=None, key=""):
     # them), for the outline its graph region box strokes.
     fig._dash_gline = (g["line"], g["line_alpha"], g["line_width"],
                        g["line_dash"])
+    fig._dash_galign = _dash_region_align(raw_g, "lalign")
     _dash_graph_margin(fig, sch, go)
     table = _dash_region_table()
     outline = {"style", "lstyle", "lcolor", "lwidth", "lpattern", "color"}
@@ -58274,7 +58282,8 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
                         # height would be its flex basis, over its ratio.
                         _f.height_policy = "fit"
                     _cell = column(_kw, sizing_mode="stretch_width")
-                    _dash_graph_region_box(_cell, _gm, _f.border_fill_color)
+                    _dash_graph_region_box(_cell, _gm, getattr(
+                        _f, "_dash_gfill_outer", None) or _f.border_fill_color)
                     # WP-45 GW-6: the graph region's outline at its edge.
                     _dash_graph_outline(
                         _cell, _f, getattr(_f, "_dash_scheme", None),
@@ -58328,7 +58337,9 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of,
                         "padding": "%.4gpx %.4gpx %.4gpx %.4gpx" % (
                             _bm[3], _bm[1], _bm[2], _bm[0]),
                         "box-sizing": "content-box",
-                        "background-color": str(_f.border_fill_color),
+                        "background-color": str(getattr(
+                            _f, "_dash_gfill_outer", None)
+                            or _f.border_fill_color),
                         "flex": "0 0 auto"}
                     _rc.tags = ["dash_graph_region"]
                     _dash_graph_outline(
@@ -66573,6 +66584,65 @@ def _dash_graph_region_box(item, pct, fill):
     return item
 
 
+def _dash_region_align(raw, word):
+    """The last ``lalign()`` or ``ilalign()`` (*word*) of a region option
+    *raw*, as ``inside``, ``outside`` or ``center``, or None (WP-45
+    ST-21)."""
+    table = _dash_region_table()
+    got = None
+    for tok in _dash_by_tokens(_dash_by_tokens_commas(str(raw or ""))[0]):
+        if "(" not in tok or _dash_subopt_canon(
+                tok.split("(", 1)[0].strip(), table) != word:
+            continue
+        v = _dash_unquoted(_dash_subopt_arg(tok)).strip().lower()
+        for full in ("inside", "outside", "center"):
+            if v and full.startswith(v):
+                got = full
+    return got
+
+
+def _dash_graph_inner_line(fig, raw, sch, scheme, ref_in):
+    """graphregion()'s inner box line on *fig* (WP-45 ST-21, GW-19), as
+    twoway draws it (figure_geometry_truth.json I_ilc, I_ifc, I_ila): any
+    of istyle() ilstyle() ilcolor() ilwidth() ilpattern() icolor()
+    ifcolor() draws a line round the inner box -- the graph region inside
+    its margin, the figure itself -- in the scheme's background colour at
+    ``thin`` unless the il* options say otherwise (ifcolor(red) alone
+    outlines it white), aligned by ilalign() (inside by default).
+    Recorded as ``fig._dash_giline = (line, alpha, width, dash, align)``
+    for :func:`_dash_graph_outline`; nothing without an inner option."""
+    table = _dash_region_table()
+    inner = {"istyle": "style", "ilstyle": "lstyle", "ilcolor": "lcolor",
+             "ilwidth": "lwidth", "ilpattern": "lpattern"}
+    toks = _dash_by_tokens(_dash_by_tokens_commas(str(raw or ""))[0])
+    if any("(" not in t and _dash_subopt_canon(t.strip(), table)
+           == "marginonly" for t in toks):
+        return
+    mapped, any_inner = [], False
+    for tok in toks:
+        if "(" not in tok:
+            continue
+        full = _dash_subopt_canon(tok.split("(", 1)[0].strip(), table)
+        if full in inner:
+            any_inner = True
+            if not (full == "istyle" and _dash_unquoted(
+                    _dash_subopt_arg(tok)).strip() == "none"):
+                mapped.append("%s(%s)" % (inner[full], _dash_subopt_arg(tok)))
+        elif full in ("icolor", "ifcolor"):
+            any_inner = True
+    if not any_inner:
+        return
+    st, _named = _dash_region_spec(" ".join(mapped), "graphregion", {
+        "fill": None, "fill_alpha": 1.0, "line": sch.background_color,
+        "line_alpha": 1.0,
+        "line_width": OptionTranslator.translate_lwidth("thin",
+                                                        ref_in=ref_in),
+        "line_dash": []}, scheme, ref_in)
+    fig._dash_giline = (st["line"], st["line_alpha"], st["line_width"],
+                        st["line_dash"],
+                        _dash_region_align(raw, "ilalign") or "inside")
+
+
 def _dash_graph_outline(item, fig=None, scheme=None, unit=1.0):
     """The graph region's outline on its box *item* (WP-45 GW-6): twoway
     strokes it unasked, in the scheme's graphregion line, inside the
@@ -66590,8 +66660,18 @@ def _dash_graph_outline(item, fig=None, scheme=None, unit=1.0):
     sch = scheme if scheme is not None else SchemeParser.fallback()
     ref_in = T.size_ref_of(fig) if fig is not None else 4.0
     read = getattr(fig, "_dash_gline", None) if fig is not None else None
+    align = getattr(fig, "_dash_galign", None) if fig is not None else None
     if fig is not None:
         fig.border_line_color = None
+        # WP-45 ST-21: the inner box's line, round the figure itself.
+        inner = getattr(fig, "_dash_giline", None)
+        if inner is not None:
+            ic, ia, iw, idash, ialign = inner
+            css = _dash_outline_css(ic, ia, iw, idash, unit,
+                                    {"inside": -1.0, "center": -0.5,
+                                     "outside": 0.0}.get(ialign, -1.0), 1.0)
+            if css:
+                fig.styles = {**dict(fig.styles or {}), **css}
     if read is not None:
         col, alpha, width, dash = read
         dash = list(dash or [])
@@ -66600,15 +66680,33 @@ def _dash_graph_outline(item, fig=None, scheme=None, unit=1.0):
     else:
         col, alpha, dash = sch.background_color, 1.0, []
         width = T.translate_lwidth("thin", ref_in=ref_in)
+    # lalign(): twoway's line inside the graph's edge by default; centred
+    # on the edge, its outer half falls off the graph (I_glc), and outside
+    # all of it (I_glo).
+    if align == "outside":
+        return item
+    css = _dash_outline_css(col, alpha, width, dash, unit, -1.0,
+                            0.5 if align == "center" else 1.0)
+    if css:
+        item.styles = {**dict(item.styles or {}), **css}
+    return item
+
+
+def _dash_outline_css(col, alpha, width, dash, unit, offset, share):
+    """A CSS ``outline`` and ``outline-offset`` for a line of colour
+    *col*, *alpha*, *width* px (nominal) and *dash*: the visible *share*
+    of the width, offset by *offset* times that (-1 inside the box's edge,
+    0 outside it), both times ``--dash-k`` (fallback *unit*); {} for no
+    line (WP-45 GW-6, ST-21)."""
     try:
         width = float(width)
         alpha = 1.0 if alpha is None else float(alpha)
     except (TypeError, ValueError):
-        return item
+        return {}
     hx = str(col or "").strip().lower()
     if not re.fullmatch(r"#[0-9a-f]{6}", hx) or not (width > 0) \
             or not (alpha > 0):
-        return item
+        return {}
     if alpha < 1.0:
         hx = "rgba(%d,%d,%d,%.4g)" % (int(hx[1:3], 16), int(hx[3:5], 16),
                                       int(hx[5:7], 16), alpha)
@@ -66620,13 +66718,11 @@ def _dash_graph_outline(item, fig=None, scheme=None, unit=1.0):
     except (TypeError, ValueError):
         u = 1.0
     u = u if math.isfinite(u) and u > 0 else 1.0
-    st = dict(item.styles or {})
-    st["outline"] = "calc(var(--dash-k, %.6g) * %.6gpx) %s %s" % (
-        u, width, kind, hx)
-    st["outline-offset"] = "calc(var(--dash-k, %.6g) * %.6gpx)" % (
-        u, -width)
-    item.styles = st
-    return item
+    w = width * share
+    return {"outline": "calc(var(--dash-k, %.6g) * %.6gpx) %s %s" % (
+                u, w, kind, hx),
+            "outline-offset": "calc(var(--dash-k, %.6g) * %.6gpx)" % (
+                u, offset * w if offset else 0.0)}
 
 
 def _dash_short_side_share(graph_opts, scheme):
@@ -79753,7 +79849,7 @@ class ServerAppBuilder:
                          "_dash_graph_margin_pct", "_dash_inner_ratio",
                          "_dash_graph_region_box",
                          # WP-45 GW-6: its outline, and a box's margin.
-                         "_dash_graph_outline",
+                         "_dash_graph_outline", "_dash_outline_css",
                          "_dash_by_array_styles",
                          # A tab's own layout() (WP-31 D14).
                          "_dash_tab_layout", "_dash_tab_grid",
@@ -79990,6 +80086,8 @@ class ServerAppBuilder:
                          "_dash_unquoted", "_dash_region_table",
                          "_dash_region_spec", "_dash_region_blend",
                          "_dash_apply_regions",
+                         # WP-45 ST-21: graphregion's inner line, lalign().
+                         "_dash_region_align", "_dash_graph_inner_line",
                          "_resolve_kpi_color", "_sanitize_css_color",
                          "_dash_kpi_card_html",
                          # An image panel's markup and Div (WP-33 33-06).

@@ -9574,7 +9574,10 @@ if inlist("`only'", "", "S37") & `: list posof "S37" in w31_run' {
     _w31_expect U37-03 `"(`"`bad'"' == "")"' `"`bad'"'
     _w31_done U37-03 "shadestyle(none) and the s1 family's shadestyle plotregion none leave the plot region unfilled, saved and served"
 
-    // U37-05: ifcolor() fills the border; ilcolor() is named once, alone.
+    // U37-05: ifcolor() fills the border; ilcolor() is drawn, so nothing
+    // is named.  Flipped (WP-45 ST-21): ilcolor(blue) was named as not
+    // drawn; that was wrong because twoway draws the inner box's line and
+    // dash now does (figure_geometry_truth.json I_ilc).
     local bad ""
     _u37_reg "`u37d'" 20 scatter mpg weight, graphregion(ifcolor(red) ilcolor(blue))
     foreach m in s v {
@@ -9583,11 +9586,11 @@ if inlist("`only'", "", "S37") & `: list posof "S37" in w31_run' {
         if "`d1'" != "#ff0000" local bad `"`bad' `m' border `d1';"'
     }
     python: import __main__ as _u37_m; _u37_m._u37_notes("`u37d'/s20.json", "`u37d'/d20.json")
-    if `"${u37_n}"' != "dash: graphregion() sub-option(s) not implemented and ignored: ilcolor(blue)" {
+    if `"${u37_n}"' != "" {
         local bad `"`bad' notes: ${u37_n};"'
     }
     _w31_expect U37-05 `"(`"`bad'"' == "")"' `"`bad'"'
-    _w31_done U37-05 "graphregion(ifcolor()) fills the border; ilcolor() alone is named"
+    _w31_done U37-05 "graphregion(ifcolor()) fills the border; ilcolor() is drawn, nothing named"
 
     // U37-06: marginonly drops its own copy's plot-region inner box, and
     // only its own: twoway's inner rect, drawn or not, against dash's

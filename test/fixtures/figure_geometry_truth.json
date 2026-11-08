@@ -1,8 +1,8 @@
 {
 "_meta": {
 "born_date": "04 Nov 2026",
-"dash_commit": "57088ab6005b8ba8bca31e8249a6bfa7038ac6c3",
-"extracted": " 8 Nov 2026 12:59:05",
+"dash_commit": "d35733b92ba3dc8cd32c7c75a0d87c6e40a2f265",
+"extracted": " 8 Nov 2026 14:16:23",
 "source": "scripts/extract_figure_geometry_truth.do",
 "stata_version": "19.5"
 },
@@ -3061,6 +3061,325 @@
 }
 ]
 },
+"I_glc": {
+"canvas": {
+"h": 3240.0,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+"command": "scatter mpg weight, graphregion(lalign(center) lcolor(red) lwidth(thick))",
+"inches": [
+7.5,
+4.5
+],
+"line": "",
+"line_widths": [
+6.48,
+9.72
+],
+"log": [],
+"marker_r": [
+16.88,
+21.74
+],
+"rc": 0,
+"rects": [
+{
+"fill": "#ffffff",
+"h": 3240.0,
+"stroke": "none",
+"sw": null,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#ffffff",
+"h": 3240.0,
+"stroke": "#ff0000",
+"sw": 25.92,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#ffffff",
+"h": 2653.26,
+"stroke": null,
+"sw": null,
+"w": 4763.81,
+"x": 522.79,
+"y": 113.4
+},
+{
+"fill": "none",
+"h": 2646.78,
+"stroke": "#ffffff",
+"sw": 6.48,
+"w": 4757.33,
+"x": 526.03,
+"y": 116.64
+}
+],
+"scheme": "stcolor",
+"texts": [
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "10",
+"x": 455.29,
+"y": 2734.71
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "20",
+"x": 455.29,
+"y": 1924.88
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "30",
+"x": 455.29,
+"y": 1115.05
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "40",
+"x": 455.29,
+"y": 305.05
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 112.56,
+"t": "Mileage (mpg)",
+"x": 214.55,
+"y": 1439.94
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "2,000",
+"x": 936.39,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "3,000",
+"x": 2362.67,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "4,000",
+"x": 3788.94,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "5,000",
+"x": 5215.39,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "Weight (lbs.)",
+"x": 2904.69,
+"y": 3070.31
+}
+]
+},
+"I_glo": {
+"canvas": {
+"h": 3240.0,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+"command": "scatter mpg weight, graphregion(lalign(outside) lcolor(red) lwidth(thick))",
+"inches": [
+7.5,
+4.5
+],
+"line": "",
+"line_widths": [
+6.48,
+9.72
+],
+"log": [],
+"marker_r": [
+16.88,
+21.74
+],
+"rc": 0,
+"rects": [
+{
+"fill": "#ffffff",
+"h": 3240.0,
+"stroke": "none",
+"sw": null,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#ffffff",
+"h": 3240.0,
+"stroke": null,
+"sw": null,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 3265.92,
+"stroke": "#ff0000",
+"sw": 25.92,
+"w": 5425.92,
+"x": -12.96,
+"y": -12.96
+},
+{
+"fill": "#ffffff",
+"h": 2653.26,
+"stroke": null,
+"sw": null,
+"w": 4763.81,
+"x": 522.79,
+"y": 113.4
+},
+{
+"fill": "none",
+"h": 2646.78,
+"stroke": "#ffffff",
+"sw": 6.48,
+"w": 4757.33,
+"x": 526.03,
+"y": 116.64
+}
+],
+"scheme": "stcolor",
+"texts": [
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "10",
+"x": 455.29,
+"y": 2734.71
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "20",
+"x": 455.29,
+"y": 1924.88
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "30",
+"x": 455.29,
+"y": 1115.05
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "40",
+"x": 455.29,
+"y": 305.05
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 112.56,
+"t": "Mileage (mpg)",
+"x": 214.55,
+"y": 1439.94
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "2,000",
+"x": 936.39,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "3,000",
+"x": 2362.67,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "4,000",
+"x": 3788.94,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "5,000",
+"x": 5215.39,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "Weight (lbs.)",
+"x": 2904.69,
+"y": 3070.31
+}
+]
+},
 "I_ifc": {
 "canvas": {
 "h": 3240.0,
@@ -3129,6 +3448,179 @@
 "w": 5166.72,
 "x": 116.64,
 "y": 116.64
+},
+{
+"fill": "#ffffff",
+"h": 2653.26,
+"stroke": null,
+"sw": null,
+"w": 4763.81,
+"x": 522.79,
+"y": 113.4
+},
+{
+"fill": "none",
+"h": 2646.78,
+"stroke": "#ffffff",
+"sw": 6.48,
+"w": 4757.33,
+"x": 526.03,
+"y": 116.64
+}
+],
+"scheme": "stcolor",
+"texts": [
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "10",
+"x": 455.29,
+"y": 2734.71
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "20",
+"x": 455.29,
+"y": 1924.88
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "30",
+"x": 455.29,
+"y": 1115.05
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "40",
+"x": 455.29,
+"y": 305.05
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 112.56,
+"t": "Mileage (mpg)",
+"x": 214.55,
+"y": 1439.94
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "2,000",
+"x": 936.39,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "3,000",
+"x": 2362.67,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "4,000",
+"x": 3788.94,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "5,000",
+"x": 5215.39,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "Weight (lbs.)",
+"x": 2904.69,
+"y": 3070.31
+}
+]
+},
+"I_ila": {
+"canvas": {
+"h": 3240.0,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+"command": "scatter mpg weight, graphregion(ilcolor(red) ilwidth(thick) ilalign(outside))",
+"inches": [
+7.5,
+4.5
+],
+"line": "",
+"line_widths": [
+6.48,
+9.72
+],
+"log": [],
+"marker_r": [
+16.88,
+21.74
+],
+"rc": 0,
+"rects": [
+{
+"fill": "#ffffff",
+"h": 3240.0,
+"stroke": "none",
+"sw": null,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#ffffff",
+"h": 3240.0,
+"stroke": null,
+"sw": null,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 3233.52,
+"stroke": "#ffffff",
+"sw": 6.48,
+"w": 5393.52,
+"x": 3.24,
+"y": 3.24
+},
+{
+"fill": "none",
+"h": 3039.12,
+"stroke": "#ff0000",
+"sw": 25.92,
+"w": 5199.12,
+"x": 100.44,
+"y": 100.44
 },
 {
 "fill": "#ffffff",
@@ -3580,6 +4072,325 @@
 }
 ]
 },
+"I_plc": {
+"canvas": {
+"h": 3240.0,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+"command": "scatter mpg weight, plotregion(lalign(center) lcolor(red) lwidth(thick))",
+"inches": [
+7.5,
+4.5
+],
+"line": "",
+"line_widths": [
+6.48,
+9.72
+],
+"log": [],
+"marker_r": [
+16.88,
+21.74
+],
+"rc": 0,
+"rects": [
+{
+"fill": "#ffffff",
+"h": 3240.0,
+"stroke": "none",
+"sw": null,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#ffffff",
+"h": 3240.0,
+"stroke": null,
+"sw": null,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 3233.52,
+"stroke": "#ffffff",
+"sw": 6.48,
+"w": 5393.52,
+"x": 3.24,
+"y": 3.24
+},
+{
+"fill": "#ffffff",
+"h": 2653.26,
+"stroke": "#ff0000",
+"sw": 25.92,
+"w": 4763.81,
+"x": 522.79,
+"y": 113.4
+}
+],
+"scheme": "stcolor",
+"texts": [
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "10",
+"x": 455.29,
+"y": 2734.71
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "20",
+"x": 455.29,
+"y": 1924.88
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "30",
+"x": 455.29,
+"y": 1115.05
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "40",
+"x": 455.29,
+"y": 305.05
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 112.56,
+"t": "Mileage (mpg)",
+"x": 214.55,
+"y": 1439.94
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "2,000",
+"x": 936.39,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "3,000",
+"x": 2362.67,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "4,000",
+"x": 3788.94,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "5,000",
+"x": 5215.39,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "Weight (lbs.)",
+"x": 2904.69,
+"y": 3070.31
+}
+]
+},
+"I_pli": {
+"canvas": {
+"h": 3240.0,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+"command": "scatter mpg weight, plotregion(lalign(inside) lcolor(red) lwidth(thick))",
+"inches": [
+7.5,
+4.5
+],
+"line": "",
+"line_widths": [
+6.48,
+9.72
+],
+"log": [],
+"marker_r": [
+16.88,
+21.74
+],
+"rc": 0,
+"rects": [
+{
+"fill": "#ffffff",
+"h": 3240.0,
+"stroke": "none",
+"sw": null,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#ffffff",
+"h": 3240.0,
+"stroke": null,
+"sw": null,
+"w": 5400.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 3233.52,
+"stroke": "#ffffff",
+"sw": 6.48,
+"w": 5393.52,
+"x": 3.24,
+"y": 3.24
+},
+{
+"fill": "#ffffff",
+"h": 2653.26,
+"stroke": null,
+"sw": null,
+"w": 4763.81,
+"x": 522.79,
+"y": 113.4
+},
+{
+"fill": "none",
+"h": 2627.34,
+"stroke": "#ff0000",
+"sw": 25.92,
+"w": 4737.89,
+"x": 535.75,
+"y": 126.36
+}
+],
+"scheme": "stcolor",
+"texts": [
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "10",
+"x": 455.29,
+"y": 2734.71
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "20",
+"x": 455.29,
+"y": 1924.88
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "30",
+"x": 455.29,
+"y": 1115.05
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "40",
+"x": 455.29,
+"y": 305.05
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 112.56,
+"t": "Mileage (mpg)",
+"x": 214.55,
+"y": 1439.94
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "2,000",
+"x": 936.39,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "3,000",
+"x": 2362.67,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "4,000",
+"x": 3788.94,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "5,000",
+"x": 5215.39,
+"y": 2912.86
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 112.56,
+"t": "Weight (lbs.)",
+"x": 2904.69,
+"y": 3070.31
+}
+]
+},
 "I_pm48": {
 "canvas": {
 "h": 5760.0,
@@ -3766,6 +4577,662 @@
 "log": [
 "(note:  named style 10 not found in class margin, default attributes used)"
 ],
+"marker_r": [
+14.94,
+19.26
+],
+"rc": 0,
+"rects": [
+{
+"fill": "#ffffff",
+"h": 2880.0,
+"stroke": "none",
+"sw": null,
+"w": 5760.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#ffffff",
+"h": 2880.0,
+"stroke": null,
+"sw": null,
+"w": 5760.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 2874.24,
+"stroke": "#ffffff",
+"sw": 5.76,
+"w": 5754.24,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 2358.36,
+"stroke": null,
+"sw": null,
+"w": 5194.62,
+"x": 464.58,
+"y": 100.8
+},
+{
+"fill": "none",
+"h": 2352.6,
+"stroke": "#ffffff",
+"sw": 5.76,
+"w": 5188.86,
+"x": 467.46,
+"y": 103.68
+}
+],
+"scheme": "stcolor",
+"texts": [
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "10",
+"x": 404.64,
+"y": 2494.23
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "20",
+"x": 404.64,
+"y": 1733.55
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "30",
+"x": 404.64,
+"y": 972.69
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "40",
+"x": 404.64,
+"y": 212.01
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 100.08,
+"t": "Mileage (mpg)",
+"x": 190.75,
+"y": 1279.98
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "2,000",
+"x": 849.42,
+"y": 2589.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "3,000",
+"x": 2452.68,
+"y": 2589.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "4,000",
+"x": 4055.94,
+"y": 2589.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "5,000",
+"x": 5659.2,
+"y": 2589.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "Weight (lbs.)",
+"x": 3061.98,
+"y": 2729.11
+}
+]
+},
+"I_pmn48": {
+"canvas": {
+"h": 5760.0,
+"w": 2880.0,
+"x": 0.0,
+"y": 0.0
+},
+"command": "scatter mpg weight, plotregion(margin(10 10 10 10)) xsize(4) ysize(8)",
+"inches": [
+4.0,
+8.0
+],
+"line": "",
+"line_widths": [
+5.76,
+8.64
+],
+"log": [],
+"marker_r": [
+14.94,
+19.26
+],
+"rc": 0,
+"rects": [
+{
+"fill": "#ffffff",
+"h": 5760.0,
+"stroke": "none",
+"sw": null,
+"w": 2880.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#ffffff",
+"h": 5760.0,
+"stroke": null,
+"sw": null,
+"w": 2880.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 5754.24,
+"stroke": "#ffffff",
+"sw": 5.76,
+"w": 2874.24,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 5238.36,
+"stroke": null,
+"sw": null,
+"w": 2314.62,
+"x": 464.58,
+"y": 100.8
+},
+{
+"fill": "none",
+"h": 5232.6,
+"stroke": "#ffffff",
+"sw": 5.76,
+"w": 2308.86,
+"x": 467.46,
+"y": 103.68
+}
+],
+"scheme": "stcolor",
+"texts": [
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "10",
+"x": 404.64,
+"y": 5086.23
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "20",
+"x": 404.64,
+"y": 3582.33
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "30",
+"x": 404.64,
+"y": 2078.25
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "40",
+"x": 404.64,
+"y": 574.35
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 100.08,
+"t": "Mileage (mpg)",
+"x": 190.75,
+"y": 2719.98
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "2,000",
+"x": 881.46,
+"y": 5469.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "3,000",
+"x": 1418.04,
+"y": 5469.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "4,000",
+"x": 1954.62,
+"y": 5469.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "5,000",
+"x": 2491.2,
+"y": 5469.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "Weight (lbs.)",
+"x": 1621.98,
+"y": 5609.11
+}
+]
+},
+"I_pmn84": {
+"canvas": {
+"h": 2880.0,
+"w": 5760.0,
+"x": 0.0,
+"y": 0.0
+},
+"command": "scatter mpg weight, plotregion(margin(10 10 10 10)) xsize(8) ysize(4)",
+"inches": [
+8.0,
+4.0
+],
+"line": "",
+"line_widths": [
+5.76,
+8.64
+],
+"log": [],
+"marker_r": [
+14.94,
+19.26
+],
+"rc": 0,
+"rects": [
+{
+"fill": "#ffffff",
+"h": 2880.0,
+"stroke": "none",
+"sw": null,
+"w": 5760.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#ffffff",
+"h": 2880.0,
+"stroke": null,
+"sw": null,
+"w": 5760.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 2874.24,
+"stroke": "#ffffff",
+"sw": 5.76,
+"w": 5754.24,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 2358.36,
+"stroke": null,
+"sw": null,
+"w": 5194.62,
+"x": 464.58,
+"y": 100.8
+},
+{
+"fill": "none",
+"h": 2352.6,
+"stroke": "#ffffff",
+"sw": 5.76,
+"w": 5188.86,
+"x": 467.46,
+"y": 103.68
+}
+],
+"scheme": "stcolor",
+"texts": [
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "10",
+"x": 404.64,
+"y": 2206.23
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "20",
+"x": 404.64,
+"y": 1631.31
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "30",
+"x": 404.64,
+"y": 1056.39
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "40",
+"x": 404.64,
+"y": 481.29
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 100.08,
+"t": "Mileage (mpg)",
+"x": 190.75,
+"y": 1279.98
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "2,000",
+"x": 1094.76,
+"y": 2589.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "3,000",
+"x": 2520.18,
+"y": 2589.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "4,000",
+"x": 3945.78,
+"y": 2589.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "5,000",
+"x": 5371.2,
+"y": 2589.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "Weight (lbs.)",
+"x": 3061.98,
+"y": 2729.11
+}
+]
+},
+"I_pmz48": {
+"canvas": {
+"h": 5760.0,
+"w": 2880.0,
+"x": 0.0,
+"y": 0.0
+},
+"command": "scatter mpg weight, plotregion(margin(zero)) xsize(4) ysize(8)",
+"inches": [
+4.0,
+8.0
+],
+"line": "",
+"line_widths": [
+5.76,
+8.64
+],
+"log": [],
+"marker_r": [
+14.94,
+19.26
+],
+"rc": 0,
+"rects": [
+{
+"fill": "#ffffff",
+"h": 5760.0,
+"stroke": "none",
+"sw": null,
+"w": 2880.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#ffffff",
+"h": 5760.0,
+"stroke": null,
+"sw": null,
+"w": 2880.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 5754.24,
+"stroke": "#ffffff",
+"sw": 5.76,
+"w": 2874.24,
+"x": 2.88,
+"y": 2.88
+},
+{
+"fill": "#ffffff",
+"h": 5238.36,
+"stroke": null,
+"sw": null,
+"w": 2314.62,
+"x": 464.58,
+"y": 100.8
+},
+{
+"fill": "none",
+"h": 5232.6,
+"stroke": "#ffffff",
+"sw": 5.76,
+"w": 2308.86,
+"x": 467.46,
+"y": 103.68
+}
+],
+"scheme": "stcolor",
+"texts": [
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "10",
+"x": 404.64,
+"y": 5374.23
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "20",
+"x": 404.64,
+"y": 3684.39
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "30",
+"x": 404.64,
+"y": 1994.73
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "40",
+"x": 404.64,
+"y": 304.89
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 100.08,
+"t": "Mileage (mpg)",
+"x": 190.75,
+"y": 2719.98
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "2,000",
+"x": 636.12,
+"y": 5469.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "3,000",
+"x": 1350.54,
+"y": 5469.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "4,000",
+"x": 2064.78,
+"y": 5469.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "5,000",
+"x": 2779.2,
+"y": 5469.25
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 100.08,
+"t": "Weight (lbs.)",
+"x": 1621.98,
+"y": 5609.11
+}
+]
+},
+"I_pmz84": {
+"canvas": {
+"h": 2880.0,
+"w": 5760.0,
+"x": 0.0,
+"y": 0.0
+},
+"command": "scatter mpg weight, plotregion(margin(zero)) xsize(8) ysize(4)",
+"inches": [
+8.0,
+4.0
+],
+"line": "",
+"line_widths": [
+5.76,
+8.64
+],
+"log": [],
 "marker_r": [
 14.94,
 19.26

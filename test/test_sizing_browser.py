@@ -588,7 +588,10 @@ addEventListener('load', () => setTimeout(() => {
     }
     if (v.frame && v.model && v.el) {
       const r = v.el.getBoundingClientRect(), f = v.frame.bbox;
-      if (f.width > 20) frames.push([r.left + f.x0, r.top + f.y0]);
+      const c = getComputedStyle(v.el);
+      if (f.width > 20) frames.push([r.left + f.x0, r.top + f.y0,
+        parseFloat(c.outlineWidth), c.outlineColor,
+        parseFloat(c.outlineOffset), c.outlineStyle]);
     }
     for (const c of (v.child_views || [])) visit(c);
   };
@@ -636,5 +639,17 @@ class TestGraphOutlineInChrome:
         assert abs(w - 384) <= 1 and abs(h - 384) <= 1, rec
         # The plot region's top: the 13.44 px margin and Bokeh's own 5 px
         # border above the frame (as on a stretched graph).
-        fl, ft = rec["frames"][0]
+        fl, ft = rec["frames"][0][:2]
         assert abs(ft - t - (13.44 + 5)) <= 1.5, rec
+
+    def test_the_inner_line(self, mode, tmp_path):
+        """WP-45 ST-21: graphregion(ilcolor(red) ilwidth(thick)) strokes
+        the inner box -- the figure inside the margin -- red, inside its
+        edge (I_ilc), and ilalign(outside) in the margin (I_ila)."""
+        for al, inside in (("", True), (" ilalign(outside)", False)):
+            rec = self._probe(mode, {"graphregion": "ilcolor(red) "
+                                     "ilwidth(thick)" + al}, tmp_path)
+            ow, oc, off, sty = rec["frames"][0][2:]
+            assert oc == "rgb(255, 0, 0)" and sty == "solid", rec
+            assert abs(ow - 6.72) <= 1, rec
+            assert off == (-ow if inside else 0), rec

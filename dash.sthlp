@@ -5089,16 +5089,22 @@ border by the change, a percentage of the figure's smaller side, as
 page.  On a {cmd:by()} graph {cmd:twoway} draws a {cmd:graphregion(margin())}
 given outside {cmd:by()} as nothing, and so does {cmd:dash}; given in
 {cmd:by()} it insets the whole array (see Faceting with {cmd:by()}).
-{cmd:istyle()}, {cmd:ilstyle()},
-{cmd:ilcolor()}, {cmd:ilwidth()}, {cmd:ilpattern()}, {cmd:ilalign()}
-and {cmd:lalign()} on {cmd:graphregion()}, and {cmd:lalign()},
+The graph region's inner box -- the graph inside its margin, under
+the plot region -- is drawn as {cmd:twoway} draws it:
+{cmd:graphregion(ifcolor(red))} fills it red, not the margin, and
+outlines it in the scheme's line; {cmd:istyle()}, {cmd:ilstyle()},
+{cmd:ilcolor()}, {cmd:ilwidth()} and {cmd:ilpattern()} draw its line,
+inside its edge, or in the margin with {cmd:ilalign(outside)}; and
+{cmd:graphregion(lalign())} keeps the outline inside the graph's edge
+({cmd:inside}, the default), half of it inside ({cmd:center}) or none
+of it ({cmd:outside}), as {cmd:twoway}'s picture shows it.  A
+{cmd:graphregion()} given outside {cmd:by()} draws no inner box, as in
+{cmd:twoway}.  {cmd:lalign()},
 {cmd:ilalign()}, {cmd:iintensity()} and {cmd:ishadestyle()} on
-{cmd:plotregion()}, are accepted and named in a note, once per region:
-{it:difference from twoway}, whose graph region has an inner box between
-its margin and the plot region that Bokeh does not draw --
-{cmd:graphregion(ilcolor(red))} outlines that box in {cmd:twoway} and
-changes nothing in {cmd:dash}, and {cmd:graphregion(ifcolor(red))} fills
-the box in {cmd:twoway} and the whole border in {cmd:dash}.  A margin
+{cmd:plotregion()} are accepted and named in a note, once per region:
+{it:difference from twoway}, which draws the plot region's line inside
+its edge (or outside with {cmd:lalign(outside)}) where Bokeh centres it
+on the edge.  A margin
 text {cmd:twoway} fails on -- a style name such as {cmd:allsides-ms}, or
 a term whose sign is followed by no number, such as {cmd:l+abc} -- fails
 here with its return code and words, r(7).

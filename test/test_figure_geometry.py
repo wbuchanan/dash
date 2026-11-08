@@ -575,6 +575,79 @@ class TestGraphRegionOutline:
         assert (f.width, f.height) == (357, 357)
 
 
+class TestInnerBox:
+    """WP-45 ST-21 (GW-19): graphregion's inner box and lalign(), as
+    twoway draws them (figure_geometry_truth.json I_*, stcolor 5400 x 3240
+    SVG units).  ifcolor(red) fills the inner box only -- inside the 113.4
+    unit margin, under the plot region -- and outlines it in the scheme's
+    white (I_ifc); ilcolor(red) outlines it, inside its edge, with no fill
+    (I_ilc); ilalign(outside) puts that line in the margin (I_ila: 100.44
+    of width 25.92, the edge 113.4); the graph region's own lalign(center)
+    leaves half its line inside the graph (I_glc: centred on the edge),
+    lalign(outside) none of it (I_glo: -12.96 of width 25.92).  Before:
+    ifcolor() filled the margin too, and the inner line and both
+    alignments were only named in a note."""
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_the_inner_fill(self, mode):
+        t = _truth()["I_ifc"]["rects"]
+        assert t[3]["fill"] == "#ff0000" and t[3]["x"] == 113.4
+        assert t[4]["stroke"] == "#ffffff" and t[4]["x"] == pytest.approx(
+            113.4 + t[4]["sw"] / 2)
+        roots, figs = _figs(mode, {"graphregion": "ifcolor(red)"})
+        box = _region_of(roots)
+        assert box.styles["background-color"] == "#ffffff", box.styles
+        f = figs[0]
+        assert str(f.border_fill_color).lower() == "#ff0000"
+        got = _outline_of(dict(f.styles or {}))
+        assert got is not None and got[0] == "#ffffff", f.styles
+        assert got[3] == pytest.approx(-got[1])
+
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("probe,go,offset", [
+        ("I_ilc", {"graphregion": "ilcolor(red)"}, -1.0),
+        ("I_ila", {"graphregion": "ilcolor(red) ilwidth(thick) "
+                                  "ilalign(outside)"}, 0.0),
+    ])
+    def test_the_inner_line(self, probe, go, offset, mode):
+        line = [r for r in _truth()[probe]["rects"]
+                if r["stroke"] == "#ff0000"][0]
+        # twoway's line: inside the inner box's 113.4-unit edge, or (at
+        # ilalign(outside)) outside it, in the margin.
+        if offset:
+            assert line["x"] - line["sw"] / 2 == pytest.approx(113.4)
+        else:
+            assert line["x"] + line["sw"] / 2 == pytest.approx(113.4)
+        roots, figs = _figs(mode, go)
+        f = figs[0]
+        got = _outline_of(dict(f.styles or {}))
+        assert got is not None and got[0] == "#ff0000", f.styles
+        assert got[3] == pytest.approx(offset * got[1])
+        box = _region_of(roots)
+        assert box.styles["background-color"] == "#ffffff"
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_the_graph_line_alignment(self, mode):
+        tw = {k: [r for r in _truth()[k]["rects"] if r["stroke"] == "#ff0000"]
+              for k in ("I_glc", "I_glo")}
+        # center: on the edge (half of it outside the graph); outside:
+        # all of it outside.
+        assert tw["I_glc"][0]["x"] == 0.0
+        assert tw["I_glo"][0]["x"] == pytest.approx(-tw["I_glo"][0]["sw"] / 2)
+        roots, _ = _figs(mode, {"graphregion":
+                                "lalign(center) lcolor(red) lwidth(thick)"})
+        got = _outline_of(dict(_region_of(roots).styles or {}))
+        assert got is not None and got[0] == "#ff0000"
+        roots_i, figs_i = _figs(mode, {"graphregion":
+                                       "lcolor(red) lwidth(thick)"})
+        full = _outline_of(dict(_region_of(roots_i).styles or {}))[1]
+        assert got[1] == pytest.approx(full / 2)
+        assert got[3] == pytest.approx(-full / 2)
+        roots, _ = _figs(mode, {"graphregion":
+                                "lalign(outside) lcolor(red) lwidth(thick)"})
+        assert "outline" not in dict(_region_of(roots).styles or {})
+
+
 class TestTheLookupWalk:
     """``_dash_refs``: the models a page's lookup hooks see, as
     ``references()`` finds them, without building unread defaults."""

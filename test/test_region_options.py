@@ -103,10 +103,12 @@ class TestTheSpec:
             "lalign(inside) ilcolor(red) margin(zero) shadestyle(x) "
             "intensity(50) marginonly", "plotregion", _BASE, _S2, 4.0)
         assert named == ["lalign(inside)"]
+        # Flipped (WP-45 ST-21): graphregion's lalign() and inner outline
+        # were named; twoway draws them and dash now does (I_gla, I_ilc).
         _, named = dr._dash_region_spec(
             "lalign(inside) ilcolor(red) margin(zero) marginonly",
             "graphregion", _BASE, _S2, 4.0)
-        assert named == ["lalign(inside)", "ilcolor(red)"]
+        assert named == []
         _, named = dr._dash_region_spec(" ".join(["lalign(1)"] * 25),
                                         "plotregion", _BASE, _S2, 4.0)
         assert named == ["lalign(1)"] * 10 + ["(+15 more)"]

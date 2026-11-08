@@ -416,7 +416,10 @@ class TestInner:
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_named(self, mode):
-        """Exactly the inner outline words and lalign() stay named, once."""
+        """Flipped (WP-45 ST-21): the inner outline words and lalign() were
+        named as not drawn; that was wrong because twoway draws them and
+        dash now does (figure_geometry_truth.json I_ilc, I_gla): graphregion()
+        names none of these words."""
         spec = tp._spec(graphs=[("g", [plot_for("scatter")], {
             "graphregion": "ifcolor(red) ilcolor(blue) ilwidth(thick) "
                            "istyle(none) lalign(inside) intensity(50) "
@@ -426,13 +429,7 @@ class TestInner:
         else:
             _, caught = tp._served(spec)
         msgs = [_msg(w) for w in caught if "graphregion" in _msg(w)]
-        assert len(msgs) == 1, msgs
-        for word in ("ilcolor(blue)", "ilwidth(thick)", "istyle(none)",
-                     "lalign(inside)"):
-            assert word in msgs[0], msgs
-        for word in ("ifcolor", "intensity", "shadestyle", "marginonly",
-                     "margin("):
-            assert word not in msgs[0], msgs
+        assert msgs == [], msgs
 
 
 # ---------------------------------------------------------------------------

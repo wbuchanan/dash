@@ -154,6 +154,19 @@ fg I_pla stcolor `"`one', plotregion(lalign(outside) lcolor(red) lwidth(thick))"
 fg I_pm84 stcolor `"`one', plotregion(margin(10)) xsize(8) ysize(4)"'
 fg I_pm48 stcolor `"`one', plotregion(margin(10)) xsize(4) ysize(8)"'
 fg I_by stcolor `"`one', by(foreign) graphregion(ifcolor(red) ilcolor(blue))"'
+// ST-21: the graph region's line at the other alignments, the plot
+// region's at center and inside, the inner box's line alignment, and the
+// plot-region margin in forms twoway reads without a note (margin(10) is
+// a style name to twoway: I_pm84 and I_pm48 drew the default margin).
+fg I_glc stcolor `"`one', graphregion(lalign(center) lcolor(red) lwidth(thick))"'
+fg I_glo stcolor `"`one', graphregion(lalign(outside) lcolor(red) lwidth(thick))"'
+fg I_plc stcolor `"`one', plotregion(lalign(center) lcolor(red) lwidth(thick))"'
+fg I_pli stcolor `"`one', plotregion(lalign(inside) lcolor(red) lwidth(thick))"'
+fg I_ila stcolor `"`one', graphregion(ilcolor(red) ilwidth(thick) ilalign(outside))"'
+fg I_pmz84 stcolor `"`one', plotregion(margin(zero)) xsize(8) ysize(4)"'
+fg I_pmz48 stcolor `"`one', plotregion(margin(zero)) xsize(4) ysize(8)"'
+fg I_pmn84 stcolor `"`one', plotregion(margin(10 10 10 10)) xsize(8) ysize(4)"'
+fg I_pmn48 stcolor `"`one', plotregion(margin(10 10 10 10)) xsize(4) ysize(8)"'
 // The 41-05 checkpoint pairs (by() layout screenshots)
 fg P1 s2color `"`one', by(foreign, compact)"'
 fg P2 stcolor `"(scatter mpg weight) (lfit mpg weight), by(rep78, style(combine))"'
