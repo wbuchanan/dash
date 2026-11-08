@@ -618,3 +618,37 @@ def test_by_click_hides_a_shaped_series(mode):
         assert [g for g, v in drawn if not v] == ["Segment", "Scatter",
                                                   "Scatter"], got
         assert [g for g, v in drawn if v] == ["Scatter"], got
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+def test_grid_column_gap(mode):
+    """A 2 x 2 legend's columns sit its column gap apart and its rows do
+    not move (WP-45 ST-17 follow-up; style_leaf_truth.json D_grid_gap:
+    the second column's text 780.1, 920.2 and 980.1 SVG units right of
+    the first under colgap(zero), s2color's large and colgap(huge), the
+    rows at the same y).  The page's width scale drops out of the share
+    (huge - zero) / (large - zero), twoway's 200.0 / 140.1.  BokehJS drew
+    every column gap as the row gap, so colgap() moved nothing.  No CSP
+    violation."""
+    four = [_sc(), _sc("price"), _sc("headroom"), _sc("rep78")]
+    legs, viol = _legends(mode, [(four, "cols(2) colgap(zero)"),
+                                 (four, "cols(2)"),
+                                 (four, "cols(2) colgap(huge)")])
+    assert viol == []
+
+    def col2(leg):
+        xs = sorted({round(it["canvas"][0], 1) for it in leg["items"]})
+        assert len(xs) == 2, leg
+        return xs[1] - xs[0]
+
+    def row2(leg):
+        ys = sorted({round(it["canvas"][1], 1) for it in leg["items"]})
+        assert len(ys) == 2, leg
+        return ys[1] - ys[0]
+
+    zero, large, huge = (col2(lg) for lg in legs)
+    assert large - zero > 5, (zero, large, huge)
+    share = (huge - zero) / (large - zero)
+    assert abs(share - 200.0 / 140.1) < 0.08, (zero, large, huge, share)
+    rows = [row2(lg) for lg in legs]
+    assert max(rows) - min(rows) <= 1.0, rows
