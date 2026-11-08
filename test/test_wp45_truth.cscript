@@ -724,6 +724,39 @@ def _w45s05_fills(sp, dp, app):
                     mode, k, rows[k]["value"], g, rows[k]["fill"]))
     Macro.setGlobal("w45s05_bad", "; ".join(bad[:8]))
     Macro.setGlobal("w45s05_nbad", str(len(bad)))
+def _w45s05_face(sp, dp, app, svg, face):
+    """Q4505-3: the spec's build option fontface, twoway's SVG title face,
+    and the page's title face in each mode, under the faces in force; then
+    the same spec with fontface injected as Courier (no graph set): the
+    title is Courier in each mode.  Results in globals w45s05_f*."""
+    import json
+    from sfi import Macro
+    from bokeh.models import Title
+    from svg_truth import svg_document
+    with open(sp, encoding="utf-8") as fh:
+        spec = json.load(fh)
+    bo = spec.get("build_options", {})
+    Macro.setGlobal("w45s05_fbo", str(bo.get("fontface", "<none>")))
+    t = [x for x in svg_document(svg)["texts"] if x["text"] == "T"]
+    fam = (t[0].get("font_family") or "") if t else "<none>"
+    Macro.setGlobal("w45s05_fsvg", fam.strip().strip("'\""))
+
+    def title_fonts(path):
+        out = []
+        for models in _w45s05_models(path, dp, app):
+            out.append(";".join(sorted({
+                str(getattr(m.text_font, "value", m.text_font))
+                for m in models if isinstance(m, Title)
+                and str(m.text or "") == "T"})))
+        return out
+
+    Macro.setGlobal("w45s05_fpage", "|".join(title_fonts(sp)))
+    bo["fontface"] = "Courier"
+    spec["build_options"] = bo
+    sp2 = sp[:-5] + "_courier.json"
+    with open(sp2, "w", encoding="utf-8") as fh:
+        json.dump(spec, fh)
+    Macro.setGlobal("w45s05_finj", "|".join(title_fonts(sp2)))
 end
 
 * ==== S05 ST-22: colour intensity and blank elements ====
@@ -764,6 +797,54 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w45_run' {
     macro drop w45s05_n w45s05_all w45s05_keys w45s05_list w45s05_bad w45s05_nbad
     capture dash clear
     foreach f in s.json d.json a.py {
+        capture erase "`s05d'/`f'"
+    }
+    capture rmdir "`s05d'"
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
+* ==== S05 GW-10: plain-text font face ====
+local only : env WP45_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w45_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+    local s05d "`w45_work'/s05f"
+    capture mkdir "`s05d'"
+
+    // ------------------------------------------------------------
+    // Q4505-3: dash's build options carry translator query gph2svg's
+    // fontface, the face twoway's SVG draws an untagged title in under the
+    // faces in force, and the page's untagged title begins with it, saved
+    // and served; an injected fontface Courier (no graph set is run)
+    // draws that title in Courier in both modes.
+    // ------------------------------------------------------------
+    quietly translator query gph2svg
+    local s05_face `"`r(fontface)'"'
+    sysuse auto, clear
+    quietly twoway scatter mpg weight, title("T") name(w45s05f, replace)
+    cert_svg_export, name(w45s05f) file("`s05d'/t.svg")
+    dash clear
+    capture noisily dash scatter mpg weight, title("T") name(w45s05f)
+    local s05_rc = _rc
+    _w45_expect Q4505-3 "(`s05_rc' == 0)" "dash rc `s05_rc'"
+    if !`s05_rc' {
+        _dash_serve_spec, specpath("`s05d'/s.json") datapath("`s05d'/d.json")
+        python: import __main__ as _w45m; _w45m._w45s05_face("`s05d'/s.json", "`s05d'/d.json", "`s05d'/a.py", "`s05d'/t.svg", __import__("sfi").Macro.getLocal("s05_face"))
+        _w45_expect Q4505-3 `"("${w45s05_fbo}" == `"`s05_face'"')"' "build option fontface ${w45s05_fbo}, translator query `s05_face'"
+        _w45_expect Q4505-3 `"(lower("${w45s05_fsvg}") == lower(`"`s05_face'"'))"' "twoway's SVG title face ${w45s05_fsvg}, translator query `s05_face'"
+        mata: _w45s05_t = tokens(st_global("w45s05_fpage"), "|"); _w45s05_t = select(_w45s05_t, _w45s05_t :!= "|")
+        mata: st_local("s05_ok", strofreal(cols(_w45s05_t) == 2 && all(strpos(strlower(_w45s05_t), strlower(st_local("s05_face"))) :== 1)))
+        _w45_expect Q4505-3 "(`s05_ok')" "the page's title faces ${w45s05_fpage} do not begin with `s05_face'"
+        mata: _w45s05_t = tokens(st_global("w45s05_finj"), "|"); _w45s05_t = select(_w45s05_t, _w45s05_t :!= "|")
+        mata: st_local("s05_ok", strofreal(cols(_w45s05_t) == 2 && all(strpos(_w45s05_t, "Courier") :== 1)))
+        _w45_expect Q4505-3 "(`s05_ok')" "with fontface Courier injected the title faces are ${w45s05_finj}"
+    }
+    _w45_done Q4505-3 "the svg plain-text face (`s05_face') is read and leads the page's untagged text, saved and served"
+    macro drop w45s05_fbo w45s05_fsvg w45s05_fpage w45s05_finj
+    capture mata: mata drop _w45s05_t
+    capture dash clear
+    capture graph drop w45s05f
+    foreach f in s.json s_courier.json d.json a.py t.svg {
         capture erase "`s05d'/`f'"
     }
     capture rmdir "`s05d'"

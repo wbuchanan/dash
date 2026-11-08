@@ -8113,10 +8113,11 @@ end
 //
 // {stSans}, {stSerif} and {stMono} draw in graph set's fontfacesans,
 // fontfaceserif and fontfacemono (measured: graph set svg fontfacesans
-// Courier makes {stSans:a} Courier; fontface alone does not).  The
-// faces are read with translator query, which changes no setting and
-// prints nothing; each is escaped in Mata, by value.  <macro> becomes
-// ,"fontfacesans":"..."... or empty when the query fails.
+// Courier makes {stSans:a} Courier; fontface alone does not).  fontface,
+// the face of text no tag names (svg_options.sthlp), is read too (WP-45
+// GW-10).  The faces are read with translator query, which changes no
+// setting and prints nothing; each is escaped in Mata, by value.
+// <macro> becomes ,"fontface":"..."... or empty when the query fails.
 // ================================================================
 program define _dash_graph_set_fonts
     version 19
@@ -8124,7 +8125,7 @@ program define _dash_graph_set_fonts
     local json ""
     capture quietly translator query gph2svg
     if !_rc {
-        foreach k in fontfacesans fontfaceserif fontfacemono {
+        foreach k in fontface fontfacesans fontfaceserif fontfacemono {
             local _gf `"`r(`k')'"'
             mata: st_local("_gfe", _dash_json_escape(st_local("_gf")))
             local json `"`json',"`k'":"`_gfe'""'

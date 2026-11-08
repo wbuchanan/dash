@@ -54117,6 +54117,27 @@ def _dash_finish_text_value(value, how):
     return _dash_finish_text_runs(value, how)[:2]
 
 
+def _dash_plain_font(model, plain):
+    """Set *plain* on each text-font property of *model* (``text_font``,
+    ``*_text_font``) that is still Bokeh's default ``helvetica`` -- a text
+    no font tag names (WP-45 GW-10).  A data-spec property (a LabelSet's)
+    takes it as a ``value()``, never as a column name.  Returns the number
+    of properties set."""
+    from bokeh.core.properties import value as _bk_value
+
+    n = 0
+    for p in model.properties():
+        if p != "text_font" and not p.endswith("_text_font"):
+            continue
+        cur = getattr(model, p, None)
+        spec = hasattr(cur, "value") and not hasattr(cur, "field")
+        if (cur.value if spec else cur) != "helvetica":
+            continue
+        setattr(model, p, _bk_value(plain) if spec else plain)
+        n += 1
+    return n
+
+
 def _dash_finish_graph_text(figures, fonts=None):
     """Draw every canvas text as twoway draws it (WP-30 P1.11a, P1.11b).
 
@@ -54151,6 +54172,12 @@ def _dash_finish_graph_text(figures, fonts=None):
     """
     from bokeh.models import CustomJSTickFormatter, Legend
 
+    # WP-45 GW-10: graph set svg fontface's face (the "plain" key of
+    # _dash_gt_fonts_of; absent under Stata's default Helvetica) draws
+    # every text no tag names: each text-font property still at Bokeh's
+    # default helvetica takes it, once per model, before the style pass
+    # below sets a tagged text's own family.
+    plain = (_dash_page_fonts(fonts) or {}).get("plain")
     seen = set()
     styled_fmt = set()
     pending = {}
@@ -54161,6 +54188,8 @@ def _dash_finish_graph_text(figures, fonts=None):
             if id(model) in seen:
                 continue
             seen.add(id(model))
+            if plain:
+                _dash_plain_font(model, plain)
             if getattr(model, _DASH_GRAPH_TEXT_DONE, False):
                 continue
             props = _dash_graph_text_props(model)
@@ -54342,18 +54371,36 @@ def _dash_gt_fonts_of(build_options):
     ``fontfaceserif`` and ``fontfacemono`` name (dash.ado reads them with
     ``translator query gph2svg`` into *build_options*) put first.  A face
     that is not plain text (letters, digits, blanks, ``-``, ``_``, ``.``;
-    at most 64 characters) is not read."""
+    at most 64 characters) is not read.
+
+    WP-45 GW-10: ``graph set svg fontface``, the face for text no tag
+    names (svg_options.sthlp), read the same way, is the ``"plain"`` key
+    -- the face, then the {stSans} family -- unless it is Helvetica,
+    Stata's default, which Bokeh's own ``helvetica`` already draws; then
+    there is no ``"plain"`` key and no text changes."""
     out = dict(_DASH_GT_FONTS)
     bo = build_options if isinstance(build_options, dict) else {}
-    for tag, key in (("stSans", "fontfacesans"), ("stSerif", "fontfaceserif"),
-                     ("stMono", "fontfacemono")):
+
+    def _face(key):
         face = str(bo.get(key, "") or "").strip()
         if (not face or len(face) > 64
                 or not re.fullmatch(r"[A-Za-z0-9 ._-]+", face)):
+            return ""
+        return face
+
+    for tag, key in (("stSans", "fontfacesans"), ("stSerif", "fontfaceserif"),
+                     ("stMono", "fontfacemono")):
+        face = _face(key)
+        if not face:
             continue
         rest = [f.strip() for f in out[tag].split(",")
                 if f.strip().lower() != face.lower()]
         out[tag] = ", ".join([face] + rest)
+    face = _face("fontface")
+    if face and face.lower() != "helvetica":
+        rest = [f.strip() for f in _DASH_GT_FONTS["stSans"].split(",")
+                if f.strip().lower() != face.lower()]
+        out["plain"] = ", ".join([face] + rest)
     return out
 
 
@@ -79019,6 +79066,8 @@ class ServerAppBuilder:
                          # The canvas-text pass (WP-30 P1.11a) and its helpers.
                          "_dash_finish_graph_text", "_dash_graph_text_models",
                          "_dash_graph_text_props", "_dash_finish_text_value",
+                         # graph set svg fontface on untagged text (WP-45 GW-10).
+                         "_dash_plain_font",
                          # The graph-text scanner and its pass helpers (WP-30 P1.11b).
                          "_dash_gt_char", "_dash_gt_head", "_dash_gt_smcl_head",
                          "_dash_gt_column", "_dash_graph_text_runs",

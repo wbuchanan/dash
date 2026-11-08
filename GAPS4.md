@@ -519,7 +519,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **VF-4 Tracked:** Partly closed in WP-45 (section 45-04, commit 868682a): every graph, by() included, keeps twoway's shape with no height band, xsize()/ysize() draw the exact box, aspectratio() alone shapes the plot region and fxsize()/fysize() keep a lone graph's size; the graph drawn as one picture at twoway's unit (DECISIONS D66, 01nov2026); open: the title's top inset under scale() and by()'s fysize() centring (BUGS.md "Under scale() the title's room above the plot region grows faster than twoway's, and by()'s fysize() array is not centred").
 - **GW-1 Tracked:** Open (WP-45 section 45-04).
 - **ST-22 Tracked:** Closed in WP-45, BUGS.md "Colour edges: navy*52 intensity rule, blank stylelist element refused in dash's words", commit pending.
-- **GW-10 Tracked:** Open (WP-45 section 45-05).
+- **GW-10 Tracked:** Closed in WP-45, BUGS.md "graph set window/svg fontface for plain text is not read (only stSans/stSerif/stMono tags)", commit pending.
 - **RH-1 Tracked:** Open (WP-46 section 46-01).
 - **RH-3 Tracked:** Open (WP-46 section 46-02).
 - **RH-5 Tracked:** Open (WP-46 section 46-02).

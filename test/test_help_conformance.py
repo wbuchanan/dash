@@ -1012,9 +1012,11 @@ class TestTheParsersFoundSomething:
         # 40-02).
         # old -> new: 470 -> 471, the Differences sub-point A global's =exp
         # outside the listed functions (WP-43 LT-20).
-        assert len(defs) == 471, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 471 "
-            f"measured 30oct2026")
+        # old -> new: 471 -> 472, the Differences sub-point The window
+        # font face (WP-45 GW-10).
+        assert len(defs) == 472, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 472 "
+            f"measured 08nov2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
         assert not any("pbgc" in _option_tokens(t) for t in defs), (
@@ -1604,4 +1606,7 @@ class TestInternalLinksResolve:
         # old -> new: 193 -> 194 links, 57 -> 58 markers: Differences item
         # 20 gets the marker log_nonpositive, linked from the log rule
         # paragraph (WP-44 AX-11, A-5).
-        assert len(refs) == 194 and len(set(refs)) == 58
+        # old -> new: 194 -> 195 links: the Differences sub-point The
+        # window font face links Text in graphs (graph_text, already a
+        # marker) (WP-45 GW-10).
+        assert len(refs) == 195 and len(set(refs)) == 58

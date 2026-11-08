@@ -164,3 +164,116 @@ class TestBlankElements:
         hint = body.index("is blank; use . for the default")
         assert tw < hint
 
+
+# ---------------------------------------------------------------------------
+# GW-10: the plain-text face graph set svg fontface names
+# ---------------------------------------------------------------------------
+
+MODES = ("saved", "served")
+
+
+def _font_props(model):
+    """The text-font properties *model* has: text_font and *_text_font."""
+    return [p for p in model.properties()
+            if p == "text_font" or p.endswith("_text_font")]
+
+
+def _font_page(mode, face=None):
+    """The models of one page in *mode*: a titled scatter with a tagged
+    subtitle, marker labels, an added text and a second y (a legend);
+    build option fontface *face* when given (injected: no graph set)."""
+    import copy
+    import test_by_axes_keys as tk
+    import test_by_grid as tg
+    data = copy.deepcopy(tg._data())
+    for row in data["values"]:
+        row["lab"] = "car"
+    data["variableNames"].append("lab")
+    data["storageTypes"]["lab"] = "str12"
+    data["variableIsString"]["lab"] = True
+    data["variableLabels"]["lab"] = ""
+    plots = [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+              "options": {"mlabel": "lab"}},
+             {"type": "scatter", "yvar": "price", "xvar": "weight",
+              "options": {}}]
+    go = {"title": '"T"', "subtitle": '"{stSerif:S}"', "xtitle": '"X"',
+          "added_text": [{"at_kind": "text", "at_y": 20, "at_x": 3000,
+                          "at_yaxis": 1, "at_xaxis": 1,
+                          "at_lines": ["added"], "at_opts": ""}],
+          "added_text_n": "1"}
+    spec = tk._spec([tk._graph("g", plots, go, title=False)],
+                    scheme="s2color")
+    if face is not None:
+        spec["build_options"]["fontface"] = face
+    roots, _n, _o = tk._build(mode, spec, data=data)
+    seen, out = set(), []
+    for r in roots:
+        for m in r.references():
+            if id(m) not in seen:
+                seen.add(id(m))
+                out.append(m)
+    return out
+
+
+def _font(v):
+    """A font property's family: a ``value()`` spec's value, else itself."""
+    return str(getattr(v, "value", v))
+
+
+def _fonts(models):
+    """{(class, text, property): fonts} for every text-font property."""
+    out = {}
+    for m in models:
+        for p in _font_props(m):
+            key = (type(m).__name__, str(getattr(m, "text", "") or ""), p)
+            out.setdefault(key, set()).add(_font(getattr(m, p)))
+    return out
+
+
+class TestPlainFace:
+    def test_reader(self):
+        f = dr._dash_gt_fonts_of
+        assert f({"fontface": "Courier"})["plain"] == (
+            "Courier, " + dr._DASH_GT_FONTS["stSans"])
+        assert f({"fontface": "Courier New"})["plain"].startswith(
+            "Courier New, Helvetica")
+        for face in ("Helvetica", "helvetica", "", "bad;face", "a{b}",
+                     "x" * 65, None):
+            assert "plain" not in f({"fontface": face}), face
+        assert "plain" not in f(None)
+        # The three tags are read as before.
+        assert f({"fontface": "Courier"})["stSerif"] == \
+            dr._DASH_GT_FONTS["stSerif"]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_models(self, mode):
+        """Every text-font property still at Bokeh's default helvetica (an
+        untagged text) is the plain face; the {stSerif:} subtitle keeps
+        Times."""
+        fonts = _fonts(_font_page(mode, "Courier"))
+        left = sorted(k for k, v in fonts.items() if "helvetica" in v)
+        assert not left, left
+        title = fonts[("Title", "T", "text_font")]
+        assert all(v.startswith("Courier") for v in title), title
+        sub = fonts[("Title", "S", "text_font")]
+        assert all(v.startswith("Times") for v in sub), sub
+        for cls, text in (("LabelSet", "lab"), ("Label", "added")):
+            got = fonts[(cls, text, "text_font")]
+            assert all(v.startswith("Courier") for v in got), (cls, got)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_helvetica_changes_nothing(self, mode):
+        """Under Stata's default face, and with none read, every text-font
+        property is the base page's."""
+        base = _fonts(_font_page(mode))
+        assert _fonts(_font_page(mode, "Helvetica")) == base
+        assert any("helvetica" in v for v in base.values())
+
+    def test_help(self):
+        hlp = " ".join(_read(_HELP).split())
+        assert ("{cmd:graph set svg fontface} names" in hlp
+                and "draws every text with no font tag" in hlp)
+        assert ("{cmd:graph set window fontface} is not read" in hlp)
+        i = hlp.index("{marker differences}")
+        diffs = hlp[i:i + 200000]
+        assert "{cmd:graph set window fontface} is not read; the svg faces are" in diffs

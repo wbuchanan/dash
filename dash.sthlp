@@ -1685,6 +1685,8 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:Working values in s().}  {cmd:dash} leaves its parsers' values in s(); see {help dash##graphintegration:Stata graph integration}.
 
+{phang2}    {ul:The window font face.}  {cmd:graph set window fontface} is not read; the svg faces are; see {help dash##graph_text:Text in graphs}.
+
 {marker partial_markup}{...}
 {phang2}15.  {ul:Markup on part of a text is drawn in one style.}
     {cmd:twoway} styles each part of a text on its own: it draws
@@ -6090,8 +6092,14 @@ one of them has it.  {cmd:{c -(}stSans:}, {cmd:{c -(}stSerif:} and
 {cmd:{c -(}stMono:} draw in the reader's sans-serif, serif and monospace
 fonts (Helvetica, Times and Courier where installed), and
 {cmd:{c -(}fontface{c )-}} needs that font on the reader's computer.
-A {cmd:graph set} font face is read where Stata keeps it and leads the
-{c -(}stSans{c )-}, {c -(}stSerif{c )-} and {c -(}stMono{c )-} families.
+The face {cmd:graph set svg fontface} names ({cmd:translator query gph2svg}'s
+{cmd:fontface}, Helvetica unless you changed it) draws every text with no
+font tag, as {help svg_options} says {cmd:twoway}'s SVG draws it;
+{cmd:graph set svg fontfacesans}, {cmd:fontfaceserif} and
+{cmd:fontfacemono} lead the {c -(}stSans{c )-}, {c -(}stSerif{c )-} and
+{c -(}stMono{c )-} families.  {cmd:graph set window fontface} is not
+read: the console has no graph window, and {cmd:dash}'s page, like
+{cmd:twoway}'s SVG export, is drawn in the svg faces.
 As in {cmd:twoway}, a text is cut off at {cmd:{c -(}c 0{c )-}}: the rest
 of the run it sits in is not drawn, and text after that run's closing
 brace, and the text's other lines, are drawn.  The control codes

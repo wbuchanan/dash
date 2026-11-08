@@ -2929,7 +2929,6 @@ GAPS4_OPEN = {
     'ST-16': 'An unknown scheme() is refused r(198) where twoway notes and draws s2color',
     'ST-21': "graphregion's inner box and region lalign() are named; ifcolor() fills the whole border; the plot margin is a share of the whole graph",
     'GW-1': "xsize()/ysize() with units (10cm, 3in, 200pt) are ignored with a note that leaks 'None'",
-    'GW-10': 'graph set window/svg fontface for plain text is not read (only stSans/stSerif/stMono tags)',
     'RH-1': 'A range source recast to line/scatter/connected refuses horizontal/vertical (twoway turns it); recast to bar/area/spike/dropline/dot with horizontal is turned by dash where twoway draws it upright',
     'RH-3': 'A range source or ciplot() drawn as a yx type leaves the second bound out of the axis, the default title and the key',
     'RH-5': "histogram recast(): drawn in the target's style (twoway keeps the histogram style), bars one unit wide (twoway uses the bin width), and 0 left out of the height axis",

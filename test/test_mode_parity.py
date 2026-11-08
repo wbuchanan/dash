@@ -3271,6 +3271,10 @@ CORPUS = [
           go={"legend": "ring(in) position(1)"}),
     _case("mlabposition(left) mlabangle(v) (WP-45 ST-1)",
           [_sc(mlabel="foreign", mlabposition="left", mlabangle="v")]),
+    # WP-45 GW-10: graph set svg fontface, injected as dash.ado reads it.
+    _case("graph set svg fontface (WP-45 45-05)",
+          [_sc(mlabel="foreign")], {"fontface": "Courier"},
+          go={"title": '"T"', "subtitle": '"{stSerif:S}"'}),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

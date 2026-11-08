@@ -1162,6 +1162,8 @@ FUNCTIONS = {
  'OptionTranslator.stata_number': 'test/test_size_units.py::TestStataNumberAndMultiplier::test_stata_number_reads_statas_spellings',
  # WP-30 S09 (P1.11a): TeX delimiters inert on every canvas sink (P1.11 part a)
  '_dash_finish_graph_text': 'test/test_canvas_tex.py::TestTheDocumentPass::test_each_sink_is_finished',
+ '_dash_plain_font': 'test/test_colour_font_edges.py::TestPlainFace::test_models',
+ '_dash_gt_fonts_of.<locals>._face': 'test/test_colour_font_edges.py::TestPlainFace::test_reader',
  '_dash_finish_text_value': 'test/test_canvas_tex.py::TestFinishTextValue::test_text_kind_breaks_every_delimiter',
  '_dash_graph_text_models': 'test/test_canvas_tex.py::TestTheDocumentPass::test_the_walk_finds_every_text_model_and_no_source',
  '_dash_graph_text_props': 'test/test_canvas_tex.py::TestTheDocumentPass::test_the_sink_props_name_only_text_sinks',
