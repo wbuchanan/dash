@@ -1462,13 +1462,12 @@ _DASH_ONLY = {"colorcuts", "colorvar", "hover",
               # other minor forms; twoway has no such option names.
               "xmtick2", "ymtick2", "xmlabel2", "ymlabel2"}
 # Options whose refusal is dash's own and documented as such (dash.sthlp,
-# "Option values"): twoway accepts every value of these silently.  And
-# scheme, which these tests never saw until _TOKEN read every kind
-# (24sep2026): twoway draws s2color under "(note: scheme nonsense not
-# found, using s2color)", rc 0 (the fixture's scheme_1), where dash refuses
-# the name -- its own rule, documented in "Option values" and in "Stata
-# scheme support" (a dashboard is a file you look at later).
-_DELIBERATE = {"jitterseed", "xaxis", "scheme"}
+# "Option values"): twoway accepts every value of these silently.
+# Flipped (WP-45 ST-16): scheme left -- twoway draws s2color with a note for
+# a scheme it cannot find (ST-16), "(note: scheme nonsense not found, using
+# s2color)", rc 0 (the fixture's scheme_1), and so does dash's scheme kind
+# on a graph now; it refuses only on dash build and dash serve.
+_DELIBERATE = {"jitterseed", "xaxis"}
 # Options whose twoway probe is measured live beside dash's rule rather than
 # in the oracle fixture: zlabel()'s format() (WP-30 P1.5, S17's P1.23b),
 # twoway's "invalid format, bogus" r(198) next to dash's in
@@ -1557,7 +1556,9 @@ class TestTheOracleFixtureIsInStep:
         test_option_validation.cscript."""
         fx = _fixture()
         for opt, kind, _ps, _ts in _parse_rules(_BLOCK):
-            if (kind in ("style", "istyle")
+            # The scheme kind notes and draws s2color on a graph, as twoway
+            # does (WP-45 ST-16): no refusing kind there.
+            if (kind in ("style", "istyle", "scheme")
                     or opt in _DASH_ONLY | _DELIBERATE | _PROBED_LIVE):
                 continue
             rejected = [p for p in fx["twoway"]

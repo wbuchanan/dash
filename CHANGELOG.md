@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- scheme(nosuchscheme) on a graph draws s2color with twoway's note, (note: scheme nosuchscheme not found, using s2color), rc 0 (was r(198)); a path-like scheme(../x) gets the same note and no file is read; dash build's and dash serve's scheme() still refuse an unknown name (WP-45, ST-16)
 - Each variable of a layer counts on its axis over the layer's own rows, as twoway reads it, a row its partner misses included: scatter y x with y missing past observation 20 of 100 labels x 0(20)100, as twoway does, where dash labelled 0(5)20; the same for every type that draws its own variables and the x of lowess, fpfit and fpfitci (WP-44, AX-19)
 - Two transform words in one xscale(), yscale() or tscale() copy are refused, r(198), in twoway's words -- yscale(log nolog) "only one of options nolog or log is allowed", yscale(atanh log), yscale(log log) "log or log1m" -- where dash drew the graph; yscale(nolog nolog) is drawn, as in twoway (WP-44, AX-10)
 - xscale(), yscale(), tscale() and zscale() with atanh, logit or log1m (any abbreviation) are refused with r(199), "unrecognized command", as twoway's graph fails on them -- scatter mpg weight, yscale(logit) -- where dash drew a linear axis with a note; a later copy's log, nolog or no form clears them, and noatanh, nologit and nolog1m alone draw the plain axis with no note, as in twoway (ruling D75) (WP-44, AX-9)

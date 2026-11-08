@@ -18,7 +18,6 @@ VALUE_KNOWN = {
     "lpoly_n_3": "plot:PT-7",  # twoway r(198) option n() not allowed / dash r(198)
     "lpoly_n_5": "stat:PT-15 (documented)",  # twoway r(0) / dash r(198)
     "mlabel_1": "plot:PT-7",  # twoway r(111) variable nosuchvar not found / dash r(111)
-    "scheme_1": "ST-16",  # twoway r(0) / dash r(198)
 }
 
 DELIBERATE = {

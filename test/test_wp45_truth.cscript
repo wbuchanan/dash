@@ -1009,6 +1009,57 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
 }
 * ==== end S03 ====
 
+* ==== S03 ST-16: an unknown scheme() draws s2color with twoway's note ====
+local only : env WP45_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local s03d "`w45_work'/s03n"
+    capture mkdir "`s03d'"
+
+    // ------------------------------------------------------------
+    // Q4503-5: scheme(nosuchscheme) and scheme(../nosuch) on a graph:
+    // twoway draws s2color (live, SVG equality); dash prints twoway's
+    // note alone, rc 0, and draws the page as scheme(s2color), saved and
+    // served (the refusal and message cases are
+    // test_option_validation.cscript's Q4503-5).
+    // ------------------------------------------------------------
+    foreach s03s in nosuchscheme ../nosuch {
+        _w45s03_tw "`s03d'" scatter mpg weight, scheme(`s03s') | scatter mpg weight, scheme(s2color)
+        local s03_ok = ("${w45s03_twrc}" == "0 0" & ${w45s03_same} == 1)
+        _w45_expect Q4503-5 "(`s03_ok')" "twoway scheme(`s03s'): rc ${w45s03_twrc}, same ${w45s03_same}"
+        capture log close _s03log
+        quietly log using "`s03d'/dash.log", name(_s03log) text replace
+        _w45s03_dash "`s03d'" w45s03p scatter mpg weight, scheme(`s03s')
+        local s03_rc1 = ${w45s03_drc}
+        quietly log close _s03log
+        cert_file_count "`s03d'/dash.log", needle("(note: scheme `s03s' not found, using s2color)")
+        local s03_nn = r(count)
+        cert_file_count "`s03d'/dash.log", needle("(note:")
+        local s03_na = r(count)
+        _w45_expect Q4503-5 "(`s03_nn' == 1 & `s03_na' == 1)" "scheme(`s03s'): `s03_nn' twoway note(s), `s03_na' note(s) in all"
+        _w45s03_dash "`s03d'" w45s03r scatter mpg weight, scheme(s2color)
+        local s03_rc2 = ${w45s03_drc}
+        _w45_expect Q4503-5 "(`s03_rc1' == 0 & `s03_rc2' == 0)" "dash rc `s03_rc1' `s03_rc2'"
+        if !`s03_rc1' & !`s03_rc2' {
+            python: import __main__ as _w45m; _w45m._w45s03_pair("`s03d'/w45s03p.json", "`s03d'/w45s03p_d.json", "`s03d'/w45s03r.json", "`s03d'/w45s03r_d.json", "`s03d'/a.py")
+            mata: st_local("s03_nn", strofreal(st_global("w45s03_notes") == ""))
+            mata: st_local("s03_nd", strofreal(st_global("w45s03_diff") == ""))
+            _w45_expect Q4503-5 "(`s03_nn')" `"renderer notes: ${w45s03_notes}"'
+            _w45_expect Q4503-5 "(`s03_nd')" `"differs: ${w45s03_diff}"'
+        }
+    }
+    _w45_done Q4503-5 "an unknown or path-like scheme() draws s2color with twoway's note, saved and served"
+
+    capture dash clear
+    macro drop w45s03_*
+    foreach f in tw1.svg tw2.svg dash.log w45s03p.json w45s03p_d.json w45s03r.json w45s03r_d.json a.py {
+        capture erase "`s03d'/`f'"
+    }
+    capture rmdir "`s03d'"
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // ---- S05 helpers (WP-45 section 45-05) ----
 // _w45s05_models(sp, dp, app): the saved page's models and the served
 // app's, each built from one spec (test_wp43_truth.cscript's

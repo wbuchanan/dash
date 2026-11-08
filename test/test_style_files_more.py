@@ -423,3 +423,35 @@ class TestDirectives:
                            "bounds.}", "{marker subcommands}")
         assert "{help dash##scheme:Stata scheme support}" in diff
         assert "over 1,048,576 bytes" in diff
+
+
+def _ado():
+    with open(os.path.join(os.path.dirname(_HERE), "dash.ado"),
+              encoding="utf-8") as fh:
+        return fh.read()
+
+
+class TestUnknownScheme:
+    """ST-16: an unknown graph-level scheme() draws s2color with twoway's
+    note (U_unknown, U_path: rc 0, "(note: scheme <name> not found, using
+    s2color)", the same SVG as s2color's); dash build's and dash serve's
+    scheme() keep their refusal."""
+
+    def test_the_fixture(self):
+        for k, name in (("U_unknown", "nosuchscheme"), ("U_path", "../nosuch")):
+            r = TRUTH[k]
+            assert r["rc"] == 0 and r["same_as_s2color"] == 1, k
+            assert r["notes"] == ["(note: scheme %s not found, using "
+                                  "s2color)" % name], k
+
+    def test_ado_text(self):
+        src = _ado()
+        i = src.index('else if "`kind\'" == "scheme" {')
+        body = src[i:src.index('else if "`kind\'" == "format" {', i)]
+        # The graph option's kind notes in twoway's words and draws s2color.
+        assert '"(note: scheme ", st_strscalar(st_local("T")), " not found, ' \
+            'using s2color)"' in body
+        assert 'local norm "s2color"' in body
+        # dash build's and dash serve's check stays a refusal.
+        assert ('_dash_validate_value "`cmdname\'" "scheme" "scheme,strict" '
+                '`"`macval(scheme)\'"\' ""') in src

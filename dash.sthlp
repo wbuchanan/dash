@@ -1486,8 +1486,9 @@ there, is an invalid point.  The literal is read as data and never run.
     style list, {cmd:lwidth(())} or {cmd:msize(())}, likewise; see
     {help dash##stylelists:Style lists}); and a string {cmd:colorvar()},
     r(7).  An unknown
-    {cmd:scheme()} is refused where {cmd:twoway} draws {cmd:s2color} with
-    a note, because a saved dashboard in the wrong scheme is not a note
+    {cmd:scheme()} on a graph is drawn in {cmd:s2color} with
+    {cmd:twoway}'s note; on {cmd:dash build} and {cmd:dash serve} it is
+    refused, because a saved dashboard in the wrong scheme is not a note
     you see, and so is an unknown {cmd:theme()}, an option {cmd:twoway}
     does not have; {help dash##scheme:Stata scheme support} says more.
 
@@ -7341,10 +7342,14 @@ line that cannot be read that way is named once, with its line number,
 and skipped.
 
 {pstd}
-{ul:A name that resolves to nothing is refused.}  A {cmd:scheme()} that
+{ul:A name that resolves to nothing.}  On a graph -- the one-line form, a
+registered graph, a layer's own {cmd:scheme()} -- a {cmd:scheme()} that
 is neither a shipped scheme, a {cmd:theme()} name nor a scheme Stata
-finds is refused before any Python
-runs, on every entry point, with r(198):
+finds is drawn in {cmd:s2color} with {cmd:twoway}'s note,
+{cmd:(note: scheme nosuchscheme not found, using s2color)}, rc 0, as
+{cmd:twoway} draws it; a name given as a path gets the same note and no
+file is read.  {cmd:dash build}'s and {cmd:dash serve}'s {cmd:scheme()}
+refuse it before any Python runs, with r(198):
 
 {phang3}{cmd:. sysuse auto, clear}{p_end}
 {phang3}{cmd:. dash scatter mpg weight, name(s1)}{p_end}
@@ -7354,10 +7359,10 @@ runs, on every entry point, with r(198):
 {pstd}
 and a {cmd:theme()} likewise, naming its six values:
 {cmd:dash build: theme() must be one of clean, dark, default, economist, mono, sj (got: nosuchtheme)}.
-That is stricter than {cmd:twoway}, which draws {cmd:s2color} with a note
-when a scheme is not found, and the same as {cmd:set scheme}, which is
-r(111): a dashboard is a file you look at later, so {cmd:dash} will not
-save one in a scheme you did not ask for.  The session's own
+Those two are options of {cmd:dash}'s own subcommands, with no
+{cmd:twoway} counterpart, and refuse as {cmd:set scheme} does (r(111)):
+a dashboard is a file you look at later, so {cmd:dash} will not save
+one in a scheme you did not ask for.  The session's own
 {cmd:c(scheme)}, inherited when you name none, is looked up the same
 way, so a scheme {cmd:set scheme} accepted is drawn; it is never refused,
 and when {cmd:dash} cannot read it -- a file the rules above refuse -- a

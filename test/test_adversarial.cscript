@@ -1420,12 +1420,14 @@ assert "${dash_graph_registry}" == ""
 display "P20-05 PASS: a refused by() variable is echoed as text, not SMCL"
 
 // P20-06 — scheme() on a graph
+// Flipped (WP-45 ST-16): twoway draws s2color with a note for a scheme it
+// cannot find (ST-16); the note echoes the name as text, as the refusal did.
 _adv_p19_run "dash scatter mpg weight, scheme({bf:INJMARKSCH}) name(p2006)"
-assert r(rc) == 198
-cert_file_has "`r(log)'", needle("(got: {bf:INJMARKSCH})")
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("(note: scheme {bf:INJMARKSCH} not found, using s2color)")
 assert r(found) == 1
-assert "${dash_graph_registry}" == ""
-display "P20-06 PASS: a refused scheme() is echoed as text, not SMCL"
+display "P20-06 PASS: an unknown scheme() is noted as text, not SMCL"
+capture dash clear
 
 // P20-07 — the saving() path in the immediate route's success message.
 // The braces are legal in a file name, so the file is written under the

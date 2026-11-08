@@ -234,8 +234,8 @@
 *!   OV-142 scheme(s2color)           rc 0
 *!   OV-143 scheme(Economist)         rc 0, registry carries
 *!                                    "scheme":"Economist" (nothing normalised)
-*!   OV-144 scheme(nosuchthing)       rc 198 naming scheme()
-*!   OV-145 scheme(../x)              rc 198 naming scheme()
+*!   OV-144 scheme(nosuchthing)       rc 0, twoway's note, s2color (ST-16)
+*!   OV-145 scheme(../x)              rc 0, twoway's note, s2color (ST-16)
 *!   OV-146 scheme(s2color.scheme)    rc 0, registry carries
 *!                                    "scheme":"s2color.scheme" (a shipped
 *!                                    name written with the extension; no
@@ -1228,8 +1228,11 @@ _ov_case    OV-141 `"dash kdensity mpg, name(ov141)"' 0 ""
 // ----------------------------------------------------------------
 _ov_case OV-142 `"dash scatter mpg weight, scheme(s2color) name(ov142)"' 0 ""
 _ov_case OV-143 `"dash scatter mpg weight, scheme(Economist) name(ov143)"' 0 "" `""scheme":"Economist""'
-_ov_case OV-144 `"dash scatter mpg weight, scheme(nosuchthing) name(ov144)"' 198 scheme
-_ov_case OV-145 `"dash scatter mpg weight, scheme(../x) name(ov145)"' 198 scheme
+// Flipped (WP-45 ST-16): twoway draws s2color with a note for a scheme it cannot find (ST-16).
+_u46_rc OV-144 0 `"dash scatter mpg weight, scheme(nosuchthing) name(ov144)"'
+_ov_said OV-144 "(note: scheme nosuchthing not found, using s2color)"
+_u46_rc OV-145 0 `"dash scatter mpg weight, scheme(../x) name(ov145)"'
+_ov_said OV-145 "(note: scheme ../x not found, using s2color)"
 
 // ----------------------------------------------------------------
 // OV-146 .. OV-148: a shipped name written WITH the extension
@@ -1243,7 +1246,9 @@ _ov_case OV-145 `"dash scatter mpg weight, scheme(../x) name(ov145)"' 198 scheme
 // ----------------------------------------------------------------
 _ov_case OV-146 `"dash scatter mpg weight, scheme(s2color.scheme) name(ov146)"' 0 "" `""scheme":"s2color.scheme""'
 _ov_case OV-147 `"dash scatter mpg weight, scheme(S2COLOR.SCHEME) name(ov147)"' 0 ""
-_ov_case OV-148 `"dash scatter mpg weight, scheme(nosuch.scheme) name(ov148)"' 198 scheme
+// Flipped (WP-45 ST-16): twoway draws s2color with a note for a scheme it cannot find (ST-16).
+_u46_rc OV-148 0 `"dash scatter mpg weight, scheme(nosuch.scheme) name(ov148)"'
+_ov_said OV-148 "(note: scheme nosuch.scheme not found, using s2color)"
 
 // ----------------------------------------------------------------
 // OV-149 .. OV-156: clwidth() and mlabangle() (WP-22 TR-22.3), measured
@@ -4550,6 +4555,36 @@ macro drop q4505_n
 sysuse auto, clear
 if `q4505_m' < 30 local q4505_bad `"`q4505_bad' [only `q4505_m' rows ran]"'
 _u05_judge Q4505-2 `"`q4505_bad'"' "a used blank style-list element is refused with twoway's rc and line, then dash's hint"
+
+// Q4503-5 (WP-45 section 45-03, ST-16): an unknown graph-level scheme()
+// is drawn as s2color with twoway's note, rc 0 -- "(note: scheme
+// nosuchscheme not found, using s2color)", and for a path-like name the
+// same note alone, no file read (test/fixtures/style_leaf_truth.json
+// U_unknown, U_path) -- the registered spec carrying s2color; dash
+// build's scheme() keeps its refusal, r(198).
+// ----------------------------------------------------------------
+foreach q45s in nosuchscheme ../nosuch {
+    _u46_rc Q4503-5 0 `"dash scatter mpg weight, scheme(`q45s') name(q45035)"'
+    _ov_said Q4503-5 "(note: scheme `q45s' not found, using s2color)"
+    _ov_count "`c(tmpdir)'dash_ov.log" "never given as a path"
+    _ov_assert Q4503-5 "(r(n) == 0)" "scheme(`q45s'): no second line"
+    _ov_count "`c(tmpdir)'dash_ov.log" "must be one of"
+    _ov_assert Q4503-5 "(r(n) == 0)" "scheme(`q45s'): no refusal"
+    _ov_has q45035 `""scheme":"s2color""'
+    _ov_assert Q4503-5 "(r(found) == 1)" "scheme(`q45s'): the registered spec carries s2color"
+}
+capture dash clear
+capture log close _ovlog
+capture erase "`c(tmpdir)'dash_ov.log"
+log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+dash scatter mpg weight, name(q45035b)
+capture noisily dash build, saving("`c(tmpdir)'q45035.html") scheme(nosuchthing) replace
+local q45rc = _rc
+log close _ovlog
+_ov_assert Q4503-5 "(`q45rc' == 198)" "dash build, scheme(nosuchthing): rc `q45rc' (expected 198)"
+_ov_said Q4503-5 "dash build: scheme() must be one of"
+capture dash clear
+capture erase "`c(tmpdir)'q45035.html"
 
 // Summary
 // ----------------------------------------------------------------

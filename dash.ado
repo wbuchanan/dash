@@ -4961,6 +4961,18 @@ program define _dash_validate_value, rclass
                 if !_rc local hit = 1
             }
         }
+        // WP-45 ST-16: on a graph (the rule table's scheme=scheme, p1
+        // empty) a name Stata does not find draws s2color with twoway's
+        // note, rc 0, as twoway does -- a path-like name the same, its note
+        // alone, and no file is looked for (measured:
+        // test/fixtures/style_leaf_truth.json U_unknown, U_path).  dash
+        // build's and dash serve's scheme() ("scheme,strict") keep the
+        // refusal: a dashboard is a file you look at later.
+        if !`hit' & "`p1'" != "strict" {
+            mata: _dash_say("txt", "(note: scheme ", st_strscalar(st_local("T")), " not found, using s2color)")
+            local norm "s2color"
+            local hit = 1
+        }
         if !`hit' {
             local _sn : list sort _dash_schemes
             local _sn : subinstr local _sn " " ", ", all
@@ -14869,7 +14881,7 @@ program define _dash_prepare_spec, rclass
     }
     local _slen : length local scheme
     if `_slen' > 0 {
-        _dash_validate_value "`cmdname'" "scheme" "scheme" `"`macval(scheme)'"' ""
+        _dash_validate_value "`cmdname'" "scheme" "scheme,strict" `"`macval(scheme)'"' ""
     }
 
     // ---- validate link() names ----
