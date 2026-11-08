@@ -18856,9 +18856,12 @@ class GlyphMapper:
             from bokeh.core.properties import field as _bk_field
             kwargs["text_font_style"] = _bk_field(style_col)
         if _gt is not None and _gt[1]:
-            # The page's graph set faces (WP-31 G2, _dash_page_settings).
-            kwargs["text_font"] = (getattr(self, "_dash_gt_fonts", None)
-                                   or _DASH_GT_FONTS).get(_gt[1], _gt[1])
+            # The page's graph set faces (WP-31 G2, _dash_page_settings),
+            # as a value: a plain string on a LabelSet is a column name.
+            from bokeh.core.properties import value as _bk_value
+            kwargs["text_font"] = _bk_value(
+                (getattr(self, "_dash_gt_fonts", None)
+                 or _DASH_GT_FONTS).get(_gt[1], _gt[1]))
 
         # mlabangle() (WP-22): an anglestyle, drawn counter-clockwise as
         # Stata draws it.  dash.ado refuses a number outside -360..360 where

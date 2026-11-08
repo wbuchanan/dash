@@ -266,9 +266,36 @@ class TestGraphSetFontsDrawn:
     @pytest.mark.parametrize("mode", MODES)
     def test_mlabel_font(self, mode, tmp_path):
         ms = self._models(mode, tmp_path, opts={"mlabel": "lab"})
-        fonts = [m.text_font for m in ms if type(m).__name__ == "LabelSet"]
+        # Flipped: the face is a value() now, not a plain string (which a
+        # LabelSet serialises as a column name); read the value it holds.
+        fonts = [getattr(m.text_font, "value", m.text_font) for m in ms
+                 if type(m).__name__ == "LabelSet"]
         assert fonts and all(str(f).startswith("Courier") for f in fonts), \
             fonts
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_mlabel_font_is_a_value(self, mode, tmp_path):
+        """A marker label's font face reaches the page as a value, never as
+        the name of a data column: a plain string on a LabelSet's
+        text_font serialises as a field, and the browser looks up a column
+        named "Courier, ..." that does not exist (found in WP-45 45-05)."""
+        from bokeh.core.property.descriptors import DataSpecPropertyDescriptor
+        from bokeh.core.property.vectorization import Field
+
+        ms = self._models(mode, tmp_path, opts={"mlabel": "lab"})
+        seen = []
+        for m in ms:
+            for p in m.properties():
+                if p != "text_font" and not p.endswith("_text_font"):
+                    continue
+                d = type(m).lookup(p)
+                if not isinstance(d, DataSpecPropertyDescriptor):
+                    continue
+                out = d.property.to_serializable(m, p, getattr(m, p))
+                seen.append((type(m).__name__, p, out))
+        assert any(n == "LabelSet" for n, _p, _o in seen), seen
+        bad = [r for r in seen if isinstance(r[2], Field)]
+        assert not bad, bad
 
     def test_page_fonts(self):
         assert dr._dash_page_fonts({"stSans": "X"}) == {"stSans": "X"}
