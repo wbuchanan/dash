@@ -1464,6 +1464,8 @@ FUNCTIONS = {
  'SchemeParser.leaf_value': 'test/test_style_files_more.py::TestTheLeafReader::test_leaf_value',
  'SchemeParser._leaf_native': 'test/test_style_files_more.py::TestTheLeafReader::test_leaf_native',
  'SchemeParser._textbox_file_style': 'test/test_style_files_more.py::TestColourAndTextboxFiles::test_class',
+ 'SchemeParser._ado_base_index': 'test/test_style_files_more.py::TestShippedNameOrder::test_before_and_after_base',
+ 'SchemeParser._before_base_path': 'test/test_style_files_more.py::TestShippedNameOrder::test_before_and_after_base',
  'SchemeParser._leaf_rows_for_spec': 'test/test_style_files_more.py::TestTheLeafReader::test_rows_travel',
  'SchemeParser._style_parse_rows': 'test/test_style_files.py::TestHostileStyleFiles::test_a_path_like_value_is_skipped',
  'SchemeParser._style_rows': 'test/test_style_files.py::TestDirectives::test_redefines',

@@ -250,3 +250,72 @@ class TestColourAndTextboxFiles:
         ref = _drawn(rp, rg, mode, (d,))
         assert not _notes(probe), (key, _notes(probe))
         assert _sig(probe) == _sig(ref), key
+
+
+def _base_like(tmp_path):
+    """A directory BASE-like for the walk: its s/ holds Stata's
+    scheme.class (the class that reads every scheme), as BASE's does."""
+    b = tmp_path / "base"
+    (b / "s").mkdir(parents=True, exist_ok=True)
+    (b / "s" / "scheme.class").write_text("* stand-in\n", encoding="utf-8")
+    return str(b)
+
+
+def _order_dir(tmp_path):
+    d = tmp_path / "order"
+    d.mkdir(exist_ok=True)
+    (d / "scheme-economist.scheme").write_text(
+        TRUTH["files"]["ORDER/scheme-economist.scheme"], encoding="utf-8")
+    return str(d)
+
+
+class TestShippedNameOrder:
+    """ST-10: findfile's first hit decides; a shipped name's translation
+    stands at BASE's place on the ado-path (S_order: before BASE twoway
+    draws the user's file, s2color with red markers; after it, its own)."""
+
+    def test_the_fixture(self):
+        o = TRUTH["S_order"]
+        assert o["find_before"] == "ORDER/scheme-economist.scheme"
+        assert o["find_after"] == "BASE/scheme-economist.scheme"
+        assert o["before"]["same_as_s2color_mcolor_red"] == 1
+        assert o["after"]["same_as_native"] == 1
+
+    def test_before_and_after_base(self, tmp_path):
+        u, b = _order_dir(tmp_path), _base_like(tmp_path)
+        before = SP("economist", ado_dirs=(u, b))
+        after = SP("economist", ado_dirs=(b, u))
+        native = SP("economist")
+        s2 = SP("s2color")
+        assert os.path.dirname(before._resolve_path("economist")) == \
+            os.path.realpath(u)
+        assert before.default_color(0, "scatter") == "#ff0000"
+        assert before.css_block() != native.css_block()
+        assert before._props.get("color background") == \
+            s2._props.get("color background")
+        assert after._resolve_path("economist") == \
+            native._resolve_path("economist")
+        assert after.default_color(0, "scatter") == \
+            native.default_color(0, "scatter")
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_drawn(self, mode, tmp_path):
+        u, b = _order_dir(tmp_path), _base_like(tmp_path)
+        d = tsr._draw(tp._spec(_sc(), {"scheme": "economist",
+                                       "scheme_dirs": [u, b]}, {}), mode)
+        ref = tsr._draw(tp._spec(_sc(mcolor="red"), {"scheme": "s2color"},
+                                 {}), mode)
+        assert _sig(d) == _sig(ref)
+
+    def test_a_same_name_include_reads_the_translation(self, tmp_path):
+        """A user's scheme-economist.scheme that includes economist reads
+        dash's translation there, never itself (the loop guard)."""
+        u, b = tmp_path / "u", _base_like(tmp_path)
+        u.mkdir()
+        (u / "scheme-economist.scheme").write_text(
+            "#include economist\ncolor p1 red\n", encoding="utf-8")
+        sp = SP("economist", ado_dirs=(str(u), b))
+        native = SP("economist")
+        assert sp.default_color(0, "scatter") == "#ff0000"
+        assert sp._props.get("color background") == \
+            native._props.get("color background")

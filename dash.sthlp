@@ -7309,9 +7309,11 @@ installed into {cmd:PLUS/s/} is read from there, and
 entry point -- a plot drawn at once with {cmd:dash} {it:plottype}, a
 {cmd:scheme()} written on a registered graph or inside a layer's
 parentheses, {cmd:dash build}, {cmd:dash serve} and the session's
-{cmd:c(scheme)}.  The twenty-six shipped names come first, as Stata's own
-are in {cmd:BASE}, so a working-directory {cmd:s2color.scheme} or
-{cmd:scheme-s2color.scheme} replaces nothing.  A shipped name may be given
+{cmd:c(scheme)}.  The twenty-six shipped names are read from dash's
+translations at {cmd:BASE}'s place on the ado-path, so a file of that name
+in a directory you put before {cmd:BASE} ({cmd:adopath ++}) is used, as
+{cmd:twoway} uses it, and one after it -- a working-directory
+{cmd:s2color.scheme} or {cmd:scheme-s2color.scheme} -- replaces nothing.  A shipped name may be given
 with the extension too, {cmd:scheme(s2color.scheme)}.  A {cmd:theme()}
 name given to {cmd:scheme()} is a file of that name when Stata finds one,
 and the theme otherwise.  Four things differ from {cmd:twoway}, for

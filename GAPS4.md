@@ -512,7 +512,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **ST-7 Tracked:** Closed in WP-45, BUGS.md "Leaf style files on the ado-path (linepattern, linewidth, symbolsize, gsize, intensity, anglestyle, margin) are not read", commit pending.
 - **ST-15 Tracked:** Closed in WP-45, BUGS.md "color-*.style and textboxstyle-*.style files are not read (mcolor(mine) draws black)", commit pending.
 - **ST-17 Tracked:** Open (WP-45 section 45-03).
-- **ST-10 Tracked:** Open (WP-45 section 45-03).
+- **ST-10 Tracked:** Closed in WP-45, BUGS.md "A shipped-name scheme placed before BASE (adopath ++) is ignored; dash always uses its own translation", commit pending.
 - **ST-16 Tracked:** Open (WP-45 section 45-03).
 - **GW-6 Tracked:** Partly closed in WP-45 (section 45-04, commit 999ec28): the scheme's graph margin is drawn round every stretched graph, a by() array included, in the graph region's fill; open: the outline stroke unasked and the margin of a graph at its xsize()/ysize() box (BUGS.md "The graph region's outline is not stroked unasked, and a graph drawn at its xsize()/ysize() box has no scheme graph margin").
 - **ST-21 Tracked:** Open (WP-45 section 45-04).

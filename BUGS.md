@@ -5742,11 +5742,11 @@
   - Suggested fix: Draw the directives
   - Resolution: Not fixed because WP-45 section 45-03 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
 
-- [ ] Title: A shipped-name scheme placed before BASE (adopath ++) is ignored; dash always uses its own translation
+- [x] Title: A shipped-name scheme placed before BASE (adopath ++) is ignored; dash always uses its own translation
   - File Names and Line Numbers: _resolve_path (dash_render.py:10542-10560); p3 F
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids ST-10; confirmed; tracked: untracked. Registered as GAPS4 ST-10 (WP-45, section 45-03, Fix).
   - Suggested fix: Rank shipped translations at BASE's position
-  - Resolution: Not fixed because WP-45 section 45-03 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+  - Resolution: Fixed 08nov2026 (WP-45, ST-10). A shipped name's translation stands at BASE's place on the ado-path: SchemeParser._resolve_path reads a scheme-NAME.scheme or NAME.scheme found in a directory before BASE (_before_base_path, admitted by _admit), as findfile's first hit, and dash's dash-NAME.scheme otherwise; BASE is the directory whose s/ holds Stata's scheme.class (_ado_base_index), so with no BASE on the path (a spec built without dash.ado) the translation stands as before, and a directory after BASE (the working directory) replaces nothing. A user file of a shipped name that includes that name reads the translation there (_include). Both modes. Pinned by test/test_style_files_more.py::TestShippedNameOrder::test_before_and_after_base, ::test_drawn, ::test_a_same_name_include_reads_the_translation, test_wp45_truth.cscript Q4503-3; fixture test/fixtures/style_leaf_truth.json. Closes GAPS4 ST-10 (WP-45, ST-10).
 
 - [ ] Title: An unknown scheme() is refused r(198) where twoway notes and draws s2color
   - File Names and Line Numbers: dash.sthlp:1260-1264, 6305-6329

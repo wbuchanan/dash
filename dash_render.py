@@ -11011,9 +11011,11 @@ class SchemeParser:
         """The file scheme *name* is read from, found as Stata finds it.
 
         A shipped name, bare or with ``.scheme`` in any case, is dash's
-        ``dash-<name>.scheme`` and nothing else (``_shipped_path``): the
-        twenty-six come first, as twoway's BASE does, so no file of that
-        name anywhere replaces them.  Any other name must pass the name
+        ``dash-<name>.scheme`` (``_shipped_path``) at BASE's place on the
+        ado-path (WP-45 ST-10): a file of that name in a directory before
+        BASE (``adopath ++``) is findfile's first hit and is read
+        (``_before_base_path``); one after BASE replaces nothing.  Any
+        other name must pass the name
         rule, and is then looked for as Stata's ``setscheme`` looks
         (scheme.class:172-173): ``scheme-NAME.scheme``, then
         ``NAME.scheme``, in each directory of the ado-path and its
@@ -11025,6 +11027,9 @@ class SchemeParser:
         name = (name or "").strip()
         shipped = self._shipped_base(name)
         if shipped is not None:
+            user = self._before_base_path(name)
+            if user is not None:
+                return user
             return self._shipped_path(name, shipped)
         safe = self._safe_name(name)
         if not self._scheme_name_ok(name):
@@ -11040,6 +11045,33 @@ class SchemeParser:
             f"{', '.join(sorted(self._BUILTIN_NAMES))}. A scheme of your "
             "own is found as Stata finds it: scheme-NAME.scheme, then "
             "NAME.scheme, in a directory on the ado-path.")
+
+    def _ado_base_index(self) -> "int | None":
+        """The position of Stata's BASE on the ado-path, or None: the first
+        directory whose ``s/`` holds ``scheme.class``, the class that reads
+        every scheme (WP-45 ST-10).  None with no ado-path."""
+        for i, d in enumerate(tuple(getattr(self, "_ado_dirs", ()) or ())):
+            try:
+                if os.path.isfile(os.path.join(d, "s", "scheme.class")):
+                    return i
+            except (OSError, ValueError, TypeError):
+                continue
+        return None
+
+    def _before_base_path(self, name: str) -> "str | None":
+        """The file a shipped *name* is read from when a directory before
+        BASE holds ``scheme-NAME.scheme`` or ``NAME.scheme`` (findfile's
+        first hit, admitted by ``_admit``), else None (WP-45 ST-10).  With
+        no BASE on the ado-path (a spec built without dash.ado) None, so
+        the translation stands."""
+        k = self._ado_base_index()
+        if not k or not self._scheme_name_ok(name):
+            return None
+        before = tuple(self._ado_dirs)[:k]
+        for root, path in self._ado_candidates(name):
+            if root in before and os.path.exists(path):
+                return self._admit(root, path, self._safe_name(name))
+        return None
 
     def _shipped_path(self, name: str, shipped: str) -> str:
         """The ``dash-<shipped>.scheme`` file a shipped *name* is read from:
@@ -11431,10 +11463,16 @@ class SchemeParser:
         ``_FALLBACK_PROPS``, which mirror it, stand in.
         """
         path, reason = self._resolve_cached(name, _notes)
+        _sb = self._shipped_base(name)
+        if path is not None and _sb is not None and \
+                os.path.realpath(path) in _visited:
+            # WP-45 ST-10: a user's file of a shipped name that includes
+            # that name reads dash's translation there, as BASE's file
+            # would be read, never itself.
+            path = self._shipped_path(name, _sb)
         if path is not None:
             # WP-31 C8c: the shipped schemes a user scheme includes, in
             # order, for its colorvar() default (_dash_zyx2_derive).
-            _sb = self._shipped_base(name)
             if _sb is not None:
                 self.__dict__.setdefault("_included_shipped", []).append(_sb)
             try:

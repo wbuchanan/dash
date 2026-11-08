@@ -1013,6 +1013,7 @@ and now matches Stata.
 
 ### Fixed in WP-45
 
+- A scheme-economist.scheme placed before BASE with adopath ++ is used, as twoway uses it (was dash's economist translation) (WP-45, ST-10)
 - mcolor(mine) with color-mine.style on the ado-path draws its colour (was black with a note), and tstyle(mine) and mlabtextstyle(mine) with a textboxstyle-mine.style draw its size and colour (WP-45, ST-15)
 - linepattern, linewidth, symbolsize, gsize, intensity, anglestyle and margin style files on the ado-path are read: lwidth(mine) with a linewidth-mine.style holding set val 2 draws as lwidth(2) (was the default with a note) (WP-45, ST-7)
 - The scheme's graph margin is drawn round a graph and round a by() graph's panels, in the graph region's fill; scatter mpg weight, by(foreign) drew its label strips at the page's top edge, now 3.5% of the graph's height below it (WP-45, GW-6)
