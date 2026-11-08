@@ -1618,7 +1618,8 @@ _S03_DIR = os.path.join(_TMP, "ado45")
 os.makedirs(_S03_DIR, exist_ok=True)
 for _f, _t in (("linepattern-zqpb.style", 'set pattern "4 1 .1 1"\n'),
                ("linewidth-zqw.style", "set val 2\n"),
-               ("gsize-zqg.style", "set val     10\nset sztype  relative\n")):
+               ("gsize-zqg.style", "set val     10\nset sztype  relative\n"),
+               ("scheme-w45p.scheme", "#include s2color\nclockdir p 9\n")):
     with open(os.path.join(_S03_DIR, _f), "w", encoding="utf-8") as _fh:
         _fh.write(_t)
 
@@ -1629,6 +1630,9 @@ CORPUS = [
                                                    "lwidth": "zqw"})],
           {"scheme": "s2color", "scheme_dirs": [_S03_DIR]},
           {"title": '"T", size(zqg)'}),
+    # WP-45 ST-17: a user scheme's clockdir p, alike in both modes.
+    _case("scheme clockdir p 9", [plot_for("scatter", {"mlabel": "mpg"})],
+          {"scheme": "w45p", "scheme_dirs": [_S03_DIR]}),
     # ---- every plot type, bare -------------------------------------------
     *[_case(t, [plot_for(t)]) for t in (
         "scatter", "line", "connected", "area", "bar", "spike", "lfit",

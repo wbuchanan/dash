@@ -53,7 +53,8 @@ _ATTRS = ("line_dash", "line_width", "line_color", "line_alpha",
           "text_font_size", "text_color", "text_alpha", "text_align",
           "text_baseline", "x_offset", "y_offset", "min_border_left",
           "min_border_right", "min_border_top", "min_border_bottom",
-          "align", "location", "start", "end", "ticks")
+          "align", "location", "start", "end", "ticks", "spacing", "ncols",
+          "nrows", "label_width", "orientation")
 
 
 def _sig(drawn):
@@ -319,3 +320,106 @@ class TestShippedNameOrder:
         assert sp.default_color(0, "scatter") == "#ff0000"
         assert sp._props.get("color background") == \
             native._props.get("color background")
+
+
+def _two(o1=None, o2=None):
+    return [plot_for("scatter", dict(o1 or {})),
+            plot_for("scatter", dict(o2 or {}), yvar="price")]
+
+
+#: ST-17's directives (D_ records), each a user scheme w45<x>.scheme
+#: (#include s2color plus one line) against s2color with the option the
+#: directive stands for: (scheme, plots, graph options) probe, then
+#: reference.
+DIRECTIVES = {
+    "D_clockdir_p": (("w45p", _sc(mlabel="mpg"), {}),
+                     ("s2color", _sc(mlabel="mpg", mlabposition="9"), {})),
+    "D_clockdir_p2": (("w45q", _two({"mlabel": "mpg"}, {"mlabel": "mpg"}),
+                       {}),
+                      ("s2color", _two({"mlabel": "mpg"},
+                                       {"mlabel": "mpg",
+                                        "mlabposition": "9"}), {})),
+    "D_textboxstyle": (("w45t", _sc(), {"title": '"T"'}),
+                       ("s2color", _sc(),
+                        {"title": '"T", size(medium) color(black)'})),
+    "D_legend_col_gap": (("w45g", _two(), {"legend": "cols(2)"}),
+                         ("s2color", _two(),
+                          {"legend": "cols(2) colgap(huge)"})),
+    "D_title_position": (("w45c", _sc(), {"title": '"T"'}),
+                         ("s2color", _sc(), {"title": '"T", position(3)'})),
+}
+
+
+class TestDirectives:
+    """ST-17: a user scheme's clockdir p and p#, textboxstyle title,
+    legend_col_gap and title_position, drawn as twoway draws them."""
+
+    def test_the_fixture(self):
+        for k in DIRECTIVES:
+            r = TRUTH[k]
+            assert r["rc"] == 0 and not r["notes"], k
+            assert r["same_as_reference"] == 1, k
+        # yesno plabelboxed draws nothing on a twoway graph (measured):
+        # the same picture as s2color's, so nothing is drawn for it.
+        assert TRUTH["D_plabelboxed"]["same_as_base"] == 1
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("key", sorted(DIRECTIVES))
+    def test_directive(self, key, mode, tmp_path):
+        d = _files_dir(tmp_path)
+        (ps, pp, pg), (rs, rp, rg) = DIRECTIVES[key]
+        probe = tsr._draw(tp._spec(pp, {"scheme": ps, "scheme_dirs": [d]},
+                                   pg), mode)
+        ref = tsr._draw(tp._spec(rp, {"scheme": rs, "scheme_dirs": [d]},
+                                 rg), mode)
+        assert not _notes(probe), (key, _notes(probe))
+        assert _sig(probe) == _sig(ref), key
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_plabelboxed_draws_nothing(self, mode, tmp_path):
+        d = _files_dir(tmp_path)
+        probe = tsr._draw(tp._spec(_sc(mlabel="mpg"), {
+            "scheme": "w45b", "scheme_dirs": [d]}, {}), mode)
+        ref = tsr._draw(tp._spec(_sc(mlabel="mpg"), {
+            "scheme": "s2color", "scheme_dirs": [d]}, {}), mode)
+        assert _sig(probe) == _sig(ref)
+
+    def test_p_clock(self, tmp_path):
+        d = _files_dir(tmp_path)
+        p = SP("w45p", ado_dirs=(d,))
+        q = SP("w45q", ado_dirs=(d,))
+        assert [p.p_clock(i) for i in (0, 1)] == ["9", "9"]
+        assert [q.p_clock(i) for i in (0, 1)] == [None, "9"]
+        assert SP("s2color").p_clock(0) is None
+
+    def test_the_box_styles(self, tmp_path):
+        d = _files_dir(tmp_path)
+        t = SP("w45t", ado_dirs=(d,))
+        s2 = SP("s2color")
+        assert (t.title_font_size, t.title_color) == s2.textbox_style(
+            "subheading")
+        assert (s2.title_font_size, s2.title_color) == (
+            s2.heading_font_size, s2.title_color)
+        assert (s2.subtitle_font_size, s2.caption_font_size) == (
+            s2.subheading_font_size, s2.body_font_size)
+
+    def test_the_guards_are_documented(self):
+        """D-45-03.d: the path, size and link guards stay, stated in the
+        scheme section and in one Differences entry linking to it."""
+        with open(os.path.join(os.path.dirname(_HERE), "dash.sthlp"),
+                  encoding="utf-8") as fh:
+            h = " ".join(fh.read().split())
+
+        def _between(text, a, b):
+            i = text.index(a)
+            return text[i:text.index(b, i)]
+
+        para = _between(h, "Four things differ from {cmd:twoway}, for "
+                           "safety", "and {cmd:s2color} is drawn.")
+        assert "a scheme is a name, never a path" in para
+        assert "at most 1,048,576 bytes" in para
+        assert "a link out of that directory is not followed" in para
+        diff = _between(h, "{ul:Scheme and style files are read with safety "
+                           "bounds.}", "{marker subcommands}")
+        assert "{help dash##scheme:Stata scheme support}" in diff
+        assert "over 1,048,576 bytes" in diff

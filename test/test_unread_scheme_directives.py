@@ -32,12 +32,16 @@ from test_server_layer_defects import plot_for  # noqa: E402
 
 #: twoway draws each of these differently from s2color (measured, plan
 #: section 33 E6); dash draws none of them yet.
-W33S = ["#include s2color", "textboxstyle title subheading",
-        "textboxstyle axis_title heading", "clockdir p 9",
-        "yesno plabelboxed yes", "textboxstyle key_label heading",
+# old -> new: ST-17 textboxstyle title, clockdir p drawn (WP-45 ST-17);
+# yesno plabelboxed left out: twoway draws nothing for it on a twoway
+# graph (style_leaf_truth.json D_plabelboxed, the same SVG as s2color's).
+W33S = ["#include s2color",
+        "textboxstyle axis_title heading",
+        "textboxstyle key_label heading",
         "textboxstyle tick heading"]
-W33Q = ["#include s2color", "clockdir p1 9", "yesno p1labelboxed yes",
-        "textboxstyle subtitle heading", "textboxstyle caption heading"]
+# old -> new: ST-17 clockdir p1, textboxstyle subtitle and caption drawn
+# (WP-45 ST-17).
+W33Q = ["#include s2color", "yesno p1labelboxed yes"]
 W33M = (["#include s2color"] + [f"clockdir p{i} 9" for i in range(1, 16)]
         + ["clockdir p 9", "textboxstyle tick heading"])
 W33INC = ["clockdir p 9", "textboxstyle tick heading"]

@@ -1609,4 +1609,6 @@ class TestInternalLinksResolve:
         # old -> new: 194 -> 195 links: the Differences sub-point The
         # window font face links Text in graphs (graph_text, already a
         # marker) (WP-45 GW-10).
-        assert len(refs) == 195 and len(set(refs)) == 58
+        # old -> new: 195 -> 196 links: Differences item 22 links the
+        # scheme section's safety bounds (WP-45 ST-17).
+        assert len(refs) == 196 and len(set(refs)) == 58

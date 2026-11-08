@@ -1013,6 +1013,7 @@ and now matches Stata.
 
 ### Fixed in WP-45
 
+- A scheme's clockdir p and p#, textboxstyle title, subtitle and caption, legend_col_gap and title clocks 2-4 and 8-10 are drawn: clockdir p 9 draws marker labels at 9 o'clock and clockdir title_position 3 the title right of the plot (were drawn at 3 and above it) (WP-45, ST-17)
 - A scheme-economist.scheme placed before BASE with adopath ++ is used, as twoway uses it (was dash's economist translation) (WP-45, ST-10)
 - mcolor(mine) with color-mine.style on the ado-path draws its colour (was black with a note), and tstyle(mine) and mlabtextstyle(mine) with a textboxstyle-mine.style draw its size and colour (WP-45, ST-15)
 - linepattern, linewidth, symbolsize, gsize, intensity, anglestyle and margin style files on the ado-path are read: lwidth(mine) with a linewidth-mine.style holding set val 2 draws as lwidth(2) (was the default with a note) (WP-45, ST-7)

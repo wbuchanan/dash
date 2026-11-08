@@ -1804,6 +1804,12 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:A global's =exp outside the listed functions is drawn as written.}  A {cmd:`=}{it:exp}{cmd:'} in a global's value in a graph's text is evaluated as {cmd:twoway} evaluates it when {it:exp} uses only the operators and functions listed there; one that names a variable, a scalar, a result or another function, and a macro reference, is drawn as written with a note; see {help dash##added_text:Added text}.
 
+{phang2}22.  {ul:Scheme and style files are read with safety bounds.}
+    A scheme named by a path, a scheme or style file over 1,048,576 bytes,
+    and a file linked from outside its folder are not read, where
+    {cmd:twoway} follows the path and reads any file; see
+    {help dash##scheme:Stata scheme support}.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -7227,8 +7233,11 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     nearer the plot; under {cmd:economist} the title, subtitle and caption
     are at the left and the note sits in its box in the title's band, at
     the top right.  Clock positions 2 to 4 and 8 to 10, which only a scheme
-    of your own can ask for, are drawn on the nearer of the top and
-    bottom.  The files also carry {cmd:system naturally_white} and the
+    of your own can ask for, put the title beside the plot, where a
+    title's own position at that clock puts it
+    ({cmd:clockdir title_position 3} draws the title at 3 o'clock, right
+    of the plot); a subtitle, note or caption at one of
+    them is drawn on the nearer of the top and bottom.  The files also carry {cmd:system naturally_white} and the
     {cmd:intensity p}{it:#}{cmd:bar}/{cmd:p}{it:#}{cmd:area} chains as
     Stata resolves them.{p_end}
 
@@ -7396,8 +7405,16 @@ under {cmd:economist} take {cmd:linewidth pother}, 0.8, not
 never reaches it, as in Stata; a marker's outline takes the stub
 {cmd:mark}.  Only {cmd:graphsize x} and {cmd:graphsize y} size a graph; a bare
 {cmd:graphsize} {it:#} sizes nothing, as in Stata.
-A directive {cmd:dash} does not draw yet -- such as {cmd:clockdir p}
-(where marker labels sit) or the {cmd:textboxstyle} of a title -- is read
+{cmd:clockdir p} and {cmd:clockdir p}{it:#} set where marker labels sit
+when {cmd:mlabposition()} does not ({cmd:clockdir p 9} draws as
+{cmd:mlabposition(9)}), {cmd:textboxstyle title}, {cmd:subtitle} and
+{cmd:caption} name the text box style those boxes are drawn in
+({cmd:textboxstyle title subheading} draws the title as
+{cmd:size(medium) color(black)}), and {cmd:gsize legend_col_gap} spaces a
+one-row legend's columns as {cmd:legend(colgap())} does.
+{cmd:yesno plabelboxed} draws nothing on a {cmd:twoway} graph (measured:
+the same picture as {cmd:s2color}'s), so {cmd:dash} draws nothing for it
+either.  Any other directive {cmd:dash} does not draw yet is read
 and kept with the scheme, without a note, so a later {cmd:dash} that draws
 it takes it from your file.
 Colours may be Stata colour names or {cmd:#rrggbb}.

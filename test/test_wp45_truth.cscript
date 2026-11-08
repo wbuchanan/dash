@@ -952,6 +952,63 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
 }
 * ==== end S03 ====
 
+* ==== S03 ST-17: scheme directives drawn ====
+local only : env WP45_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local s03d "`w45_work'/s03d"
+    local s03u "`w45_work'/s03du"
+    capture mkdir "`s03d'"
+    capture mkdir "`s03u'"
+    python: import __main__ as _w45m; _w45m._w45s03_files("`s03u'")
+    quietly adopath ++ "`s03u'"
+
+    // ------------------------------------------------------------
+    // Q4503-4: user schemes (#include s2color) with clockdir p 9,
+    // textboxstyle title subheading or clockdir title_position 3: twoway
+    // draws each as the option it stands for (live, SVG equality), and
+    // dash draws each the same, saved and served, with no note.
+    // ------------------------------------------------------------
+    foreach pair in "scatter mpg weight in 1/10, mlabel(make) scheme(w45p)|scatter mpg weight in 1/10, mlabel(make) mlabposition(9) scheme(s2color)" ///
+        `"scatter mpg weight, title("T") scheme(w45t)|scatter mpg weight, title("T", size(medium) color(black)) scheme(s2color)"' ///
+        `"scatter mpg weight, title("T") scheme(w45c)|scatter mpg weight, title("T", position(3)) scheme(s2color)"' {
+        local bar = strpos(`"`pair'"', "|")
+        local pa = substr(`"`pair'"', 1, `bar' - 1)
+        local pb = substr(`"`pair'"', `bar' + 1, .)
+        _w45s03_tw "`s03d'" `macval(pa)' | `macval(pb)'
+        local s03_ok = ("${w45s03_twrc}" == "0 0" & ${w45s03_same} == 1)
+        _w45_expect Q4503-4 "(`s03_ok')" "twoway: rc ${w45s03_twrc}, same ${w45s03_same}"
+        _w45s03_dash "`s03d'" w45s03p `macval(pa)'
+        local s03_rc1 = ${w45s03_drc}
+        _w45s03_dash "`s03d'" w45s03r `macval(pb)'
+        local s03_rc2 = ${w45s03_drc}
+        _w45_expect Q4503-4 "(`s03_rc1' == 0 & `s03_rc2' == 0)" "dash rc `s03_rc1' `s03_rc2'"
+        if !`s03_rc1' & !`s03_rc2' {
+            python: import __main__ as _w45m; _w45m._w45s03_pair("`s03d'/w45s03p.json", "`s03d'/w45s03p_d.json", "`s03d'/w45s03r.json", "`s03d'/w45s03r_d.json", "`s03d'/a.py")
+            mata: st_local("s03_nn", strofreal(st_global("w45s03_notes") == ""))
+            mata: st_local("s03_nd", strofreal(st_global("w45s03_diff") == ""))
+            _w45_expect Q4503-4 "(`s03_nn')" `"notes: ${w45s03_notes}"'
+            _w45_expect Q4503-4 "(`s03_nd')" `"differs: ${w45s03_diff}"'
+        }
+    }
+    _w45_done Q4503-4 "clockdir p, textboxstyle title and clockdir title_position draw as twoway draws them, saved and served"
+
+    quietly adopath - "`s03u'"
+    capture dash clear
+    macro drop w45s03_*
+    foreach f in tw1.svg tw2.svg w45s03p.json w45s03p_d.json w45s03r.json w45s03r_d.json a.py {
+        capture erase "`s03d'/`f'"
+    }
+    local s03_left : dir "`s03u'" files "*"
+    foreach f of local s03_left {
+        capture erase "`s03u'/`f'"
+    }
+    capture rmdir "`s03d'"
+    capture rmdir "`s03u'"
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // ---- S05 helpers (WP-45 section 45-05) ----
 // _w45s05_models(sp, dp, app): the saved page's models and the served
 // app's, each built from one spec (test_wp43_truth.cscript's

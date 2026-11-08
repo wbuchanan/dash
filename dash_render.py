@@ -12149,6 +12149,26 @@ class SchemeParser:
                     "position": pos}
         return None
 
+    def p_clock(self, index) -> "str | None":
+        """Plot *index*'s (0-based) default marker-label clock from a
+        scheme's ``clockdir p<n>``, then ``clockdir p`` (WP-45 ST-17), read
+        through the clockdir reader (``_dash_style_word``), or None for
+        twoway's 3 o'clock: no such directive (no shipped scheme declares
+        one) or a value clockdir does not read.  Measured: ``clockdir p 9``
+        draws as mlabposition(9), ``clockdir p2 9`` plot 2's alone
+        (style_leaf_truth.json D_clockdir_p, D_clockdir_p2)."""
+        try:
+            i = int(index) % 15 + 1
+        except (TypeError, ValueError, OverflowError):
+            return None
+        props = getattr(self, "_props", None) or {}
+        for key in (f"clockdir p{i}", "clockdir p"):
+            raw = str(props.get(key, "") or "").strip().strip('"').strip()
+            if raw:
+                w = _dash_style_word("clockdir", raw)
+                return w if w in GlyphMapper._MLABEL_CLOCK_NAMES else None
+        return None
+
     def textbox_style(self, name) -> "tuple[str, str] | None":
         """``(size, colour)`` of the text box style *name* in this scheme,
         or None when Stata ships no such style (WP-30 P1.24).
@@ -12522,6 +12542,34 @@ class SchemeParser:
         self.body_font_size: str = self._gsize("gsize body", "10pt")
         self.small_body_font_size: str = self._gsize("gsize small_body", "8pt")
         self.key_label_font_size: str = self._gsize("gsize key_label", "10pt")
+        # WP-45 ST-17: title(), subtitle() and caption() are drawn in the
+        # text box style `textboxstyle title|subtitle|caption' names
+        # (heading, subheading and body in every shipped scheme; measured:
+        # `textboxstyle title subheading' draws the title as size(medium)
+        # color(black), style_leaf_truth.json D_textboxstyle).
+        self.title_font_size: str = self.heading_font_size
+        self.subtitle_font_size: str = self.subheading_font_size
+        self.subtitle_color: str = self.subheading_color
+        self.caption_font_size: str = self.body_font_size
+        self.caption_color: str = self.body_color
+        for _box, _dflt in (("title", "heading"), ("subtitle", "subheading"),
+                            ("caption", "body")):
+            _nm = str(self._props.get(f"textboxstyle {_box}", "")
+                      or "").strip().strip('"').strip()
+            if not _nm or _nm == _dflt:
+                continue
+            try:
+                _st = self.textbox_style(_nm)
+            except AttributeError:   # a p# style before its sizes exist
+                _st = None
+            if _st is None:
+                continue
+            if _box == "title":
+                self.title_font_size, self.title_color = _st
+            elif _box == "subtitle":
+                self.subtitle_font_size, self.subtitle_color = _st
+            else:
+                self.caption_font_size, self.caption_color = _st
 
         # note()'s text box: Stata draws note() in `textboxstyle note'
         # (small_body in s2color; economist's reverse_big, a white medlarge
@@ -14782,7 +14830,7 @@ class SchemeParser:
         # runs after this, so an explicit title(, size() color()) wins.
         if fig.title is not None:
             fig.title.text_color = self.title_color
-            fig.title.text_font_size = self.heading_font_size
+            fig.title.text_font_size = self.title_font_size
             # The heading box is not bold, and twoway places it by `clockdir
             # title_position' and `horizontal heading' (WP-30 P1.2a;
             # measured: s2color's title text-anchor middle at the plot
@@ -14927,7 +14975,7 @@ class SchemeParser:
         """
         bg = html.escape(self.background_color)
         tc = html.escape(self.title_color)
-        hs = html.escape(self.heading_font_size)
+        hs = html.escape(self.title_font_size)
         # The dashboard subtitle is Stata's subheading box, not `gsize
         # text' in the heading colour.
         sc = html.escape(self.subheading_color)
@@ -19190,8 +19238,10 @@ class GlyphMapper:
         # it; dash drew it at 3, and 03 at 3 without a word.
         # The position is read as twoway's clockdir reads it (WP-45 ST-3):
         # left is 9, t 12.
-        pos = str(options.get("mlabposition", _mls_pos or "3")
-                  or _mls_pos or "3").strip()
+        # WP-45 ST-17: the scheme's clockdir p# / p is the default.
+        _pc = self.scheme.p_clock(color_idx) or "3"
+        pos = str(options.get("mlabposition", _mls_pos or _pc)
+                  or _mls_pos or _pc).strip()
         _pw = _dash_style_word("clockdir", pos)
         if _pw in GlyphMapper._MLABEL_CLOCK_NAMES:
             p = int(_pw)
@@ -61312,13 +61362,19 @@ def _dash_figure_title(fig, graph_opts, seen=None, key="", scheme=None):
     if not raw or fig.title is None:
         return
     _t_text, _t_opts = _dash_textbox(raw, "title", seen, key)
-    if not _t_text or not _t_opts:
-        return
     if scheme is None:
         scheme = getattr(fig, "_dash_scheme", None)
+    # WP-45 ST-17: a scheme's `clockdir title_position' 2-4 or 8-10 puts
+    # the title beside the plot, as title(, position()) does (measured:
+    # clockdir title_position 3 draws as position(3), style_leaf_truth.json
+    # D_title_position).
+    _t_side = scheme is not None and getattr(
+        scheme, "text_clock", {}).get("title") in (2, 3, 4, 8, 9, 10)
+    if not _t_text or not (_t_opts or _t_side):
+        return
     t = fig.title
     # A turned or fixed box leaves Bokeh's title slot too (WP-43 LT-18).
-    if "position" in _t_opts or "ring" in _t_opts or \
+    if "position" in _t_opts or "ring" in _t_opts or _t_side or \
             _dash_textbox_needs_label(_t_opts):
         place = _dash_textbox_position(
             _t_opts, scheme.text_clock["title"] if scheme is not None else 12,
@@ -62513,9 +62569,9 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
         d = _DASH_TEXTBOX_DEFAULTS[ann_key]
         if scheme is not None:
             size_default, color_default = {
-                "subtitle": (scheme.subheading_font_size,
-                             scheme.subheading_color),
-                "caption": (scheme.body_font_size, scheme.body_color),
+                "subtitle": (scheme.subtitle_font_size,
+                             scheme.subtitle_color),
+                "caption": (scheme.caption_font_size, scheme.caption_color),
                 "note": (scheme.note_text_font_size, scheme.note_text_color),
             }[ann_key]
             clock = scheme.text_clock.get(ann_key, d["clock"])
@@ -63080,8 +63136,8 @@ def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
     if scheme is not None:
         side, align = _dash_textbox_place(scheme.text_clock["subtitle"],
                                           scheme.text_just["subheading"])
-        size_default = scheme.subheading_font_size
-        color_default = scheme.subheading_color
+        size_default = scheme.subtitle_font_size
+        color_default = scheme.subtitle_color
     else:
         side, align = "above", "center"
         size_default, color_default = "13px", "#444444"
@@ -63438,9 +63494,9 @@ def _dash_by_chrome(graph_opts, by_vars, var_labels, scheme=None, seen=None,
         _t = tmp.title
         if scheme is not None:
             _t.text_font_size, _t.text_color = {
-                "subtitle": (scheme.subheading_font_size,
-                             scheme.subheading_color),
-                "caption": (scheme.body_font_size, scheme.body_color),
+                "subtitle": (scheme.subtitle_font_size,
+                             scheme.subtitle_color),
+                "caption": (scheme.caption_font_size, scheme.caption_color),
                 "note": (scheme.note_text_font_size,
                          scheme.note_text_color)}[k]
         _t.text_font_style = "normal"
