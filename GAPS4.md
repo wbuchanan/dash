@@ -517,7 +517,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-6 Tracked:** Partly closed in WP-45 (section 45-04, commit 999ec28): the scheme's graph margin is drawn round every stretched graph, a by() array included, in the graph region's fill; open: the outline stroke unasked and the margin of a graph at its xsize()/ysize() box (BUGS.md "The graph region's outline is not stroked unasked, and a graph drawn at its xsize()/ysize() box has no scheme graph margin").
 - **ST-21 Tracked:** Open (WP-45 section 45-04).
 - **VF-4 Tracked:** Partly closed in WP-45 (section 45-04, commit pending): every graph, by() included, keeps twoway's shape with no height band, xsize()/ysize() draw the exact box, aspectratio() alone shapes the plot region and fxsize()/fysize() keep the graph's size, drawing the plot (a by() array) in # percent of the scheme's reference side, centred; the graph drawn as one picture at twoway's unit (DECISIONS D66, 01nov2026); open: the title's top inset under scale() (BUGS.md "Under scale() the title's room above the plot region grows faster than twoway's").
-- **GW-1 Tracked:** Open (WP-45 section 45-04).
+- **GW-1 Tracked:** Closed in WP-45, BUGS.md "xsize()/ysize() with units (10cm, 3in, 200pt) are ignored with a note that leaks 'None'", commit pending.
 - **ST-22 Tracked:** Closed in WP-45, BUGS.md "Colour edges: navy*52 intensity rule, blank stylelist element refused in dash's words", commit e0d4fd7.
 - **GW-10 Tracked:** Closed in WP-45, BUGS.md "graph set window/svg fontface for plain text is not read (only stSans/stSerif/stMono tags)", commit 3dcd745.
 - **RH-1 Tracked:** Open (WP-46 section 46-01).

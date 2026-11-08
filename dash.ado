@@ -4158,13 +4158,16 @@ program define _dash_option_rules
     // it even when a later segment or the after-comma part outranks it --
     // and once per graph in _dash_plot, from the g_<opt> accumulators,
     // after an after-comma option has outranked a segment's.
+    // xsize(), ysize() (WP-45 GW-1, figure_geometry_truth.json U_*): a
+    // size with an optional unit, read and bounded as twoway reads it
+    // (graphsize, in _dash_validate_value); any other text passes on.
     // scheme (WP-17): a name the renderer could not resolve used to reach
     // it with rc 0 and be drawn as s2color under a warning, half applied
     // when the file existed and was named bare.  Refused here instead, on
     // the immediate route, on a registered graph and inside a segment
     // alike, by the same rule `dash build' and `dash serve' apply.
     local graph ///
-        xsize=style,1,100  ysize=style,1,100  aspectratio=num,0  hover=varlist  by=byvarlist ///
+        xsize=graphsize,1,100  ysize=graphsize,1,100  aspectratio=num,0  hover=varlist  by=byvarlist ///
         scale=mult  fxsize=optnum  fysize=optnum ///
         scheme=scheme ///
         xlabel=axislist  ylabel=axislist  xlabel2=axislist  ylabel2=axislist ///
@@ -4572,6 +4575,35 @@ program define _dash_validate_value, rclass
             else if `numlike' local bad "a name or a number between `p1' and `p2'"
         }
         else if !`isnum' & `numlike' local bad "a name or a number"
+    }
+    else if "`kind'" == "graphsize" {
+        // xsize() and ysize() (WP-45 GW-1; measured, test/fixtures/
+        // figure_geometry_truth.json U_*): twoway reads a number with an
+        // optional unit in, pt or cm, in lower case and blanks before the
+        // unit allowed (10cm and 10 cm are 3.937 in, 200pt 2.778, 72pt and
+        // 2.54cm 1 in; 1in = 72pt = 2.54cm), and refuses one outside 1 to
+        // 100 inches -- 0.5in, 300cm, 200, 0.5, -1 -- with these three
+        // lines, r(198).  It goes on as its inches, so the renderer reads
+        // a number.  Any other text (abc, 10CM) is a style name to twoway:
+        // noted, and the scheme's size drawn, rc 0; it passes on unchanged
+        // for the renderer to note.  A token of digits and exponent letters
+        // that is no number (1e400) keeps the style kind's refusal.
+        if regexm(scalar(`T'), "^([-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?) *(in|pt|cm)?$") {
+            local _gsu = regexs(4)
+            tempname GS
+            scalar `GS' = real(regexs(1))
+            if "`_gsu'" == "pt" scalar `GS' = scalar(`GS') / 72
+            else if "`_gsu'" == "cm" scalar `GS' = scalar(`GS') / 2.54
+            if scalar(`GS') >= . | scalar(`GS') < `p1' | scalar(`GS') > `p2' {
+                display as error "graph `opt' invalid;"
+                display as error "minimum `opt' is 1 inch"
+                display as error "maximum `opt' is 100 inches"
+                exit 198
+            }
+            if "`_gsu'" == "" & `plain' local norm : copy local tv
+            else local norm = strtrim(string(scalar(`GS'), "%21.0g"))
+        }
+        else if !`isnum' & `numlike' local bad "a name or a number between `p1' and `p2'"
     }
     else if "`kind'" == "istyle" {
         if `isnum' {

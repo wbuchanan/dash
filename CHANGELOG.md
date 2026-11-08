@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- xsize(10cm) draws a 3.937-inch graph (was ignored with a note) and xsize(0.5in) is refused as twoway refuses it, r(198) in its three lines "graph xsize invalid;", "minimum xsize is 1 inch", "maximum xsize is 100 inches"; ysize() alike, ysize(101) included (was dash's own sentence) (WP-45, GW-1)
 - scheme(nosuchscheme) on a graph draws s2color with twoway's note, (note: scheme nosuchscheme not found, using s2color), rc 0 (was r(198)); a path-like scheme(../x) gets the same note and no file is read; dash build's and dash serve's scheme() still refuse an unknown name (WP-45, ST-16)
 - Each variable of a layer counts on its axis over the layer's own rows, as twoway reads it, a row its partner misses included: scatter y x with y missing past observation 20 of 100 labels x 0(20)100, as twoway does, where dash labelled 0(5)20; the same for every type that draws its own variables and the x of lowess, fpfit and fpfitci (WP-44, AX-19)
 - Two transform words in one xscale(), yscale() or tscale() copy are refused, r(198), in twoway's words -- yscale(log nolog) "only one of options nolog or log is allowed", yscale(atanh log), yscale(log log) "log or log1m" -- where dash drew the graph; yscale(nolog nolog) is drawn, as in twoway (WP-44, AX-10)

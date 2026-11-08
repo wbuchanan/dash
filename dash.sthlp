@@ -6669,7 +6669,12 @@ each figure takes the whole width (see {help dash##layout:Layout}).
 {pstd}
 The graph's size, highest first:
 
-{phang2}1. {cmd:xsize()} and {cmd:ysize()}, in inches, as in Stata.  Either
+{phang2}1. {cmd:xsize()} and {cmd:ysize()}, in inches, or with a unit,
+    {it:#}{cmd:in}, {it:#}{cmd:pt} or {it:#}{cmd:cm} (1in = 72pt = 2.54cm;
+    {cmd:xsize(10cm)} is 3.937 inches), from 1 to 100 inches, as in Stata;
+    a size outside them is refused, r(198), in {helpb twoway}'s three
+    lines, and a word is noted and the scheme's size drawn, as in
+    {helpb twoway}.  Either
     alone keeps the other from the scheme: under {cmd:stcolor},
     {cmd:xsize(9)} gives a graph 9 inches wide and 4.5 tall, exactly as
     {helpb twoway} does -- 864 by 432 pixels.{p_end}

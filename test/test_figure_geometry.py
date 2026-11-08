@@ -499,3 +499,88 @@ class TestTheLookupWalk:
         fig.scatter("x", "y", color=cmap,
                     source=ColumnDataSource({"x": [1], "y": [2], "k": ["a"]}))
         assert cmap.transform in dr._dash_refs(fig)
+
+
+#: The U_* rows of figure_geometry_truth.json twoway reads as a size: the
+#: value typed and the inches drawn (rc 0) or the three lines (r(198)).
+_SIZE_ROWS = ("U_10cm", "U_10_cm", "U_3in", "U_3_in", "U_200pt", "U_254cm",
+              "U_72pt", "U_y200pt", "U_05in", "U_300cm", "U_200", "U_05",
+              "U_y05in", "U_y200")
+
+
+def _ado_kind():
+    """dash.ado's graphsize value kind: its unit pattern and its text."""
+    import re
+    with open(os.path.join(_HERE, "..", "dash.ado"), encoding="utf-8") as fh:
+        ado = fh.read()
+    i = ado.index('else if "`kind\'" == "graphsize" {')
+    body = ado[i:ado.index("\n    else if ", i + 10)]
+    pat = re.search(r'regexm\(scalar\(`T\'\), "(\^[^"]+\$)"\)', body)
+    return ado, body, (pat.group(1) if pat else None)
+
+
+class TestSizeUnits:
+    """WP-45 GW-1: twoway reads xsize()/ysize() as a number with an
+    optional in, pt or cm -- 10cm and 10 cm are 3.937 in, 200pt 2.778, 72pt
+    and 2.54cm 1 in -- and refuses one outside 1 to 100 inches with three
+    lines, r(198) (figure_geometry_truth.json U_*; 0.5in, 300cm, 200 and
+    0.5 refused).  10CM and abc are style names: noted, the scheme's size
+    drawn, rc 0.  Before: dash.ado's style kind passed 10cm on as a name,
+    and the renderer ignored it with a note ending "using None instead."""
+
+    @pytest.mark.parametrize("key", _SIZE_ROWS)
+    def test_value(self, key):
+        import re
+        row = _truth()[key]
+        opt, val = re.search(r"([xy]size)\((.*)\)$", row["command"]).groups()
+        ado, body, pat = _ado_kind()
+        assert "xsize=graphsize,1,100  ysize=graphsize,1,100" in ado
+        assert pat is not None, body[:400]
+        m = re.match(pat, val.strip())
+        assert m, (val, pat)
+        num = float(m.group(1))
+        unit = m.group(4) or "in"
+        inches = num / {"in": 1.0, "pt": 72.0, "cm": 2.54}[unit]
+        if row["rc"]:
+            assert row["rc"] == 198 and not 1 <= inches <= 100, row
+            # twoway's three lines, as the kind prints them.
+            want = [l.replace(opt, "`opt'") for l in row["log"]]
+            for line in want:
+                assert 'display as error "%s"' % line in body, line
+        else:
+            got = row["inches"][0 if opt == "xsize" else 1]
+            assert inches == pytest.approx(got, abs=5e-4), (row, inches)
+            st = dr.SchemeParser("stcolor")
+            box = dr._dash_graph_box_in({opt: "%.15g" % inches},
+                                        st.graphsize_x, st.graphsize_y)
+            assert box[0 if opt == "xsize" else 1] == pytest.approx(got,
+                                                                    abs=5e-4)
+
+    @pytest.mark.parametrize("key", ["U_abc", "U_10CMup"])
+    def test_a_word_is_passed_on(self, key):
+        import re
+        import warnings
+        row = _truth()[key]
+        assert row["rc"] == 0 and row["inches"] == [7.5, 4.5], row
+        opt, val = re.search(r"([xy]size)\((.*)\)$", row["command"]).groups()
+        for mode in _MODES:
+            spec = tbk._spec([tbk._graph("g1", _ONE, {opt: val},
+                                         title=False)], scheme="stcolor")
+            roots, notes, _ = tbk._build(mode, spec)
+            figs = [m for r in roots for m in r.references()
+                    if type(m).__name__ == "figure"]
+            # The scheme's size: the graph stretches at its shape.
+            assert figs[0].sizing_mode != "fixed", mode
+            # At least one note names the option (its words are WP-49
+            # 49-02's, LT-25, so they are compared with nothing).
+            assert any(opt + "(" in n for n in notes), (mode, notes)
+
+    @pytest.mark.parametrize("key", ["U_abc", "U_10CMup"])
+    def test_a_word_is_not_a_size(self, key):
+        """dash.ado's graphsize kind reads abc and 10CM as no size: they
+        pass on unchanged, never refused (twoway's rc 0)."""
+        import re
+        row = _truth()[key]
+        opt, val = re.search(r"([xy]size)\((.*)\)$", row["command"]).groups()
+        ado, body, pat = _ado_kind()
+        assert pat is not None and re.match(pat, val.strip()) is None

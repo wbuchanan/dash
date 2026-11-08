@@ -5796,11 +5796,11 @@
   - Suggested fix: give the clock-3 label column the label's own width, centred on the strip, outside each panel's plot region, so every panel keeps the same plot width.
   - Resolution: Not fixed because the maintainer deferred pair 3 when accepting the 41-05 pairs (01nov2026). Graded S3 (WP-41): a by() layout option, the plots still read correctly.
 
-- [ ] Title: xsize()/ysize() with units (10cm, 3in, 200pt) are ignored with a note that leaks 'None'
+- [x] Title: xsize()/ysize() with units (10cm, 3in, 200pt) are ignored with a note that leaks 'None'
   - File Names and Line Numbers: region_options.sthlp:155-170; dash.ado:3753; float() at dash_render.py:27374, 27437, 27742
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids GW-1; confirmed; tracked: untracked. Registered as GAPS4 GW-1 (WP-45, section 45-04, Fix).
   - Suggested fix: Parse in/pt/cm everywhere; measure out-of-range values
-  - Resolution: Not fixed because WP-45 section 45-04 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+  - Resolution: Fixed 08nov2026 (WP-45, GW-1). Measured (scripts/extract_figure_geometry_truth.do U_*): twoway reads xsize()/ysize() as a number with an optional in, pt or cm in lower case, a blank before the unit allowed -- 10cm and 10 cm draw 3.937 in, 3in and 3 in 3, 200pt 2.778, 2.54cm and 72pt 1 -- and refuses one outside 1 to 100 inches (0.5in, 300cm, 200, 0.5, ysize(0.5in), ysize(200)) r(198) in three lines, "graph xsize invalid;", "minimum xsize is 1 inch", "maximum xsize is 100 inches"; 10CM and abc are style names, noted, the scheme's size drawn, rc 0. dash.ado's graph rule is xsize=graphsize,1,100 ysize=graphsize,1,100 now: _dash_validate_value's graphsize kind reads the size, converts it to inches (1in = 72pt = 2.54cm) and passes the inch number on, so the renderer draws the box in both modes, and prints the three lines with r(198) outside the bounds (ysize(101) had dash's own sentence); any other text passes on unchanged. The note printed for a size that is not a number, such as xsize(abc), is still dash's and still ends 'using None instead.'; WP-49 section 49-02 (LT-25) gives it twoway's words. Pinned by test/test_figure_geometry.py::TestSizeUnits::test_value, test/test_figure_geometry.py::TestSizeUnits::test_a_word_is_passed_on, test_option_validation.cscript Q4504-2; fixture test/fixtures/figure_geometry_truth.json. Closes GAPS4 GW-1 (WP-45, GW-1).
 
 - [x] Title: Colour edges: navy*52 intensity rule, blank stylelist element refused in dash's words
   - File Names and Line Numbers: colour_grammar_truth opt_17; stylelist_truth R14; dash.sthlp:1316-1349

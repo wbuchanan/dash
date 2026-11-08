@@ -140,7 +140,7 @@
 *!   OV-103 xsize(abc)                rc 0   (a name)
 *!   OV-104 xsize(0)                  rc 198 in twoway's words (WP-35 basic:PT-9)
 *!   OV-105 ysize(3)                  rc 0
-*!   OV-106 ysize(101)                rc 198 naming ysize()
+*!   OV-106 ysize(101)                rc 198 in twoway's words (WP-45 GW-1)
 *!   OV-107 aspectratio(0.75)         rc 0
 *!   OV-108 aspectratio(-1)           rc 198 naming aspectratio()
 *!   OV-109 aspectratio(abc)          rc 198 naming aspectratio()
@@ -1045,7 +1045,11 @@ _ov_case OV-103 `"dash scatter mpg weight, xsize(abc) name(ov103)"' 0 ""
 _u46_rc OV-104 198 `"dash scatter mpg weight, xsize(0) name(ov104)"'
 _ov_said OV-104 "graph xsize invalid;"
 _ov_case OV-105 `"dash scatter mpg weight, ysize(3) name(ov105)"' 0 ""
-_ov_case OV-106 `"dash scatter mpg weight, ysize(101) name(ov106)"' 198 ysize
+// Flipped (WP-45 GW-1): r(198) in dash's words was wrong; twoway refuses
+// it r(198) in three lines (figure_geometry_truth.json U_y200).
+_u46_rc OV-106 198 `"dash scatter mpg weight, ysize(101) name(ov106)"'
+_ov_said OV-106 "graph ysize invalid;"
+_ov_said OV-106 "maximum ysize is 100 inches"
 _ov_case OV-107 `"dash scatter mpg weight, aspectratio(0.75) name(ov107)"' 0 ""
 _ov_case OV-108 `"dash scatter mpg weight, aspectratio(-1) name(ov108)"' 198 aspectratio
 _ov_case OV-109 `"dash scatter mpg weight, aspectratio(abc) name(ov109)"' 198 aspectratio
@@ -4585,6 +4589,99 @@ _ov_assert Q4503-5 "(`q45rc' == 198)" "dash build, scheme(nosuchthing): rc `q45r
 _ov_said Q4503-5 "dash build: scheme() must be one of"
 capture dash clear
 capture erase "`c(tmpdir)'q45035.html"
+
+// Q4504-2 (WP-45 section 45-04, GW-1): xsize() and ysize() with a unit
+// are read as twoway reads them (test/fixtures/figure_geometry_truth.json
+// U_*, every row): dash's rc is twoway's; a refusal prints twoway's three
+// lines ("graph xsize invalid;", "minimum xsize is 1 inch", "maximum
+// xsize is 100 inches"); a size reaches the spec as its inches (10cm is
+// 3.937) and the renderer's box is twoway's page; a word (abc, 10CM) is
+// passed on unchanged, rc 0, and the scheme's size drawn.  Every
+// expectation is read from the fixture.
+// ----------------------------------------------------------------
+python:
+def _q4504_rows():
+    import json, os, re
+    from sfi import Macro
+    with open(os.path.join("fixtures", "figure_geometry_truth.json"),
+              encoding="utf-8") as fh:
+        t = json.load(fh)["probes"]
+    keys = sorted(k for k in t if k.startswith("U_"))
+    Macro.setGlobal("q4504_n", str(len(keys)))
+    for i, k in enumerate(keys, 1):
+        r = t[k]
+        opt = re.search(r"([xy]size)\((.*)\)$", r["command"]).group(0)
+        Macro.setGlobal("q4504_k%d" % i, k)
+        Macro.setGlobal("q4504_o%d" % i, opt)
+        Macro.setGlobal("q4504_r%d" % i, str(r["rc"]))
+        lines = r["log"] if r["rc"] else []
+        Macro.setGlobal("q4504_l%d" % i, str(len(lines)))
+        for j, l in enumerate(lines, 1):
+            Macro.setGlobal("q4504_l%d_%d" % (i, j), l)
+
+
+def _q4504_box(sp, key):
+    """The spec's xsize/ysize and the renderer's box against the row's
+    page: global q4504_bad gets the mismatch, or ''."""
+    import json, os, re, sys
+    from sfi import Macro
+    sys.path.insert(0, os.path.abspath(".."))
+    import dash_render as dr
+    with open(os.path.join("fixtures", "figure_geometry_truth.json"),
+              encoding="utf-8") as fh:
+        r = json.load(fh)["probes"][key]
+    with open(sp, encoding="utf-8") as fh:
+        go = json.load(fh)["graphs"][0]["graph_options"]
+    opt, val = re.search(r"([xy]size)\((.*)\)$", r["command"]).groups()
+    st = dr.SchemeParser("stcolor")
+    box = dr._dash_graph_box_in(go, st.graphsize_x, st.graphsize_y)
+    bad = ""
+    if r["log"]:
+        # A word: passed on as typed, the scheme's size drawn.
+        if str(go.get(opt)) != val or box is not None:
+            bad = "%s: spec %r, box %r" % (key, go.get(opt), box)
+    else:
+        i = 0 if opt == "xsize" else 1
+        if box is None or abs(box[i] - r["inches"][i]) > 5e-4:
+            bad = "%s: spec %r, box %r, twoway %r" % (
+                key, go.get(opt), box, r["inches"])
+    Macro.setGlobal("q4504_bad", bad)
+end
+python: _q4504_rows()
+local q4504_bad ""
+local q4504_m 0
+local q4504n : copy global q4504_n
+forvalues i = 1/`q4504n' {
+    local ++q4504_m
+    // Each row's globals copied to locals: a ${...} holding a local
+    // reference does not parse inside a loop.
+    local q4504r : copy global q4504_r`i'
+    local q4504o : copy global q4504_o`i'
+    local q4504k : copy global q4504_k`i'
+    local q4504l : copy global q4504_l`i'
+    capture dash clear
+    sysuse auto, clear
+    _u46_rc Q4504-2 `q4504r' `"dash scatter mpg weight, `q4504o' scheme(stcolor) name(q4504)"'
+    forvalues j = 1/`q4504l' {
+        local q4504t : copy global q4504_l`i'_`j'
+        _ov_said Q4504-2 `"`q4504t'"'
+    }
+    if `q4504r' == 0 {
+        capture erase "`c(tmpdir)'q4504.json"
+        capture erase "`c(tmpdir)'q4504_d.json"
+        capture dash clear
+        quietly dash scatter mpg weight, `q4504o' scheme(stcolor) name(q4504)
+        _dash_serve_spec, specpath("`c(tmpdir)'q4504.json") datapath("`c(tmpdir)'q4504_d.json")
+        python: _q4504_box(r"`c(tmpdir)'q4504.json", "`q4504k'")
+        if `"${q4504_bad}"' != "" local q4504_bad `"`q4504_bad' [${q4504_bad}]"'
+        capture erase "`c(tmpdir)'q4504.json"
+        capture erase "`c(tmpdir)'q4504_d.json"
+    }
+}
+capture dash clear
+sysuse auto, clear
+_ov_assert Q4504-2 `"(`"`q4504_bad'"' == "" & `q4504_m' >= 16)"' `"every U_ row's drawn size is twoway's (`q4504_m' rows)`q4504_bad'"'
+macro drop q4504_*
 
 // Summary
 // ----------------------------------------------------------------

@@ -509,7 +509,9 @@ _hc2_dash   "HC2-10j" 111 `"dash scatter mpg weight, mlabel(nosuchvar) name(hc)"
 // HC2-11 -- checked inside a segment as well as after the comma.
 _hc2_dash "HC2-11a" 198 `"dash (scatter mpg weight, aspectratio(-1)) (line mpg weight), name(hc)"' "aspectratio()"
 _hc2_dash "HC2-11b" 111 `"dash (scatter mpg weight, hover(nosuch)) (line mpg weight), name(hc)"' "hover()"
-_hc2_dash "HC2-11c" 198 `"dash (scatter mpg weight, ysize(101)) (line mpg weight), name(hc)"' "ysize()"
+// Flipped (WP-45 GW-1): the refusal named ysize() in dash's sentence;
+// it is twoway's three lines now (figure_geometry_truth.json U_y200).
+_hc2_dash "HC2-11c" 198 `"dash (scatter mpg weight, ysize(101)) (line mpg weight), name(hc)"' "graph ysize invalid;"
 
 // HC2-12 -- dash's own bounds that say so; twoway takes every value.
 // Flipped (WP-31 C10b): degree 4-7 are drawn; 8, which twoway draws

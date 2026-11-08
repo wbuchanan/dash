@@ -76,7 +76,11 @@ KINDS = {"num", "int", "pos", "style", "istyle", "enum", "numlist", "var",
          # 17 -> 19: WP-31 D5 scale()'s mult kind (gm_linewidth below 0, a
          # word noted) and fxsize()/fysize()'s optnum (a word refused in
          # twoway's "incorrectly specified").
-         "mult", "optnum"}
+         "mult", "optnum",
+         # 19 -> 20: WP-45 GW-1 xsize()/ysize()'s graphsize (a number with
+         # in, pt or cm, read in inches and held to 1-100 in twoway's three
+         # lines; any other text passed on as a style name).
+         "graphsize"}
 
 #: The contract's table, token for token (DESIGN.md section 2).  The test
 #: asserts the table in dash.ado carries every one of these; it may carry
@@ -109,8 +113,11 @@ colorlevels=int
 colorcuts=numlist,1  colorvar=var  mlabel=var
 range=range,2,2,m@lfit|qfit|lfitci|qfitci  range=range,2,2
 """
+# Flipped (WP-45 GW-1): xsize() and ysize() were style names bounded as
+# numbers, so 10cm passed on as a name and was ignored; twoway reads a
+# size with its unit (figure_geometry_truth.json U_*), the graphsize kind.
 CONTRACT_GRAPH_RULES = """
-xsize=style,1,100  ysize=style,1,100  aspectratio=num,0  hover=varlist  by=byvarlist
+xsize=graphsize,1,100  ysize=graphsize,1,100  aspectratio=num,0  hover=varlist  by=byvarlist
 """
 CONTRACT_KPI_RULES = "fmt=format"
 
@@ -310,6 +317,9 @@ class TestTheTableIsWellFormed:
             assert len(ps) <= 1, rule
             for p in ps:
                 assert p == "" or _is_number(p), rule
+        elif kind == "graphsize":
+            # WP-45 GW-1: the inch bounds, two numbers.
+            assert len(ps) == 2 and all(_is_number(p) for p in ps), rule
         elif kind in ("style", "istyle"):
             # WP-30 P1.12b: the line-width rules read Stata units (,u)
             if kind == "style" and len(ps) == 3:
