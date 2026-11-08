@@ -476,10 +476,10 @@ for pid in G("CG_IDS").split():
         rec["fill"], rec["opacity"] = _dominant(items)
     probes[pid] = rec
 
+# navy*52 is drawn by the rule since WP-45 ST-22 (Stata's clamp at an
+# exact half, colour_edges_truth.json H_*) and is no longer excluded.
 excluded = {}
 for pid, rec in probes.items():
-    if rec["group"] == "opt" and rec["value"] == "navy*52":
-        excluded[pid] = "UNCLEAR clamp at an exact half (research p1-13 section 3)"
     if rec["group"] == "bgfg" and rec["value"].startswith("sj:"):
         excluded[pid] = "UNCLEAR: color foreground bg after color background red"
 

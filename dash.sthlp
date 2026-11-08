@@ -1541,10 +1541,9 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:invalid '2'}, r(198).  A quoted colour with a comma glued after
     it, {cmd:mcolor("red",blue)}, is the quoted colour and then
     {cmd:,blue}, as {cmd:twoway} reads it: drawn red on one y, and
-    {cmd:invalid 'blue'} on two.  An intensity past the
-    darkest a colour can go is drawn by a rule {cmd:twoway} does not
-    always follow: {cmd:mcolor(navy*52)} is #010304 in {cmd:twoway} and
-    #010102 in {cmd:dash}.
+    {cmd:invalid 'blue'} on two.  An intensity past the darkest a colour
+    can go is drawn as {cmd:twoway} draws it, {cmd:mcolor(navy*52)}
+    #010304 and {cmd:mcolor(navy*51)} #010102.
 
 {phang2}    {marker stylelists}{ul:Style lists.}  A style option given a
     list styles the y variables of an expanded varlist in turn, as
@@ -1572,11 +1571,16 @@ there, is an invalid point.  The literal is read as data and never run.
     refuses it; and one opening with a parenthesis, {cmd:mcolor((red))}
     or {cmd:mcolor("(red)")}, is refused in {cmd:twoway}'s words,
     {cmd:option(s) ( red ) not allowed}, r(198).  A quoted element of blanks, {cmd:" "}, is refused when a
-    y uses it: {cmd:scatter mpg turn weight, mcolor(" " blue)} stops with
-    {cmd:dash: mcolor() element 1 is blank; use . for the default (got: " " blue)},
-    r(198); write {cmd:.} for the default.  {cmd:twoway} also refuses a used
-    blank element, with a different message; an element past the last y is
-    not checked.  The options read this way are {cmd:mcolor()},
+    y uses it, in {cmd:twoway}'s words and then dash's:
+    {cmd:scatter mpg turn weight, mcolor(" " blue)} stops with
+    {cmd:option(s) marker(fillcolor(`')  linestyle(color(`'))) not allowed}
+    and {cmd:dash: mcolor() element 1 is blank; use . for the default (got: " " blue)},
+    r(198); write {cmd:.} for the default.  {cmd:twoway} accepts a blank
+    element of {cmd:pstyle()}, {cmd:mstyle()}, {cmd:clstyle()},
+    {cmd:astyle()}, {cmd:bstyle()}, {cmd:dstyle()}, {cmd:jitter()} and
+    {cmd:connect()}, and answers one of {cmd:mlabel()}, {cmd:base()} and
+    {cmd:cmissing()} in other ways; {cmd:dash} refuses each of these with
+    its own line alone.  An element past the last y is not checked.  The options read this way are {cmd:mcolor()},
     {cmd:msymbol()}, {cmd:msize()}, {cmd:msangle()}, {cmd:mfcolor()},
     {cmd:mlcolor()}, {cmd:mlwidth()}, {cmd:mlabcolor()}, {cmd:mlabsize()},
     {cmd:mlabposition()}, {cmd:mlabgap()}, {cmd:mlabangle()},

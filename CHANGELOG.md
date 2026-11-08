@@ -1019,6 +1019,7 @@ and now matches Stata.
 - position(bottom), legend(ring(in)), connect(st), mlabangle(v), orientation(vertic) and the other spellings twoway reads draw as twoway (were noted and drawn at defaults); a title's position(), orientation() and justification() word twoway does not read gets twoway's note (WP-45, ST-1)
 - Under economist a graph's note() is painted in its box at the top right (was never drawn) (WP-45, PIC-4)
 - Under economist range, spike, drop-line and arrow lines are drawn at pother (0.8, was 1.2) and rarea outlines at parea (WP-45, PIC-7)
+- mcolor(navy*52) is #010304 as in twoway (was #010102); a blank style-list element is refused in twoway's words (WP-45, ST-22)
 
 ### Fixed in WP-44
 

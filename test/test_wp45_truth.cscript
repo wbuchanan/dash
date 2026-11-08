@@ -646,6 +646,131 @@ program define _q4501_reg
     python: import __main__ as _q4501_m; _q4501_m._q4501_check("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg", "`case'")
 end
 
+// ---- S05 helpers (WP-45 section 45-05) ----
+// _w45s05_models(sp, dp, app): the saved page's models and the served
+// app's, each built from one spec (test_wp43_truth.cscript's
+// _q4301_models).
+python:
+import os as _w45s05_os, sys as _w45s05_sys
+for _w45s05_p in (_w45s05_os.path.abspath(".."),
+                  _w45s05_os.path.abspath(_w45s05_os.path.join("..", "scripts"))):
+    if _w45s05_p not in _w45s05_sys.path:
+        _w45s05_sys.path.insert(0, _w45s05_p)
+
+
+def _w45s05_models(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_w45s05_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_w45s05_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    return list(r._last_layout_root.references()), list(doc.models)
+
+
+def _w45s05_rows(part, size):
+    """The I_ rows of the fixture, in order, part *part* (1-based) of
+    *size* rows (a graph draws at most 100 plots): their keys and an
+    mcolor() list of their values (a quoted element for an RGB colour);
+    w45s05_all is the number of rows."""
+    import json
+    from sfi import Macro
+    with open(_w45s05_os.path.join("fixtures", "colour_edges_truth.json"),
+              encoding="utf-8") as fh:
+        rows = json.load(fh)["rows"]
+    keys = [k for k in sorted(rows) if k.startswith("I_")]
+    Macro.setGlobal("w45s05_all", str(len(keys)))
+    keys = keys[(part - 1) * size:part * size]
+    Macro.setGlobal("w45s05_n", str(len(keys)))
+    Macro.setGlobal("w45s05_keys", " ".join(keys))
+    Macro.setGlobal("w45s05_list", " ".join(rows[k]["value"] for k in keys))
+
+
+def _w45s05_fills(sp, dp, app):
+    """Each mode's marker fill per series (its legend label v<i>) against
+    the fixture: the mismatches in global w45s05_bad."""
+    import json
+    from sfi import Macro
+    from bokeh.models import Legend
+    with open(_w45s05_os.path.join("fixtures", "colour_edges_truth.json"),
+              encoding="utf-8") as fh:
+        rows = json.load(fh)["rows"]
+    keys = Macro.getGlobal("w45s05_keys").split()
+    bad = []
+    for models, mode in zip(_w45s05_models(sp, dp, app), ("saved", "served")):
+        got = {}
+        for lg in (m for m in models if isinstance(m, Legend)):
+            for it in lg.items:
+                lab = it.label.get("value") if isinstance(it.label, dict) else it.label
+                lab = str(getattr(lab, "value", lab))
+                if it.renderers:
+                    got[lab] = str(it.renderers[0].glyph.fill_color).lower()
+        for i, k in enumerate(keys, 1):
+            g = got.get("v%d" % i)
+            if g != rows[k]["fill"]:
+                bad.append("%s %s: %s %s, twoway %s" % (
+                    mode, k, rows[k]["value"], g, rows[k]["fill"]))
+    Macro.setGlobal("w45s05_bad", "; ".join(bad[:8]))
+    Macro.setGlobal("w45s05_nbad", str(len(bad)))
+end
+
+* ==== S05 ST-22: colour intensity and blank elements ====
+local only : env WP45_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w45_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+    local s05d "`w45_work'/s05"
+    capture mkdir "`s05d'"
+
+    // ------------------------------------------------------------
+    // Q4505-1: dash draws each I_ row's colour (seven colours at
+    // seventeen intensities, navy*52 among them) in twoway's hex, saved
+    // and served: one graph, a series per row, mcolor() a style list of
+    // the rows' values (test/fixtures/colour_edges_truth.json).
+    // ------------------------------------------------------------
+    local s05_seen 0
+    forvalues part = 1/2 {
+        python: import __main__ as _w45m; _w45m._w45s05_rows(`part', 60)
+        sysuse auto, clear
+        local s05_y ""
+        forvalues i = 1/$w45s05_n {
+            quietly generate v`i' = mpg
+            local s05_y "`s05_y' v`i'"
+        }
+        dash clear
+        capture noisily dash scatter `s05_y' weight, mcolor($w45s05_list) name(w45s05)
+        local s05_rc = _rc
+        _w45_expect Q4505-1 "(`s05_rc' == 0)" "part `part': dash rc `s05_rc'"
+        if !`s05_rc' {
+            _dash_serve_spec, specpath("`s05d'/s.json") datapath("`s05d'/d.json")
+            python: import __main__ as _w45m; _w45m._w45s05_fills("`s05d'/s.json", "`s05d'/d.json", "`s05d'/a.py")
+            _w45_expect Q4505-1 "(${w45s05_nbad} == 0)" "part `part': ${w45s05_nbad} fill(s) differ: ${w45s05_bad}"
+            local s05_seen = `s05_seen' + ${w45s05_n}
+        }
+    }
+    _w45_expect Q4505-1 "(`s05_seen' == ${w45s05_all})" "`s05_seen' of ${w45s05_all} rows compared"
+    _w45_done Q4505-1 "dash's fills equal twoway's on `s05_seen' colours with an intensity, saved and served"
+    macro drop w45s05_n w45s05_all w45s05_keys w45s05_list w45s05_bad w45s05_nbad
+    capture dash clear
+    foreach f in s.json d.json a.py {
+        capture erase "`s05d'/`f'"
+    }
+    capture rmdir "`s05d'"
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

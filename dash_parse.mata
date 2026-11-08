@@ -358,6 +358,9 @@
 *!   _dash_stylelist_blank(raw, n)
 *!       The first quoted blank element among the n used ones, or 0.
 *!
+*!   _dash_stylelist_blank_words(key)
+*!       twoway's line refusing a used blank element of option key, or "".
+*!
 *!   _dash_stylelist_probe(tok)
 *!       name(x) for an option word whose value is only empty quotes.
 *!
@@ -7896,6 +7899,62 @@ real scalar _dash_stylelist_blank(string scalar raw, real scalar n)
         if (E[2, j] == "1" & E[1, j] != "" & strtrim(E[1, j]) == "") return(j)
     }
     return(0)
+}
+
+// _dash_stylelist_blank_words(key) -- the line twoway refuses a used
+// blank element of stylelist option key with, r(198): its class path
+// with the empty value, written by twoway as an empty macro quote (WP-45
+// ST-22, measured 08nov2026, test/fixtures/colour_edges_truth.json B_*;
+// the same on every plot type that takes the option).  "" for an option
+// twoway accepts a blank element of (pstyle, mstyle, jitter ...) or
+// refuses for another reason (mlabel, base, cmissing): dash keeps its own
+// words there.  The table's @ is the quote.
+string scalar _dash_stylelist_blank_words(string scalar key)
+{
+    string matrix T
+    real scalar   i
+
+    T = ("acolor",         "option(s) area(shadestyle(color(@))  linestyle(color(@))) not allowed" \
+         "alcolor",        "option(s) area(linestyle(color(@))) not allowed" \
+         "alpattern",      "option(s) area(linestyle(pattern(@))) not allowed" \
+         "alstyle",        "option(s) area(linestyle(@)) not allowed" \
+         "alwidth",        "option(s) area(linestyle(width(@))) not allowed" \
+         "barwidth",       "option barwidth() incorrectly specified" \
+         "bfcolor",        "option(s) area(shadestyle(color(@))) not allowed" \
+         "blcolor",        "option(s) area(linestyle(color(@))) not allowed" \
+         "blstyle",        "option(s) area(linestyle(@)) not allowed" \
+         "bmlinestyle",    "option(s) marker(backline(@)) not allowed" \
+         "clcolor",        "option(s) line(color(@)) not allowed" \
+         "clpattern",      "option(s) line(pattern(@)) not allowed" \
+         "clwidth",        "option(s) line(width(@)) not allowed" \
+         "color",          "option(s) line(color(@)) area(shadestyle(color(@))) area(linestyle(color(@))) marker(fillcolor(@) linestyle(color(@))) not allowed" \
+         "dlstyle",        "option(s) dots(linestyle(@)) not allowed" \
+         "fcolor",         "option(s) area(shadestyle(color(@))) not allowed" \
+         "fintensity",     "option(s) area(shadestyle(intensity(@))) not allowed" \
+         "lcolor",         "option(s) line(color(@)) area(linestyle(color(@))) not allowed" \
+         "lpattern",       "option(s) line(pattern(@)) area(linestyle(pattern(@))) not allowed" \
+         "lstyle",         "option(s) area(linestyle(@)) not allowed" \
+         "lwidth",         "option(s) line(width(@)) area(linestyle(width(@))) not allowed" \
+         "mcolor",         "option(s) marker(fillcolor(@)  linestyle(color(@))) not allowed" \
+         "mfcolor",        "option(s) marker(fillcolor(@)) not allowed" \
+         "mlabangle",      "option(s) label(textstyle(angle(@))) not allowed" \
+         "mlabcolor",      "option(s) label(textstyle(color(@))) not allowed" \
+         "mlabformat",     "option(s) label(format(@)) not allowed" \
+         "mlabgap",        "option(s) label(textgap(@)) not allowed" \
+         "mlabposition",   "option(s) label(position(@)) not allowed" \
+         "mlabsize",       "option(s) label(textstyle(size(@))) not allowed" \
+         "mlabtextstyle",  "option(s) label(textstyle(@)) not allowed" \
+         "mlcolor",        "option(s) marker(linestyle(color(@))) not allowed" \
+         "mlpattern",      "option(s) marker(linestyle(pattern(@))) not allowed" \
+         "mlstyle",        "option(s) marker(linestyle(@)) not allowed" \
+         "mlwidth",        "option(s) marker(linestyle(width(@))) not allowed" \
+         "msangle",        "option(s) marker(symangle(@)) not allowed" \
+         "msize",          "option(s) marker(size(@)) not allowed" \
+         "msymbol",        "option(s) marker(symbol(@)) not allowed")
+    for (i = 1; i <= rows(T); i++) {
+        if (T[i, 1] == key) return(subinstr(T[i, 2], "@", char(96) + char(39)))
+    }
+    return("")
 }
 
 // _dash_stylelist_probe(tok) -- "<name>(x)" when the option word tok is

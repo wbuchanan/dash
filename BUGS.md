@@ -5802,11 +5802,11 @@
   - Suggested fix: Parse in/pt/cm everywhere; measure out-of-range values
   - Resolution: Not fixed because WP-45 section 45-04 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
 
-- [ ] Title: Colour edges: navy*52 intensity rule, blank stylelist element refused in dash's words
+- [x] Title: Colour edges: navy*52 intensity rule, blank stylelist element refused in dash's words
   - File Names and Line Numbers: colour_grammar_truth opt_17; stylelist_truth R14; dash.sthlp:1316-1349
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 10 (major): ids ST-22; confirmed; tracked: documented. Registered as GAPS4 ST-22 (WP-45, section 45-05, Fix).
   - Suggested fix: Match the clamp; reword the refusal
-  - Resolution: Not fixed because WP-45 section 45-05 has not landed. Graded S2 (WP-45): drop-in audit package 10, major.
+  - Resolution: Fixed 08nov2026 (WP-45, ST-22). Measured first (scripts/extract_colour_edges_truth.do): Stata's darkening rounds a channel that lands at exactly a half (c * 2c) down, and so clamps to the smallest channel, for 60 values of c, all at most 127 -- navy's 26 among them, so mcolor(navy*52) is #010304 and navy*51 #010102 -- and up for every other c; no float model of the division reproduces the set, so GlyphMapper._HALF_CLAMP holds the measured one and GlyphMapper._blend_intensity (every colour*#, fintensity() and scheme intensity, saved and served) and the scheme extractor's _apply_intensity clamp on it. A used blank style-list element is refused with twoway's first line, which names the option's class path (option(s) marker(fillcolor(`')  linestyle(color(`'))) not allowed for mcolor(), the same on every plot type), from new Mata _dash_stylelist_blank_words, then dash's own hint, r(198); twoway accepts a blank element of pstyle(), mstyle(), clstyle(), astyle(), bstyle(), dstyle(), jitter() and connect() and answers mlabel(), base() and cmissing() otherwise, and dash keeps its own line there (stated in dash.sthlp's Style lists). The navy*52 exclusions of colour_grammar_truth.json and intensity_truth.json are gone. Pinned by test/test_colour_font_edges.py::TestIntensity::test_row, ::TestIntensity::test_the_half_rows, ::TestIntensity::test_the_old_grid, ::TestBlankElements::test_the_table_is_twoways, test/test_option_validation.cscript Q4505-2, test/test_wp45_truth.cscript Q4505-1; fixture test/fixtures/colour_edges_truth.json. Closes GAPS4 ST-22 (WP-45, ST-22).
 
 - [ ] Title: graph set window/svg fontface for plain text is not read (only stSans/stSerif/stMono tags)
   - File Names and Line Numbers: dash.ado:7364-7387; dash_render.py:48452

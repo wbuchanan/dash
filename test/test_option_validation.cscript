@@ -4475,6 +4475,82 @@ _u05_judge Q4403-2 `"`q4403_bad_Q4403_2'"' "atanh, logit and log1m on a scale op
 _u05_judge Q4403-6 `"`q4403_bad_Q4403_6'"' "two transform words in one scale copy are refused r(198) in twoway's opts_exclusive line; across copies they merge"
 _u05_judge Q4403-12 `"`q4403_bad_Q4403_12'"' "a scale whose span is past the largest double is refused r(199) as twoway refuses it; spans that fit are drawn"
 
+// ----------------------------------------------------------------
+// Q4505-2 (WP-45 section 45-05, ST-22): a used blank style-list element
+// is refused with twoway's line, then dash's hint.  Every B_ row of
+// test/fixtures/colour_edges_truth.json (scripts/
+// extract_colour_edges_truth.do) that twoway refuses and dash's table
+// (_dash_stylelist_blank_words) words is run through dash; its rc and
+// first line are the fixture's, never typed here, and twoway's line comes
+// before dash's "dash: " line.  test_colour_font_edges.py::
+// TestBlankElements::test_the_table_is_twoways holds the table to every
+// row.
+// ----------------------------------------------------------------
+python:
+def _q4505_rows():
+    import json, os
+    from sfi import Macro
+    with open(os.path.join("fixtures", "colour_edges_truth.json"),
+              encoding="utf-8") as fh:
+        t = json.load(fh)["rows"]
+    rows = [(k, t[k]) for k in sorted(t)
+            if k.startswith("B_") and t[k]["rc"]]
+    Macro.setGlobal("q4505_n", str(len(rows)))
+    for i, (k, r) in enumerate(rows, 1):
+        cmd = r["value"]
+        if cmd.startswith("twoway "):
+            cmd = cmd[len("twoway "):]
+        for name, v in (("k", k), ("c", cmd), ("r", str(r["rc"])),
+                        ("m", r["first_line"])):
+            Macro.setGlobal("q4505_%s%d" % (name, i), v)
+
+
+def _q4505_said(path, want):
+    from sfi import Macro
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        lines = [ln.strip() for ln in fh]
+    ok = want in lines
+    if ok:
+        # dash's hint, when one is printed, follows twoway's line (a value
+        # list such as barwidth() is refused by its own reader first, in
+        # twoway's line alone).
+        hint = [j for j, ln in enumerate(lines) if ln.startswith("dash: ")]
+        ok = not hint or lines.index(want) < hint[0]
+    Macro.setLocal("q4505_has", "1" if ok else "0")
+end
+python: import __main__ as _q4505m; _q4505m._q4505_rows()
+local q4505_ls = c(linesize)
+set linesize 255
+local q4505_bad ""
+sysuse auto, clear
+quietly generate lo = mpg - 3
+quietly generate hi = mpg + 3
+local q4505_m 0
+forvalues i = 1/$q4505_n {
+    mata: st_local("q4505_w", strofreal(_dash_stylelist_blank_words(substr(st_global("q4505_k`i'"), 3, .)) != ""))
+    if !`q4505_w' {
+        macro drop q4505_k`i' q4505_c`i' q4505_r`i' q4505_m`i'
+        continue
+    }
+    local ++q4505_m
+    capture dash clear
+    capture log close _q45log
+    quietly log using "`c(tmpdir)'dash_q4505.log", name(_q45log) text replace
+    capture noisily dash ${q4505_c`i'} name(q4505)
+    local drc = _rc
+    quietly log close _q45log
+    python: import __main__ as _q4505m; _q4505m._q4505_said(r"`c(tmpdir)'dash_q4505.log", __import__("sfi").Macro.getGlobal("q4505_m`i'"))
+    if `drc' != ${q4505_r`i'} | `q4505_has' != 1 local q4505_bad `"`q4505_bad' [${q4505_k`i'}: twoway ${q4505_r`i'}, dash `drc', line `q4505_has']"'
+    macro drop q4505_k`i' q4505_c`i' q4505_r`i' q4505_m`i'
+}
+set linesize `q4505_ls'
+capture dash clear
+capture erase "`c(tmpdir)'dash_q4505.log"
+macro drop q4505_n
+sysuse auto, clear
+if `q4505_m' < 30 local q4505_bad `"`q4505_bad' [only `q4505_m' rows ran]"'
+_u05_judge Q4505-2 `"`q4505_bad'"' "a used blank style-list element is refused with twoway's rc and line, then dash's hint"
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

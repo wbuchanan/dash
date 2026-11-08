@@ -507,7 +507,7 @@ program define _dash_require_mata
         _dash_fit_panel_key _dash_fit_panel_add ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals _dash_scale_untransformable ///
         _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_style_word _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
-        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_paren _dash_stylelist_eqlead _dash_subopt_colour_comma _dash_colour_comma _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
+        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_blank_words _dash_stylelist_paren _dash_stylelist_eqlead _dash_subopt_colour_comma _dash_colour_comma _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
         _dash_connect_canon ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
         _dash_hz_order ///
@@ -3391,8 +3391,9 @@ end
 // that is not the last element is refused in twoway's words,
 // "mcolor(red .. blue):  invalid syntax", r(198), the value echoed as
 // stored.  Then a quoted blank element a y uses, mcolor(" " blue), is
-// refused in dash's own words (Q-11.1, ratified 06oct2026); twoway
-// refuses it too, naming an internal class path.  Then each element a y
+// refused with twoway's line, which names the option's class path
+// (_dash_stylelist_blank_words; WP-45 ST-22), then dash's hint (Q-11.1,
+// ratified 06oct2026).  Then each element a y
 // uses is held to the option's rule as a single value is; an element
 // past the last y is not checked, as twoway does not check it.  nser is
 // the number of y (1 on a single-y type).  Values are read by value.
@@ -3444,6 +3445,9 @@ program define _dash_stylelist_check
     foreach key of local _sl_keys {
         mata: st_local("_sl_j", strofreal(_dash_stylelist_blank(st_global("s(" + st_local("key") + ")"), `nser')))
         if `_sl_j' {
+            // twoway's line first (WP-45 ST-22), then dash's hint.
+            mata: st_local("_sl_w", strofreal(_dash_stylelist_blank_words(st_local("key")) != ""))
+            if `_sl_w' mata: _dash_say("err", "", _dash_stylelist_blank_words(st_local("key")), "")
             mata: _dash_say("err", "dash: " + st_local("key") + "() element " + st_local("_sl_j") + " is blank; use . for the default (got: ", st_global("s(" + st_local("key") + ")"), ")")
             exit 198
         }

@@ -9171,8 +9171,8 @@ class OptionTranslator:
         ``*#`` is ``GlyphMapper._blend_intensity`` (towards white below 1,
         divided above it, Stata's clamp, multiplied under *naturally_white*
         false): navy*.5 ``#8da3b7``, navy*1.5 ``#112f4a``, maroon*1.25
-        ``#732a2f``; navy*52 is UNCLEAR (twoway ``#010304``) and pinned
-        nowhere.  An empty ``*`` or ``%`` is ignored; ``%#`` is 0-100.
+        ``#732a2f``, navy*52 ``#010304`` (WP-45 ST-22).  An empty ``*``
+        or ``%`` is ignored; ``%#`` is 0-100.
         *background*/*foreground* are what ``bg``/``fg`` mean (None: they
         are unknown).  Never raises for a colour, never notes, never
         evaluates text; every hex fullmatches ``#[0-9a-f]{6}``.
@@ -15809,6 +15809,18 @@ class GlyphMapper:
         self.scheme._style_note("seriesstyle", s, k)
         return "p", 0
 
+    #: The channels c that Stata's darkening rounds down -- and so clamps --
+    #: when c / f is exactly a half (f = 2c), measured for every c from 1
+    #: to 255 (WP-45 ST-22, test/fixtures/colour_edges_truth.json H_*):
+    #: navy*52's 26 among them, 13 (*26) and every c above 127 not.  No
+    #: float model of the division reproduces the set, so it is read from
+    #: the measurement.  A channel at a half otherwise rounds up.
+    _HALF_CLAMP = frozenset((
+        6, 7, 14, 15, 19, 21, 22, 23, 24, 26, 27, 29, 31, 37, 38, 39, 41,
+        42, 45, 46, 47, 52, 53, 56, 57, 58, 59, 60, 61, 63, 69, 70, 72, 78,
+        79, 81, 87, 93, 94, 95, 96, 97, 98, 102, 103, 104, 108, 110, 111,
+        112, 113, 114, 115, 116, 118, 119, 122, 123, 124, 127))
+
     @staticmethod
     def _blend_intensity(hexval: str, f: float,
                          naturally_white: Any = True) -> str:
@@ -15819,13 +15831,13 @@ class GlyphMapper:
         ``naturally_white 1`` f <= 1 gives ``255 - (255 - c) * f`` and
         f > 1 gives ``c / f``; under ``naturally_white 0`` (s1rcolor)
         ``c * f``, held to 255.  Then Stata's clamp: when a channel that
-        was non-zero came out 0, every channel is ``c / m`` instead, m the
-        smallest non-zero channel of *hexval*.  A negative f is 0 and a
-        non-finite one 1.  Measured: navy at .5 ``#8da3b7``, at 1.5
-        ``#112f4a``, at 60 and above ``#010304``; under s1rcolor at .5
-        ``#0d2438``.  Navy at exactly 52 (twoway ``#010304``, this rule
-        ``#010102``) is P1.13's UNCLEAR and pinned nowhere.  Any input that
-        is not ``#rrggbb`` is returned unchanged; nothing raises.
+        was non-zero came out 0 -- or, above 1, came out exactly a half
+        with c in ``_HALF_CLAMP`` (WP-45 ST-22) -- every channel is
+        ``c / m`` instead, m the smallest non-zero channel of *hexval*.  A
+        negative f is 0 and a non-finite one 1.  Measured: navy at .5
+        ``#8da3b7``, at 1.5 ``#112f4a``, at 51 ``#010102``, at 52 and above
+        ``#010304``; under s1rcolor at .5 ``#0d2438``.  Any input that is
+        not ``#rrggbb`` is returned unchanged; nothing raises.
         """
         h = str(hexval)
         if not re.fullmatch(r"#?[0-9a-fA-F]{6}", h):
@@ -15846,7 +15858,10 @@ class GlyphMapper:
         else:
             raw = [c / f for c in rgb]
         out = [max(0, min(255, int(math.floor(x + 0.5)))) for x in raw]
-        if any(c > 0 and o == 0 for c, o in zip(rgb, out)):
+        half = (bool(naturally_white) and f > 1.0
+                and any(c in GlyphMapper._HALF_CLAMP and c / f == 0.5
+                        for c in rgb))
+        if half or any(c > 0 and o == 0 for c, o in zip(rgb, out)):
             m = min(c for c in rgb if c > 0)
             out = [max(0, min(255, int(math.floor(c / m + 0.5))))
                    for c in rgb]

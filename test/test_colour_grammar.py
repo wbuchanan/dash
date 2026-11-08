@@ -111,7 +111,10 @@ class TestStataTruth:
         meta = _truth()["_meta"]
         for k in ("stata_version", "born_date", "dash_commit", "extracted"):
             assert meta.get(k), k
-        assert len(meta["excluded"]) == 2, meta["excluded"]
+        # Flipped (WP-45 ST-22): 2 -> 1, navy*52 (opt_17) is no longer
+        # excluded -- its #010102 was wrong because Stata's clamp at an
+        # exact half is now read from the measurement (_HALF_CLAMP).
+        assert len(meta["excluded"]) == 1, meta["excluded"]
 
     def test_each_probe(self, tmp_path, monkeypatch):
         """Every measured probe the reader owns, in its context and scheme:

@@ -1,11 +1,9 @@
 {
  "_meta": {
-  "born_date": "12 Aug 2026",
-  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
-  "excluded": {
-   "navy_fi_5200": "P1.13 UNCLEAR, research p1-13 section 3"
-  },
-  "extracted": "18 Oct 2026 17:34:04",
+  "born_date": "14 Oct 2026",
+  "dash_commit": "0338987645f4555fe468a0f4db2bd6e2996689ad",
+  "excluded": {},
+  "extracted": " 8 Nov 2026 03:31:26",
   "rule": "E4",
   "source": "scripts/extract_intensity_truth.do",
   "stata_version": "19.5"

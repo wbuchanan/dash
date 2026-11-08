@@ -904,6 +904,8 @@ COVERAGE = {
         # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)
         "_dash_stylelist_bad": ("test_varlist_expansion.cscript:SL-08",),
         "_dash_stylelist_blank": ("test_varlist_expansion.cscript:SL-25",),
+        # WP-45 ST-22: twoway's line for a used blank element
+        "_dash_stylelist_blank_words": ("test_option_validation.cscript:Q4505-2",),
         "_dash_stylelist_paren": ("test_option_validation.cscript:U41-11",),
         "_dash_stylelist_eqlead": ("test_option_validation.cscript:U41-12",),
         "_dash_subopt_colour_comma": ("test_option_validation.cscript:U41-13", "test_wp31_truth.cscript:U41-10"),

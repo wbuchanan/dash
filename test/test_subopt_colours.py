@@ -132,10 +132,15 @@ class TestUnclearStaysDocumented:
         navy = [e[1] for e in TRUTH["unclear.navy52"]["elements"]
                 if e[0] == "circle" and e[1] not in ("", "none")]
         assert navy == ["#010304"]
+        # Flipped (WP-45 ST-22): dash draws navy*52 as twoway does and the
+        # help names no difference -- "#010102 in dash" was wrong because
+        # Stata's clamp at an exact half is now read from the measurement.
+        assert dr.OptionTranslator.stata_colour("navy*52")[1] == "#010304"
         with open(os.path.join(_HERE, "..", "dash.sthlp"),
                   encoding="utf-8") as fh:
             hlp = fh.read()
         assert "{cmd:mcolor(navy*52)}" in hlp and "#010304" in hlp
+        assert "#010102 in {cmd:dash}" not in hlp
 
 
 @pytest.mark.parametrize("mode", MODES)

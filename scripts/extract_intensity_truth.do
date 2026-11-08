@@ -344,8 +344,9 @@ out = {"_meta": {"stata_version": G("OB_VERSION"), "born_date": G("OB_BORN"),
                  "source": "scripts/extract_intensity_truth.do",
                  "dash_commit": commit, "extracted": G("OB_WHEN"),
                  "rule": "E4",
-                 "excluded": {"navy_fi_5200":
-                              "P1.13 UNCLEAR, research p1-13 section 3"}},
+                 # navy_fi_5200 (navy at 52) is drawn by the rule since
+                 # WP-45 ST-22 and no longer excluded.
+                 "excluded": {}},
        "probes": probes}
 with open(G("OB_OUT"), "w", encoding="utf-8") as fh:
     json.dump(out, fh, indent=1, sort_keys=True)

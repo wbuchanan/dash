@@ -322,6 +322,16 @@ def _round_half_up(x: float) -> int:
     return int(Decimal(repr(x)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
+#: The channels Stata's darkening rounds down at exactly a half (f = 2c),
+#: measured for c = 1..255 (WP-45 ST-22, test/fixtures/
+#: colour_edges_truth.json H_*); dash_render's GlyphMapper._HALF_CLAMP.
+_HALF_CLAMP = frozenset((
+    6, 7, 14, 15, 19, 21, 22, 23, 24, 26, 27, 29, 31, 37, 38, 39, 41,
+    42, 45, 46, 47, 52, 53, 56, 57, 58, 59, 60, 61, 63, 69, 70, 72, 78,
+    79, 81, 87, 93, 94, 95, 96, 97, 98, 102, 103, 104, 108, 110, 111,
+    112, 113, 114, 115, 116, 118, 119, 122, 123, 124, 127))
+
+
 def _apply_intensity(rgb: tuple[int, int, int], f: float,
                      naturally_white: bool = True) -> tuple[int, int, int]:
     """Stata's ``colorstyle*#`` intensity, as twoway draws it (WP-30
@@ -330,10 +340,11 @@ def _apply_intensity(rgb: tuple[int, int, int], f: float,
     Each channel, rounded half up: under ``naturally_white 1`` f <= 1
     gives ``255 - (255 - c) * f`` and f > 1 ``c / f``; under
     ``naturally_white 0`` ``c * f``, held to 255.  Then Stata's clamp: when
-    a channel that was non-zero came out 0, every channel is ``c / m``, m
-    the smallest non-zero channel.  The same rule as dash_render's
-    ``GlyphMapper._blend_intensity`` (the extractor stays standalone);
-    navy*52 (twoway #010304, this rule #010102) is UNCLEAR.
+    a channel that was non-zero came out 0 -- or, above 1, exactly a half
+    with c in ``_HALF_CLAMP`` (navy*52 #010304; WP-45 ST-22) -- every
+    channel is ``c / m``, m the smallest non-zero channel.  The same rule
+    as dash_render's ``GlyphMapper._blend_intensity`` (the extractor stays
+    standalone).
     """
     f = max(0.0, float(f))
     if not naturally_white:
@@ -343,7 +354,9 @@ def _apply_intensity(rgb: tuple[int, int, int], f: float,
     else:
         raw = [c / f for c in rgb]
     out = [max(0, min(255, _round_half_up(v))) for v in raw]
-    if any(c > 0 and o == 0 for c, o in zip(rgb, out)):
+    half = (naturally_white and f > 1.0
+            and any(c in _HALF_CLAMP and c / f == 0.5 for c in rgb))
+    if half or any(c > 0 and o == 0 for c, o in zip(rgb, out)):
         m = min(c for c in rgb if c > 0)
         out = [max(0, min(255, _round_half_up(c / m))) for c in rgb]
     return tuple(out)  # type: ignore[return-value]
