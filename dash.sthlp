@@ -7368,8 +7368,13 @@ schemes; none of the symbols under the monochrome ones, which declare
 chain.  A {cmd:linewidth p}{it:#} of yours widens plot {it:#}'s line -- a
 line, fit, spike, cap, arrow, connecting line or area outline -- by the
 same chain, whose stub is the plot type's: {cmd:lineplot} for a line, a
-fit, {cmd:kdensity}, {cmd:function} and {cmd:rline}, {cmd:area} for an
-area outline, {cmd:arrowline} for {cmd:pcarrow}; a bar's outline stops at
+fit, {cmd:kdensity} and {cmd:function}, {cmd:area} for an area outline and
+{cmd:rarea}'s, {cmd:other} for the range, spike, drop-line and
+paired-coordinate lines ({cmd:rline}, {cmd:rconnected}, {cmd:rspike},
+{cmd:rcap}, {cmd:rcapsym}, {cmd:spike}, {cmd:dropline}, {cmd:pcspike},
+{cmd:pccapsym} and the shafts of {cmd:pcarrow} and {cmd:pcbarrow}, which
+under {cmd:economist} take {cmd:linewidth pother}, 0.8, not
+{cmd:linewidth p}, 1.2), {cmd:arrowline} for the arrowheads; a bar's outline stops at
 {cmd:linewidth pbar}, which every Stata scheme sets, so {cmd:p}{it:#}
 never reaches it, as in Stata; a marker's outline takes the stub
 {cmd:mark}.  Only {cmd:graphsize x} and {cmd:graphsize y} size a graph; a bare

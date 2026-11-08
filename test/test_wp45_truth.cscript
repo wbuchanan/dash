@@ -324,6 +324,37 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w45_run' {
 }
 * ==== end S01 ====
 
+* ==== S01 PIC-7: economist p#other and p#area widths ====
+local only : env WP45_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w45_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+    local q01 "`w45_work'/s01"
+    capture mkdir "`q01'"
+    global q4501_repo : env DASH_REPO
+    if `"${q4501_repo}"' == "" global q4501_repo ".."
+
+    // Q4501-2: under economist each type's shaft (rarea's outline) is
+    // drawn at twoway's width -- pother 0.8, parea 0.2 -- and its heads
+    // and markers at p's 1.2, saved and served, as "shaft heads markers"
+    // in relative units (test/fixtures/economist_truth.json widths).
+    local k 10
+    foreach t in rspike rcap rcapsym rline rconnected rarea pcspike pccapsym pcarrow pcbarrow spike dropline {
+        if inlist("`t'", "pcspike", "pccapsym", "pcarrow", "pcbarrow") local args "lo weight hi w2"
+        else if inlist("`t'", "spike", "dropline") local args "price weight"
+        else local args "lo hi weight"
+        local ++k
+        _q4501_reg "`q01'" `k' "width:`t'" `t' `args', scheme(economist)
+        _w45_expect Q4501-2 `"("${q4501_s}" == "${q4501_tw}")"' "`t' saved: ${q4501_s}; twoway ${q4501_tw}"
+        _w45_expect Q4501-2 `"("${q4501_v}" == "${q4501_tw}")"' "`t' served: ${q4501_v}; twoway ${q4501_tw}"
+    }
+    _w45_done Q4501-2 "economist's range, spike, drop-line, pc and rarea widths are twoway's, saved and served"
+
+    capture graph drop _all
+    dash clear
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== S02 ST-1: style words read per class ====
 local only : env WP45_ONLY
 if inlist("`only'", "", "S02") & `: list posof "S02" in w45_run' {
@@ -531,7 +562,8 @@ def _q4501_widths_dash(figs):
         kind = type(g).__name__
         if "dash-arrowhead" in tags:
             heads.add(rs)
-        elif kind in ("Line", "Segment", "MultiLine"):
+        elif kind in ("Line", "Segment", "MultiLine") or "dash_cap" in tags:
+            # rcap's caps are dash markers (tag dash_cap) of its line.
             shaft.add(rs)
         elif kind == "Scatter":
             marks.add(rs)

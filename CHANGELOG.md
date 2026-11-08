@@ -1018,6 +1018,7 @@ and now matches Stata.
 - A graph, by() included, keeps twoway's shape at any width with no height band (1400 x 840 px for stcolor's 7.5 x 4.5 in a 1400 px cell, was 1400 x 560), xsize()/ysize() draw the exact box, aspectratio() alone shapes the plot region, and fxsize()/fysize() keep the graph's size (WP-45, VF-4)
 - position(bottom), legend(ring(in)), connect(st), mlabangle(v), orientation(vertic) and the other spellings twoway reads draw as twoway (were noted and drawn at defaults); a title's position(), orientation() and justification() word twoway does not read gets twoway's note (WP-45, ST-1)
 - Under economist a graph's note() is painted in its box at the top right (was never drawn) (WP-45, PIC-4)
+- Under economist range, spike, drop-line and arrow lines are drawn at pother (0.8, was 1.2) and rarea outlines at parea (WP-45, PIC-7)
 
 ### Fixed in WP-44
 

@@ -1709,6 +1709,9 @@ CORPUS = [
     # WP-45 PIC-4: the in-band note, a Label row of the above panel.
     _case("economist note", [_sc()], {"scheme": "economist"},
           {"title": "T", "note": "N"}),
+    # WP-45 PIC-7: rcap at pother, rarea's outline at parea.
+    _case("economist rcap widths", [plot_for("rcap"), plot_for("rarea")],
+          {"scheme": "economist"}),
     _case("scheme stcolor legend default placement",
           [_sc(), plot_for("lfit")], {"scheme": "stcolor"}),
     _case("kpi with explicit bgcolor under economist", [_sc()],

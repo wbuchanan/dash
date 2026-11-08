@@ -67,14 +67,19 @@ _KIND = {
     "qfit": ("lineplot", "line"), "lowess": ("lineplot", "line"),
     "lpoly": ("lineplot", "line"), "fpfit": ("lineplot", "line"),
     "kdensity": ("lineplot", "line"), "function": ("lineplot", "line"),
-    "rline": ("lineplot", "line"),
     "connected": ("", "line"), "scatterc": ("", "line"),
-    "spike": ("", "line"), "dropline": ("", "line"),
-    "rspike": ("", "line"), "rcap": ("", "line"), "rcapsym": ("", "line"),
-    "rconnected": ("", "line"), "pcspike": ("", "line"),
-    "pccapsym": ("", "line"), "mspline": ("", "line"),
-    "mband": ("", "line"), "pcarrowi": ("arrowline", "line"),
-    "pcarrow": ("arrowline", "line"), "pcbarrow": ("arrowline", "line"),
+    "mspline": ("", "line"), "mband": ("", "line"),
+    # Flipped (WP-45 PIC-7): linewidth_chain_truth lwt7 records area_line
+    # 0.8 for these and twoway draws linestyle p#other (areastyle p#'s
+    # line; economist_truth.json widths: the drawn shaft is pother under
+    # economist and wt45), not the plot's line style.
+    "rline": ("other", "area_line"),
+    "spike": ("other", "area_line"), "dropline": ("other", "area_line"),
+    "rspike": ("other", "area_line"), "rcap": ("other", "area_line"),
+    "rcapsym": ("other", "area_line"), "rconnected": ("other", "area_line"),
+    "pcspike": ("other", "area_line"), "pccapsym": ("other", "area_line"),
+    "pcarrowi": ("other", "area_line"), "pcarrow": ("other", "area_line"),
+    "pcbarrow": ("other", "area_line"),
     "area": ("area", "area_line"), "rarea": ("area", "area_line"),
     "bar": ("bar", "area_line"), "rbar": ("bar", "area_line"),
 }
@@ -138,7 +143,9 @@ class TestTheChainAgainstStata:
             assert got == pytest.approx(_px(sp, unit)), (layer, unit, got)
 
     def test_the_fixture_covers_every_chain(self):
-        kinds = {k for k, _ in _KIND.values()} | {"mark"}
+        # The arrowheads keep the arrowline chain (test_the_arrows_follow_
+        # the_shaft; WP-45 PIC-7 moved the shafts to "other").
+        kinds = {k for k, _ in _KIND.values()} | {"mark", "arrowline"}
         assert kinds == set(SchemeParser._PLOT_LWIDTH_KINDS)
         assert len(_cases()) >= 150
 
@@ -341,10 +348,10 @@ _SITES = [
     ("function", "lineplot"), ("mspline", ""), ("mband", ""),
     ("lfitci", "lineplot"), ("qfitci", "lineplot"),
     ("lpolyci", "lineplot"), ("fpfitci", "lineplot"),
-    ("spike", ""), ("dropline", ""), ("area", "area"),
-    ("rline", "lineplot"), ("rspike", ""), ("rcap", ""), ("rcapsym", ""),
-    ("rconnected", ""), ("pcspike", ""), ("pccapsym", ""),
-    ("pcarrow", "arrowline"), ("pcbarrow", "arrowline"),
+    ("spike", "other"), ("dropline", "other"), ("area", "area"),
+    ("rline", "other"), ("rspike", "other"), ("rcap", "other"),
+    ("rcapsym", "other"), ("rconnected", "other"), ("pcspike", "other"),
+    ("pccapsym", "other"), ("pcarrow", "other"), ("pcbarrow", "other"),
 ]
 
 
@@ -400,16 +407,26 @@ class TestBothModesDrawEachPlotsWidth:
 
     @pytest.mark.parametrize("ptype", ["pcspike", "pccapsym", "pcarrow",
                                        "pcbarrow", "rcapsym"])
+    # Flipped (WP-45 PIC-7): linewidth p was wrong because twoway draws
+    # these lines in linestyle p#other: economist's `linewidth pother
+    # thick' (0.8; test/fixtures/economist_truth.json widths, and
+    # linewidth_chain_truth lwt7's area_line), not `linewidth p 1.2'.
     def test_economist_draws_its_pc_lines_at_linewidth_p(self, mode, wd,
                                                          ptype):
-        """economist's `linewidth p 1.2' reaches the paired-coordinate and
-        rcapsym lines as it reaches every other plot's (Stata: plot 2 of
-        `#include economist' + `linewidth p1 vthick' is 1.2 on pcarrow,
-        measured); they were drawn at a fixed 1.5px under every scheme."""
-        a, b = _widths_by_layer(_figure(mode, wd, _layers(ptype),
-                                        "economist"))
-        w = SchemeParser("economist").default_line_width
-        assert set(a) == set(b) == {w}, (a, b)
+        """economist's `linewidth pother thick' reaches the
+        paired-coordinate and rcapsym lines (measured 0.8 in twoway's SVG);
+        they were drawn at a fixed 1.5px under every scheme, then at
+        `linewidth p'."""
+        fig = _figure(mode, wd, _layers(ptype), "economist")
+        shafts = [r.glyph.line_width for r in drawn_renderers(fig)
+                  if type(getattr(r, "glyph", None)).__name__
+                  in _LINE_GLYPHS and "dash-arrowhead" not in (r.tags or [])]
+        heads = [r.glyph.line_width for r in drawn_renderers(fig)
+                 if "dash-arrowhead" in (r.tags or [])]
+        w = dr.OptionTranslator.translate_lwidth("thick")
+        assert shafts and set(shafts) == {w}, shafts
+        # The heads keep `linewidth p' (measured 1.2).
+        assert set(heads) <= {SchemeParser("economist").default_line_width}
 
     def test_the_shipped_scheme_is_unchanged(self, mode, wd):
         """s2color: both layers' lines at `linewidth p' (1.5px)."""

@@ -12898,6 +12898,14 @@ class SchemeParser:
                     (f"linepattern p{_i}other", "linepattern pother",
                      f"linepattern p{_i}", "linepattern p")),
             })
+        # WP-45 PIC-7: rarea's bound lines are linestyle p#area's width
+        # (`linewidth p#area' -> `parea' -> `p#' -> `p'), measured apart
+        # from p#other's (test/fixtures/economist_truth.json widths.rarea:
+        # economist's parea 0.2 where pother is 0.8; wt45's parea vthin).
+        self.p_area_line_widths: list = [
+            self._band_lwidth((f"linewidth p{_i}area", "linewidth parea",
+                               f"linewidth p{_i}"))
+            for _i in range(1, 16)]
 
     def _band_color(self, key: str, default: str
                     ) -> "tuple[str | None, float | None]":
@@ -13171,8 +13179,12 @@ class SchemeParser:
     #: scatteri, dot, dropline, rcapsym, rscatter, rconnected, pcscatter,
     #: pccapsym (measured 24sep2026; test/fixtures/
     #: marker_linewidth_truth.json).
+    #: "other" is linestyle-p#other.style (`set width scheme p#other'),
+    #: the line areastyle p# strokes: the range, spike, drop-line and
+    #: paired-coordinate shafts twoway draws (WP-45 PIC-7; measured,
+    #: test/fixtures/economist_truth.json widths).
     _PLOT_LWIDTH_KINDS: "frozenset[str]" = frozenset(
-        ("", "lineplot", "area", "arrowline", "bar", "mark"))
+        ("", "lineplot", "area", "arrowline", "bar", "mark", "other"))
 
     def _plot_lwidth_of(self, key: str) -> "float | None":
         """The width *key* declares in pixels, or None when it is absent or
@@ -20465,7 +20477,7 @@ class GlyphMapper:
         _seg_kwargs: dict = dict(x0="x0", y0="y0", x1="x1", y1="y1",
                                   source=seg_source,
                                   line_color=self.scheme.default_color(color_idx, "spike"),
-                                  line_width=self.scheme.plot_line_width(color_idx, ""),
+                                  line_width=self.scheme.plot_line_width(color_idx, "other"),
                                   legend_label=yvar,
                                   **self._scheme_alpha_kw(color_idx, "spike"))
         # No view here: seg_source already holds only the selected rows.
@@ -24395,9 +24407,15 @@ class GlyphMapper:
         # p#arealine -> p#, width p#area -> p medium, pattern solid; WP-31
         # E8, test/fixtures/colour_width_edges_truth.json ol.rarea: the
         # stroke is clipped to the polygon, so its inner half shows, as
-        # wide as a medium line).  The scheme's p#other/p#otherline chain
-        # ends at the same values and is what style_bundle("area", ...)
-        # copies (DECISIONS A34).  VArea has no stroke, so the two bounds
+        # wide as a medium line).  The colour, alpha and pattern are the
+        # scheme's p#other/p#otherline chain, which style_bundle("area",
+        # ...) copies (DECISIONS A34); the width is p#area's own
+        # (p_area_line_widths, WP-45 PIC-7): A34's premise that the two
+        # chains end at the same values is false under economist, whose
+        # parea is thin (0.2) and pother thick (0.8) -- measured,
+        # test/fixtures/economist_truth.json widths.rarea, the inside half
+        # of a 0.4 stroke.  The stroke stays centred (basic:PT-4).
+        # VArea has no stroke, so the two bounds
         # are Lines on the same source, after the fill so hover and the
         # legend read the fill first; the closing edges at the x ends are
         # documented, not drawn.  alcolor()/alwidth()/alpattern(),
@@ -24438,7 +24456,8 @@ class GlyphMapper:
                           line_color=_b["line"],
                           line_alpha=(1.0 if _b.get("line_alpha") is None
                                       else _b["line_alpha"]),
-                          line_width=_b["line_width"],
+                          line_width=self.scheme.p_area_line_widths[
+                              color_idx % 15],
                           line_dash=list(_b.get("line_dash") or []))
             _o.tags = ["dash_rarea_outline"]
             self._apply_line_opts(_o, _lo, role="aline")
@@ -24754,7 +24773,7 @@ class GlyphMapper:
             view = None
         _rseg_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=source,
                                    line_color=self.scheme.default_color(color_idx, "rspike"),
-                                   line_width=self.scheme.plot_line_width(color_idx, ""),
+                                   line_width=self.scheme.plot_line_width(color_idx, "other"),
                                    legend_label=y1var,
                                    **self._scheme_alpha_kw(color_idx, "rspike"))
         if view is not None:
@@ -24808,7 +24827,7 @@ class GlyphMapper:
         }, _cap_sel))
 
         _rcap_color = self.scheme.default_color(color_idx, "rcap")
-        _rcap_lw = self.scheme.plot_line_width(color_idx, "")
+        _rcap_lw = self.scheme.plot_line_width(color_idx, "other")
         _spine_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var,
                                     source=cap_source,
                                     line_color=_rcap_color, line_width=_rcap_lw,
@@ -24915,11 +24934,11 @@ class GlyphMapper:
         # the upper one used to take the NEXT series' colour (WP-23).
         _rl1_kwargs: dict = dict(x=xvar, y=y1var, source=_bound_src[y1var],
                                   line_color=self.scheme.default_color(color_idx, "line"),
-                                  line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
+                                  line_width=self.scheme.plot_line_width(color_idx, "other"),
                                   legend_label=y1var)
         _rl2_kwargs: dict = dict(x=xvar, y=y2var, source=_bound_src[y2var],
                                   line_color=self.scheme.default_color(color_idx, "line"),
-                                  line_width=self.scheme.plot_line_width(color_idx, "lineplot"))
+                                  line_width=self.scheme.plot_line_width(color_idx, "other"))
         if view is not None:
             _rl1_kwargs["view"] = view
             _rl2_kwargs["view"] = view
@@ -24996,15 +25015,16 @@ class GlyphMapper:
         # both paths and all 148 markers in p1's #1A476F.  The upper end
         # used to take the next series' colour and symbol (WP-23).
         return [
-            # Its lines take linestyle p#'s width, not p#lineplot's
-            # (measured: `linewidth plineplot' leaves them at p1's).
+            # Its lines take linestyle p#other's width, not p#lineplot's
+            # (measured: `linewidth plineplot' leaves them at p1's; WP-45
+            # PIC-7, economist_truth.json widths.rconnected: pother).
             self.map_line(fig, source, y1var, xvar, options, view=view,
-                          color_idx=color_idx, line_kind="", order=order,
+                          color_idx=color_idx, line_kind="other", order=order,
                           role="aline", colorvar_key=False),
             self.map_scatter(fig, source, y1var, xvar, options, view=view,
                              color_idx=color_idx, colorvar_stepped=True),
             self.map_line(fig, source, y2var, xvar, options, view=view,
-                          color_idx=color_idx, line_kind="", order=order,
+                          color_idx=color_idx, line_kind="other", order=order,
                           role="aline", colorvar_key=False),
             # twoway draws ONE colorvar() key for rconnected (measured:
             # "Price" once, E-16.2); the second end is coloured from it.
@@ -25515,7 +25535,7 @@ class GlyphMapper:
 
         _dl_seg_kwargs: dict = dict(
             x0="x", y0="y0", x1="x", y1="y", source=dl_source,
-            line_color=seg_color, line_width=self.scheme.plot_line_width(color_idx, ""),
+            line_color=seg_color, line_width=self.scheme.plot_line_width(color_idx, "other"),
             **self._scheme_alpha_kw(color_idx, "spike"))
         _dl_dot_kwargs: dict = dict(
             x="x", y="y", source=dl_source, marker=_dl_marker,
@@ -25644,7 +25664,7 @@ class GlyphMapper:
         _rcs_marker, _rcs_h, _rcs_f = self._marker_traits(color_idx, options)
 
         _rcs_spine_kw: dict = dict(x0="x",     y0="y1",  x1="x",     y1="y2",
-                                    source=cap_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, ""),
+                                    source=cap_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, "other"),
                                     legend_label=y1var,
                                     **self._scheme_alpha_kw(color_idx, "rcap"))
         _rcs_mlw = self.scheme.plot_line_width(color_idx, "mark")
@@ -26582,7 +26602,7 @@ class GlyphMapper:
         _pcseg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                                     source=source_clean,
                                     line_color=self.scheme.default_color(color_idx, "pcspike"),
-                                    line_width=self.scheme.plot_line_width(color_idx, ""),
+                                    line_width=self.scheme.plot_line_width(color_idx, "other"),
                                     legend_label=y1var,
                                     **self._scheme_alpha_kw(color_idx, "pcspike"))
         # No view here: source_clean already holds only the selected rows.
@@ -27140,7 +27160,7 @@ class GlyphMapper:
         _pca_alpha = None
 
         _pca_seg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
-                                      source=pc_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, "arrowline"),
+                                      source=pc_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, "other"),
                                       legend_label=y1var,
                                       **self._scheme_alpha_kw(color_idx, "pcarrow"))
         if _pca_alpha is not None:
@@ -27251,7 +27271,7 @@ class GlyphMapper:
         _pcb_alpha = None
 
         _pcb_seg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
-                                      source=pc_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, "arrowline"),
+                                      source=pc_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, "other"),
                                       legend_label=y1var,
                                       **self._scheme_alpha_kw(color_idx, "pcbarrow"))
         if _pcb_alpha is not None:
@@ -27379,7 +27399,7 @@ class GlyphMapper:
                           source=seg_src,
                           line_color=self.scheme.default_color(color_idx,
                                                                "pccapsym"),
-                          line_width=self.scheme.plot_line_width(color_idx, ""), legend_label=y1var,
+                          line_width=self.scheme.plot_line_width(color_idx, "other"), legend_label=y1var,
                           **self._scheme_alpha_kw(color_idx, "pccapsym"))
         self._apply_line_opts(seg, options, role="aline")
 

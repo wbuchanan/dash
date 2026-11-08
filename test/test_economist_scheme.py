@@ -221,3 +221,151 @@ def _chrome(mode):
         assert len(got[w]["plots"]) == 1, got[w]
         out[w] = dict(got[w]["plots"][0], errors=got[w]["E"])
     return out
+
+
+# ---------------------------------------------------------------------------
+# PIC-7 (PIC-8): the range, spike, drop-line and paired-coordinate lines
+# take linestyle p#other; rarea's outline takes p#area
+# ---------------------------------------------------------------------------
+
+#: The types whose shaft twoway strokes at linestyle p#other (measured:
+#: economist_truth.json widths -- 0.8 under economist's pother thick, 2.6
+#: under wt45's pother vvthick, 0.3 under s2color, for every one).
+_OTHER = ("rspike", "rcap", "rcapsym", "rline", "rconnected", "pcspike",
+          "pccapsym", "pcarrow", "pcbarrow", "spike", "dropline")
+
+_TW = _TRUTH["widths"]
+
+
+def _tw_parts(scheme, ptype):
+    """(shaft, heads, markers): sets of twoway's drawn widths in relative
+    units -- the shaft the line, path or area outline drawn fewest times
+    (a clipped, inside-aligned outline draws half its SVG width), the
+    heads the other lines, the markers the circles."""
+    st = _TW[scheme][ptype]["strokes"]
+    n_min = min(s[2] for s in st if s[0] in ("line", "path", "use"))
+    shaft, heads, marks = set(), set(), set()
+    for tag, rs, n, clipped in st:
+        rs = round(rs / 2.0 if clipped else rs, 3)
+        if tag == "circle":
+            marks.add(rs)
+        elif n == n_min:
+            shaft.add(rs)
+        else:
+            heads.add(rs)
+    return shaft, heads, marks
+
+
+def _dash_parts(fig):
+    """(shaft, heads, markers): sets of dash's drawn widths in relative
+    units (px / 3.84) of the layer's glyphs."""
+    import test_scheme_linewidth as tsl
+    shaft, heads, marks = set(), set(), set()
+    for r in tsl.drawn_renderers(fig):
+        g = getattr(r, "glyph", None)
+        w = getattr(g, "line_width", None)
+        if isinstance(w, bool) or not isinstance(w, (int, float)):
+            continue
+        rs = round(float(w) / 3.84, 3)
+        if "dash-arrowhead" in (r.tags or []):
+            heads.add(rs)
+        elif type(g).__name__ in ("Line", "Segment", "MultiLine"):
+            shaft.add(rs)
+        elif type(g).__name__ == "Scatter":
+            marks.add(rs)
+    return shaft, heads, marks
+
+
+def _one_layer(ptype):
+    import test_scheme_linewidth as tsl
+    return tsl._layers(ptype)[:1]
+
+
+@pytest.fixture
+def wd(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "wt45.scheme").write_text(_TRUTH["schemes"]["wt45"],
+                                          encoding="utf-8")
+    return tmp_path
+
+
+class TestEconomistWidths:
+
+    def test_twoway_draws_p_other(self):
+        """The fixture: every listed type's shaft at pother, under
+        economist (thick, 0.8), wt45 (vvthick, 2.6) and s2color (p, 0.3);
+        rarea's outline at parea (0.2, wt45's vthin 0.15, s2color's p)."""
+        want = {"economist": 0.8, "wt45": 2.6, "s2color": 0.3}
+        for s, w in want.items():
+            for t in _OTHER:
+                assert _tw_parts(s, t)[0] == {w}, (s, t)
+        assert {s: _tw_parts(s, "rarea")[0] for s in want} == {
+            "economist": {0.2}, "wt45": {0.15}, "s2color": {0.3}}
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("ptype", _OTHER + ("rarea",))
+    @pytest.mark.parametrize("scheme", ("economist", "wt45", "s2color"))
+    def test_type(self, wd, mode, ptype, scheme):
+        """dash's shaft (rarea's bound lines) at twoway's drawn width,
+        within 0.05 relative units, saved and served."""
+        import test_scheme_linewidth as tsl
+        fig = tsl._figure(mode, wd, _one_layer(ptype), scheme)
+        [want] = _tw_parts(scheme, ptype)[0]
+        got = _dash_parts(fig)[0]
+        assert got and all(abs(g - want) <= 0.05 for g in got), (got, want)
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("ptype", ("rcapsym", "rconnected", "pccapsym",
+                                       "pcarrow", "pcbarrow", "dropline"))
+    def test_heads_and_markers(self, wd, mode, ptype):
+        """The heads and marker outlines keep p# (1.2 under economist),
+        as twoway draws them."""
+        import test_scheme_linewidth as tsl
+        fig = tsl._figure(mode, wd, _one_layer(ptype), "economist")
+        _s, heads, marks = _dash_parts(fig)
+        _t, tw_heads, tw_marks = _tw_parts("economist", ptype)
+        if tw_heads:
+            assert heads and all(abs(h - 1.2) <= 0.05 for h in heads), heads
+        if tw_marks:
+            assert marks and all(abs(m - 1.2) <= 0.05 for m in marks), marks
+
+
+class TestTheOtherChain:
+
+    def test_chain(self, wd):
+        """`linewidth p#other' -> `pother' -> `p#' -> `p': a user scheme
+        with only `linewidth pother vthick' draws every plot's other line
+        vthick, and `linewidth p2other' beats it on plot 2 alone;
+        `linewidth p#area' -> `parea' -> `p#' for rarea's outline."""
+        tr = dr.OptionTranslator.translate_lwidth
+        (wd / "oc1.scheme").write_text(
+            "#include s2color\nlinewidth pother vthick\n", encoding="utf-8")
+        sp = dr.SchemeParser("oc1")
+        assert [sp.plot_line_width(i, "other") for i in range(15)] == \
+            [tr("vthick")] * 15
+        assert sp.plot_line_width(0, "") == sp.default_line_width
+        (wd / "oc2.scheme").write_text(
+            "#include s2color\nlinewidth p1 thick\nlinewidth p2other thin\n"
+            "linewidth p3area vvthick\nlinewidth parea vthin\n",
+            encoding="utf-8")
+        sp = dr.SchemeParser("oc2")
+        assert sp.plot_line_width(0, "other") == tr("thick")
+        assert sp.plot_line_width(1, "other") == tr("thin")
+        assert sp.plot_line_width(2, "other") == sp.default_line_width
+        assert sp.p_area_line_widths[0] == tr("vthin")
+        assert sp.p_area_line_widths[2] == tr("vvthick")
+        assert len(sp.p_area_line_widths) == 15
+        econ = dr.SchemeParser("economist")
+        assert econ.plot_line_width(0, "other") == tr("thick")
+        assert econ.p_area_line_widths[0] == tr("thin")
+
+    def test_help(self):
+        """dash.sthlp's scheme-file width sentence names the other stub
+        and the types that take it."""
+        with open(_HELP, encoding="utf-8") as fh:
+            text = fh.read()
+        para = " ".join(_between(text, "whose stub is the plot type's",
+                                 "a bar's outline stops at").split())
+        assert "{cmd:other} for the range, spike, drop-line and " \
+            "paired-coordinate lines" in para
+        assert "{cmd:area} for an area outline and {cmd:rarea}'s" in para

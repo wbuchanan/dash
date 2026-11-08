@@ -118,10 +118,16 @@ class TestTheSchemeSetsTheSizeAndWidth:
             "would make these equal"
         )
 
+    # Flipped (WP-45 PIC-7): linewidth p was wrong because twoway draws the
+    # stem in linestyle p#other: economist's pother thick, 0.8
+    # (test/fixtures/economist_truth.json widths.dropline).
     def test_the_line_width_comes_from_the_scheme(self, src):
         gm_b, _f, seg, _d = _draw({}, scheme="economist", src=src)
         assert float(seg.glyph.line_width) == pytest.approx(
-            gm_b.scheme.default_line_width), (
+            gm_b.scheme.plot_line_width(0, "other")), (
+            "the dropline stem is not the scheme's linewidth pother")
+        assert float(seg.glyph.line_width) == pytest.approx(
+            dr.OptionTranslator.translate_lwidth("thick")), (
             "the dropline stem is a literal 1.5 whatever the scheme asks for"
         )
 
