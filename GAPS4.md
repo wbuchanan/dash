@@ -506,9 +506,9 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **DG-4 Tracked:** Closed in WP-44, BUGS.md "Parenthesised dates holding blanks ((1 jan 2001)) are refused in tlabel(), tline() and tscale(range())", commit aa829fa.
 - **DG-9 Tracked:** Closed in WP-44, BUGS.md "A non-number in a label list (.a, a bare word) is noted and drawn; twoway refuses 'invalid label specifier'", commit fd34f03.
 - **DG-13 Tracked:** Closed in WP-44, BUGS.md "ylabel(minmax) on an empty scale draws Bokeh's default ticks; data spanning about ±8e307 give an OverflowError traceback (twoway gives r(199))", commit f391788.
-- **PIC-4 Tracked:** Closed in WP-45, BUGS.md "economist: a graph's note() is never painted (the Label targets a Title Node BokehJS does not resolve)", commit pending.
-- **PIC-7 Tracked:** Closed in WP-45, BUGS.md "economist widths: range, spike, dropline and pc lines at 1.2 (linewidth p) where twoway uses pother 0.8; the rarea outline at 0.8 centred where twoway uses parea 0.2 inside", commit pending.
-- **ST-1 Tracked:** Closed in WP-45, BUGS.md "Style-word abbreviations and names twoway reads are not read: compass2dir (nor, N, rig ...), tb_orientstyle (hor, vertic), clockdir names (top, bottom, left ...: title position(bottom) drawn above), gridringstyle (inside/outside; title ring(in) accepted where twoway refuses), anglestyle (v, rv, rh), connectstyle (st, up, no drawn direct); twoway-worded notes are invented for them, and justification(l)'s note is missing", commit pending.
+- **PIC-4 Tracked:** Closed in WP-45, BUGS.md "economist: a graph's note() is never painted (the Label targets a Title Node BokehJS does not resolve)", commit 3d89edd.
+- **PIC-7 Tracked:** Closed in WP-45, BUGS.md "economist widths: range, spike, dropline and pc lines at 1.2 (linewidth p) where twoway uses pother 0.8; the rarea outline at 0.8 centred where twoway uses parea 0.2 inside", commit 719ae9f.
+- **ST-1 Tracked:** Closed in WP-45, BUGS.md "Style-word abbreviations and names twoway reads are not read: compass2dir (nor, N, rig ...), tb_orientstyle (hor, vertic), clockdir names (top, bottom, left ...: title position(bottom) drawn above), gridringstyle (inside/outside; title ring(in) accepted where twoway refuses), anglestyle (v, rv, rh), connectstyle (st, up, no drawn direct); twoway-worded notes are invented for them, and justification(l)'s note is missing", commit 30a7168.
 - **ST-7 Tracked:** Open (WP-45 section 45-03).
 - **ST-15 Tracked:** Open (WP-45 section 45-03).
 - **ST-17 Tracked:** Open (WP-45 section 45-03).
@@ -518,8 +518,8 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **ST-21 Tracked:** Open (WP-45 section 45-04).
 - **VF-4 Tracked:** Partly closed in WP-45 (section 45-04, commit 868682a): every graph, by() included, keeps twoway's shape with no height band, xsize()/ysize() draw the exact box, aspectratio() alone shapes the plot region and fxsize()/fysize() keep a lone graph's size; the graph drawn as one picture at twoway's unit (DECISIONS D66, 01nov2026); open: the title's top inset under scale() and by()'s fysize() centring (BUGS.md "Under scale() the title's room above the plot region grows faster than twoway's, and by()'s fysize() array is not centred").
 - **GW-1 Tracked:** Open (WP-45 section 45-04).
-- **ST-22 Tracked:** Closed in WP-45, BUGS.md "Colour edges: navy*52 intensity rule, blank stylelist element refused in dash's words", commit pending.
-- **GW-10 Tracked:** Closed in WP-45, BUGS.md "graph set window/svg fontface for plain text is not read (only stSans/stSerif/stMono tags)", commit pending.
+- **ST-22 Tracked:** Closed in WP-45, BUGS.md "Colour edges: navy*52 intensity rule, blank stylelist element refused in dash's words", commit e0d4fd7.
+- **GW-10 Tracked:** Closed in WP-45, BUGS.md "graph set window/svg fontface for plain text is not read (only stSans/stSerif/stMono tags)", commit 3dcd745.
 - **RH-1 Tracked:** Open (WP-46 section 46-01).
 - **RH-3 Tracked:** Open (WP-46 section 46-02).
 - **RH-5 Tracked:** Open (WP-46 section 46-02).
