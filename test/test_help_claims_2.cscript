@@ -29,9 +29,9 @@
 *!   HC2-08  kernel() with a capital and colpalette() are refused as twoway
 *!           refuses them (WP-35 DT-15); theme() is matched without regard
 *!           to case and normalised to lower case
-*!   HC2-09  scheme() takes a theme name, and an unknown scheme is refused
-*!           wherever it is written: on a graph, inside a segment, on
-*!           dash build and dash serve
+*!   HC2-09  scheme() takes a theme name; an unknown scheme on a graph or
+*!           inside a segment draws s2color with twoway's note (WP-45
+*!           ST-16), and dash build and dash serve refuse it
 *!   HC2-10  variables: by(for) is by(foreign), as in twoway; a time-series
 *!           expression in mlabel(), colorvar() or by() is refused -- and
 *!           twoway refuses it too (r(111), r(101), r(101))
@@ -46,8 +46,8 @@
 *!           kernel(GAUSSIAN), a style option given (()), a string
 *!           colorvar(); and a colour
 *!           written with commas, which dash refuses, as twoway
-*!   HC2-17  an unknown scheme(): twoway draws s2color with a note, dash
-*!           refuses; twoway has no theme() at all
+*!   HC2-17  an unknown scheme(): twoway draws s2color with a note, and
+*!           so does dash (WP-45 ST-16); twoway has no theme() at all
 *!   HC2-18  forms twoway reads and dash refuses: an mlabel() element that
 *!           names several variables (range(varname) and a . in range()
 *!           taken since WP-31 C10a), and a width or angle
@@ -482,11 +482,15 @@ cert_file_has "`hc2mj'", needle(`""theme":"dark""')
 _hc2_ok "HC2-08f" `=r(found) == 1' "theme(DARK) reaches the spec as dark"
 _hc2_expect "HC2-08g" 198 `"_dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'") theme(nonsense)"' "theme()"
 
-// HC2-09 -- scheme(): a theme name is a scheme name; an unknown one is
-// refused wherever it is written.
+// HC2-09 -- scheme(): a theme name is a scheme name; an unknown one on a
+// graph draws s2color with twoway's note, and dash serve refuses it.
 _hc2_dash "HC2-09a" 0   `"dash scatter mpg weight, scheme(DARK) name(hc)"'
-_hc2_dash "HC2-09b" 198 `"dash (scatter mpg weight, scheme(nonsense)) (line mpg weight), name(hc)"' "scheme()"
-_hc2_dash "HC2-09c" 198 `"dash scatter mpg weight, scheme(nonsense) name(hc)"' "scheme()"
+// Flipped (WP-45 ST-16): r(198) was wrong because twoway draws s2color
+// with a note for a scheme it cannot find (ST-16).
+_hc2_dash "HC2-09b" 0   `"dash (scatter mpg weight, scheme(nonsense)) (line mpg weight), name(hc)"' "(note: scheme nonsense not found, using s2color)"
+_hc2_reg  "HC2-09b" hc `""scheme":"s2color""'
+_hc2_dash "HC2-09c" 0   `"dash scatter mpg weight, scheme(nonsense) name(hc)"' "(note: scheme nonsense not found, using s2color)"
+_hc2_reg  "HC2-09c" hc `""scheme":"s2color""'
 quietly dash clear
 quietly dash scatter mpg weight, name(hc)
 _hc2_expect "HC2-09d" 198 `"_dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'") scheme(nonsense)"' "scheme()"
@@ -635,10 +639,12 @@ _hc2_dash   "HC2-16p" 198 `"dash scatter mpg weight, mcolor(255,0,0) name(hc)"' 
 mata: st_local("_hc2q", strofreal(st_global("dash_json_hc") == ""))
 _hc2_ok     "HC2-16q" `_hc2q' "no graph hc is registered"
 
-// HC2-17 -- an unknown scheme: twoway notes and draws s2color, dash
-// refuses; theme() is not a twoway option at all.
+// HC2-17 -- an unknown scheme: twoway notes and draws s2color, and so
+// does dash; theme() is not a twoway option at all.
 _hc2_expect "HC2-17a" 0   `"twoway scatter mpg weight, scheme(nonsense)"' "(note: scheme nonsense not found, using s2color)"
-_hc2_dash   "HC2-17b" 198 `"dash scatter mpg weight, scheme(nonsense) name(hc)"' "dash: scheme() must be"
+// Flipped (WP-45 ST-16): dash's refusal was wrong because twoway draws
+// s2color with a note for a scheme it cannot find (ST-16).
+_hc2_dash   "HC2-17b" 0   `"dash scatter mpg weight, scheme(nonsense) name(hc)"' "(note: scheme nonsense not found, using s2color)"
 _hc2_expect "HC2-17c" 198 `"twoway scatter mpg weight, theme(dark)"' "option theme() not allowed"
 
 // HC2-18 -- forms twoway reads and dash refuses.
