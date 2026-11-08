@@ -1619,7 +1619,9 @@ os.makedirs(_S03_DIR, exist_ok=True)
 for _f, _t in (("linepattern-zqpb.style", 'set pattern "4 1 .1 1"\n'),
                ("linewidth-zqw.style", "set val 2\n"),
                ("gsize-zqg.style", "set val     10\nset sztype  relative\n"),
-               ("scheme-w45p.scheme", "#include s2color\nclockdir p 9\n")):
+               ("scheme-w45p.scheme", "#include s2color\nclockdir p 9\n"),
+               ("scheme-w45n9.scheme",
+                "#include s2color\nclockdir note_position 9\n")):
     with open(os.path.join(_S03_DIR, _f), "w", encoding="utf-8") as _fh:
         _fh.write(_t)
 
@@ -1633,6 +1635,11 @@ CORPUS = [
     # WP-45 ST-17: a user scheme's clockdir p, alike in both modes.
     _case("scheme clockdir p 9", [plot_for("scatter", {"mlabel": "mpg"})],
           {"scheme": "w45p", "scheme_dirs": [_S03_DIR]}),
+    # WP-45 ST-17 follow-up: a scheme's note at 9 o'clock, beside the
+    # plot, alike in both modes.
+    _case("scheme note_position 9", [plot_for("scatter")],
+          {"scheme": "w45n9", "scheme_dirs": [_S03_DIR]},
+          {"note": '"N"'}),
     # WP-45 ST-17 follow-up: a 2 x 2 legend's column gap, alike in both
     # modes.
     _case("legend grid colgap(huge)",

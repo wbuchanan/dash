@@ -457,6 +457,15 @@ class TestUnknownScheme:
                 '`"`macval(scheme)\'"\' ""') in src
 
 
+#: The subtitle, note and caption at a scheme's side clock (D_<box>_<c>):
+#: a user scheme w45<b><c>.scheme against s2color with position(<c>).
+_BOX_SIDE = {
+    "D_%s_%s" % (b, c): (("w45%s%s" % (b[0], c), _sc(),
+                          {b: '"%s"' % b[0].upper()}),
+                         ("s2color", _sc(),
+                          {b: '"%s", position(%s)' % (b[0].upper(), c)}))
+    for b in ("subtitle", "note", "caption") for c in ("3", "9")}
+
 _FOUR = [plot_for("scatter", {}, yvar=v)
          for v in ("mpg", "price", "foreign", "rep")]
 
@@ -479,11 +488,28 @@ def _legend_gaps(drawn):
 
 
 class TestDirectiveFollowUps:
-    """The maintainer's follow-up to ST-17: a grid legend's column gap."""
+    """The maintainer's follow-up to ST-17: the subtitle, note and caption
+    at a scheme's side clock, and a grid legend's column gap."""
 
     def test_the_fixture(self):
+        for k in _BOX_SIDE:
+            r = TRUTH[k]
+            assert r["rc"] == 0 and not r["notes"], k
+            assert r["same_as_reference"] == 1, k
         g = TRUTH["D_grid_gap"]
         assert g["scheme_same_as_huge"] == 1
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("key", sorted(_BOX_SIDE))
+    def test_box_side_clock(self, key, mode, tmp_path):
+        d = _files_dir(tmp_path)
+        (ps, pp, pg), (rs, rp, rg) = _BOX_SIDE[key]
+        probe = tsr._draw(tp._spec(pp, {"scheme": ps, "scheme_dirs": [d]},
+                                   pg), mode)
+        ref = tsr._draw(tp._spec(rp, {"scheme": rs, "scheme_dirs": [d]},
+                                 rg), mode)
+        assert not _notes(probe), (key, _notes(probe))
+        assert _sig(probe) == _sig(ref), key
 
     @staticmethod
     def _measured_px(tag):
@@ -528,3 +554,16 @@ class TestDirectiveFollowUps:
         ys = {t: sorted({v[0]["y"] for v in TRUTH["D_grid_gap"][t][
             "keys"].values()}) for t in ("base", "huge", "zero")}
         assert ys["base"] == ys["huge"] == ys["zero"]
+
+    def test_the_help_says_the_boxes_go_beside(self):
+        """D_<box>_<c>: twoway draws a scheme's subtitle, note and caption
+        at clocks 2-4 and 8-10 beside the plot, as their position() does,
+        and so does dash (test_box_side_clock); the help says so."""
+        with open(os.path.join(os.path.dirname(_HERE), "dash.sthlp"),
+                  encoding="utf-8") as fh:
+            h = " ".join(fh.read().split())
+        i = h.index("Clock positions 2 to 4 and 8 to 10")
+        para = h[i:h.index("{p_end}", i)]
+        assert "nearer of the top and bottom" not in para
+        assert ("put the title, subtitle, note and caption beside the plot"
+                in para)

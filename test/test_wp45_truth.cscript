@@ -1082,6 +1082,62 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
 }
 * ==== end S03 ====
 
+* ==== S03 ST-17: the boxes at a scheme's side clocks ====
+local only : env WP45_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local s03d "`w45_work'/s03b"
+    local s03u "`w45_work'/s03bu"
+    capture mkdir "`s03d'"
+    capture mkdir "`s03u'"
+    python: import __main__ as _w45m; _w45m._w45s03_files("`s03u'")
+    quietly adopath ++ "`s03u'"
+
+    // ------------------------------------------------------------
+    // Q4503-6: a user scheme's clockdir subtitle_position, note_position
+    // and caption_position 3 and 9: twoway draws each box as its
+    // position() form (live, SVG equality) and dash draws it the same,
+    // beside the plot, saved and served, with no note.
+    // ------------------------------------------------------------
+    foreach b in subtitle note caption {
+        local t = upper(substr("`b'", 1, 1))
+        local k = substr("`b'", 1, 1)
+        foreach c in 3 9 {
+            _w45s03_tw "`s03d'" scatter mpg weight, `b'("`t'") scheme(w45`k'`c') | scatter mpg weight, `b'("`t'", position(`c')) scheme(s2color)
+            local s03_ok = ("${w45s03_twrc}" == "0 0" & ${w45s03_same} == 1)
+            _w45_expect Q4503-6 "(`s03_ok')" "twoway `b' at `c': rc ${w45s03_twrc}, same ${w45s03_same}"
+            _w45s03_dash "`s03d'" w45s03p scatter mpg weight, `b'("`t'") scheme(w45`k'`c')
+            local s03_rc1 = ${w45s03_drc}
+            _w45s03_dash "`s03d'" w45s03r scatter mpg weight, `b'("`t'", position(`c')) scheme(s2color)
+            local s03_rc2 = ${w45s03_drc}
+            _w45_expect Q4503-6 "(`s03_rc1' == 0 & `s03_rc2' == 0)" "dash rc `s03_rc1' `s03_rc2': `b' at `c'"
+            if !`s03_rc1' & !`s03_rc2' {
+                python: import __main__ as _w45m; _w45m._w45s03_pair("`s03d'/w45s03p.json", "`s03d'/w45s03p_d.json", "`s03d'/w45s03r.json", "`s03d'/w45s03r_d.json", "`s03d'/a.py")
+                mata: st_local("s03_nn", strofreal(st_global("w45s03_notes") == ""))
+                mata: st_local("s03_nd", strofreal(st_global("w45s03_diff") == ""))
+                _w45_expect Q4503-6 "(`s03_nn')" `"`b' at `c' notes: ${w45s03_notes}"'
+                _w45_expect Q4503-6 "(`s03_nd')" `"`b' at `c' differs: ${w45s03_diff}"'
+            }
+        }
+    }
+    _w45_done Q4503-6 "a scheme's subtitle, note and caption at 3 and 9 o'clock draw beside the plot as twoway draws them, saved and served"
+
+    quietly adopath - "`s03u'"
+    capture dash clear
+    macro drop w45s03_*
+    foreach f in tw1.svg tw2.svg w45s03p.json w45s03p_d.json w45s03r.json w45s03r_d.json a.py {
+        capture erase "`s03d'/`f'"
+    }
+    local s03_left : dir "`s03u'" files "*"
+    foreach f of local s03_left {
+        capture erase "`s03u'/`f'"
+    }
+    capture rmdir "`s03d'"
+    capture rmdir "`s03u'"
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 * ==== S03 ST-17: a grid legend's column gap ====
 local only : env WP45_ONLY
 if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {

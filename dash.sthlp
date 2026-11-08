@@ -7234,11 +7234,11 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     nearer the plot; under {cmd:economist} the title, subtitle and caption
     are at the left and the note sits in its box in the title's band, at
     the top right.  Clock positions 2 to 4 and 8 to 10, which only a scheme
-    of your own can ask for, put the title beside the plot, where a
-    title's own position at that clock puts it
+    of your own can ask for, put the title, subtitle, note and caption beside the plot, where a
+    box's own position at that clock puts it
     ({cmd:clockdir title_position 3} draws the title at 3 o'clock, right
-    of the plot); a subtitle, note or caption at one of
-    them is drawn on the nearer of the top and bottom.  The files also carry {cmd:system naturally_white} and the
+    of the plot, and {cmd:clockdir note_position 9} the note left of
+    it).  The files also carry {cmd:system naturally_white} and the
     {cmd:intensity p}{it:#}{cmd:bar}/{cmd:p}{it:#}{cmd:area} chains as
     Stata resolves them.{p_end}
 
