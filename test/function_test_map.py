@@ -409,6 +409,7 @@ FUNCTIONS = {
  '_dash_compass_dir': 'test/test_legend_place.py::TestCompassReader::test_each_spelling',
  '_dash_style_word': 'test/test_style_words.py::TestTheReaders::test_python_reader',
  '_dash_leaf_value': 'test/test_style_files_more.py::TestTheLeafReader::test_the_module_lookup',
+ '_dash_legend_colgap': 'test/test_style_files_more.py::TestDirectiveFollowUps::test_grid_column_gap',
  '_dash_legend_holes': 'test/test_legend_place.py::TestHolesOneColumn::test_track_sheet',
  '_dash_legend_hole_sheet': 'test/test_legend_place.py::TestHolesOneColumn::test_by_cell',
  '_dash_legend_key_text': 'test/test_legend_box.py::TestKeyText::test_frames',

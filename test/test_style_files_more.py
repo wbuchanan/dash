@@ -455,3 +455,76 @@ class TestUnknownScheme:
         # dash build's and dash serve's check stays a refusal.
         assert ('_dash_validate_value "`cmdname\'" "scheme" "scheme,strict" '
                 '`"`macval(scheme)\'"\' ""') in src
+
+
+_FOUR = [plot_for("scatter", {}, yvar=v)
+         for v in ("mpg", "price", "foreign", "rep")]
+
+
+def _legend_gaps(drawn):
+    """(row gap px, column gap px or None) of the one series legend: its
+    spacing and the column-gap its dash_legend_colgap stylesheet sets."""
+    from bokeh.models import Legend
+    lgs = [m for f in drawn.figures for m in f.references()
+           if isinstance(m, Legend) and m.items]
+    assert len(lgs) == 1, len(lgs)
+    lg = lgs[0]
+    col = None
+    for ss in lg.stylesheets or []:
+        if "dash_legend_colgap" in (getattr(ss, "tags", None) or []):
+            import re as _re
+            m = _re.search(r"column-gap:calc\(([0-9.]+)px", ss.css)
+            col = float(m.group(1)) if m else None
+    return lg.spacing, col, lg.ncols, lg.nrows
+
+
+class TestDirectiveFollowUps:
+    """The maintainer's follow-up to ST-17: a grid legend's column gap."""
+
+    def test_the_fixture(self):
+        g = TRUTH["D_grid_gap"]
+        assert g["scheme_same_as_huge"] == 1
+
+    @staticmethod
+    def _measured_px(tag):
+        """twoway's column gap in 4-inch px: the distance between the two
+        columns' key texts less the base draw's, plus the base gap (s2color's
+        legend_col_gap large, the one-row spacing dash already draws: 18.67
+        px), at 720 SVG units an inch and 96 px an inch."""
+        g = TRUTH["D_grid_gap"]
+
+        def dist(t):
+            k = g[t]["keys"]
+            return (float(k["Price"][0]["x"])
+                    - float(k["Mileage (mpg)"][0]["x"]))
+        base = 4.8611 * T.PT_PER_RS * T.PX_PER_PT
+        return base + (dist(tag) - dist("base")) * 96.0 / 720.0
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_grid_column_gap(self, mode, tmp_path):
+        """A 2 x 2 legend: twoway's column gap for s2color's large,
+        colgap(huge), colgap(zero) and a scheme's legend_col_gap huge,
+        within 1 px, and the row gap the same in all four (twoway's rows
+        do not move: D_grid_gap's key y)."""
+        d = _files_dir(tmp_path)
+        got = {}
+        for tag, scheme, lg in (("base", "s2color", "cols(2)"),
+                                ("huge", "s2color", "cols(2) colgap(huge)"),
+                                ("zero", "s2color", "cols(2) colgap(zero)"),
+                                ("scheme", "w45g", "cols(2)")):
+            dr_ = tsr._draw(tp._spec(list(_FOUR), {
+                "scheme": scheme, "scheme_dirs": [d]}, {"legend": lg}), mode)
+            got[tag] = _legend_gaps(dr_)
+            assert not _notes(dr_), (tag, _notes(dr_))
+        rows = {v[0] for v in got.values()}
+        assert len(rows) == 1, got
+        for tag, (_row, col, nc, nr) in got.items():
+            assert (nc, nr) == (2, 2), (tag, got[tag])
+            want = self._measured_px("base" if tag == "base" else
+                                     "huge" if tag in ("huge", "scheme")
+                                     else "zero")
+            assert col is not None and abs(col - want) <= 1.0, \
+                (tag, col, want)
+        ys = {t: sorted({v[0]["y"] for v in TRUTH["D_grid_gap"][t][
+            "keys"].values()}) for t in ("base", "huge", "zero")}
+        assert ys["base"] == ys["huge"] == ys["zero"]

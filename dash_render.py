@@ -42995,6 +42995,30 @@ def _dash_legend_layout(fig, legend, calls, words, *, seen=None, key=""):
     return css
 
 
+def _dash_legend_colgap(legend, px):
+    """Give the series *legend* the column gap *px* (4-inch px, a number)
+    as its grid's ``column-gap``, through its own stylesheet tagged
+    ``dash_legend_colgap``; None removes it (WP-45 ST-17 follow-up: a
+    grid of rows and columns, whose Bokeh ``spacing`` is the row gap).
+    Returns the CSS ('' for none)."""
+    from bokeh.models import InlineStyleSheet
+    css = ""
+    try:
+        v = float(px) if px is not None else None
+    except (TypeError, ValueError):
+        v = None
+    if v is not None and math.isfinite(v):
+        v = max(0.0, min(5000.0, v))
+        css = (":host .bk-grid{column-gap:calc(%.4gpx * var(--dash-k, 1));}"
+               % v)
+    legend.stylesheets = [ss for ss in legend.stylesheets
+                          if "dash_legend_colgap" not in (
+                              getattr(ss, "tags", None) or [])] + (
+        [InlineStyleSheet(css=css, tags=["dash_legend_colgap"])]
+        if css else [])
+    return css
+
+
 def _dash_legend_key_order(legend, words):
     """textfirst and stacked on the series *legend* (WP-43 LT-21, ruling
     D69), through the Legend's own stylesheet tagged
@@ -44137,6 +44161,18 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         # the row gap.
         if legend.nrows == 1 and _gc > 1 and _n > 1:
             legend.spacing = _geom["colgap"]
+        # WP-45 ST-17 (follow-up): a grid of rows and columns keeps the
+        # row gap as its spacing and gets the column gap -- colgap() or the
+        # scheme's legend_col_gap -- as the CSS grid's column-gap, through
+        # the Legend's own stylesheet tagged dash_legend_colgap (BokehJS
+        # draws the keys in a .bk-grid whose `gap' is the spacing; px at
+        # dash's 4-inch reference times the width scale's factor).
+        # Measured: a 2 x 2 legend's columns sit colgap apart and its rows
+        # do not move (style_leaf_truth.json D_grid_gap).  Only a number
+        # reaches the CSS.
+        _dash_legend_colgap(legend, _geom["colgap"]
+                            if legend.nrows > 1 and _gc > 1 and _n > 1
+                            else None)
         # A hole in one column (one row) is one row gap (column gap), as
         # twoway's legend_g lays it out (WP-43 LT-17).
         _dash_legend_holes(legend)
@@ -79272,6 +79308,8 @@ class ServerAppBuilder:
                          "_dash_legend_grid_columns",
                          "_dash_margin_px",
                          "_dash_legend_title_block",
+                         # WP-45 ST-17 follow-up: a grid's column gap.
+                         "_dash_legend_colgap",
                          "_dash_legend_hole_sheet", "_dash_legend_holes",
                          "_dash_apply_legend",
                          # Axis titles, Stata's tick grammar, second axes.

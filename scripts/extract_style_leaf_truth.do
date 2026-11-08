@@ -97,6 +97,13 @@ _files = {
     "scheme-w45g.scheme": "#include s2color\ngsize legend_col_gap huge\n",
     "scheme-w45c.scheme": "#include s2color\nclockdir title_position 3\n",
     "scheme-w45b.scheme": "#include s2color\nyesno plabelboxed yes\n",
+    # The boxes' side clocks (the maintainer's follow-up to ST-17).
+    "scheme-w45s3.scheme": "#include s2color\nclockdir subtitle_position 3\n",
+    "scheme-w45s9.scheme": "#include s2color\nclockdir subtitle_position 9\n",
+    "scheme-w45n3.scheme": "#include s2color\nclockdir note_position 3\n",
+    "scheme-w45n9.scheme": "#include s2color\nclockdir note_position 9\n",
+    "scheme-w45c3.scheme": "#include s2color\nclockdir caption_position 3\n",
+    "scheme-w45c9.scheme": "#include s2color\nclockdir caption_position 9\n",
 }
 for _f, _t in _files.items():
     with open(os.path.join(_ud, _f), "w", encoding="utf-8") as _fh:
@@ -208,6 +215,22 @@ _zl_probe D_title_position.probe w45c : `SC', title("T")
 _zl_probe D_title_position.ref s2color : `SC', title("T", position(3))
 _zl_probe D_plabelboxed.probe w45b : `SC' in 1/5, mlabel(make)
 _zl_probe D_plabelboxed.base s2color : `SC' in 1/5, mlabel(make)
+* the subtitle, note and caption at side clocks 3 and 9, from the scheme
+foreach b in subtitle note caption {
+    local t = upper(substr("`b'", 1, 1))
+    local k = substr("`b'", 1, 1)
+    foreach c in 3 9 {
+        _zl_probe D_`b'_`c'.probe w45`k'`c' : `SC', `b'("`t'")
+        _zl_probe D_`b'_`c'.ref s2color : `SC', `b'("`t'", position(`c'))
+    }
+}
+* a 2 x 2 legend's column gap: s2color's (large), colgap(huge), colgap(zero)
+* and the scheme's legend_col_gap huge
+local L4 "twoway (scatter mpg weight) (scatter price weight) (scatter turn weight) (scatter trunk weight)"
+_zl_probe D_grid_gap.base s2color : `L4', legend(cols(2))
+_zl_probe D_grid_gap.huge s2color : `L4', legend(cols(2) colgap(huge))
+_zl_probe D_grid_gap.zero s2color : `L4', legend(cols(2) colgap(zero))
+_zl_probe D_grid_gap.scheme w45g : `L4', legend(cols(2))
 
 * ---- U: an unknown scheme() (ST-16) ----
 _zl_probe U_unknown.probe nosuchscheme : `SC'
@@ -326,6 +349,23 @@ for tag in ("probe", "base"):
 _pair("D_plabelboxed", "D_plabelboxed.probe", "D_plabelboxed.base")
 res["D_plabelboxed"]["same_as_base"] = res["D_plabelboxed"].pop(
     "same_as_reference")
+for b in ("subtitle", "note", "caption"):
+    for c in ("3", "9"):
+        k = "D_%s_%s" % (b, c)
+        _pair(k, k + ".probe", k + ".ref")
+        res[k]["text"] = _texts(recs[k + ".probe"]["svg"], b[0].upper())
+_keys4 = ("Mileage (mpg)", "Price", "Turn circle (ft.)",
+          "Trunk space (cu. ft.)")
+res["D_grid_gap"] = {"cmd": recs["D_grid_gap.base"]["cmd"]}
+for tag in ("base", "huge", "zero", "scheme"):
+    r = recs["D_grid_gap." + tag]
+    res["D_grid_gap"][tag] = {
+        "rc": r["rc"], "notes": r["notes"],
+        "keys": {w: _texts(r["svg"], w) for w in _keys4}}
+res["D_grid_gap"]["scheme_same_as_huge"] = int(
+    recs["D_grid_gap.scheme"]["sha"] == recs["D_grid_gap.huge"]["sha"])
+# the key symbols' x: every <circle>/marker path's x in the legend band
+# is not separable by text; the text x of each key is what is compared.
 up, us = recs["U_unknown.probe"], recs["U_unknown.s2color"]
 res["U_unknown"] = {"cmd": up["cmd"], "rc": up["rc"], "notes": up["notes"],
                     "same_as_s2color": int(up["sha"] == us["sha"])}

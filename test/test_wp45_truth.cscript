@@ -736,6 +736,28 @@ def _w45s03_svgsame(a, b):
         with open(p, "rb") as fh:
             return hashlib.sha256(fh.read()).hexdigest()
     Macro.setGlobal("w45s03_same", "1" if h(a) == h(b) else "0")
+
+def _w45s03_colgap(sp, dp, app):
+    """The series legend's column gap (its dash_legend_colgap
+    stylesheet's px) and row gap (its spacing) in the saved page and the
+    served app: globals w45s03_cg1/2 and w45s03_rg1/2 (-1 for none)."""
+    import re
+    from sfi import Macro
+    from bokeh.models import Legend
+    (saved, served), _n = _w45s03_models(sp, dp, app)
+    for i, models in ((1, saved), (2, served)):
+        cg, rg = -1.0, -1
+        for m in models:
+            if isinstance(m, Legend) and m.items:
+                rg = m.spacing
+                for ss in m.stylesheets or []:
+                    if "dash_legend_colgap" in (getattr(ss, "tags", None)
+                                                or []):
+                        g = re.search(r"column-gap:calc\(([0-9.]+)px",
+                                      ss.css)
+                        cg = float(g.group(1)) if g else -1.0
+        Macro.setGlobal("w45s03_cg%d" % i, "%g" % cg)
+        Macro.setGlobal("w45s03_rg%d" % i, str(rg))
 end
 
 // _w45s03_tw id cmd_a | cmd_b: twoway draws cmd_a and cmd_b (data sorted
@@ -1056,6 +1078,63 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
         capture erase "`s03d'/`f'"
     }
     capture rmdir "`s03d'"
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+* ==== S03 ST-17: a grid legend's column gap ====
+local only : env WP45_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local s03d "`w45_work'/s03g"
+    local s03u "`w45_work'/s03gu"
+    capture mkdir "`s03d'"
+    capture mkdir "`s03u'"
+    python: import __main__ as _w45m; _w45m._w45s03_files("`s03u'")
+    quietly adopath ++ "`s03u'"
+
+    // ------------------------------------------------------------
+    // Q4503-7: a 2 x 2 legend.  twoway draws a scheme's legend_col_gap
+    // huge as colgap(huge) (live, SVG equality); dash gives the legend's
+    // grid twoway's column gap -- 18.67 px under s2color, 26.67 px under
+    // colgap(huge) or legend_col_gap huge, from D_grid_gap's key x at 96
+    // px an inch -- within 1 px, saved and served, the row gap unchanged.
+    // ------------------------------------------------------------
+    local s03l "(scatter mpg weight) (scatter price weight) (scatter turn weight) (scatter trunk weight)"
+    _w45s03_tw "`s03d'" `s03l', legend(cols(2)) scheme(w45g) | `s03l', legend(cols(2) colgap(huge)) scheme(s2color)
+    local s03_ok = ("${w45s03_twrc}" == "0 0" & ${w45s03_same} == 1)
+    _w45_expect Q4503-7 "(`s03_ok')" "twoway legend_col_gap huge vs colgap(huge): rc ${w45s03_twrc}, same ${w45s03_same}"
+    local s03_rows ""
+    foreach pair in "s2color|cols(2)|18.67" "s2color|cols(2) colgap(huge)|26.67" "w45g|cols(2)|26.67" {
+        gettoken s03s rest : pair, parse("|")
+        local rest = substr("`rest'", 2, .)
+        gettoken s03g s03w : rest, parse("|")
+        local s03w = substr("`s03w'", 2, .)
+        _w45s03_dash "`s03d'" w45s03p scatter mpg price turn trunk weight, legend(`s03g') scheme(`s03s')
+        _w45_expect Q4503-7 "(${w45s03_drc} == 0)" "dash rc ${w45s03_drc}: `s03s' `s03g'"
+        if !${w45s03_drc} {
+            python: import __main__ as _w45m; _w45m._w45s03_colgap("`s03d'/w45s03p.json", "`s03d'/w45s03p_d.json", "`s03d'/a.py")
+            local s03_ok = (abs(${w45s03_cg1} - `s03w') <= 1 & abs(${w45s03_cg2} - `s03w') <= 1)
+            _w45_expect Q4503-7 "(`s03_ok')" "`s03s' `s03g': column gap saved ${w45s03_cg1}, served ${w45s03_cg2}, twoway `s03w'"
+            local s03_rows "`s03_rows' ${w45s03_rg1} ${w45s03_rg2}"
+        }
+    }
+    local s03_rows : list uniq s03_rows
+    _w45_expect Q4503-7 "(`: word count `s03_rows'' == 1)" "row gaps: `s03_rows'"
+    _w45_done Q4503-7 "a grid legend's column gap is twoway's, saved and served, the row gap unchanged"
+
+    quietly adopath - "`s03u'"
+    capture dash clear
+    macro drop w45s03_*
+    foreach f in tw1.svg tw2.svg w45s03p.json w45s03p_d.json a.py {
+        capture erase "`s03d'/`f'"
+    }
+    local s03_left : dir "`s03u'" files "*"
+    foreach f of local s03_left {
+        capture erase "`s03u'/`f'"
+    }
+    capture rmdir "`s03d'"
+    capture rmdir "`s03u'"
     display as text "S03 end " c(current_date) " " c(current_time)
 }
 * ==== end S03 ====

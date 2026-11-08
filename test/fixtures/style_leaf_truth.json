@@ -1,4 +1,36 @@
 {
+  "D_caption_3": {
+    "cmd": "scatter mpg weight, caption(\"C\")",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, caption(\"C\", position(3))",
+    "same_as_reference": 1,
+    "text": [
+      {
+        "fill": "#000000",
+        "font_size": "99.99px",
+        "transform": null,
+        "x": "3804.57",
+        "y": "1314.90"
+      }
+    ]
+  },
+  "D_caption_9": {
+    "cmd": "scatter mpg weight, caption(\"C\")",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, caption(\"C\", position(9))",
+    "same_as_reference": 1,
+    "text": [
+      {
+        "fill": "#000000",
+        "font_size": "99.99px",
+        "transform": null,
+        "x": "155.31",
+        "y": "1314.90"
+      }
+    ]
+  },
   "D_clockdir_p": {
     "cmd": "scatter mpg weight in 1/5, mlabel(make)",
     "notes": [],
@@ -12,6 +44,178 @@
     "rc": 0,
     "ref_cmd": "twoway (scatter mpg weight in 1/5, mlabel(make)) (scatter price weight in 1/5, mlabel(make) yaxis(2) mlabposition(9)),",
     "same_as_reference": 1
+  },
+  "D_grid_gap": {
+    "base": {
+      "keys": {
+        "Mileage (mpg)": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "1204.34",
+            "y": "2546.49"
+          }
+        ],
+        "Price": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "2124.54",
+            "y": "2546.49"
+          }
+        ],
+        "Trunk space (cu. ft.)": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "2124.54",
+            "y": "2686.46"
+          }
+        ],
+        "Turn circle (ft.)": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "1204.34",
+            "y": "2686.46"
+          }
+        ]
+      },
+      "notes": [],
+      "rc": 0
+    },
+    "cmd": "twoway (scatter mpg weight) (scatter price weight) (scatter turn weight) (scatter trunk weight), legend(cols(2))",
+    "huge": {
+      "keys": {
+        "Mileage (mpg)": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "1174.39",
+            "y": "2546.49"
+          }
+        ],
+        "Price": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "2154.49",
+            "y": "2546.49"
+          }
+        ],
+        "Trunk space (cu. ft.)": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "2154.49",
+            "y": "2686.46"
+          }
+        ],
+        "Turn circle (ft.)": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "1174.39",
+            "y": "2686.46"
+          }
+        ]
+      },
+      "notes": [],
+      "rc": 0
+    },
+    "scheme": {
+      "keys": {
+        "Mileage (mpg)": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "1174.39",
+            "y": "2546.49"
+          }
+        ],
+        "Price": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "2154.49",
+            "y": "2546.49"
+          }
+        ],
+        "Trunk space (cu. ft.)": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "2154.49",
+            "y": "2686.46"
+          }
+        ],
+        "Turn circle (ft.)": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "1174.39",
+            "y": "2686.46"
+          }
+        ]
+      },
+      "notes": [],
+      "rc": 0
+    },
+    "scheme_same_as_huge": 1,
+    "zero": {
+      "keys": {
+        "Mileage (mpg)": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "1274.38",
+            "y": "2546.49"
+          }
+        ],
+        "Price": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "2054.50",
+            "y": "2546.49"
+          }
+        ],
+        "Trunk space (cu. ft.)": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "2054.50",
+            "y": "2686.46"
+          }
+        ],
+        "Turn circle (ft.)": [
+          {
+            "fill": "#000000",
+            "font_size": "99.99px",
+            "transform": null,
+            "x": "1274.38",
+            "y": "2686.46"
+          }
+        ]
+      },
+      "notes": [],
+      "rc": 0
+    }
   },
   "D_legend_col_gap": {
     "base_keys": [
@@ -61,12 +265,76 @@
     "same_as_base": 0,
     "same_as_reference": 1
   },
+  "D_note_3": {
+    "cmd": "scatter mpg weight, note(\"N\")",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, note(\"N\", position(3))",
+    "same_as_reference": 1,
+    "text": [
+      {
+        "fill": "#000000",
+        "font_size": "79.94px",
+        "transform": null,
+        "x": "3812.86",
+        "y": "1310.89"
+      }
+    ]
+  },
+  "D_note_9": {
+    "cmd": "scatter mpg weight, note(\"N\")",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, note(\"N\", position(9))",
+    "same_as_reference": 1,
+    "text": [
+      {
+        "fill": "#000000",
+        "font_size": "79.94px",
+        "transform": null,
+        "x": "147.01",
+        "y": "1310.89"
+      }
+    ]
+  },
   "D_plabelboxed": {
     "cmd": "scatter mpg weight in 1/5, mlabel(make)",
     "notes": [],
     "rc": 0,
     "ref_cmd": "scatter mpg weight in 1/5, mlabel(make)",
     "same_as_base": 1
+  },
+  "D_subtitle_3": {
+    "cmd": "scatter mpg weight, subtitle(\"S\")",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, subtitle(\"S\", position(3))",
+    "same_as_reference": 1,
+    "text": [
+      {
+        "fill": "#000000",
+        "font_size": "110.01px",
+        "transform": null,
+        "x": "3804.32",
+        "y": "1316.96"
+      }
+    ]
+  },
+  "D_subtitle_9": {
+    "cmd": "scatter mpg weight, subtitle(\"S\")",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, subtitle(\"S\", position(9))",
+    "same_as_reference": 1,
+    "text": [
+      {
+        "fill": "#000000",
+        "font_size": "110.01px",
+        "transform": null,
+        "x": "155.55",
+        "y": "1316.96"
+      }
+    ]
   },
   "D_textboxstyle": {
     "base_title": [
@@ -284,8 +552,8 @@
     "same_as_s2color": 1
   },
   "_meta": {
-    "born_date": "14 Oct 2026",
-    "dash_commit": "3390ae51e8d1f0c0629a92ba2ffedf1ebf7e8d19",
+    "born_date": "04 Nov 2026",
+    "dash_commit": "ab4859756be18cef411e66c09ea2b789ee240496",
     "extracted": " 8 Nov 2026",
     "source": "scripts/extract_style_leaf_truth.do",
     "stata_version": "19.5"
@@ -304,9 +572,15 @@
     "margin-zqn.style": "set gleft   2\nset gright  4\nset gtop    6\nset gbottom 8\n",
     "scheme-w45b.scheme": "#include s2color\nyesno plabelboxed yes\n",
     "scheme-w45c.scheme": "#include s2color\nclockdir title_position 3\n",
+    "scheme-w45c3.scheme": "#include s2color\nclockdir caption_position 3\n",
+    "scheme-w45c9.scheme": "#include s2color\nclockdir caption_position 9\n",
     "scheme-w45g.scheme": "#include s2color\ngsize legend_col_gap huge\n",
+    "scheme-w45n3.scheme": "#include s2color\nclockdir note_position 3\n",
+    "scheme-w45n9.scheme": "#include s2color\nclockdir note_position 9\n",
     "scheme-w45p.scheme": "#include s2color\nclockdir p 9\n",
     "scheme-w45q.scheme": "#include s2color\nclockdir p2 9\n",
+    "scheme-w45s3.scheme": "#include s2color\nclockdir subtitle_position 3\n",
+    "scheme-w45s9.scheme": "#include s2color\nclockdir subtitle_position 9\n",
     "scheme-w45t.scheme": "#include s2color\ntextboxstyle title subheading\n",
     "symbolsize-zqs.style": "set val     5\nset sztype  relative\n",
     "textboxstyle-zqt.style": "set angle      default\nset size       huge\nset color      red\nset horizontal scheme heading\nset vertical   scheme heading\nset margin     scheme heading\nset drawbox    scheme textbox\nset fillcolor  scheme textbox\nset linestyle  scheme textbox\nset boxmargin  scheme textbox\n"

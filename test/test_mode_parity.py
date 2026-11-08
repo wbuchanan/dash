@@ -1633,6 +1633,12 @@ CORPUS = [
     # WP-45 ST-17: a user scheme's clockdir p, alike in both modes.
     _case("scheme clockdir p 9", [plot_for("scatter", {"mlabel": "mpg"})],
           {"scheme": "w45p", "scheme_dirs": [_S03_DIR]}),
+    # WP-45 ST-17 follow-up: a 2 x 2 legend's column gap, alike in both
+    # modes.
+    _case("legend grid colgap(huge)",
+          [plot_for("scatter", {}, yvar=v)
+           for v in ("mpg", "price", "foreign", "rep")],
+          go={"legend": "cols(2) colgap(huge)"}),
     # ---- every plot type, bare -------------------------------------------
     *[_case(t, [plot_for(t)]) for t in (
         "scatter", "line", "connected", "area", "bar", "spike", "lfit",

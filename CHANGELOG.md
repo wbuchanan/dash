@@ -1014,6 +1014,7 @@ and now matches Stata.
 
 ### Fixed in WP-45
 
+- A legend of several rows and columns draws colgap() and the scheme's legend_col_gap as the gap between its columns, its rows where they were: legend(cols(2) colgap(huge)) on four plots puts the columns 27 px apart at dash's 4-inch reference (was the 5 px row gap, and 5 px where twoway draws 19 under s2color's own legend_col_gap) (WP-45, ST-17)
 - A scheme's clockdir p and p#, textboxstyle title, subtitle and caption, legend_col_gap and title clocks 2-4 and 8-10 are drawn: clockdir p 9 draws marker labels at 9 o'clock and clockdir title_position 3 the title right of the plot (were drawn at 3 and above it) (WP-45, ST-17)
 - A scheme-economist.scheme placed before BASE with adopath ++ is used, as twoway uses it (was dash's economist translation) (WP-45, ST-10)
 - mcolor(mine) with color-mine.style on the ado-path draws its colour (was black with a note), and tstyle(mine) and mlabtextstyle(mine) with a textboxstyle-mine.style draw its size and colour (WP-45, ST-15)

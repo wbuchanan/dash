@@ -5293,9 +5293,9 @@ keys as in {cmd:twoway}; their {cmd:position()}, {cmd:justification()},
 those {cmd:twoway} draws as without them are taken, and the rest named in
 the note (see {it:The legend's title} under
 {help dash##differences:Differences from twoway} for three forms drawn
-otherwise); {cmd:colgap()} is the gap between keys
-in one row, as {cmd:twoway} draws it, and {cmd:rowgap()} the gap between
-rows (a legend of several rows and columns has one gap, the row gap);
+otherwise); {cmd:colgap()} is the gap between columns, as
+{cmd:twoway} draws it, and {cmd:rowgap()} the gap between rows, a legend
+of several rows and columns keeping both;
 {cmd:span} places a legend beside the plot along its side on the whole
 graph instead of the plot region, as {cmd:twoway} draws it -- at 6 or 12
 o'clock centred on the graph region's width, at 3 or 9 on its height,
@@ -7256,8 +7256,8 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     {cmd:legend_key_gap}, {cmd:legend_row_gap}), its inner and outer
     margins ({cmd:margin legend}, {cmd:margin legend_boxmargin}) and
     {cmd:yesno legend_col_first}; {cmd:yesno legend_span} is
-    {cmd:legend(span)}'s default; {cmd:gsize legend_col_gap} is carried
-    and read, not drawn.{p_end}
+    {cmd:legend(span)}'s default; {cmd:gsize legend_col_gap} is the gap
+    between a legend's columns, as {cmd:legend(colgap())} draws it.{p_end}
 
 {phang2}{ul:KPI cards.}  A card is drawn as the scheme's legend box: its
     background is {cmd:color legend}, its border {cmd:color legend_line}
@@ -7416,7 +7416,7 @@ when {cmd:mlabposition()} does not ({cmd:clockdir p 9} draws as
 {cmd:caption} name the text box style those boxes are drawn in
 ({cmd:textboxstyle title subheading} draws the title as
 {cmd:size(medium) color(black)}), and {cmd:gsize legend_col_gap} spaces a
-one-row legend's columns as {cmd:legend(colgap())} does.
+legend's columns as {cmd:legend(colgap())} does.
 {cmd:yesno plabelboxed} draws nothing on a {cmd:twoway} graph (measured:
 the same picture as {cmd:s2color}'s), so {cmd:dash} draws nothing for it
 either.  Any other directive {cmd:dash} does not draw yet is read
