@@ -451,6 +451,7 @@ GENERATORS = {
     "stata_ticks_truth.json": "scripts/extract_stata_ticks_truth.do",
     "style_files_truth.json": "scripts/extract_style_files_truth.do",
     "style_name_truth.json": "scripts/extract_style_name_truth.do",
+    "style_words_truth.json": "scripts/extract_style_words_truth.do",
     "stylelist_truth.json": "scripts/extract_stylelist_truth.do",
     "subopt_abbrev_truth.json": "scripts/extract_subopt_abbrev_truth.do",
     "svg_truth_smoke.json": "scripts/extract_svg_truth_smoke.do",

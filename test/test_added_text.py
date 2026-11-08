@@ -134,13 +134,20 @@ class TestTheTables:
     def test_they_are_the_fixtures(self):
         comp = {k: v for k, v in _FIX["_meta"]["compass"].items() if v}
         assert set(dr._DASH_ADDED_TEXT_PLACE) == set(comp.values())
-        # Mata's synonym table (_dash_at_place) is the fixture's.
+        # Mata's _dash_at_place reads through compass2dir's one table,
+        # _dash_style_word (Flipped, WP-45 ST-1: its own synonym table is
+        # gone; the Python twin of that table gives the fixture's answer for
+        # every spelling, and cscript Q4502-3 pins the Mata twin row by row).
         with open(_MATA, encoding="utf-8") as fh:
             src = fh.read()
         body = src[src.index("string scalar _dash_at_place("):]
         body = body[:body.index("\n}\n")]
-        pairs = dict(re.findall(r'"([a-z0-9]+)", *"([a-z]+)"', body))
-        assert pairs == comp
+        assert 'return(_dash_style_word("compass2dir", p))' in body
+        for k, v in comp.items():
+            assert dr._dash_style_word("compass2dir", k) == v, k
+        for k, v in _FIX["_meta"]["compass"].items():
+            if not v:
+                assert dr._dash_style_word("compass2dir", k) == "", k
         # The anchors put the text where twoway measured it.
         for canon, anchor in dr._DASH_ADDED_TEXT_PLACE.items():
             assert _ANCHOR_DIR[anchor] == canon, canon

@@ -3255,6 +3255,16 @@ CORPUS = [
               "xlabel": ", style(major_horiz_nolabel) tstyle(bogus)"}),
     _case("ylabel grid nogextend (WP-44 44-02)", [_sc()],
           go={"ylabel": ", grid nogextend", "xlabel": ", grid nogextend"}),
+    # WP-45 ST-1: style words read as twoway's classes read them, by the
+    # renderer's _dash_style_word in both modes (connect() is read by
+    # dash.ado: cscript Q4502-2).
+    _case("title position(bottom) (WP-45 ST-1)", [_sc()],
+          go={"title": '"TT", position(bottom)'}),
+    _case("legend ring(in) (WP-45 ST-1)",
+          [_sc(), plot_for("scatter", yvar="price")],
+          go={"legend": "ring(in) position(1)"}),
+    _case("mlabposition(left) mlabangle(v) (WP-45 ST-1)",
+          [_sc(mlabel="foreign", mlabposition="left", mlabangle="v")]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

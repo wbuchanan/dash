@@ -407,6 +407,7 @@ FUNCTIONS = {
  '_dash_legend_box.<locals>._style': 'test/test_legend_title_style.py::TestTitleStyle::test_tstyle',
  '_dash_legend_text_box': 'test/test_legend_title_style.py::TestTitleStyle::test_scheme_style',
  '_dash_compass_dir': 'test/test_legend_place.py::TestCompassReader::test_each_spelling',
+ '_dash_style_word': 'test/test_style_words.py::TestTheReaders::test_python_reader',
  '_dash_legend_holes': 'test/test_legend_place.py::TestHolesOneColumn::test_track_sheet',
  '_dash_legend_hole_sheet': 'test/test_legend_place.py::TestHolesOneColumn::test_by_cell',
  '_dash_legend_key_text': 'test/test_legend_box.py::TestKeyText::test_frames',

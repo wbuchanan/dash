@@ -7819,11 +7819,125 @@ _DASH_ANGLESTYLES = {
 }
 
 
+#: The style classes twoway reads a style word through (WP-45 ST-1,
+#: D-45-02.a), each as its .class file's ``_unabbrev`` reads a word: the
+#: ``syntax`` option names in the class's order, each ``(name, minimum,
+#: canonical)`` -- the minimum is the option's capital letters, and a typed
+#: word is taken when it is lower case and a prefix of *name* at least
+#: *minimum* long (Stata's option abbreviation) -- and the canonical name
+#: the class draws for it.  The canonicals: compass2dir n ne e se s sw w nw
+#: c; tb_orientstyle its four names; clockdir 0-12 as text; gridringstyle
+#: the ring, 0 or 1; anglestyle degrees as text; connectstyle direct,
+#: ascending, stairstep, stepstair (twoway's stairstep_up) or none.
+#: Measured word by word: test/fixtures/style_words_truth.json
+#: (scripts/extract_style_words_truth.do).  dash_parse.mata's
+#: _dash_style_word holds the same tables.
+_DASH_STYLE_NAMES = {
+    "compass2dir": (
+        ("north", 1, "n"), ("south", 1, "s"), ("east", 1, "e"),
+        ("west", 1, "w"), ("nwest", 2, "nw"), ("neast", 2, "ne"),
+        ("swest", 2, "sw"), ("seast", 2, "se"), ("center", 1, "c"),
+        ("top", 1, "n"), ("bottom", 1, "s"), ("left", 1, "w"),
+        ("right", 1, "e")),
+    "tb_orientstyle": (
+        ("horizontal", 3, "horizontal"), ("vertical", 4, "vertical"),
+        ("rhorizontal", 4, "rhorizontal"), ("rvertical", 5, "rvertical")),
+    "clockdir": (
+        ("center", 1, "0"), ("top", 1, "12"), ("bottom", 1, "6"),
+        ("left", 1, "9"), ("right", 1, "3")),
+    "gridringstyle": (("inside", 1, "0"), ("outside", 1, "1")),
+    "anglestyle": (
+        ("horizontal", 1, "0"), ("vertical", 1, "90"),
+        ("rhorizontal", 2, "180"), ("rvertical", 2, "270")),
+    "connectstyle": (
+        ("connected", 1, "direct"), ("direct", 1, "direct"),
+        ("line", 1, "direct"), ("stairstep", 1, "stairstep"),
+        ("upstairstep", 1, "stepstair"), ("stepstair", 4, "stepstair"),
+        ("ascending", 1, "ascending"), ("none", 1, "none"),
+        ("i", 1, "none")),
+}
+
+#: The words each class takes exactly, whatever its option names say
+#: (D-45-02.a): clockdir's numbers 0-12 as written (its style files; 03
+#: and 3.0 are noted), anglestyle's 45 and 270, connectstyle's L
+#: (ascending; l is Line), J (stairstep) and its style file stairstep_up.
+_DASH_STYLE_EXACT = {
+    "clockdir": {str(_k): str(_k) for _k in range(13)},
+    "anglestyle": {"45": "45", "270": "270"},
+    "connectstyle": {"L": "ascending", "J": "stairstep",
+                     "stairstep_up": "stepstair"},
+}
+
+#: compass2dir's words of at most two characters that no option name took
+#: (its ``wc == 0`` branch): the capitals N S E W NE NW SE SW and T B R L,
+#: then a clock number 0-12 (read as a number: 03 is 3) by the clock's
+#: compass point.
+_DASH_COMPASS_CAPS = {"N": "n", "S": "s", "E": "e", "W": "w",
+                      "NE": "ne", "NW": "nw", "SE": "se", "SW": "sw",
+                      "T": "n", "B": "s", "R": "e", "L": "w"}
+_DASH_COMPASS_CLOCK = ("c", "ne", "ne", "e", "se", "se", "s", "sw", "sw",
+                       "w", "nw", "nw", "n")
+
+#: compass2dir's canonical letters by their full names, as 43-02's
+#: _dash_compass_dir answers them (D-45-02.d).
+_DASH_COMPASS_FULL = {"n": "north", "ne": "neast", "e": "east",
+                      "se": "seast", "s": "south", "sw": "swest",
+                      "w": "west", "nw": "nwest", "c": "center"}
+
+
+def _dash_style_word(cls, w):
+    """The canonical name style class *cls* reads the word *w* as, or ""
+    for a word the class does not take (WP-45 ST-1, D-45-02.a).
+
+    *cls* is one of compass2dir, tb_orientstyle, clockdir, gridringstyle,
+    anglestyle and connectstyle (:data:`_DASH_STYLE_NAMES`).  The word,
+    blanks around it dropped, is first one of the class's exact words
+    (:data:`_DASH_STYLE_EXACT`), then a lower-case abbreviation of one of
+    its option names in the class's order, at least the option's minimum
+    long; for compass2dir, a word of at most two characters no name took
+    is one of its capitals or a clock number 0-12.  Case counts: ``nor``
+    is north, ``NOR``, ``Ne`` and ``Vertical`` are nothing, as twoway
+    notes them.  A fixed table read by value: no user text reaches a
+    pattern.
+
+    Args:
+        cls: The style class's name.
+        w: The word as typed (None reads as "").
+
+    Returns:
+        The canonical name (see :data:`_DASH_STYLE_NAMES`), or "".
+    """
+    names = _DASH_STYLE_NAMES.get(cls)
+    if names is None:
+        return ""
+    t = str(w if w is not None else "").strip()
+    if not t or any(c.isspace() for c in t):
+        return ""
+    exact = _DASH_STYLE_EXACT.get(cls, {})
+    if t in exact:
+        return exact[t]
+    for name, minimum, canon in names:
+        if len(t) >= minimum and name.startswith(t):
+            return canon
+    if cls != "compass2dir" or len(t) > 2:
+        return ""
+    if t in _DASH_COMPASS_CAPS:
+        return _DASH_COMPASS_CAPS[t]
+    try:
+        v = float(t)
+    except ValueError:
+        return ""
+    if math.isfinite(v) and v == int(v) and 0 <= v <= 12:
+        return _DASH_COMPASS_CLOCK[int(v)]
+    return ""
+
+
 def _dash_anglestyle_degrees(raw) -> "float | None":
     """Degrees, counter-clockwise, for a Stata anglestyle, or ``None``.
 
-    An anglestyle is a name in :data:`_DASH_ANGLESTYLES` or a number of
-    degrees from -360 to 360, twoway's own bounds (measured: mlabangle(400)
+    An anglestyle is a name in :data:`_DASH_ANGLESTYLES`, an abbreviation
+    anglestyle.class reads (``v``, ``rh``, ``rver``: :func:`_dash_style_word`,
+    WP-45 ST-5) or a number of degrees from -360 to 360, twoway's own bounds (measured: mlabangle(400)
     is "textangle must be between -360.000 and 360.000", r(198), where the
     label is drawn).  Blanks around the value are dropped, as Stata drops
     them, and a number is read only in the plain decimal or exponent
@@ -7845,6 +7959,10 @@ def _dash_anglestyle_degrees(raw) -> "float | None":
         return None
     if text in _DASH_ANGLESTYLES:
         return _DASH_ANGLESTYLES[text]
+    # anglestyle's abbreviations, h v rh rv and longer (WP-45 ST-5).
+    word = _dash_style_word("anglestyle", text)
+    if word:
+        return float(word)
     if len(text) > 32 or not re.fullmatch(
             r"[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?", text):
         return None
@@ -7864,7 +7982,8 @@ def _parse_axis_angle(raw: str) -> "float | None":
     string and reads the value as twoway's axis labels read it (WP-30
     P1.18a, measured in StataNow 19.5): every anglestyle name of
     :data:`_DASH_ANGLESTYLES` by its full name, a number from -360 to 360,
-    and twoway's axis abbreviations ``h`` to ``horizontal`` (0), ``v`` to
+    and anglestyle's abbreviations (:func:`_dash_style_word`, as every
+    anglestyle site reads them) ``h`` to ``horizontal`` (0), ``v`` to
     ``vertical`` (90), ``rh`` to ``rhorizontal`` (180) and ``rv`` to
     ``rvertical`` (270) -- in lower case only.  ``Vertical``, ``r``,
     ``stacked``, ``forty`` and ``45deg`` are no angle (twoway notes them and
@@ -7881,15 +8000,9 @@ def _parse_axis_angle(raw: str) -> "float | None":
     if not m:
         return None
     val = m.group(1).strip()
+    # The h/v/rh/rv abbreviations are anglestyle's own, read by
+    # _dash_anglestyle_degrees for every site (WP-45 ST-5).
     deg = _dash_anglestyle_degrees(val)
-    if deg is None and val:
-        for word, minimum, d in (("horizontal", 1, 0.0),
-                                 ("vertical", 1, 90.0),
-                                 ("rhorizontal", 2, 180.0),
-                                 ("rvertical", 2, 270.0)):
-            if len(val) >= minimum and word.startswith(val):
-                deg = d
-                break
     if deg is None:
         return None
     return _math.radians(deg)
@@ -18782,10 +18895,13 @@ class GlyphMapper:
         # point, as twoway puts it (_MLABEL_CLOCK).  A position twoway does
         # not recognise is named and drawn at 12 o'clock, where twoway draws
         # it; dash drew it at 3, and 03 at 3 without a word.
+        # The position is read as twoway's clockdir reads it (WP-45 ST-3):
+        # left is 9, t 12.
         pos = str(options.get("mlabposition", _mls_pos or "3")
                   or _mls_pos or "3").strip()
-        if pos in GlyphMapper._MLABEL_CLOCK_NAMES:
-            p = int(pos)
+        _pw = _dash_style_word("clockdir", pos)
+        if _pw in GlyphMapper._MLABEL_CLOCK_NAMES:
+            p = int(_pw)
         else:
             _dash_style_note("mlabposition", pos, "clock position",
                              "12 (above)")
@@ -41266,52 +41382,18 @@ _DASH_BPLACEMENT_LOCATION = {
     "c": "center", "center": "center",
 }
 
-#: compass2dir.class's names, each with its shortest abbreviation
-#: (syntax's capitals: North, NWest, Top ...), in its syntax order; top,
-#: bottom, left and right stand for north, south, west and east.
-_DASH_COMPASS_NAMES = (
-    ("north", "n", "north"), ("south", "s", "south"), ("east", "e", "east"),
-    ("west", "w", "west"), ("nwest", "nw", "nwest"),
-    ("neast", "ne", "neast"), ("swest", "sw", "swest"),
-    ("seast", "se", "seast"), ("center", "c", "center"),
-    ("top", "t", "north"), ("bottom", "b", "south"), ("left", "l", "west"),
-    ("right", "r", "east"))
-_DASH_COMPASS_CAPS = {"N": "north", "S": "south", "E": "east", "W": "west",
-                      "NE": "neast", "NW": "nwest", "SE": "seast",
-                      "SW": "swest", "T": "north", "B": "south",
-                      "R": "east", "L": "west"}
-_DASH_COMPASS_CLOCK = ("center", "neast", "neast", "east", "seast", "seast",
-                       "south", "swest", "swest", "west", "nwest", "nwest",
-                       "north")
-
-
 def _dash_compass_dir(text):
     """The compass direction twoway reads *text* as, by its full name
-    (``north`` .. ``center``), or None (WP-43 LT-4): a port of
-    compass2dir.class ``_unabbrev``.  An abbreviation of a lower-case name
-    (``nor``, ``nea``, ``t``, ``rig``; never lower-cased, so ``NOR`` is
-    none); when no name matched and the text is two characters at most,
-    the capitals N S E W NE NW SE SW and T B R L, else a clock number
-    0-12 (``3`` east, ``12`` north; ``3.0`` is three characters, none).
-    twoway notes any other text and draws its default attributes, east
-    (legend_place_truth.json bp_in_*, bp_out_*)."""
-    t = str(text if text is not None else "").strip()
-    if not t or any(c.isspace() for c in t):
-        return None
-    for name, short, full in _DASH_COMPASS_NAMES:
-        if len(t) >= len(short) and name.startswith(t):
-            return full
-    if len(t) > 2:
-        return None
-    if t in _DASH_COMPASS_CAPS:
-        return _DASH_COMPASS_CAPS[t]
-    try:
-        v = float(t)
-    except ValueError:
-        return None
-    if math.isfinite(v) and v == int(v) and 0 <= v <= 12:
-        return _DASH_COMPASS_CLOCK[int(v)]
-    return None
+    (``north`` .. ``center``), or None (WP-43 LT-4): compass2dir.class
+    ``_unabbrev`` as :func:`_dash_style_word` ports it (WP-45 ST-1,
+    D-45-02.d) -- an abbreviation of a lower-case name (``nor``, ``nea``,
+    ``t``, ``rig``; never lower-cased, so ``NOR`` is none); when no name
+    matched and the text is two characters at most, the capitals N S E W
+    NE NW SE SW and T B R L, else a clock number 0-12 (``3`` east, ``12``
+    north; ``3.0`` is three characters, none).  twoway notes any other
+    text and draws its default attributes, east (legend_place_truth.json
+    bp_in_*, bp_out_*)."""
+    return _DASH_COMPASS_FULL.get(_dash_style_word("compass2dir", text))
 
 
 #: legend(top), legend(bottom), legend(left) and legend(right) are not
@@ -43576,18 +43658,22 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     #    ring0_default, bplacement).  The bare words top, bottom, left and
     #    right are not placements: twoway refuses them, and so does
     #    dash.ado; one in a spec is named above, as a sub-option dash does
-    #    not implement.  twoway's clockdir names are 0..12 as written: 13,
-    #    06 and 3.0 draw the default (Stata prints twoway's note).
-    m_pos = _dash_legend_arg(_calls, ("position",), r"([0-9]|1[0-2])")
+    #    not implement.  position() is read as twoway's clockdir reads it
+    #    (WP-45 ST-3, _dash_style_word): 0..12 as written, or an
+    #    abbreviation of center, top, bottom, left or right; 13, 06 and 3.0
+    #    draw the default (Stata prints twoway's note).
+    m_pos = _dash_style_word("clockdir",
+                             _dash_legend_arg(_calls, ("position",)) or "")
     # ring(): a real number, or an abbreviation of inside or outside
-    # (WP-43 LT-9, _dash_legend_ring); anything else the scheme's ring.
+    # (WP-43 LT-9; gridringstyle's reading, WP-45 ST-4: _dash_legend_ring);
+    # anything else the scheme's ring.
     _ring_arg = _dash_legend_arg(_calls, ("ring",))
     _ring_v = _dash_legend_ring(_ring_arg) if _ring_arg else None
     try:
         _sclock = int(chrome.get("legend_position"))
     except (TypeError, ValueError):
         _sclock = None
-    clock = int(m_pos.group(1)) if m_pos else (
+    clock = int(m_pos) if m_pos else (
         _sclock if _sclock is not None else 6)
     try:
         ring = (_ring_v if _ring_v is not None
@@ -60950,9 +61036,10 @@ def _dash_tb_orient(word):
     rotate(-90)) pi/2, rvertical -pi/2, rhorizontal pi
     (axis_title_truth.json ax13_or_*) -- or None for a word twoway does
     not read.  The one lookup of :data:`_DASH_ADDED_TEXT_ORIENT` an axis
-    title makes (WP-44 AX-13)."""
-    return _DASH_ADDED_TEXT_ORIENT.get(str(word if word is not None
-                                           else "").strip())
+    title makes (WP-44 AX-13), by tb_orientstyle's reading of the word
+    (:func:`_dash_style_word`: ``vertic`` is vertical; WP-45 ST-2)."""
+    return _DASH_ADDED_TEXT_ORIENT.get(
+        _dash_style_word("tb_orientstyle", word))
 
 
 #: placement() of an axis title: the compass letters that move it along
@@ -61241,15 +61328,21 @@ _DASH_RING_NUMBER_RE = re.compile(
     r"\s*([-+]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?)\s*")
 
 
-def _dash_ring_value(text, words=None):
+def _dash_ring_value(text, words=None, legend=False):
     """The ring a textbox's ``ring()`` names (WP-43 LT-9), or None.
 
     A real number as written (twoway draws ``ring(7.5)`` between the
     subtitle's 6 and the title's 7, and ``ring(-1)`` and ``ring(101)``
     with no note: title_box_truth.json ring_75, ring_neg, ring_101), or a
     word of *words* (default ``_DASH_RING_WORDS``: inside 0, outside 1).
-    None for anything else, which twoway refuses on a title."""
+    None for anything else, which twoway refuses on a title.  With
+    *legend* the text is first read as gridringstyle reads it
+    (:func:`_dash_style_word`: ``in``, ``i`` and ``ins`` are 0, ``o`` and
+    ``out`` 1; WP-45 ST-4, D-45-02.c), as legend() reads its ring; a
+    title's ring keeps the full words only."""
     t = str(text if text is not None else "").strip()
+    if legend:
+        t = _dash_style_word("gridringstyle", t) or t
     w = _DASH_RING_WORDS if words is None else words
     if t in w:
         return float(w[t])
@@ -61268,13 +61361,10 @@ def _dash_legend_ring(text):
     scheme's ring, after twoway's notes).  twoway's legend reads a
     lowercase abbreviation of inside (0) or outside (1), at least one
     letter, any real, and draws a ring at or below 0 inside the plot
-    region (title_box_truth.json leg_ring_w_<w>, leg_ring_neg)."""
-    t = str(text if text is not None else "").strip()
-    if t and "inside".startswith(t):
-        return 0.0
-    if t and "outside".startswith(t):
-        return 1.0
-    v = _dash_ring_value(t, {})
+    region (title_box_truth.json leg_ring_w_<w>, leg_ring_neg); the word
+    is read by gridringstyle's table (``_dash_ring_value(..., legend=True)``,
+    WP-45 ST-4)."""
+    v = _dash_ring_value(text, {}, legend=True)
     if v is None:
         return None
     return max(0.0, v)
@@ -61322,8 +61412,9 @@ def _dash_textbox_position(opts, default_clock, default_ring, just,
     """Where a textbox goes (WP-31 D3): ``{"mode", "side", "align", "sx",
     "sy", "anchor", "ring", "clock"}``.
 
-    ``position(#)`` is the clock when it is 0-12 as typed (twoway draws
-    the default for 13, 06 or 3.0), else *default_clock*; ``ring(#)`` a
+    ``position(#)`` is the clock when it is 0-12 as typed or a clockdir
+    name twoway reads (``bottom``, ``b``, ``top``: WP-45 ST-3; twoway
+    draws the default for 13, 06 or 3.0), else *default_clock*; ``ring(#)`` a
     non-negative integer, ``inside`` 0 or ``outside`` 1, else
     *default_ring*.  At clock 0 or ring 0 twoway draws the box on the
     plot region (``_fr_title_parse_and_log.ado``: ``pos on``): *mode*
@@ -61336,8 +61427,10 @@ def _dash_textbox_position(opts, default_clock, default_ring, just,
     horizontal.
     """
     o = opts or {}
-    pos = str(o.get("position", "") or "").strip()
-    user = re.fullmatch(r"[0-9]|1[0-2]", pos) is not None
+    # clockdir's reading (WP-45 ST-3): 0-12 as typed, or an abbreviation
+    # of center, top, bottom, left or right (bottom is 6).
+    pos = _dash_style_word("clockdir", o.get("position", ""))
+    user = pos != ""
     clock = int(pos) if user else default_clock
     # A real ring (WP-43 LT-9): ring(7.5) between the subtitle and the
     # title, ring(100) outermost; a word twoway refuses is the default
@@ -61488,6 +61581,15 @@ def _dash_textbox_style(model, opts, fig, scheme, option, *, base_size=None,
         model.text_alpha = alpha
     if o.get("justification") in ("left", "center", "right"):
         model.text_align = o["justification"]
+    elif str(o.get("justification") or "").strip() not in ("", "default"):
+        # class horizontal takes its style names only, as typed (WP-45
+        # ST-11; style_words_truth.json horizontal rows: l, le, r, c and
+        # zzz are noted and the text keeps its alignment).
+        _jw = str(o["justification"]).strip()
+        _dash_warn_once(
+            ("horizontal", _jw),
+            "dash: named style %s not found in class horizontal, "
+            "default attributes used" % _dash_display(_jw))
     is_label = type(model).__name__ == "Label"
     # placement() is a compass point of the plot region, set where the
     # box is placed (_dash_textbox_position, WP-43 LT-16), not text()'s
@@ -61686,8 +61788,11 @@ def _dash_textbox_angle(opts):
     """The counter-clockwise angle (radians) orientation() turns a
     title-family box by (WP-43 LT-18): vertical reads upward, as twoway's
     rotate(-90) (t_or_vertical), rvertical downward, rhorizontal upside
-    down; 0.0 for horizontal, none or a word twoway does not read."""
-    v = str((opts or {}).get("orientation") or "").strip()
+    down; 0.0 for horizontal, none or a word twoway does not read.  The
+    word is read as tb_orientstyle reads it (:func:`_dash_style_word`,
+    WP-45 ST-2: ``hor``, ``vertic``, ``rhori``)."""
+    v = _dash_style_word("tb_orientstyle",
+                         (opts or {}).get("orientation") or "")
     return float(_DASH_ADDED_TEXT_ORIENT.get(v, 0.0) or 0.0)
 
 
@@ -62189,9 +62294,10 @@ def _dash_edge_titles(fig, graph_opts, seen=None, key="", scheme=None):
         # takes the clock's side, level (no vertical turn), and orders by
         # ring on that side; ring(0) is not the plot region for it
         # (_fr_title_parse_and_log.ado; textbox_truth.json e_*).
-        pos = str(opts.get("position", "") or "").strip()
+        # clockdir's reading of position() (WP-45 ST-3).
+        pos = _dash_style_word("clockdir", opts.get("position", ""))
         rr = str(opts.get("ring", "") or "").strip()
-        user_pos = re.fullmatch(r"[0-9]|1[0-2]", pos) is not None
+        user_pos = pos != ""
         # A real ring, ordered by value (WP-43 LT-9).
         user_ring = _dash_ring_value(rr) is not None
         if user_pos or user_ring:
@@ -78134,8 +78240,9 @@ class ServerAppBuilder:
                       # The shared legend, axis, column and swatch tables.
                       "_DASH_CLOCK_SIDE", "_DASH_CLOCK_INSIDE",
                       "_DASH_CLOCK_PANEL_LOCATION", "_DASH_BPLACEMENT_LOCATION",
-                      # WP-43 LT-4: compass2dir's reader.
-                      "_DASH_COMPASS_NAMES", "_DASH_COMPASS_CAPS",
+                      # WP-43 LT-4: compass2dir's reader (its names moved
+                      # into _DASH_STYLE_NAMES, WP-45 ST-1).
+                      "_DASH_COMPASS_CAPS",
                       "_DASH_COMPASS_CLOCK",
                       "_DASH_LEGEND_REGION_NAMES", "_DASH_KEY_STYLE_OPTS",
                       "_DASH_LEGEND_KEY_ALIGN", "_DASH_LEGENDSTYLES",
@@ -78215,6 +78322,9 @@ class ServerAppBuilder:
                       "_DASH_BY_COMBINE_PANEL_MARGIN_RS",
                       "_DASH_CVAR_LINE_POOL",
                       "_DASH_ADDED_TEXT_PLACE", "_DASH_ADDED_TEXT_ORIENT",
+                      # WP-45 ST-1: the style-word readers' tables.
+                      "_DASH_COMPASS_FULL", "_DASH_STYLE_NAMES",
+                      "_DASH_STYLE_EXACT",
                       "_DASH_ADDED_TEXT_HONOURED",
                       "_DASH_ADDED_TEXT_VSHIFT",
                       "_DASH_TEXTBOX_DEFAULTS", "_DASH_EDGE_TITLES",
@@ -78735,6 +78845,8 @@ class ServerAppBuilder:
                          "_parse_axis_angle", "_stata_date_kind",
                          # mlabangle()'s anglestyle reader (WP-22).
                          "_dash_anglestyle_degrees",
+                         # WP-45 ST-1: one reader per style class.
+                         "_dash_style_word",
                          "_source_frame",
                          "_compute_secondary_range",
                          "_dash_axis_labels",

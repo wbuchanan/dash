@@ -506,7 +506,7 @@ program define _dash_require_mata
         _dash_fit_points_json _dash_fit_opt_bad _dash_recast_canon ///
         _dash_fit_panel_key _dash_fit_panel_add ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals _dash_scale_untransformable ///
-        _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
+        _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_style_word _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
         _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_paren _dash_stylelist_eqlead _dash_subopt_colour_comma _dash_colour_comma _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
         _dash_connect_canon ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
@@ -1215,7 +1215,8 @@ end
 // _dash_aspect_split text -- aspectratio(#[, placement(compassdir)]) as
 // twoway reads it (WP-31 D5; test/fixtures/sizing_truth.json): the number
 // before the comma in the caller's local _asp_num, and placement() as its
-// compass direction in _asp_place, "" when it is not given.  Locals, not
+// compass direction in _asp_place (compass2dir's reading, _dash_style_word,
+// WP-45 ST-1: nor, rig, R taken), "" when it is not given.  Locals, not
 // s(): the parser's s() is what _dash_opts_repeats keys a copy by.
 // Measured: aspectratio(1, foo) is "option foo not allowed", r(198)
 // (syntax's own words, as twoway's), and an unknown placement() name is a
@@ -1231,7 +1232,7 @@ program define _dash_aspect_split
         local 0 = substr(`"`macval(text)'"', `cpos', .)
         syntax [, PLACEment(string)]
         if `: length local placement' {
-            mata: st_local("place", _dash_at_place(strtrim(st_local("placement"))))
+            mata: st_local("place", _dash_style_word("compass2dir", st_local("placement")))
             if "`place'" == "" {
                 mata: _dash_note("named style ", st_local("placement"), " not found in class compass2dir, default attributes used")
             }

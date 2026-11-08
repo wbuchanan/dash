@@ -203,6 +203,222 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w45_run' {
 }
 * ==== end S00 ====
 
+// S02 ST-1 helpers: _q4502_rows writes style_words_truth.json's rows as a
+// tab-separated file (class, site, word, canonical, twoway's rc, 1 when
+// twoway printed a note) for the block to import; _q4502_saved reads one
+// saved (DashRenderer) figure of a registered graph for Q4502-2's checks
+// into the global q4502_got ("ok" or what was found).
+python:
+import os as _q4502_os, sys as _q4502_sys
+if _q4502_os.path.abspath("..") not in _q4502_sys.path:
+    _q4502_sys.path.insert(0, _q4502_os.path.abspath(".."))
+
+
+def _q4502_rows(out):
+    import json
+    with open(_q4502_os.path.join("fixtures", "style_words_truth.json"),
+              encoding="utf-8") as fh:
+        rows = json.load(fh)["rows"]
+    with open(out, "w", encoding="utf-8") as fh:
+        fh.write("cls\tsite\tword\tcanon\ttwrc\ttwnote\n")
+        for r in rows:
+            fh.write("%s\t%s\t%s\t%s\t%d\t%d\n" % (
+                r["class"], r["site"], r["word"], r["canonical"], r["rc"],
+                1 if r["note"] else 0))
+
+
+def _q4502_saved(sp, dp, what):
+    import json
+    import warnings
+    from sfi import Macro
+    import dash_render as dr
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    f = list(r.figures.values())[0]
+    got = "ok"
+    if what == "title_below":
+        on = [s for s in ("center", "above", "below", "left", "right")
+              if any("title" in list(getattr(m, "tags", None) or [])
+                     for m in getattr(f, s))]
+        got = "ok" if on == ["below"] else "title on %s" % on
+    elif what == "legend_in":
+        on = [s for s in ("center", "above", "below", "left", "right")
+              if any(type(m).__name__ == "Legend" for m in getattr(f, s))]
+        got = "ok" if on == ["center"] else "legend on %s" % on
+    elif what == "mlab_9":
+        t = [m for m in f.center if type(m).__name__ == "LabelSet"]
+        got = ("ok" if t and all(float(g.x_offset) < 0 and
+                                 float(g.y_offset) == 0 for g in t)
+               else "offsets %s" % [(g.x_offset, g.y_offset) for g in t])
+    elif what == "stairstep":
+        with open(sp, encoding="utf-8") as fh:
+            spec = json.load(fh)
+        cs = [(p.get("options") or {}).get("connect")
+              for g in spec.get("graphs") or []
+              for p in (g.get("plots") or [])]
+        got = "ok" if cs == ["stairstep"] else "connect %s" % cs
+    Macro.setGlobal("q4502_got", got)
+end
+
+// S02 ST-1 helper: _q4502_mata -- over the current frame's rows (cls,
+// site, word, canon, twnote), the first rows where dash_parse.mata's
+// _dash_style_word differs from the fixture, "" when none does.
+capture mata: mata drop _q4502_mata()
+mata:
+string scalar _q4502_mata()
+{
+    string matrix D
+    string scalar out, got, want
+    real scalar   i, n
+
+    D = st_sdata(., ("cls", "site", "word", "canon", "twnote"))
+    out = ""
+    n = 0
+    for (i = 1; i <= rows(D); i++) {
+        if (D[i, 1] == "horizontal") continue
+        if (D[i, 1] == "gridringstyle" & D[i, 2] == "title") continue
+        want = (D[i, 5] == "1" ? "" : D[i, 4])
+        if (D[i, 5] == "0" & want == "") {
+            out = out + " " + D[i, 1] + "/" + D[i, 3] + ": no canonical"
+            n++
+            continue
+        }
+        got = _dash_style_word(D[i, 1], D[i, 3])
+        if (got != want) {
+            n++
+            if (n <= 20) out = out + " " + D[i, 1] + "/" + D[i, 3] + ": " +
+                               got + " (want " + want + ")"
+        }
+    }
+    return(strtrim(out))
+}
+end
+
+* ==== S02 ST-1: style words read per class ====
+local only : env WP45_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w45_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local q2d "`w45_work'/s02"
+    capture mkdir "`q2d'"
+    capture graph drop _all
+    capture frame drop q4502r
+    python: _q4502_rows("`q2d'/rows.tsv")
+    frame create q4502r
+    frame q4502r: import delimited using "`q2d'/rows.tsv", delimiter(tab) varnames(1) stringcols(_all) clear
+    frame q4502r: local q2n = _N
+    sysuse auto, clear
+
+    // The sites, as scripts/extract_style_words_truth.do draws them (@ the
+    // word); a site dash.ado reads ("mata") or one the renderer reads.
+    local t_compass2dir_text   `"scatter mpg weight, text(30 3000 "QQ", placement(@))"'
+    local t_compass2dir_aspect `"scatter mpg weight, aspectratio(1, placement(@)) xsize(5) ysize(5)"'
+    local t_tb_orientstyle_text   `"scatter mpg weight, text(30 3000 "QQ", orientation(@))"'
+    local t_tb_orientstyle_title  `"scatter mpg weight, title("TT", orientation(@))"'
+    local t_tb_orientstyle_ytitle `"scatter mpg weight, ytitle("YY", orientation(@))"'
+    local t_clockdir_title   `"scatter mpg weight, title("TT", position(@))"'
+    local t_clockdir_legend  `"scatter mpg price weight, legend(position(@))"'
+    local t_clockdir_mlabpos `"scatter mpg weight in 1/5, mlabel(make) mlabposition(@)"'
+    local t_gridringstyle_legend `"scatter mpg price weight, legend(ring(@) position(1))"'
+    local t_gridringstyle_title  `"scatter mpg weight, title("TT", ring(@))"'
+    local t_anglestyle_mlabangle `"scatter mpg weight in 1/5, mlabel(make) mlabangle(@)"'
+    local t_anglestyle_msangle   `"scatter mpg weight in 1/5, msymbol(T) msize(huge) msangle(@)"'
+    local t_connectstyle_connect `"scatter mpg weight in 1/20, connect(@)"'
+    local t_horizontal_title `"scatter mpg weight, title("T", justification(@))"'
+    local q2mata compass2dir_text compass2dir_aspect tb_orientstyle_text tb_orientstyle_title clockdir_title clockdir_legend gridringstyle_legend gridringstyle_title connectstyle_connect
+
+    // ------------------------------------------------------------
+    // Q4502-1: every fixture row registered with dash: dash's rc is
+    // twoway's (a title ring() abbreviation stays refused, r(198), as
+    // WP-43 refuses it), and at a site dash.ado reads dash prints a
+    // "not found in class" note exactly when twoway does; at a site the
+    // renderer reads (its notes are pinned by test_style_words.py's
+    // TestTheNotes), dash.ado prints none twoway does not.
+    // ------------------------------------------------------------
+    local q2bad 0
+    forvalues i = 1/`q2n' {
+        frame q4502r: local cls = cls[`i']
+        frame q4502r: local site = site[`i']
+        frame q4502r: local w = word[`i']
+        frame q4502r: local twrc = real(twrc[`i'])
+        frame q4502r: local twnote = real(twnote[`i'])
+        local cmd : subinstr local t_`cls'_`site' "@" "`w'"
+        dash clear
+        capture log close q4502l
+        quietly log using "`q2d'/n.log", text replace name(q4502l)
+        capture noisily dash `cmd' name(q4502)
+        local drc = _rc
+        quietly log close q4502l
+        cert_log_has "`q2d'/n.log", needle("not found in class `cls'")
+        local dnote = r(found)
+        local ismata : list posof "`cls'_`site'" in q2mata
+        if `drc' != `twrc' | (`ismata' & `dnote' != `twnote') | (!`ismata' & `dnote' & !`twnote') {
+            local ++q2bad
+            if `q2bad' <= 25 {
+                _w45_expect Q4502-1 "(0)" "`cls' `site' `w': rc `drc' (twoway `twrc'), noted `dnote' (twoway `twnote')"
+            }
+        }
+    }
+    _w45_expect Q4502-1 "(`q2bad' == 0)" "`q2bad' of `q2n' rows differ from twoway"
+    _w45_done Q4502-1 "`q2n' style words: dash's rc and notes are twoway's"
+
+    // ------------------------------------------------------------
+    // Q4502-2: five drawn cases, saved: title position(bottom) below the
+    // plot, legend(position(top) ring(inside)) and legend(ring(in)) in the
+    // plot region, mlabposition(left) at 9 o'clock, connect(st) written
+    // as stairstep.
+    // ------------------------------------------------------------
+    local q2c1 `"scatter mpg weight, title("TT", position(bottom))"'
+    local q2w1 title_below
+    local q2c2 `"scatter mpg price weight, legend(position(top) ring(inside))"'
+    local q2w2 legend_in
+    local q2c3 `"scatter mpg price weight, legend(ring(in) position(1))"'
+    local q2w3 legend_in
+    local q2c4 `"scatter mpg weight in 1/5, mlabel(make) mlabposition(left)"'
+    local q2w4 mlab_9
+    local q2c5 `"scatter mpg weight in 1/20, connect(st)"'
+    local q2w5 stairstep
+    forvalues k = 1/5 {
+        dash clear
+        capture noisily dash `q2c`k'' name(q4502b)
+        _w45_expect Q4502-2 "(_rc == 0)" "case `k': rc `=_rc'"
+        if _rc == 0 {
+            capture erase "`q2d'/s.json"
+            capture erase "`q2d'/d.json"
+            _dash_serve_spec, specpath("`q2d'/s.json") datapath("`q2d'/d.json")
+            global q4502_got ""
+            python: _q4502_saved("`q2d'/s.json", "`q2d'/d.json", "`q2w`k''")
+            _w45_expect Q4502-2 `"("${q4502_got}" == "ok")"' "case `k' (`q2w`k''): ${q4502_got}"
+        }
+    }
+    _w45_done Q4502-2 "position(bottom), ring(inside), ring(in), mlabposition(left) and connect(st) are drawn as twoway draws them"
+
+    // ------------------------------------------------------------
+    // Q4502-3: the Mata twin -- _dash_style_word(cls, w) is each fixture
+    // row's canonical, "" for a word twoway noted (the title ring rows,
+    // twoway's refusals, are read by Q4502-1).
+    // ------------------------------------------------------------
+    local q2m "dash_parse.mata's _dash_style_word did not run"
+    frame q4502r {
+        capture mata: st_local("q2m", _q4502_mata())
+    }
+    _w45_expect Q4502-3 `"("`q2m'" == "")"' "`q2m'"
+    _w45_done Q4502-3 "dash_parse.mata's _dash_style_word reads every fixture row as twoway does"
+
+    capture frame drop q4502r
+    local q2f : dir "`q2d'" files "*"
+    foreach f of local q2f {
+        capture erase "`q2d'/`f'"
+    }
+    capture rmdir "`q2d'"
+    capture graph drop _all
+    dash clear
+    macro drop q4502_*
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

@@ -1,0 +1,6146 @@
+{
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "0338987645f4555fe468a0f4db2bd6e2996689ad",
+  "extracted": " 8 Nov 2026 03:23:59",
+  "source": "scripts/extract_style_words_truth.do",
+  "stata_version": "19.5"
+ },
+ "drawings": {
+  "anglestyle|mlabangle|0": "54a17778be79b500",
+  "anglestyle|mlabangle|180": "5f43748c34bd1b23",
+  "anglestyle|mlabangle|270": "4df9ab7a34667352",
+  "anglestyle|mlabangle|45": "fde2b9efdf7dd043",
+  "anglestyle|mlabangle|90": "203f0c9be9144c3a",
+  "anglestyle|msangle|0": "6e38e7795cfe67c6",
+  "anglestyle|msangle|180": "c7d22f65b24a3a0d",
+  "anglestyle|msangle|270": "86a10765fda9e8b6",
+  "anglestyle|msangle|45": "e0069cedeba6ce14",
+  "anglestyle|msangle|90": "4d5b17e2af842c05",
+  "clockdir|legend|0": "a1804159f3a6dcd4",
+  "clockdir|legend|1": "850e427005ea0a17",
+  "clockdir|legend|10": "de91eb614de0a8a9",
+  "clockdir|legend|11": "4f4d2b150220fd0f",
+  "clockdir|legend|12": "09b8c0ab7a5cb8cc",
+  "clockdir|legend|2": "c636a3f162869cd2",
+  "clockdir|legend|3": "67109669f0f8c4a8",
+  "clockdir|legend|4": "80a5112fda635be9",
+  "clockdir|legend|5": "7f97d50f3d4540d5",
+  "clockdir|legend|6": "66eedda16b778212",
+  "clockdir|legend|7": "61d05966e4a1b139",
+  "clockdir|legend|8": "e41f75d4dba31f4c",
+  "clockdir|legend|9": "58653db723f3cedb",
+  "clockdir|mlabpos|0": "4de1b661f584007b",
+  "clockdir|mlabpos|1": "bc3629b3c9d80139",
+  "clockdir|mlabpos|10": "b6882b413e7d7547",
+  "clockdir|mlabpos|11": "09f72abb0a9907ae",
+  "clockdir|mlabpos|12": "e94bf19d106e42d5",
+  "clockdir|mlabpos|2": "c65b9e6a241269a2",
+  "clockdir|mlabpos|3": "54a17778be79b500",
+  "clockdir|mlabpos|4": "2af01c745d443a28",
+  "clockdir|mlabpos|5": "93c1fc55d11733ea",
+  "clockdir|mlabpos|6": "33ba03895308ce25",
+  "clockdir|mlabpos|7": "133c07b2b28f9978",
+  "clockdir|mlabpos|8": "3b0a3edeb17ccd12",
+  "clockdir|mlabpos|9": "eeeef724c31d02ef",
+  "clockdir|title|0": "b6f089cfc88fa505",
+  "clockdir|title|1": "83fc801e7cfe14a3",
+  "clockdir|title|10": "32db115f57753456",
+  "clockdir|title|11": "b6853b3d14e6e47d",
+  "clockdir|title|12": "2b7e4a86afcbab01",
+  "clockdir|title|2": "b02c91c0a0cda25f",
+  "clockdir|title|3": "22efdf698e95a682",
+  "clockdir|title|4": "508ae015ce7006a5",
+  "clockdir|title|5": "2569964ce65600bf",
+  "clockdir|title|6": "6e1a8da5e397a556",
+  "clockdir|title|7": "8598bffa89b28bba",
+  "clockdir|title|8": "73f5a1740c7b03a6",
+  "clockdir|title|9": "84ce516f40fe4ade",
+  "compass2dir|aspect|c": "a087ba2ce62a0d6d",
+  "compass2dir|aspect|e": "52fb4c9f70719c94",
+  "compass2dir|aspect|n": "0ce7dbf0916aeec8",
+  "compass2dir|aspect|ne": "0ce7dbf0916aeec8",
+  "compass2dir|aspect|nw": "0ce7dbf0916aeec8",
+  "compass2dir|aspect|s": "4c888b69a34f1b46",
+  "compass2dir|aspect|se": "4c888b69a34f1b46",
+  "compass2dir|aspect|sw": "4c888b69a34f1b46",
+  "compass2dir|aspect|w": "52fb4c9f70719c94",
+  "compass2dir|text|c": "161f64c1cce6c083",
+  "compass2dir|text|e": "9f1435972d69edf3",
+  "compass2dir|text|n": "06a10519ae772840",
+  "compass2dir|text|ne": "e5be979ae148643b",
+  "compass2dir|text|nw": "3234031334673e13",
+  "compass2dir|text|s": "37305eba21e826ba",
+  "compass2dir|text|se": "f4169fc0dc519439",
+  "compass2dir|text|sw": "12a3b8857068948b",
+  "compass2dir|text|w": "f404b190a4eb0340",
+  "connectstyle|connect|ascending": "13c037b06cc6544d",
+  "connectstyle|connect|direct": "887623ae3c160fc4",
+  "connectstyle|connect|none": "6c6786c530851ebb",
+  "connectstyle|connect|stairstep": "6bb8e180d1dc2431",
+  "connectstyle|connect|stepstair": "c290ff679c91fade",
+  "gridringstyle|legend|0": "9ebf80bc9506724b",
+  "gridringstyle|legend|1": "850e427005ea0a17",
+  "gridringstyle|title|0": "73217df10a1b2019",
+  "gridringstyle|title|1": "2b7e4a86afcbab01",
+  "horizontal|title|center": "69887de9f91bb1fa",
+  "horizontal|title|left": "c72ab46232ac43cb",
+  "horizontal|title|right": "db0156a93f8d3e40",
+  "tb_orientstyle|text|horizontal": "161f64c1cce6c083",
+  "tb_orientstyle|text|rhorizontal": "42748e5e532dbad8",
+  "tb_orientstyle|text|rvertical": "034b3f2ae2dd929b",
+  "tb_orientstyle|text|vertical": "1a7484ad2a4e2411",
+  "tb_orientstyle|title|horizontal": "2b7e4a86afcbab01",
+  "tb_orientstyle|title|rhorizontal": "bfb0e5ffa9c813df",
+  "tb_orientstyle|title|rvertical": "f8c4e01fb6f94a5c",
+  "tb_orientstyle|title|vertical": "e1714be50994ab7e",
+  "tb_orientstyle|ytitle|horizontal": "2f1afa2f827a1b59",
+  "tb_orientstyle|ytitle|rhorizontal": "4bbbb58a95cea1eb",
+  "tb_orientstyle|ytitle|rvertical": "83c88aed7436daf4",
+  "tb_orientstyle|ytitle|vertical": "90c1c4783fc58ab7"
+ },
+ "rows": [
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "n"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "no"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "nor"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "nort"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "north"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "s"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "so"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "sou"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "sout"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "south"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "e"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "ea"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "eas"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "east"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "w"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "we"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "wes"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "west"
+  },
+  {
+   "canonical": "nw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "nw"
+  },
+  {
+   "canonical": "nw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "nwe"
+  },
+  {
+   "canonical": "nw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "nwes"
+  },
+  {
+   "canonical": "nw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "nwest"
+  },
+  {
+   "canonical": "ne",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "ne"
+  },
+  {
+   "canonical": "ne",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "nea"
+  },
+  {
+   "canonical": "ne",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "neas"
+  },
+  {
+   "canonical": "ne",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "neast"
+  },
+  {
+   "canonical": "sw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "sw"
+  },
+  {
+   "canonical": "sw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "swe"
+  },
+  {
+   "canonical": "sw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "swes"
+  },
+  {
+   "canonical": "sw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "swest"
+  },
+  {
+   "canonical": "se",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "se"
+  },
+  {
+   "canonical": "se",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "sea"
+  },
+  {
+   "canonical": "se",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "seas"
+  },
+  {
+   "canonical": "se",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "seast"
+  },
+  {
+   "canonical": "c",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "c"
+  },
+  {
+   "canonical": "c",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "ce"
+  },
+  {
+   "canonical": "c",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "cen"
+  },
+  {
+   "canonical": "c",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "cent"
+  },
+  {
+   "canonical": "c",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "cente"
+  },
+  {
+   "canonical": "c",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "center"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "t"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "to"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "top"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "b"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "bo"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "bot"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "bott"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "botto"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "bottom"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "l"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "le"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "lef"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "left"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "r"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "ri"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "rig"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "righ"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "right"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "N"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "S"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "E"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "W"
+  },
+  {
+   "canonical": "ne",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "NE"
+  },
+  {
+   "canonical": "nw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "NW"
+  },
+  {
+   "canonical": "se",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "SE"
+  },
+  {
+   "canonical": "sw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "SW"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "T"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "B"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "R"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "L"
+  },
+  {
+   "canonical": "c",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "0"
+  },
+  {
+   "canonical": "ne",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "1"
+  },
+  {
+   "canonical": "ne",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "2"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "3"
+  },
+  {
+   "canonical": "se",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "4"
+  },
+  {
+   "canonical": "se",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "5"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "6"
+  },
+  {
+   "canonical": "sw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "7"
+  },
+  {
+   "canonical": "sw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "8"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "9"
+  },
+  {
+   "canonical": "nw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "10"
+  },
+  {
+   "canonical": "nw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "11"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "12"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "03"
+  },
+  {
+   "canonical": "",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "(note:  named style NOR not found in class compass2dir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "text",
+   "word": "NOR"
+  },
+  {
+   "canonical": "",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "(note:  named style Ne not found in class compass2dir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "text",
+   "word": "Ne"
+  },
+  {
+   "canonical": "",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "(note:  named style 3.0 not found in class compass2dir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "text",
+   "word": "3.0"
+  },
+  {
+   "canonical": "",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "(note:  named style 13 not found in class compass2dir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "text",
+   "word": "13"
+  },
+  {
+   "canonical": "",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "(note:  named style zzz not found in class compass2dir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "text",
+   "word": "zzz"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "n"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "no"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "nor"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "nort"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "north"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "s"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "so"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "sou"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "sout"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "south"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "e"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "ea"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "eas"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "east"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "w"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "we"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "wes"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "west"
+  },
+  {
+   "canonical": "nw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "nw"
+  },
+  {
+   "canonical": "nw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "nwe"
+  },
+  {
+   "canonical": "nw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "nwes"
+  },
+  {
+   "canonical": "nw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "nwest"
+  },
+  {
+   "canonical": "ne",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "ne"
+  },
+  {
+   "canonical": "ne",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "nea"
+  },
+  {
+   "canonical": "ne",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "neas"
+  },
+  {
+   "canonical": "ne",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "neast"
+  },
+  {
+   "canonical": "sw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "sw"
+  },
+  {
+   "canonical": "sw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "swe"
+  },
+  {
+   "canonical": "sw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "swes"
+  },
+  {
+   "canonical": "sw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "swest"
+  },
+  {
+   "canonical": "se",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "se"
+  },
+  {
+   "canonical": "se",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "sea"
+  },
+  {
+   "canonical": "se",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "seas"
+  },
+  {
+   "canonical": "se",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "seast"
+  },
+  {
+   "canonical": "c",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "c"
+  },
+  {
+   "canonical": "c",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "ce"
+  },
+  {
+   "canonical": "c",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "cen"
+  },
+  {
+   "canonical": "c",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "cent"
+  },
+  {
+   "canonical": "c",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "cente"
+  },
+  {
+   "canonical": "c",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "center"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "t"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "to"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "top"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "b"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "bo"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "bot"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "bott"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "botto"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "bottom"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "l"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "le"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "lef"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "left"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "r"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "ri"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "rig"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "righ"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "right"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "N"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "S"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "E"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "W"
+  },
+  {
+   "canonical": "ne",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "NE"
+  },
+  {
+   "canonical": "nw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "NW"
+  },
+  {
+   "canonical": "se",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "SE"
+  },
+  {
+   "canonical": "sw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "SW"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "T"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "B"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "R"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "L"
+  },
+  {
+   "canonical": "c",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "0"
+  },
+  {
+   "canonical": "ne",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "1"
+  },
+  {
+   "canonical": "ne",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "2"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "3"
+  },
+  {
+   "canonical": "se",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "4"
+  },
+  {
+   "canonical": "se",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "5"
+  },
+  {
+   "canonical": "s",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "6"
+  },
+  {
+   "canonical": "sw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "7"
+  },
+  {
+   "canonical": "sw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "8"
+  },
+  {
+   "canonical": "w",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "9"
+  },
+  {
+   "canonical": "nw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "10"
+  },
+  {
+   "canonical": "nw",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "11"
+  },
+  {
+   "canonical": "n",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "12"
+  },
+  {
+   "canonical": "e",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "aspect",
+   "word": "03"
+  },
+  {
+   "canonical": "",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "(note:  named style NOR not found in class compass2dir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "aspect",
+   "word": "NOR"
+  },
+  {
+   "canonical": "",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "(note:  named style Ne not found in class compass2dir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "aspect",
+   "word": "Ne"
+  },
+  {
+   "canonical": "",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "(note:  named style 3.0 not found in class compass2dir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "aspect",
+   "word": "3.0"
+  },
+  {
+   "canonical": "",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "(note:  named style 13 not found in class compass2dir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "aspect",
+   "word": "13"
+  },
+  {
+   "canonical": "",
+   "class": "compass2dir",
+   "lines": [],
+   "note": "(note:  named style zzz not found in class compass2dir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "aspect",
+   "word": "zzz"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "hor"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "hori"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "horiz"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "horizo"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "horizon"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "horizont"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "horizonta"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "horizontal"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "vert"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "verti"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "vertic"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "vertica"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "vertical"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "rhor"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "rhori"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "rhoriz"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "rhorizo"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "rhorizon"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "rhorizont"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "rhorizonta"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "rhorizontal"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "rvert"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "rverti"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "rvertic"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "rvertica"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "text",
+   "word": "rvertical"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style ho not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "text",
+   "word": "ho"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style ver not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "text",
+   "word": "ver"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style rho not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "text",
+   "word": "rho"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style rver not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "text",
+   "word": "rver"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style h not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "text",
+   "word": "h"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style v not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "text",
+   "word": "v"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style Vertical not found in class tb_orientstyle, default attributes used)\n(note:  named style Vertical not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "text",
+   "word": "Vertical"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style zzz not found in class tb_orientstyle, default attributes used)\n(note:  named style zzz not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "text",
+   "word": "zzz"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "hor"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "hori"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "horiz"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "horizo"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "horizon"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "horizont"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "horizonta"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "horizontal"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "vert"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "verti"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "vertic"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "vertica"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "vertical"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "rhor"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "rhori"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "rhoriz"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "rhorizo"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "rhorizon"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "rhorizont"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "rhorizonta"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "rhorizontal"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "rvert"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "rverti"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "rvertic"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "rvertica"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "rvertical"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style ho not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "ho"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style ver not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "ver"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style rho not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "rho"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style rver not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "rver"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style h not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "h"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style v not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "v"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style Vertical not found in class tb_orientstyle, default attributes used)\n(note:  named style Vertical not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "Vertical"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style zzz not found in class tb_orientstyle, default attributes used)\n(note:  named style zzz not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "zzz"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "hor"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "hori"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "horiz"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "horizo"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "horizon"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "horizont"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "horizonta"
+  },
+  {
+   "canonical": "horizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "horizontal"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "vert"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "verti"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "vertic"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "vertica"
+  },
+  {
+   "canonical": "vertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "vertical"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "rhor"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "rhori"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "rhoriz"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "rhorizo"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "rhorizon"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "rhorizont"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "rhorizonta"
+  },
+  {
+   "canonical": "rhorizontal",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "rhorizontal"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "rvert"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "rverti"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "rvertic"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "rvertica"
+  },
+  {
+   "canonical": "rvertical",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "ytitle",
+   "word": "rvertical"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style ho not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "ytitle",
+   "word": "ho"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style ver not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "ytitle",
+   "word": "ver"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style rho not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "ytitle",
+   "word": "rho"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style rver not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "ytitle",
+   "word": "rver"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style h not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "ytitle",
+   "word": "h"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style v not found in class tb_orientstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "ytitle",
+   "word": "v"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style Vertical not found in class tb_orientstyle, default attributes used)\n(note:  named style Vertical not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "ytitle",
+   "word": "Vertical"
+  },
+  {
+   "canonical": "",
+   "class": "tb_orientstyle",
+   "lines": [],
+   "note": "(note:  named style zzz not found in class tb_orientstyle, default attributes used)\n(note:  named style zzz not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "ytitle",
+   "word": "zzz"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "c"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "ce"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "cen"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "cent"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "cente"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "center"
+  },
+  {
+   "canonical": "12",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "t"
+  },
+  {
+   "canonical": "12",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "to"
+  },
+  {
+   "canonical": "12",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "top"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "b"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "bo"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "bot"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "bott"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "botto"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "bottom"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "l"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "le"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "lef"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "left"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "r"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "ri"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "rig"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "righ"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "right"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "0"
+  },
+  {
+   "canonical": "1",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "1"
+  },
+  {
+   "canonical": "2",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "2"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "3"
+  },
+  {
+   "canonical": "4",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "4"
+  },
+  {
+   "canonical": "5",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "5"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "6"
+  },
+  {
+   "canonical": "7",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "7"
+  },
+  {
+   "canonical": "8",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "8"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "9"
+  },
+  {
+   "canonical": "10",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "10"
+  },
+  {
+   "canonical": "11",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "11"
+  },
+  {
+   "canonical": "12",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "12"
+  },
+  {
+   "canonical": "",
+   "class": "clockdir",
+   "lines": [],
+   "note": "(note:  named style C not found in class clockdir, default attributes used)\n(note:  named style C not found in class clockdir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "C"
+  },
+  {
+   "canonical": "",
+   "class": "clockdir",
+   "lines": [],
+   "note": "(note:  named style Top not found in class clockdir, default attributes used)\n(note:  named style Top not found in class clockdir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "Top"
+  },
+  {
+   "canonical": "",
+   "class": "clockdir",
+   "lines": [],
+   "note": "(note:  named style 13 not found in class clockdir, default attributes used)\n(note:  named style 13 not found in class clockdir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "13"
+  },
+  {
+   "canonical": "",
+   "class": "clockdir",
+   "lines": [],
+   "note": "(note:  named style zzz not found in class clockdir, default attributes used)\n(note:  named style zzz not found in class clockdir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "zzz"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "c"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "ce"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "cen"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "cent"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "cente"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "center"
+  },
+  {
+   "canonical": "12",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "t"
+  },
+  {
+   "canonical": "12",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "to"
+  },
+  {
+   "canonical": "12",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "top"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "b"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "bo"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "bot"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "bott"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "botto"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "bottom"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "l"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "le"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "lef"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "left"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "r"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "ri"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "rig"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "righ"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "right"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "0"
+  },
+  {
+   "canonical": "1",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "1"
+  },
+  {
+   "canonical": "2",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "2"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "3"
+  },
+  {
+   "canonical": "4",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "4"
+  },
+  {
+   "canonical": "5",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "5"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "6"
+  },
+  {
+   "canonical": "7",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "7"
+  },
+  {
+   "canonical": "8",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "8"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "9"
+  },
+  {
+   "canonical": "10",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "10"
+  },
+  {
+   "canonical": "11",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "11"
+  },
+  {
+   "canonical": "12",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "12"
+  },
+  {
+   "canonical": "",
+   "class": "clockdir",
+   "lines": [],
+   "note": "(note:  named style C not found in class clockdir, default attributes used)\n(note:  named style C not found in class clockdir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "legend",
+   "word": "C"
+  },
+  {
+   "canonical": "",
+   "class": "clockdir",
+   "lines": [],
+   "note": "(note:  named style Top not found in class clockdir, default attributes used)\n(note:  named style Top not found in class clockdir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "legend",
+   "word": "Top"
+  },
+  {
+   "canonical": "",
+   "class": "clockdir",
+   "lines": [],
+   "note": "(note:  named style 13 not found in class clockdir, default attributes used)\n(note:  named style 13 not found in class clockdir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "legend",
+   "word": "13"
+  },
+  {
+   "canonical": "",
+   "class": "clockdir",
+   "lines": [],
+   "note": "(note:  named style zzz not found in class clockdir, default attributes used)\n(note:  named style zzz not found in class clockdir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "legend",
+   "word": "zzz"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "c"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "ce"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "cen"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "cent"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "cente"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "center"
+  },
+  {
+   "canonical": "12",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "t"
+  },
+  {
+   "canonical": "12",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "to"
+  },
+  {
+   "canonical": "12",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "top"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "b"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "bo"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "bot"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "bott"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "botto"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "bottom"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "l"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "le"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "lef"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "left"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "r"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "ri"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "rig"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "righ"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "right"
+  },
+  {
+   "canonical": "0",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "0"
+  },
+  {
+   "canonical": "1",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "1"
+  },
+  {
+   "canonical": "2",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "2"
+  },
+  {
+   "canonical": "3",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "3"
+  },
+  {
+   "canonical": "4",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "4"
+  },
+  {
+   "canonical": "5",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "5"
+  },
+  {
+   "canonical": "6",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "6"
+  },
+  {
+   "canonical": "7",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "7"
+  },
+  {
+   "canonical": "8",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "8"
+  },
+  {
+   "canonical": "9",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "9"
+  },
+  {
+   "canonical": "10",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "10"
+  },
+  {
+   "canonical": "11",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "11"
+  },
+  {
+   "canonical": "12",
+   "class": "clockdir",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabpos",
+   "word": "12"
+  },
+  {
+   "canonical": "",
+   "class": "clockdir",
+   "lines": [],
+   "note": "(note:  named style C not found in class clockdir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "mlabpos",
+   "word": "C"
+  },
+  {
+   "canonical": "",
+   "class": "clockdir",
+   "lines": [],
+   "note": "(note:  named style Top not found in class clockdir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "mlabpos",
+   "word": "Top"
+  },
+  {
+   "canonical": "",
+   "class": "clockdir",
+   "lines": [],
+   "note": "(note:  named style 13 not found in class clockdir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "mlabpos",
+   "word": "13"
+  },
+  {
+   "canonical": "",
+   "class": "clockdir",
+   "lines": [],
+   "note": "(note:  named style zzz not found in class clockdir, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "mlabpos",
+   "word": "zzz"
+  },
+  {
+   "canonical": "0",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "i"
+  },
+  {
+   "canonical": "0",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "in"
+  },
+  {
+   "canonical": "0",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "ins"
+  },
+  {
+   "canonical": "0",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "insi"
+  },
+  {
+   "canonical": "0",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "insid"
+  },
+  {
+   "canonical": "0",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "inside"
+  },
+  {
+   "canonical": "1",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "o"
+  },
+  {
+   "canonical": "1",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "ou"
+  },
+  {
+   "canonical": "1",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "out"
+  },
+  {
+   "canonical": "1",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "outs"
+  },
+  {
+   "canonical": "1",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "outsi"
+  },
+  {
+   "canonical": "1",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "outsid"
+  },
+  {
+   "canonical": "1",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "legend",
+   "word": "outside"
+  },
+  {
+   "canonical": "",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "(note:  named style I not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)\n(note:  named style I not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "legend",
+   "word": "I"
+  },
+  {
+   "canonical": "",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "(note:  named style IN not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)\n(note:  named style IN not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "legend",
+   "word": "IN"
+  },
+  {
+   "canonical": "",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "(note:  named style Out not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)\n(note:  named style Out not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "legend",
+   "word": "Out"
+  },
+  {
+   "canonical": "",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "(note:  named style ix not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)\n(note:  named style ix not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "legend",
+   "word": "ix"
+  },
+  {
+   "canonical": "",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "(note:  named style zzz not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)\n(note:  named style zzz not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "legend",
+   "word": "zzz"
+  },
+  {
+   "canonical": "0",
+   "class": "gridringstyle",
+   "lines": [
+    "option ring() incorrectly specified"
+   ],
+   "note": "",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "i"
+  },
+  {
+   "canonical": "0",
+   "class": "gridringstyle",
+   "lines": [
+    "option ring() incorrectly specified"
+   ],
+   "note": "",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "in"
+  },
+  {
+   "canonical": "0",
+   "class": "gridringstyle",
+   "lines": [
+    "option ring() incorrectly specified"
+   ],
+   "note": "",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "ins"
+  },
+  {
+   "canonical": "0",
+   "class": "gridringstyle",
+   "lines": [
+    "option ring() incorrectly specified"
+   ],
+   "note": "",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "insi"
+  },
+  {
+   "canonical": "0",
+   "class": "gridringstyle",
+   "lines": [
+    "option ring() incorrectly specified"
+   ],
+   "note": "",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "insid"
+  },
+  {
+   "canonical": "0",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "inside"
+  },
+  {
+   "canonical": "1",
+   "class": "gridringstyle",
+   "lines": [
+    "option ring() incorrectly specified"
+   ],
+   "note": "",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "o"
+  },
+  {
+   "canonical": "1",
+   "class": "gridringstyle",
+   "lines": [
+    "option ring() incorrectly specified"
+   ],
+   "note": "",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "ou"
+  },
+  {
+   "canonical": "1",
+   "class": "gridringstyle",
+   "lines": [
+    "option ring() incorrectly specified"
+   ],
+   "note": "",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "out"
+  },
+  {
+   "canonical": "1",
+   "class": "gridringstyle",
+   "lines": [
+    "option ring() incorrectly specified"
+   ],
+   "note": "",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "outs"
+  },
+  {
+   "canonical": "1",
+   "class": "gridringstyle",
+   "lines": [
+    "option ring() incorrectly specified"
+   ],
+   "note": "",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "outsi"
+  },
+  {
+   "canonical": "1",
+   "class": "gridringstyle",
+   "lines": [
+    "option ring() incorrectly specified"
+   ],
+   "note": "",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "outsid"
+  },
+  {
+   "canonical": "1",
+   "class": "gridringstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "outside"
+  },
+  {
+   "canonical": "",
+   "class": "gridringstyle",
+   "lines": [
+    "(note:  named style I not found in class gridringstyle, default attributes used)",
+    "(note:  gridringstyle not found in scheme, default attributes used)",
+    "option ring() incorrectly specified"
+   ],
+   "note": "(note:  named style I not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "I"
+  },
+  {
+   "canonical": "",
+   "class": "gridringstyle",
+   "lines": [
+    "(note:  named style IN not found in class gridringstyle, default attributes used)",
+    "(note:  gridringstyle not found in scheme, default attributes used)",
+    "option ring() incorrectly specified"
+   ],
+   "note": "(note:  named style IN not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "IN"
+  },
+  {
+   "canonical": "",
+   "class": "gridringstyle",
+   "lines": [
+    "(note:  named style Out not found in class gridringstyle, default attributes used)",
+    "(note:  gridringstyle not found in scheme, default attributes used)",
+    "option ring() incorrectly specified"
+   ],
+   "note": "(note:  named style Out not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "Out"
+  },
+  {
+   "canonical": "",
+   "class": "gridringstyle",
+   "lines": [
+    "(note:  named style ix not found in class gridringstyle, default attributes used)",
+    "(note:  gridringstyle not found in scheme, default attributes used)",
+    "option ring() incorrectly specified"
+   ],
+   "note": "(note:  named style ix not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "ix"
+  },
+  {
+   "canonical": "",
+   "class": "gridringstyle",
+   "lines": [
+    "(note:  named style zzz not found in class gridringstyle, default attributes used)",
+    "(note:  gridringstyle not found in scheme, default attributes used)",
+    "option ring() incorrectly specified"
+   ],
+   "note": "(note:  named style zzz not found in class gridringstyle, default attributes used)\n(note:  gridringstyle not found in scheme, default attributes used)",
+   "rc": 198,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "zzz"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "h"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "ho"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "hor"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "hori"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "horiz"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "horizo"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "horizon"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "horizont"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "horizonta"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "horizontal"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "v"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "ve"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "ver"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "vert"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "verti"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "vertic"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "vertica"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "vertical"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rh"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rho"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rhor"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rhori"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rhoriz"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rhorizo"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rhorizon"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rhorizont"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rhorizonta"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rhorizontal"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rv"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rve"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rver"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rvert"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rverti"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rvertic"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rvertica"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "rvertical"
+  },
+  {
+   "canonical": "45",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "45"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "mlabangle",
+   "word": "270"
+  },
+  {
+   "canonical": "",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "(note:  named style r not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "mlabangle",
+   "word": "r"
+  },
+  {
+   "canonical": "",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "(note:  named style V not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "mlabangle",
+   "word": "V"
+  },
+  {
+   "canonical": "",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "(note:  named style Vertical not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "mlabangle",
+   "word": "Vertical"
+  },
+  {
+   "canonical": "",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "(note:  named style RV not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "mlabangle",
+   "word": "RV"
+  },
+  {
+   "canonical": "",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "(note:  named style zzz not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "mlabangle",
+   "word": "zzz"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "h"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "ho"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "hor"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "hori"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "horiz"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "horizo"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "horizon"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "horizont"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "horizonta"
+  },
+  {
+   "canonical": "0",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "horizontal"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "v"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "ve"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "ver"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "vert"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "verti"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "vertic"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "vertica"
+  },
+  {
+   "canonical": "90",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "vertical"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rh"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rho"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rhor"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rhori"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rhoriz"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rhorizo"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rhorizon"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rhorizont"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rhorizonta"
+  },
+  {
+   "canonical": "180",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rhorizontal"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rv"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rve"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rver"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rvert"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rverti"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rvertic"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rvertica"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "rvertical"
+  },
+  {
+   "canonical": "45",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "45"
+  },
+  {
+   "canonical": "270",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "msangle",
+   "word": "270"
+  },
+  {
+   "canonical": "",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "(note:  named style r not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "msangle",
+   "word": "r"
+  },
+  {
+   "canonical": "",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "(note:  named style V not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "msangle",
+   "word": "V"
+  },
+  {
+   "canonical": "",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "(note:  named style Vertical not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "msangle",
+   "word": "Vertical"
+  },
+  {
+   "canonical": "",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "(note:  named style RV not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "msangle",
+   "word": "RV"
+  },
+  {
+   "canonical": "",
+   "class": "anglestyle",
+   "lines": [],
+   "note": "(note:  named style zzz not found in class anglestyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "msangle",
+   "word": "zzz"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "c"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "co"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "con"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "conn"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "conne"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "connec"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "connect"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "connecte"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "connected"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "d"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "di"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "dir"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "dire"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "direc"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "direct"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "l"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "li"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "lin"
+  },
+  {
+   "canonical": "direct",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "line"
+  },
+  {
+   "canonical": "stairstep",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "s"
+  },
+  {
+   "canonical": "stairstep",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "st"
+  },
+  {
+   "canonical": "stairstep",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "sta"
+  },
+  {
+   "canonical": "stairstep",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "stai"
+  },
+  {
+   "canonical": "stairstep",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "stair"
+  },
+  {
+   "canonical": "stairstep",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "stairs"
+  },
+  {
+   "canonical": "stairstep",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "stairst"
+  },
+  {
+   "canonical": "stairstep",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "stairste"
+  },
+  {
+   "canonical": "stairstep",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "stairstep"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "u"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "up"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "ups"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "upst"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "upsta"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "upstai"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "upstair"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "upstairs"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "upstairst"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "upstairste"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "upstairstep"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "step"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "steps"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "stepst"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "stepsta"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "stepstai"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "stepstair"
+  },
+  {
+   "canonical": "ascending",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "a"
+  },
+  {
+   "canonical": "ascending",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "as"
+  },
+  {
+   "canonical": "ascending",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "asc"
+  },
+  {
+   "canonical": "ascending",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "asce"
+  },
+  {
+   "canonical": "ascending",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "ascen"
+  },
+  {
+   "canonical": "ascending",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "ascend"
+  },
+  {
+   "canonical": "ascending",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "ascendi"
+  },
+  {
+   "canonical": "ascending",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "ascendin"
+  },
+  {
+   "canonical": "ascending",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "ascending"
+  },
+  {
+   "canonical": "none",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "n"
+  },
+  {
+   "canonical": "none",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "no"
+  },
+  {
+   "canonical": "none",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "non"
+  },
+  {
+   "canonical": "none",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "none"
+  },
+  {
+   "canonical": "none",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "i"
+  },
+  {
+   "canonical": "ascending",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "L"
+  },
+  {
+   "canonical": "stairstep",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "J"
+  },
+  {
+   "canonical": "stepstair",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "connect",
+   "word": "stairstep_up"
+  },
+  {
+   "canonical": "",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "(note:  named style ste not found in class connectstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "connect",
+   "word": "ste"
+  },
+  {
+   "canonical": "",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "(note:  named style j not found in class connectstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "connect",
+   "word": "j"
+  },
+  {
+   "canonical": "",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "(note:  named style N not found in class connectstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "connect",
+   "word": "N"
+  },
+  {
+   "canonical": "",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "(note:  named style D not found in class connectstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "connect",
+   "word": "D"
+  },
+  {
+   "canonical": "",
+   "class": "connectstyle",
+   "lines": [],
+   "note": "(note:  named style zzz not found in class connectstyle, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "connect",
+   "word": "zzz"
+  },
+  {
+   "canonical": "left",
+   "class": "horizontal",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "left"
+  },
+  {
+   "canonical": "center",
+   "class": "horizontal",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "center"
+  },
+  {
+   "canonical": "right",
+   "class": "horizontal",
+   "lines": [],
+   "note": "",
+   "rc": 0,
+   "same_as_canonical": 1,
+   "site": "title",
+   "word": "right"
+  },
+  {
+   "canonical": "",
+   "class": "horizontal",
+   "lines": [],
+   "note": "(note:  named style l not found in class horizontal, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "l"
+  },
+  {
+   "canonical": "",
+   "class": "horizontal",
+   "lines": [],
+   "note": "(note:  named style le not found in class horizontal, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "le"
+  },
+  {
+   "canonical": "",
+   "class": "horizontal",
+   "lines": [],
+   "note": "(note:  named style r not found in class horizontal, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "r"
+  },
+  {
+   "canonical": "",
+   "class": "horizontal",
+   "lines": [],
+   "note": "(note:  named style c not found in class horizontal, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "c"
+  },
+  {
+   "canonical": "",
+   "class": "horizontal",
+   "lines": [],
+   "note": "(note:  named style zzz not found in class horizontal, default attributes used)",
+   "rc": 0,
+   "same_as_canonical": 0,
+   "site": "title",
+   "word": "zzz"
+  }
+ ]
+}

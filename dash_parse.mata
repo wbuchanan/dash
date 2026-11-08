@@ -498,6 +498,11 @@
 *!   _dash_at_orient(o)
 *!       twoway's orientation for orientation(o), "" for a name it notes.
 *!
+*!   _dash_style_word(cls, w)
+*!       The canonical name style class cls (compass2dir, tb_orientstyle,
+*!       clockdir, gridringstyle, anglestyle, connectstyle) reads the word
+*!       w as, by the class's _unabbrev rule; "" for a word it notes.
+*!
 *!   _dash_edge_span(pre)
 *!       twoway's refusal of span or nospan on an edge title, in the
 *!       caller's local _es_msg (WP-31 D2b).
@@ -7912,10 +7917,11 @@ string scalar _dash_stylelist_probe(string scalar tok)
 // P1.8a): connect gives direct, ascending, stairstep, stepstair or none,
 // cmissing y or n; "" for an empty element and "?" for anything else.
 // The spellings are twoway's connectstyle and yesno names as
-// test/fixtures/connect_truth.json measures them (its S block): exact
-// and case-sensitive (L is ascending, l direct; N and j are unknown),
-// the long names also by the abbreviations the fixture shows taken (dir,
-// asc, asce, stair, stairs).  A fixed table read by value; O(len(e)).
+// test/fixtures/connect_truth.json measures them (its S block):
+// case-sensitive (L is ascending, l direct; N and j are unknown); a
+// connect element is read by _dash_style_word("connectstyle", e), every
+// abbreviation the class's syntax takes (style_words_truth.json, WP-45
+// ST-6).  A fixed table read by value; O(len(e)).
 string scalar _dash_connect_canon(string scalar kind, string scalar e)
 {
     string scalar t
@@ -7931,16 +7937,10 @@ string scalar _dash_connect_canon(string scalar kind, string scalar e)
         if (n <= 5 & t == substr("false", 1, n)) return("n")
         return("?")
     }
-    if (t == "l" | t == "line" | t == "d" | t == "c" | t == "connected") return("direct")
-    if (n >= 3 & n <= 6 & t == substr("direct", 1, n)) return("direct")
-    if (t == "L" | t == "a") return("ascending")
-    if (n >= 3 & n <= 9 & t == substr("ascending", 1, n)) return("ascending")
-    if (t == "J" | t == "s") return("stairstep")
-    if (n >= 5 & n <= 9 & t == substr("stairstep", 1, n)) return("stairstep")
-    if (t == "u" | t == "upstairstep") return("stepstair")
-    if (n >= 4 & n <= 9 & t == substr("stepstair", 1, n)) return("stepstair")
-    if (t == "n" | t == "i" | t == "none") return("none")
-    return("?")
+    // connectstyle's reading (WP-45 ST-6): every abbreviation its syntax
+    // takes (st, up, no, di, ...), L, J and stairstep_up.
+    t = _dash_style_word("connectstyle", t)
+    return(t == "" ? "?" : t)
 }
 
 // _dash_stylelist_locals(raw, stub) -- the elements of a stylelist as the
@@ -8512,9 +8512,11 @@ void _dash_by_clamp(string scalar scname, real scalar limit)
 // the string scalar scname, every legend(), clegend(), plegend(),
 // legloc(), clegloc() and plegloc() copy (matched by _dash_by_grammar()
 // as _dash_by_scan matches them) is read for its last position()
-// (pos() .. position()); the first such text that is not 0-12 as typed
-// -- abc, 13, 03 or 3.0, each "named style ... not found in class
-// clockdir" in twoway (by_text_truth.json bp77-bp79) -- is returned, ""
+// (pos() .. position()); the first such text clockdir does not read
+// (_dash_style_word: 0-12 as typed and center, top, bottom, left, right
+// abbreviated, WP-45 ST-3) -- abc, 13, 03 or 3.0, each "named style ...
+// not found in class clockdir" in twoway (by_text_truth.json
+// bp77-bp79) -- is returned, ""
 // when there is none.  The text is read, never executed, in one pass.
 string scalar _dash_legend_pos_text(string scalar scname)
 {
@@ -8550,8 +8552,7 @@ string scalar _dash_legend_pos_text(string scalar scname)
                 last = strtrim(_dash_rep_value(sub[i]))
             }
         }
-        if (last != "" & !anyof(("0", "1", "2", "3", "4", "5", "6", "7",
-                                 "8", "9", "10", "11", "12"), last)) {
+        if (last != "" & _dash_style_word("clockdir", last) == "") {
             return(last)
         }
     }
@@ -12434,16 +12435,17 @@ real scalar _dash_subreq_check(string scalar kind)
                 hasp = 1
             }
         }
-        if (lastpos != "" & !anyof(("0", "1", "2", "3", "4", "5", "6", "7",
-                                    "8", "9", "10", "11", "12"), lastpos)) {
+        // position() and ring() are noted only where twoway's clockdir and
+        // gridringstyle do not read them (WP-45 ST-3, ST-4: top, b, in, o
+        // are read; style_words_truth.json).
+        if (lastpos != "" & _dash_style_word("clockdir", lastpos) == "") {
             _dash_note("named style ", lastpos,
                        " not found in class clockdir, default attributes used")
         }
         // A lowercase abbreviation of inside or outside is drawn with no
         // note (WP-43 LT-9; title_box_truth.json leg_ring_w_<w>).
-        if (lastring != "" & !_dash_so_isnum(lastring, 0)
-            & strpos("inside", lastring) != 1
-            & strpos("outside", lastring) != 1) {
+        if (lastring != "" & _dash_style_word("gridringstyle", lastring) == ""
+            & _dash_ring_ok(lastring) != 1) {
             _dash_note("named style ", lastring,
                        " not found in class gridringstyle, default attributes used")
             _dash_note("", "gridringstyle",
@@ -12608,6 +12610,25 @@ real scalar _dash_subreq_check(string scalar kind)
                     _dash_say("err", "option ring() incorrectly specified", "", "")
                     _dash_subreq_clear()
                     return(198)
+                }
+                // position() and orientation() of title(), subtitle(),
+                // note() and caption(): a word clockdir or tb_orientstyle
+                // does not read gets twoway's note (WP-45 ST-11;
+                // style_words_truth.json clockdir/tb_orientstyle title rows).
+                for (i = 1; i <= cols(toks); i++) {
+                    if (edge) break
+                    arg = strtrim(_dash_rep_value(toks[i]))
+                    if (arg == "") continue
+                    if (names[i] == "position" &
+                        _dash_style_word("clockdir", arg) == "") {
+                        _dash_note("named style ", arg,
+                                   " not found in class clockdir, default attributes used")
+                    }
+                    if (names[i] == "orientation" &
+                        _dash_style_word("tb_orientstyle", arg) == "") {
+                        _dash_note("named style ", arg,
+                                   " not found in class tb_orientstyle, default attributes used")
+                    }
                 }
             }
         }
@@ -13782,46 +13803,101 @@ real scalar _dash_at_dates(string scalar u1, string scalar u2)
 }
 
 // _dash_at_place(p) -- the compass direction twoway draws placement(p) in
-// (style/compass2dir-*.style, measured: test/fixtures/
-// added_text_truth.json _meta.compass), "" for a name twoway notes and
-// draws east.  Lower case, as Stata's style names are.
+// (n ne e se s sw w nw c), "" for a name twoway notes and draws east:
+// compass2dir's reading of the word (_dash_style_word; WP-45 ST-1:
+// nor, NE, rig, 3 are taken, NOR and 3.0 noted).
 string scalar _dash_at_place(string scalar p)
 {
-    string matrix T
-    real scalar   i
-
-    T = ("n", "n" \ "north", "n" \ "12", "n" \ "t", "n" \ "top", "n" \
-         "1", "ne" \ "2", "ne" \ "ne", "ne" \ "neast", "ne" \
-         "3", "e" \ "e", "e" \ "east", "e" \ "r", "e" \ "right", "e" \
-         "4", "se" \ "5", "se" \ "se", "se" \ "seast", "se" \
-         "6", "s" \ "s", "s" \ "south", "s" \ "b", "s" \ "bottom", "s" \
-         "7", "sw" \ "8", "sw" \ "sw", "sw" \ "swest", "sw" \
-         "9", "w" \ "w", "w" \ "west", "w" \ "l", "w" \ "left", "w" \
-         "10", "nw" \ "11", "nw" \ "nw", "nw" \ "nwest", "nw" \
-         "0", "c" \ "c", "c" \ "center", "c")
-    for (i = 1; i <= rows(T); i++) {
-        if (T[i, 1] == p) return(T[i, 2])
-    }
-    return("")
+    return(_dash_style_word("compass2dir", p))
 }
 
-// _dash_at_orient(o) -- the orientation twoway draws orientation(o) in
-// (style/tb_orientstyle-*.style, measured: _meta.orient): horizontal,
-// vertical, rvertical or rhorizontal, "" for a name twoway notes and
-// draws horizontally.
+// _dash_at_orient(o) -- the orientation twoway draws orientation(o) in:
+// horizontal, vertical, rvertical or rhorizontal, "" for a name twoway
+// notes and draws horizontally -- tb_orientstyle's reading of the word
+// (_dash_style_word; WP-45 ST-2: hor, vertic, rhori are taken).
 string scalar _dash_at_orient(string scalar o)
 {
-    string matrix T
-    real scalar   i
+    return(_dash_style_word("tb_orientstyle", o))
+}
 
-    T = ("horizontal", "horizontal" \ "horiz", "horizontal" \
-         "vertical", "vertical" \ "vert", "vertical" \
-         "rvertical", "rvertical" \ "rvert", "rvertical" \
-         "rhorizontal", "rhorizontal" \ "rhoriz", "rhorizontal")
-    for (i = 1; i <= rows(T); i++) {
-        if (T[i, 1] == o) return(T[i, 2])
+// _dash_style_word(cls, w) -- the canonical name the style class cls
+// reads the word w as, or "" for a word the class does not take (WP-45
+// ST-1, D-45-02.a), as the class's _unabbrev program reads it (ado/base
+// <c>/<cls>.class).  The word, blanks around it dropped, is first one of
+// the class's exact words (clockdir 0-12 as written; anglestyle 45 and
+// 270; connectstyle L ascending, J stairstep, stairstep_up), then a lower
+// case abbreviation of one of its syntax option names in the class's
+// order, at least the option's capitals long; for compass2dir a word of
+// at most two characters no name took is one of its capitals N S E W NE
+// NW SE SW T B R L, or a clock number 0-12.  Canonicals: compass2dir n ne
+// e se s sw w nw c; tb_orientstyle horizontal vertical rhorizontal
+// rvertical; clockdir 0-12; gridringstyle 0 or 1; anglestyle degrees;
+// connectstyle direct ascending stairstep stepstair none.  The same
+// tables as dash_render.py's _dash_style_word (_DASH_STYLE_NAMES), pinned
+// row by row to test/fixtures/style_words_truth.json (cscript Q4502-3).
+// Fixed tables read by value; O(len(w)).
+string scalar _dash_style_word(string scalar cls, string scalar w)
+{
+    string matrix    T
+    string rowvector caps, capv, clk
+    string scalar    t
+    real scalar      i, n, v
+
+    t = strtrim(w)
+    if (t == "" | strpos(t, " ") | strpos(t, char(9))) return("")
+    n = strlen(t)
+    if (cls == "compass2dir") {
+        T = ("north", "1", "n" \ "south", "1", "s" \ "east", "1", "e" \
+             "west", "1", "w" \ "nwest", "2", "nw" \ "neast", "2", "ne" \
+             "swest", "2", "sw" \ "seast", "2", "se" \ "center", "1", "c" \
+             "top", "1", "n" \ "bottom", "1", "s" \ "left", "1", "w" \
+             "right", "1", "e")
     }
-    return("")
+    else if (cls == "tb_orientstyle") {
+        T = ("horizontal", "3", "horizontal" \ "vertical", "4", "vertical" \
+             "rhorizontal", "4", "rhorizontal" \ "rvertical", "5", "rvertical")
+    }
+    else if (cls == "clockdir") {
+        if (anyof(("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+                   "11", "12"), t)) return(t)
+        T = ("center", "1", "0" \ "top", "1", "12" \ "bottom", "1", "6" \
+             "left", "1", "9" \ "right", "1", "3")
+    }
+    else if (cls == "gridringstyle") {
+        T = ("inside", "1", "0" \ "outside", "1", "1")
+    }
+    else if (cls == "anglestyle") {
+        if (t == "45" | t == "270") return(t)
+        T = ("horizontal", "1", "0" \ "vertical", "1", "90" \
+             "rhorizontal", "2", "180" \ "rvertical", "2", "270")
+    }
+    else if (cls == "connectstyle") {
+        if (t == "L") return("ascending")
+        if (t == "J") return("stairstep")
+        if (t == "stairstep_up") return("stepstair")
+        T = ("connected", "1", "direct" \ "direct", "1", "direct" \
+             "line", "1", "direct" \ "stairstep", "1", "stairstep" \
+             "upstairstep", "1", "stepstair" \ "stepstair", "4", "stepstair" \
+             "ascending", "1", "ascending" \ "none", "1", "none" \
+             "i", "1", "none")
+    }
+    else return("")
+    for (i = 1; i <= rows(T); i++) {
+        if (n >= strtoreal(T[i, 2]) & n <= strlen(T[i, 1]) &
+            substr(T[i, 1], 1, n) == t) return(T[i, 3])
+    }
+    if (cls != "compass2dir" | n > 2) return("")
+    caps = ("N", "S", "E", "W", "NE", "NW", "SE", "SW", "T", "B", "R", "L")
+    capv = ("n", "s", "e", "w", "ne", "nw", "se", "sw", "n", "s", "e", "w")
+    for (i = 1; i <= cols(caps); i++) {
+        if (caps[i] == t) return(capv[i])
+    }
+    if (!_dash_so_isnum(t, 0)) return("")
+    v = strtoreal(t)
+    if (v >= . | v != trunc(v) | v < 0 | v > 12) return("")
+    clk = ("c", "ne", "ne", "e", "se", "se", "s", "sw", "sw", "w", "nw",
+           "nw", "n")
+    return(clk[v + 1])
 }
 
 // _dash_edge_span(pre) -- span or nospan given inside an edge title, which

@@ -508,7 +508,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **DG-13 Tracked:** Closed in WP-44, BUGS.md "ylabel(minmax) on an empty scale draws Bokeh's default ticks; data spanning about ±8e307 give an OverflowError traceback (twoway gives r(199))", commit f391788.
 - **PIC-4 Tracked:** Open (WP-45 section 45-01).
 - **PIC-7 Tracked:** Open (WP-45 section 45-01).
-- **ST-1 Tracked:** Open (WP-45 section 45-02).
+- **ST-1 Tracked:** Closed in WP-45, BUGS.md "Style-word abbreviations and names twoway reads are not read: compass2dir (nor, N, rig ...), tb_orientstyle (hor, vertic), clockdir names (top, bottom, left ...: title position(bottom) drawn above), gridringstyle (inside/outside; title ring(in) accepted where twoway refuses), anglestyle (v, rv, rh), connectstyle (st, up, no drawn direct); twoway-worded notes are invented for them, and justification(l)'s note is missing", commit pending.
 - **ST-7 Tracked:** Open (WP-45 section 45-03).
 - **ST-15 Tracked:** Open (WP-45 section 45-03).
 - **ST-17 Tracked:** Open (WP-45 section 45-03).

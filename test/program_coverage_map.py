@@ -1011,6 +1011,8 @@ COVERAGE = {
         "_dash_at_copy": ("test_twoway_option_parity.cscript:AT-01", "test_twoway_option_parity.cscript:AT-03"),
         "_dash_at_place": ("test_wp30_truth.cscript:AT-21", "test_twoway_option_parity.cscript:AT-05"),
         "_dash_at_orient": ("test_twoway_option_parity.cscript:AT-05",),
+        # WP-45 ST-1: one style-word reader per class, pinned row by row.
+        "_dash_style_word": ("test_wp45_truth.cscript:Q4502-3",),
         "_dash_at_globals": ("test_wp31_truth.cscript:U30-10",),
         "_dash_at_exp": ("test_wp43_truth.cscript:Q4306-4",),
         "_dash_at_exp_runs": ("test_wp43_truth.cscript:Q4306-4",),

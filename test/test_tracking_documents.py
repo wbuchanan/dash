@@ -2924,7 +2924,6 @@ class TestTheCountsAreTrue:
 GAPS4_OPEN = {
     'PIC-4': "economist: a graph's note() is never painted (the Label targets a Title Node BokehJS does not resolve)",
     'PIC-7': 'economist widths: range, spike, dropline and pc lines at 1.2 (linewidth p) where twoway uses pother 0.8; the rarea outline at 0.8 centred where twoway uses parea 0.2 inside',
-    'ST-1': "Style-word abbreviations and names twoway reads are not read: compass2dir (nor, N, rig ...), tb_orientstyle (hor, vertic), clockdir names (top, bottom, left ...: title position(bottom) drawn above), gridringstyle (inside/outside; title ring(in) accepted where twoway refuses), anglestyle (v, rv, rh), connectstyle (st, up, no drawn direct); twoway-worded notes are invented for them, and justification(l)'s note is missing",
     'ST-7': 'Leaf style files on the ado-path (linepattern, linewidth, symbolsize, gsize, intensity, anglestyle, margin) are not read',
     'ST-15': 'color-*.style and textboxstyle-*.style files are not read (mcolor(mine) draws black)',
     'ST-17': 'Scheme directives read but not drawn: clockdir p/p#, title textboxstyle, legend_col_gap, title clocks 2-4/8-10; a scheme name must not be a path; files over 1 MB or linked out are skipped',

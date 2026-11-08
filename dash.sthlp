@@ -529,8 +529,11 @@ a filter move.  A {cmd:scatter} given {cmd:connect()} is {cmd:twoway}'s
 joins); {cmd:J} (or {cmd:stairstep}) steps across, then up or down;
 {cmd:stepstair} steps up or down, then across; and {cmd:i} (or
 {cmd:none}) draws no line and keeps the key.  The spellings are
-{cmd:twoway}'s, case and all ({cmd:L} is not {cmd:l}); a name
-{cmd:twoway} does not know is drawn direct, after {cmd:twoway}'s note.
+{cmd:twoway}'s, case and all ({cmd:L} is not {cmd:l}), read as
+{cmd:twoway} reads connectstyle names, abbreviations included --
+{cmd:st} is {cmd:stairstep}, {cmd:up} {cmd:stepstair}, {cmd:no}
+{cmd:none}, {cmd:di} {cmd:direct}; a name {cmd:twoway} does not know is
+drawn direct, after {cmd:twoway}'s note.
 Every point keeps its tooltip on a stepped line, and a hidden line has
 none.  {cmd:cmissing(n)} breaks the line at each observation missing
 {it:x} or {it:y} (each bound of a range plot at its own), and
@@ -835,10 +838,12 @@ on a date axis a number is a date in the variable's units, {opt yaxis(2)},
 or reversed axis it is at the transformed point.  A text never widens an
 axis, and one whose point is outside the plot region is still drawn.
 Under {cmd:by()} each text is drawn in every panel at the panel's text
-size.  Drawn: {opt placement()} (every compass name and clock position
-{cmd:twoway} takes; an unknown name is noted and drawn east, as
-{cmd:twoway} does), {opt justification()}, {opt orientation()}
-({cmd:horizontal}, {cmd:vertical}, {cmd:rvertical}, {cmd:rhorizontal}),
+size.  Drawn: {opt placement()} (read as {cmd:twoway} reads compass2dir
+names, abbreviations included -- {cmd:nor}, {cmd:NE}, {cmd:rig}, {cmd:3};
+an unknown name is noted and drawn east, as {cmd:twoway} does),
+{opt justification()}, {opt orientation()} (read as {cmd:twoway} reads
+tb_orientstyle names, abbreviations included -- {cmd:hor},
+{cmd:vertic}, {cmd:rvert}, {cmd:rhori}),
 {opt size()}, {opt color()}, {opt box} and {opt nobox}, {opt fcolor()}
 and {opt bfcolor()}, {opt lcolor()} and {opt blcolor()}, {opt bcolor()},
 {opt lwidth()} and {opt blwidth()}, {opt margin()}, {opt alignment()}
@@ -4116,11 +4121,13 @@ the per-plot specification (not to {cmd:dash build} options).
     ({cmd:small} in every shipped scheme), and {cmd:*}{it:#} multiplies
     that size{p_end}
 {synopt:{cmdab:mlabp:osition(}{it:#}{cmd:)}}clock position of the label
-    around the point, a whole number from 0 to 12, placed as {cmd:twoway}
+    around the point, a whole number from 0 to 12 or a clockdir name read
+    as {cmd:twoway} reads it, abbreviations included ({cmd:left} is 9,
+    {cmd:t} 12, {cmd:c} 0), placed as {cmd:twoway}
     places it: 3 = right (the default; on {cmd:bar} 12, as {cmd:twoway}'s
     labelstyle {cmd:p#bar} puts it), 12 = above, 6 = below, 9 = left,
     the hours between at the corners, and 0 centred on the point.  Anything
-    else -- {cmd:13}, {cmd:2.5}, {cmd:03} or a name -- is reported and the
+    else -- {cmd:13}, {cmd:2.5}, {cmd:03} or another name -- is reported and the
     label drawn at 12, where {cmd:twoway}, noting it, draws it{p_end}
 {synopt:{cmdab:mlabv:position(}{it:varname}{cmd:)}}the clock position of
     each observation's label, read row by row: a whole number from 0 to 12
@@ -4149,7 +4156,9 @@ the per-plot specification (not to {cmd:dash build} options).
 {synopt:{cmdab:mlabang:le(}{it:anglestyle}{cmd:)}}angle of the label text,
     counter-clockwise: one of Stata's anglestyles ({cmd:horizontal},
     {cmd:vertical}, {cmd:rvertical}, {cmd:rhorizontal}, {cmd:forty_five},
-    ...) or a number of degrees from -360 to 360.  A number outside that
+    ...), read as {cmd:twoway} reads anglestyle names, abbreviations
+    included ({cmd:v} 90, {cmd:rh} 180, {cmd:rv} 270), or a number of
+    degrees from -360 to 360.  A number outside that
     range is refused where {cmd:twoway} refuses it -- {cmd:scatter},
     {cmd:connected}, {cmd:bar}, {cmd:dot}, {cmd:dropline}, {cmd:rcapsym},
     {cmd:rconnected}, {cmd:rscatter}, {cmd:pcscatter}, {cmd:pccapsym} and
@@ -5214,9 +5223,12 @@ the first plot's key.
 {cmd:all} keys every plot, so two plots that look alike keep two keys;
 {cmd:draw} is {cmd:on} and {cmd:nodraw} is {cmd:off}, as in {cmd:twoway}.
 {cmd:legend(ring())} is a real number ({cmd:ring(4.5)} outside a note's
-4) or an abbreviation of {cmd:inside} or {cmd:outside}
-({cmd:ring(in)}, {cmd:ring(o)}), and a ring at or below 0 is inside the
-plot region, as {cmd:twoway} draws them.
+4) or a gridringstyle name read as {cmd:twoway} reads it, abbreviations
+included ({cmd:inside}, {cmd:in}, {cmd:i}; {cmd:outside}, {cmd:out},
+{cmd:o}), and a ring at or below 0 is inside the plot region, as
+{cmd:twoway} draws them; {cmd:legend(position())} is read as
+{cmd:twoway} reads clockdir names, abbreviations included ({cmd:top} is
+12, {cmd:b} 6).
 {cmd:twoway} has no {cmd:legend(top)}, {cmd:legend(bottom)},
 {cmd:legend(left)} or {cmd:legend(right)} and refuses each
 ({cmd:option top not allowed}, r(198)); so does {cmd:dash}, naming the
@@ -6233,7 +6245,9 @@ them, in both render modes, and nothing is printed for them:
 {cmd:width()}, {cmd:height()}, {cmd:angle()}, {cmd:lstyle()},
 {cmd:blstyle()}, {cmd:blcolor()}, {cmd:blwidth()}, {cmd:blpattern()},
 {cmd:lalign()}, {cmd:blalign()} and {cmd:style()}.
-{cmd:position(}{it:#}{cmd:)} is the clock: 11, 12 and 1 above the plot
+{cmd:position(}{it:#}{cmd:)} is the clock, read as {cmd:twoway} reads
+clockdir names, abbreviations included ({cmd:bottom} and {cmd:b} are
+6): 11, 12 and 1 above the plot
 region, 5, 6 and 7 below it, at the left, centre or right; a box at 2,
 3 or 4 o'clock is drawn to the right of the plot and one at 8, 9 or 10
 to its left, level with the plot region's top, centre or bottom, as
@@ -6800,7 +6814,8 @@ name them there.
     {it:#} degrees counter-clockwise, as {cmd:twoway} does; {it:#} must lie
     between -360 and 360, as in {cmd:twoway}, or be one of Stata's
     anglestyles ({cmd:horizontal}, {cmd:vertical}, {cmd:rvertical},
-    {cmd:rhorizontal}, {cmd:forty_five}, ...).  Drawn on every plot type
+    {cmd:rhorizontal}, {cmd:forty_five}, ...), read as {cmd:twoway} reads
+    anglestyle names, abbreviations included.  Drawn on every plot type
     that draws markers: {cmd:scatter}, {cmd:connected}, {cmd:rconnected},
     {cmd:dot}, {cmd:dropline}, {cmd:scatteri}, {cmd:rscatter},
     {cmd:rcapsym}, {cmd:rpcap}, {cmd:rpspike}, {cmd:pcscatter} and
