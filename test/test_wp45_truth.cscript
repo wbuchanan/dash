@@ -646,6 +646,205 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w45_run' {
 }
 * ==== end S02 ====
 
+// ---- S03 helpers (WP-45 section 45-03) ----
+// _w45s03_files(dir): test/fixtures/style_leaf_truth.json's style and
+// scheme files, written into dir (a block puts it on the ado-path with
+// adopath ++ and takes it off with adopath - at its end).
+// _w45s03_pair(sp, dp, rsp, rdp, app): the saved page's and the served
+// app's models of a probe spec and of its reference spec, compared on
+// their visual attributes; dash notes the probe printed and the
+// differences in globals w45s03_notes and w45s03_diff.
+// _w45s03_svgsame(a, b): whether two exported SVGs are the same bytes, in
+// global w45s03_same.
+python:
+import os as _w45s03_os, sys as _w45s03_sys
+for _w45s03_p in (_w45s03_os.path.abspath(".."),
+                  _w45s03_os.path.abspath(_w45s03_os.path.join("..", "scripts"))):
+    if _w45s03_p not in _w45s03_sys.path:
+        _w45s03_sys.path.insert(0, _w45s03_p)
+
+_W45S03_ATTRS = ("line_dash", "line_width", "line_color", "line_alpha",
+                 "fill_color", "fill_alpha", "size", "angle",
+                 "text_font_size", "text_color", "text_alpha", "text_align",
+                 "text_baseline", "x_offset", "y_offset", "min_border_left",
+                 "min_border_right", "min_border_top", "min_border_bottom",
+                 "align", "location", "start", "end", "ticks")
+
+
+def _w45s03_files(d):
+    import json
+    with open(_w45s03_os.path.join("fixtures", "style_leaf_truth.json"),
+              encoding="utf-8") as fh:
+        files = json.load(fh)["files"]
+    for name, text in files.items():
+        if "/" not in name:
+            with open(_w45s03_os.path.join(d, name), "w",
+                      encoding="utf-8") as fh:
+                fh.write(text)
+
+
+def _w45s03_models(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+        with open(app, encoding="utf-8") as fh:
+            src = fh.read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        ns = dict(__name__="dash_w45s03_app")
+        exec(compile(src.replace(attach, "pass"), "dash_w45s03_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    notes = sorted({str(w.message) for w in caught
+                    if str(w.message).startswith("dash")})
+    return (list(r._last_layout_root.references()), list(doc.models)), notes
+
+
+def _w45s03_sig(models):
+    out = []
+    for m in models:
+        row = tuple((a, repr(getattr(m, a, None))) for a in _W45S03_ATTRS
+                    if a in m.properties())
+        if row:
+            out.append((type(m).__name__, row))
+    return sorted(out)
+
+
+def _w45s03_pair(sp, dp, rsp, rdp, app):
+    from sfi import Macro
+    (ps, pv), notes = _w45s03_models(sp, dp, app)
+    (rs, rv), _n = _w45s03_models(rsp, rdp, app)
+    diff = []
+    for mode, a, b in (("saved", ps, rs), ("served", pv, rv)):
+        sa, sb = _w45s03_sig(a), _w45s03_sig(b)
+        if sa != sb:
+            extra = [x for x in sa if x not in sb][:2]
+            diff.append("%s: %s" % (mode, extra))
+    Macro.setGlobal("w45s03_notes", " | ".join(notes)[:400])
+    Macro.setGlobal("w45s03_diff", "; ".join(diff)[:600])
+
+
+def _w45s03_svgsame(a, b):
+    import hashlib
+    from sfi import Macro
+    def h(p):
+        with open(p, "rb") as fh:
+            return hashlib.sha256(fh.read()).hexdigest()
+    Macro.setGlobal("w45s03_same", "1" if h(a) == h(b) else "0")
+end
+
+// _w45s03_tw id cmd_a | cmd_b: twoway draws cmd_a and cmd_b (data sorted
+// weight mpg make, so a line's ties keep one order) and exports both;
+// w45s03_same says whether the SVGs are the same and w45s03_twrc the
+// return codes.
+capture program drop _w45s03_tw
+program define _w45s03_tw
+    version 19
+    gettoken dir 0 : 0
+    local bar = strpos(`"`macval(0)'"', "|")
+    local a = strtrim(substr(`"`macval(0)'"', 1, `bar' - 1))
+    local b = strtrim(substr(`"`macval(0)'"', `bar' + 1, .))
+    local rc ""
+    local k 0
+    foreach c in a b {
+        local ++k
+        quietly sysuse auto, clear
+        quietly sort weight mpg make
+        capture graph drop _all
+        capture noisily twoway `macval(`c')' name(w45s03tw, replace)
+        local one = _rc
+        local rc "`rc' `one'"
+        capture erase "`dir'/tw`k'.svg"
+        if !`one' quietly graph export "`dir'/tw`k'.svg", as(svg) name(w45s03tw) replace
+    }
+    global w45s03_twrc = strtrim("`rc'")
+    capture graph drop w45s03tw
+    python: import __main__ as _w45m; _w45m._w45s03_svgsame("`dir'/tw1.svg", "`dir'/tw2.svg")
+end
+
+// _w45s03_dash dir name cmd: dash clear, register cmd as graph name, and
+// write its spec and data to dir/<name>.json and dir/<name>_d.json.
+capture program drop _w45s03_dash
+program define _w45s03_dash
+    version 19
+    gettoken dir 0 : 0
+    gettoken nm 0 : 0
+    quietly sysuse auto, clear
+    quietly sort weight mpg make
+    capture dash clear
+    capture noisily dash `macval(0)' name(`nm')
+    global w45s03_drc = _rc
+    if !_rc {
+        capture erase "`dir'/`nm'.json"
+        capture erase "`dir'/`nm'_d.json"
+        _dash_serve_spec, specpath("`dir'/`nm'.json") datapath("`dir'/`nm'_d.json")
+    }
+end
+
+* ==== S03 ST-7: leaf style files ====
+local only : env WP45_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local s03d "`w45_work'/s03"
+    local s03u "`w45_work'/s03u"
+    capture mkdir "`s03d'"
+    capture mkdir "`s03u'"
+    python: import __main__ as _w45m; _w45m._w45s03_files("`s03u'")
+    quietly adopath ++ "`s03u'"
+
+    // ------------------------------------------------------------
+    // Q4503-1: a linewidth-, linepattern-, symbolsize-, gsize- and
+    // margin-<name>.style file on the ado-path: twoway draws each name as
+    // its value (live, SVG equality), and dash draws the names as the
+    // values typed, saved and served, with no note.
+    // ------------------------------------------------------------
+    _w45s03_tw "`s03d'" line mpg weight, lwidth(zqw) | line mpg weight, lwidth(2)
+    local s03_ok = ("${w45s03_twrc}" == "0 0" & ${w45s03_same} == 1)
+    _w45_expect Q4503-1 "(`s03_ok')" "twoway lwidth(zqw) vs lwidth(2): rc ${w45s03_twrc}, same ${w45s03_same}"
+    _w45s03_tw "`s03d'" scatter mpg weight, plotregion(margin(zqn)) | scatter mpg weight, plotregion(margin(2 4 8 6))
+    local s03_ok = ("${w45s03_twrc}" == "0 0" & ${w45s03_same} == 1)
+    _w45_expect Q4503-1 "(`s03_ok')" "twoway margin(zqn) vs margin(2 4 8 6): rc ${w45s03_twrc}, same ${w45s03_same}"
+    foreach pair in "line mpg weight, lwidth(zqw) lpattern(zqpb)|line mpg weight, lwidth(2) lpattern(longdash_dot)" ///
+        `"scatter mpg weight, msize(zqs) title("T", size(zqg)) plotregion(margin(zqn))|scatter mpg weight, msize(5) title("T", size(10)) plotregion(margin(2 4 8 6))"' {
+        local bar = strpos(`"`pair'"', "|")
+        local pa = substr(`"`pair'"', 1, `bar' - 1)
+        local pb = substr(`"`pair'"', `bar' + 1, .)
+        _w45s03_dash "`s03d'" w45s03p `macval(pa)'
+        local s03_rc1 = ${w45s03_drc}
+        _w45s03_dash "`s03d'" w45s03r `macval(pb)'
+        local s03_rc2 = ${w45s03_drc}
+        _w45_expect Q4503-1 "(`s03_rc1' == 0 & `s03_rc2' == 0)" "dash rc `s03_rc1' `s03_rc2'"
+        if !`s03_rc1' & !`s03_rc2' {
+            python: import __main__ as _w45m; _w45m._w45s03_pair("`s03d'/w45s03p.json", "`s03d'/w45s03p_d.json", "`s03d'/w45s03r.json", "`s03d'/w45s03r_d.json", "`s03d'/a.py")
+            mata: st_local("s03_nn", strofreal(st_global("w45s03_notes") == ""))
+            mata: st_local("s03_nd", strofreal(st_global("w45s03_diff") == ""))
+            _w45_expect Q4503-1 "(`s03_nn')" `"notes: ${w45s03_notes}"'
+            _w45_expect Q4503-1 "(`s03_nd')" `"differs: ${w45s03_diff}"'
+        }
+    }
+    _w45_done Q4503-1 "leaf style files draw as their values in twoway and in dash, saved and served, with no note"
+
+    quietly adopath - "`s03u'"
+    capture dash clear
+    macro drop w45s03_*
+    foreach f in tw1.svg tw2.svg w45s03p.json w45s03p_d.json w45s03r.json w45s03r_d.json a.py {
+        capture erase "`s03d'/`f'"
+    }
+    local s03_left : dir "`s03u'" files "*"
+    foreach f of local s03_left {
+        capture erase "`s03u'/`f'"
+    }
+    capture rmdir "`s03d'"
+    capture rmdir "`s03u'"
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 // ---- S05 helpers (WP-45 section 45-05) ----
 // _w45s05_models(sp, dp, app): the saved page's models and the served
 // app's, each built from one spec (test_wp43_truth.cscript's

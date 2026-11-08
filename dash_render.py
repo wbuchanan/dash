@@ -2662,6 +2662,29 @@ _DASH_FILTER_RESET_JS = (
 #: The served app's copy starts empty (no path is written into an app).
 _DASH_STYLE_FILE_MEMO: dict = {}
 
+#: WP-45 ST-7: the parser a leaf style name the static readers do not know
+#: (lwidth(zqw), lpattern(zqpat), mcolor(mine) ...) is looked up in, as a
+#: ``<class>-<name>.style`` file on the ado-path or a row embedded at
+#: registration (``SchemeParser.leaf_value``).  Set by
+#: ``DashRenderer.render`` to the build's parser and by the served app to
+#: its own (written ``[None]``: no parser or path is written into an app);
+#: every parser of one build reads the same files, so one is enough.
+_DASH_LEAF_SOURCE: list = [None]
+
+
+def _dash_leaf_value(cls, name):
+    """The value the style file ``<cls>-<name>.style`` sets, as the reader
+    of *cls* reads a typed value (``"2"``, ``"4 1 1 1"``, ``"14pt"``,
+    ``"200 30 40"``), or None: no source, no such file, or a value that is
+    not plain numbers (WP-45 ST-7, ST-15).  Never raises."""
+    sp = _DASH_LEAF_SOURCE[0]
+    if sp is None:
+        return None
+    try:
+        return sp.leaf_value(cls, name)
+    except Exception:   # noqa: BLE001 -- a reader notes the name instead
+        return None
+
 #: WP-31 B5b (D-18 risk 1): the most dots one dot layer draws.  twoway
 #: draws ndots() per observation and end (75 by default); above this many in
 #: all the rows are drawn with fewer dots, and the note says how many.
@@ -7963,6 +7986,11 @@ def _dash_anglestyle_degrees(raw) -> "float | None":
     word = _dash_style_word("anglestyle", text)
     if word:
         return float(word)
+    if not re.fullmatch(r"[-+.0-9]", text[:1]):
+        # WP-45 ST-7: an anglestyle-<name>.style file's degrees.
+        alt = _dash_leaf_value("anglestyle", text)
+        if alt is not None:
+            text = alt
     if len(text) > 32 or not re.fullmatch(
             r"[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?", text):
         return None
@@ -8815,6 +8843,13 @@ class OptionTranslator:
             elif v in ab:
                 pt = ab[v] * 4.0 / ref
         if pt is None:
+            # WP-45 ST-7: a symbolsize-, linewidth- or gsize-<name>.style
+            # file's value (a number or #pt, so this reads it once).
+            alt = _dash_leaf_value(
+                {"marker": "symbolsize", "line": "linewidth"}.get(
+                    kind, "gsize"), v)
+            if alt is not None and alt != v:
+                return T.resolve_size(alt, kind, default_pt, ref_in)
             raise ValueError(f"not a Stata {kind} size")
         _max = T._LWIDTH_MAX_RS if kind == "line" else T._SIZE_MAX_RS
         if not math.isfinite(pt) or abs(pt) > _max * T.PT_PER_RS:
@@ -9439,6 +9474,11 @@ class OptionTranslator:
         nums = T._LPATTERN_MAP.get(v)
         if nums is None:
             nums = T.lpattern_formula(v)
+        if nums is None:
+            # WP-45 ST-7: a linepattern-<name>.style file's numbers.
+            alt = _dash_leaf_value("linepattern", v)
+            if alt is not None:
+                nums = [float(t) for t in alt.split()]
         if nums is None:
             raise ValueError(
                 f"Unrecognised Stata line pattern: '{value}'. "
@@ -10681,7 +10721,11 @@ class SchemeParser:
         only: twoway notes ``L`` (measured)."""
         sides = self._MARGINSTYLES.get(str(name or ""))
         if sides is None:
-            return None
+            # WP-45 ST-7: a margin-<name>.style file's four numbers.
+            alt = self.leaf_value("margin", name)
+            if alt is None:
+                return None
+            return [float(t) for t in alt.split()]
         lad = getattr(self, "margin_ladder", None) or self._MARGIN_LADDER
         out = []
         for v in sides:
@@ -10783,18 +10827,29 @@ class SchemeParser:
     #: WP-44 AX-14/AX-8: the axis option's tickstyle, ticksetstyle and
     #: gridstyle files too (SchemeParser.axis_style_tokens); WP-44 AX-9:
     #: xscale()/yscale() style()'s axisstyle files
-    #: (SchemeParser.axis_scale_style_tokens).
+    #: (SchemeParser.axis_scale_style_tokens).  WP-45 ST-7: the seven
+    #: leaf classes' files (``SchemeParser.leaf_value``).
     _STYLE_FILE_CLASSES: "tuple[str, ...]" = (
         "seriesstyle", "markerstyle", "areastyle", "linestyle", "shadestyle",
-        "tickstyle", "ticksetstyle", "gridstyle", "axisstyle")
+        "tickstyle", "ticksetstyle", "gridstyle", "axisstyle",
+        "linepattern", "linewidth", "symbolsize", "gsize", "intensity",
+        "anglestyle", "margin")
+    #: The leaf classes ``leaf_value`` reads (WP-45 ST-7).
+    _LEAF_CLASSES: "tuple[str, ...]" = (
+        "linepattern", "linewidth", "symbolsize", "gsize", "intensity",
+        "anglestyle", "margin")
     _STYLE_FILE_MAX_LINES: int = 200
     _STYLE_FILE_MAX_LINE_BYTES: int = 400
     _STYLE_FILE_MEMO_MAX: int = 400
     #: A style file's ``set <attr> [scheme] [<value>]`` line; a value is a
     #: style name or a number, never a path (no slash, no dot run).
+    #: WP-45 ST-7: or a quoted list of numbers, as a linepattern file's
+    #: ``set pattern "4 1 .1 1"`` and a color file's ``set rgb "26 71
+    #: 111"`` write theirs (the quotes are dropped; ``""`` is solid).
     _STYLE_SET_RE = re.compile(
         r"^\s*set\s+([A-Za-z_][A-Za-z0-9_]{0,40})(?:\s+(scheme))?"
-        r"(?:\s+([A-Za-z_][A-Za-z0-9_#]{0,40}|[0-9]{0,8}\.?[0-9]{1,8}))?"
+        r"(?:\s+([A-Za-z_][A-Za-z0-9_#]{0,40}|[0-9]{0,8}\.?[0-9]{1,8}"
+        r'|"[0-9.]{1,12}(?: [0-9.]{1,12}){0,15}"|""))?'
         r"\s*$")
     #: What a scheme NAME may not hold (M7, register P1.25.4): any blank,
     #: a C0 or C1 control character or DEL, a slash or backslash, a colon,
@@ -13633,11 +13688,124 @@ class SchemeParser:
             if m is None:
                 continue
             attr, is_scheme, val = m.group(1), m.group(2), m.group(3)
+            if val is not None and val.startswith('"'):
+                val = val[1:-1]
             if is_scheme:
                 rows.append((attr, "scheme", val if val is not None else ""))
             elif val is not None:
                 rows.append((attr, "literal", val))
         return tuple(rows)
+
+    #: A leaf file's number: Stata's plain decimal spelling.
+    _LEAF_NUM_RE = re.compile(r"[-+]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)")
+
+    def leaf_value(self, stata_class: str, name: Any) -> "str | None":
+        """The value ``<stata_class>-<name>.style`` sets, written as its
+        class's reader reads a typed value, or None (WP-45 ST-7): no file
+        (embedded rows first, then the walk, as ``_style_file_rows``), a
+        class outside ``_LEAF_CLASSES``, or a value that is not plain
+        numbers -- only literal ``set`` rows are read, so no scheme key or
+        path is built from the file.
+
+        linepattern ``set pattern "4 1 1 1"`` -> ``"4 1 1 1"`` (``""``
+        solid); linewidth, intensity and anglestyle ``set val #`` -> ``#``;
+        symbolsize and gsize ``set val #`` with ``set sztype points`` ->
+        ``#pt``, else ``#`` (relative); margin ``set gleft/gright/gbottom/
+        gtop #`` (``zero`` is 0) -> ``"l r b t"``, margin()'s order
+        (measured: margin-zqn's 2 4 6 8 by gleft gright gtop gbottom
+        draws as margin(2 4 8 6)).  Memoised per parser."""
+        if stata_class not in self._LEAF_CLASSES:
+            return None
+        s = str(name if name is not None else "").strip()
+        memo = self.__dict__.setdefault("_leaf_memo", {})
+        key = (stata_class, s)
+        if key in memo:
+            return memo[key]
+        memo[key] = None
+        if not s or not self._style_name_ok(stata_class, s):
+            return None
+        rows = self._style_file_rows(stata_class, s)
+        lit = {a: v for a, kind, v in (rows or ()) if kind == "literal"}
+        num = self._LEAF_NUM_RE.fullmatch
+        out = None
+        if stata_class == "linepattern":
+            v = lit.get("pattern")
+            if v is not None and all(num(t) for t in v.split()):
+                out = " ".join(v.split())
+        elif stata_class in ("linewidth", "intensity", "anglestyle"):
+            v = lit.get("val")
+            if v is not None and num(v):
+                out = v
+        elif stata_class in ("symbolsize", "gsize"):
+            v = lit.get("val")
+            unit = lit.get("sztype", "relative")
+            if v is not None and num(v) and unit in ("relative", "points"):
+                out = v + ("pt" if unit == "points" else "")
+        elif stata_class == "margin":
+            sides = []
+            for a in ("gleft", "gright", "gbottom", "gtop"):
+                v = lit.get(a)
+                v = "0" if v == "zero" else v
+                if v is None or not num(v):
+                    sides = None
+                    break
+                sides.append(v)
+            if sides:
+                out = " ".join(sides)
+        memo[key] = out
+        return out
+
+    def _leaf_native(self, stata_class: str, w: str) -> bool:
+        """Whether the reader of *stata_class* knows *w* without a file
+        (a name of its own table, a number or a formula), so
+        ``style_rows_for_spec`` looks no file up for it (WP-45 ST-7)."""
+        T = OptionTranslator
+        if T.stata_number(w) is not None:
+            return True
+        if stata_class == "linepattern":
+            return w in T._LPATTERN_MAP or T.lpattern_formula(w) is not None
+        if stata_class == "linewidth":
+            return w in T._LWIDTH_RS
+        if stata_class == "symbolsize":
+            return w in T._SYMBOLSIZE_RS or w in T._SYMBOLSIZE_ABS_PT
+        if stata_class == "gsize":
+            return w in T._GSIZE_RS or w in T._GSIZE_ABS_PT
+        if stata_class == "intensity":
+            return w in self._INTENSITY
+        if stata_class == "anglestyle":
+            return w in _DASH_ANGLESTYLES or bool(
+                _dash_style_word("anglestyle", w))
+        if stata_class == "margin":
+            return w in self._MARGINSTYLES
+        return False
+
+    #: A word of a spec's option values a leaf style file may be named by.
+    _LEAF_WORD_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
+
+    def _leaf_rows_for_spec(self, spec: Any) -> None:
+        """Read (so ``_style_record`` holds) the leaf style file of every
+        word of *spec*'s plot and graph option values that its class's
+        reader does not know: at most 400 words (WP-45 ST-7)."""
+        words: list = []
+        for g in (spec.get("graphs") or []) if isinstance(spec, dict) else []:
+            if not isinstance(g, dict):
+                continue
+            vals = []
+            go = g.get("graph_options")
+            if isinstance(go, dict):
+                vals += [v for v in go.values() if isinstance(v, str)]
+            for pl in g.get("plots") or []:
+                opts = pl.get("options") if isinstance(pl, dict) else None
+                if isinstance(opts, dict):
+                    vals += [v for v in opts.values() if isinstance(v, str)]
+            for v in vals:
+                for w in self._LEAF_WORD_RE.findall(v[:4000]):
+                    if w not in words and len(words) < 400:
+                        words.append(w)
+        for w in words:
+            for c in self._LEAF_CLASSES:
+                if self._style_name_ok(c, w) and not self._leaf_native(c, w):
+                    self._style_file_rows(c, w)
 
     def _style_rows(self, stata_class: str, file: str) -> "tuple | None":
         """D-44b: the embedded or file rows of *file*, else the transcribed
@@ -13719,6 +13887,8 @@ class SchemeParser:
                               if isinstance(g, dict) else None)
                         if isinstance(go, dict):
                             _dash_axis_styles_expand(go, sp, note=False)
+                    # WP-45 ST-7: the leaf style files the options name.
+                    sp._leaf_rows_for_spec(spec)
                 finally:
                     sp.__dict__.pop("_style_record", None)
                 for k, rows in rec.items():
@@ -15885,6 +16055,10 @@ class GlyphMapper:
         if v in SchemeParser._INTENSITY:
             return SchemeParser._INTENSITY[v]
         n = OptionTranslator.stata_number(v)
+        if n is None:
+            # WP-45 ST-7: an intensity-<name>.style file's value.
+            n = OptionTranslator.stata_number(
+                _dash_leaf_value("intensity", v) or "")
         if n is not None:
             return max(0.0, n / 100.0)
         _dash_style_note("fintensity", raw, "fill intensity",
@@ -38301,10 +38475,14 @@ _DASH_STYLE_ROW_KEY_RE = re.compile(
     r"(seriesstyle|markerstyle|areastyle|linestyle|shadestyle|"
     # WP-44 AX-14/AX-8: the axis style reader's classes; AX-9: the
     # scale's axisstyle.
-    r"tickstyle|ticksetstyle|gridstyle|axisstyle) "
+    r"tickstyle|ticksetstyle|gridstyle|axisstyle|"
+    # WP-45 ST-7: the leaf classes.
+    r"linepattern|linewidth|symbolsize|gsize|intensity|anglestyle|margin) "
     r"([A-Za-z_][A-Za-z0-9_]{0,63}|p#[a-z_]{0,40})")
 _DASH_STYLE_ROW_TOKEN_RE = re.compile(
-    r"[A-Za-z_][A-Za-z0-9_#]{0,40}|[0-9]{0,8}\.?[0-9]{1,8}|")
+    r"[A-Za-z_][A-Za-z0-9_#]{0,40}|[0-9]{0,8}\.?[0-9]{1,8}|"
+    # WP-45 ST-7: a quoted list of numbers, its quotes dropped.
+    r"[0-9.]{1,12}(?: [0-9.]{1,12}){1,15}|")
 
 
 def _dash_style_rows_of(build_options: dict) -> dict:
@@ -77506,6 +77684,8 @@ class DashRenderer:
         # build earlier in the same Stata session leaves its notes behind
         # (one note per (option, value) per render).
         _dash_reset_notes()
+        # WP-45 ST-7: the leaf style files this build's readers look in.
+        _DASH_LEAF_SOURCE[0] = self.scheme
         # ---- Parse build options ----
         # First (WP-29 P0.11): the page plan reads the parsed filters, and
         # the size note counts the rows the page holds.
@@ -78403,6 +78583,9 @@ class ServerAppBuilder:
                       # SchemeParser's style-file memo (WP-31 E10, A24),
                       # written empty: no path reaches an app.
                       "_DASH_STYLE_FILE_MEMO",
+                      # WP-45 ST-7: the leaf readers' parser, written
+                      # [None] (the app sets its own).
+                      "_DASH_LEAF_SOURCE",
                       # The sub-option tables and the filter parser's own.
                       "_DASH_LEGEND_SUBOPTS", "_DASH_LEGEND_LABEL_RE",
                       "_DASH_ORDER_WORD_RE", "_DASH_ORDER_BLANK_RE",
@@ -78673,6 +78856,9 @@ class ServerAppBuilder:
                 continue
             if _name == "_DASH_STYLE_FILE_MEMO":
                 out.append("%s = {}" % (_name,))
+                continue
+            if _name == "_DASH_LEAF_SOURCE":
+                out.append("%s = [None]" % (_name,))
                 continue
             if _name == "_DASH_STATA_ORACLE":
                 # WP-34 AX-3: the app starts with the oracle off and none
@@ -78948,6 +79134,8 @@ class ServerAppBuilder:
                          "_dash_anglestyle_degrees",
                          # WP-45 ST-1: one reader per style class.
                          "_dash_style_word",
+                         # WP-45 ST-7: a leaf style file's value.
+                         "_dash_leaf_value",
                          "_source_frame",
                          "_compute_secondary_range",
                          "_dash_axis_labels",
@@ -79488,6 +79676,8 @@ class ServerAppBuilder:
             "",
             "",
             "_DASH_SCHEME = _dash_build_scheme()",
+            "# WP-45 ST-7: the leaf style rows the readers look in.",
+            "_DASH_LEAF_SOURCE[0] = _DASH_SCHEME",
             "_DASH_MAPPER = GlyphMapper(scheme=_DASH_SCHEME)",
             "",
             "",

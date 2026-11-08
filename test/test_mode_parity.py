@@ -1612,8 +1612,23 @@ _P123A_SPECS = [
 ]
 _P123A_CASES = [_case(n, p, _P123A_W, go) for n, p, go in _P123A_SPECS]
 
+#: WP-45 section 45-03: user style and scheme files on an ado-path of this
+#: process's own (test/fixtures/style_leaf_truth.json's files).
+_S03_DIR = os.path.join(_TMP, "ado45")
+os.makedirs(_S03_DIR, exist_ok=True)
+for _f, _t in (("linepattern-zqpb.style", 'set pattern "4 1 .1 1"\n'),
+               ("linewidth-zqw.style", "set val 2\n"),
+               ("gsize-zqg.style", "set val     10\nset sztype  relative\n")):
+    with open(os.path.join(_S03_DIR, _f), "w", encoding="utf-8") as _fh:
+        _fh.write(_t)
+
 
 CORPUS = [
+    # WP-45 ST-7: leaf style files on the ado-path, alike in both modes.
+    _case("user lpattern file", [plot_for("line", {"lpattern": "zqpb",
+                                                   "lwidth": "zqw"})],
+          {"scheme": "s2color", "scheme_dirs": [_S03_DIR]},
+          {"title": '"T", size(zqg)'}),
     # ---- every plot type, bare -------------------------------------------
     *[_case(t, [plot_for(t)]) for t in (
         "scatter", "line", "connected", "area", "bar", "spike", "lfit",

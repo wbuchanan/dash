@@ -1,0 +1,314 @@
+{
+  "D_clockdir_p": {
+    "cmd": "scatter mpg weight in 1/5, mlabel(make)",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight in 1/5, mlabel(make) mlabposition(9)",
+    "same_as_reference": 1
+  },
+  "D_clockdir_p2": {
+    "cmd": "twoway (scatter mpg weight in 1/5, mlabel(make)) (scatter price weight in 1/5, mlabel(make) yaxis(2)),",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "twoway (scatter mpg weight in 1/5, mlabel(make)) (scatter price weight in 1/5, mlabel(make) yaxis(2) mlabposition(9)),",
+    "same_as_reference": 1
+  },
+  "D_legend_col_gap": {
+    "base_keys": [
+      [
+        {
+          "fill": "#000000",
+          "font_size": "99.99px",
+          "transform": null,
+          "x": "1561.85",
+          "y": "2686.46"
+        }
+      ],
+      [
+        {
+          "fill": "#000000",
+          "font_size": "99.99px",
+          "transform": null,
+          "x": "2457.92",
+          "y": "2686.46"
+        }
+      ]
+    ],
+    "cmd": "twoway (scatter mpg weight) (scatter price weight), legend(cols(2))",
+    "notes": [],
+    "probe_keys": [
+      [
+        {
+          "fill": "#000000",
+          "font_size": "99.99px",
+          "transform": null,
+          "x": "1531.90",
+          "y": "2686.46"
+        }
+      ],
+      [
+        {
+          "fill": "#000000",
+          "font_size": "99.99px",
+          "transform": null,
+          "x": "2487.87",
+          "y": "2686.46"
+        }
+      ]
+    ],
+    "rc": 0,
+    "ref_cmd": "twoway (scatter mpg weight) (scatter price weight), legend(cols(2) colgap(huge))",
+    "same_as_base": 0,
+    "same_as_reference": 1
+  },
+  "D_plabelboxed": {
+    "cmd": "scatter mpg weight in 1/5, mlabel(make)",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight in 1/5, mlabel(make)",
+    "same_as_base": 1
+  },
+  "D_textboxstyle": {
+    "base_title": [
+      {
+        "fill": "#1E2D53",
+        "font_size": "139.96px",
+        "transform": null,
+        "x": "2124.91",
+        "y": "215.98"
+      }
+    ],
+    "cmd": "scatter mpg weight, title(\"T\")",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, title(\"T\", size(medium) color(black))",
+    "same_as_base": 0,
+    "same_as_reference": 1,
+    "title": [
+      {
+        "fill": "#000000",
+        "font_size": "110.01px",
+        "transform": null,
+        "x": "2124.91",
+        "y": "195.01"
+      }
+    ]
+  },
+  "D_title_position": {
+    "base_title": [
+      {
+        "fill": "#1E2D53",
+        "font_size": "139.96px",
+        "transform": null,
+        "x": "2124.91",
+        "y": "215.98"
+      }
+    ],
+    "cmd": "scatter mpg weight, title(\"T\")",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, title(\"T\", position(3))",
+    "same_as_reference": 1,
+    "title": [
+      {
+        "fill": "#1E2D53",
+        "font_size": "139.96px",
+        "transform": null,
+        "x": "3795.54",
+        "y": "1322.95"
+      }
+    ]
+  },
+  "L_anglestyle": {
+    "cmd": "scatter mpg weight in 1/5, mlabel(make) mlabangle(zqa)",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight in 1/5, mlabel(make) mlabangle(30)",
+    "same_as_reference": 1
+  },
+  "L_color": {
+    "cmd": "scatter mpg weight, mcolor(zqc)",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, mcolor(\"200 30 40\")",
+    "same_as_reference": 1
+  },
+  "L_gsize": {
+    "cmd": "scatter mpg weight, title(\"T\", size(zqg))",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, title(\"T\", size(10))",
+    "same_as_reference": 1
+  },
+  "L_gsize_pt": {
+    "cmd": "scatter mpg weight, title(\"T\", size(zqp))",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, title(\"T\", size(18pt))",
+    "same_as_reference": 1
+  },
+  "L_intensity": {
+    "cmd": "twoway bar mpg rep78, fintensity(zqi)",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "twoway bar mpg rep78, fintensity(30)",
+    "same_as_reference": 1
+  },
+  "L_lcolor": {
+    "cmd": "line mpg weight, lcolor(zqc)",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "line mpg weight, lcolor(\"200 30 40\")",
+    "same_as_reference": 1
+  },
+  "L_linepattern": {
+    "cmd": "line mpg weight, lpattern(zqpat)",
+    "dasharray": [],
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "line mpg weight, lpattern(solid)",
+    "same_as_solid": 0,
+    "solid_dasharray": []
+  },
+  "L_linepattern_b": {
+    "cmd": "line mpg weight, lpattern(zqpb)",
+    "dasharray": [],
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "line mpg weight, lpattern(longdash_dot)",
+    "same_as_reference": 1
+  },
+  "L_linewidth": {
+    "cmd": "line mpg weight, lwidth(zqw)",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "line mpg weight, lwidth(2)",
+    "same_as_reference": 1
+  },
+  "L_margin": {
+    "cmd": "scatter mpg weight, plotregion(margin(zqm))",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, plotregion(margin(5 5 5 5))",
+    "same_as_reference": 1
+  },
+  "L_margin_n": {
+    "cmd": "scatter mpg weight, plotregion(margin(zqn))",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, plotregion(margin(2 4 8 6))",
+    "same_as_reference": 1
+  },
+  "L_mlabsize": {
+    "cmd": "scatter mpg weight in 1/5, mlabel(make) mlabsize(zqg)",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight in 1/5, mlabel(make) mlabsize(10)",
+    "same_as_reference": 1
+  },
+  "L_mlabtextstyle": {
+    "cmd": "scatter mpg weight in 1/5, mlabel(make) mlabtextstyle(zqt)",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight in 1/5, mlabel(make) mlabsize(huge) mlabcolor(red)",
+    "same_as_reference": 1
+  },
+  "L_msangle": {
+    "cmd": "scatter mpg weight, msymbol(T) msangle(zqa)",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, msymbol(T) msangle(30)",
+    "same_as_reference": 1
+  },
+  "L_symbolsize": {
+    "cmd": "scatter mpg weight, msize(zqs)",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, msize(5)",
+    "same_as_reference": 1
+  },
+  "L_textboxstyle": {
+    "cmd": "scatter mpg weight, title(\"T\", tstyle(zqt))",
+    "notes": [],
+    "rc": 0,
+    "ref_cmd": "scatter mpg weight, title(\"T\", size(huge) color(red))",
+    "same_as_reference": 1,
+    "title": [
+      {
+        "fill": "#FF0000",
+        "font_size": "199.98px",
+        "transform": null,
+        "x": "2124.91",
+        "y": "257.99"
+      }
+    ]
+  },
+  "L_unknown": {
+    "cmd": "scatter mpg weight, mcolor(zqnone)",
+    "notes": [
+      "(note: named style zqnone not found in class color, default attributes used)",
+      "(note: named style zqnone not found in class color, default attributes used)"
+    ],
+    "rc": 0
+  },
+  "S_order": {
+    "after": {
+      "notes": [],
+      "rc": 0,
+      "red_fills": 0,
+      "same_as_native": 1
+    },
+    "before": {
+      "notes": [],
+      "rc": 0,
+      "red_fills": 148,
+      "same_as_s2color_mcolor_red": 1
+    },
+    "find_after": "BASE/scheme-economist.scheme",
+    "find_before": "ORDER/scheme-economist.scheme"
+  },
+  "U_path": {
+    "cmd": "scatter mpg weight,",
+    "notes": [
+      "(note: scheme ../nosuch not found, using s2color)"
+    ],
+    "rc": 0,
+    "same_as_s2color": 1
+  },
+  "U_unknown": {
+    "cmd": "scatter mpg weight,",
+    "notes": [
+      "(note: scheme nosuchscheme not found, using s2color)"
+    ],
+    "rc": 0,
+    "same_as_s2color": 1
+  },
+  "_meta": {
+    "born_date": "14 Oct 2026",
+    "dash_commit": "3390ae51e8d1f0c0629a92ba2ffedf1ebf7e8d19",
+    "extracted": " 8 Nov 2026",
+    "source": "scripts/extract_style_leaf_truth.do",
+    "stata_version": "19.5"
+  },
+  "files": {
+    "ORDER/scheme-economist.scheme": "#include s2color\ncolor p1 red\n",
+    "anglestyle-zqa.style": "set val 30\n",
+    "color-zqc.style": "set rgb \"200 30 40\"\n",
+    "gsize-zqg.style": "set val     10\nset sztype  relative\n",
+    "gsize-zqp.style": "set val     18\nset sztype  points\n",
+    "intensity-zqi.style": "set val 30\n",
+    "linepattern-zqpat.style": "set pattern \"4 1 1 1\"\n",
+    "linepattern-zqpb.style": "set pattern \"4 1 .1 1\"\n",
+    "linewidth-zqw.style": "set val 2\n",
+    "margin-zqm.style": "set gleft   5\nset gright  5\nset gtop    5\nset gbottom 5\n",
+    "margin-zqn.style": "set gleft   2\nset gright  4\nset gtop    6\nset gbottom 8\n",
+    "scheme-w45b.scheme": "#include s2color\nyesno plabelboxed yes\n",
+    "scheme-w45c.scheme": "#include s2color\nclockdir title_position 3\n",
+    "scheme-w45g.scheme": "#include s2color\ngsize legend_col_gap huge\n",
+    "scheme-w45p.scheme": "#include s2color\nclockdir p 9\n",
+    "scheme-w45q.scheme": "#include s2color\nclockdir p2 9\n",
+    "scheme-w45t.scheme": "#include s2color\ntextboxstyle title subheading\n",
+    "symbolsize-zqs.style": "set val     5\nset sztype  relative\n",
+    "textboxstyle-zqt.style": "set angle      default\nset size       huge\nset color      red\nset horizontal scheme heading\nset vertical   scheme heading\nset margin     scheme heading\nset drawbox    scheme textbox\nset fillcolor  scheme textbox\nset linestyle  scheme textbox\nset boxmargin  scheme textbox\n"
+  }
+}

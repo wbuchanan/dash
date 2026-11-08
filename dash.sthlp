@@ -7146,7 +7146,15 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     {cmd:linestyle p1 mine} the connecting line of {cmd:connected} and the
     other series (not a line plot's, which Stata's schemes declare as
     {cmd:p1line}), {cmd:shadestyle p1area mine} an area's fill.  Each directory is searched before its
-    {cmd:style/} subdirectory, as {cmd:findfile} searches.  The rows are
+    {cmd:style/} subdirectory, as {cmd:findfile} searches.  The
+    {cmd:linepattern}, {cmd:linewidth}, {cmd:symbolsize}, {cmd:gsize},
+    {cmd:intensity}, {cmd:anglestyle} and {cmd:margin} files are read the
+    same way, for a name the option does not know: with a
+    {cmd:linewidth-mine.style} holding {cmd:set val 2}, {cmd:lwidth(mine)}
+    draws as {cmd:lwidth(2)}, {cmd:lpattern(mine)} draws a file's
+    {cmd:set pattern "4 1 1 1"}, and the marker and text sizes, fill
+    intensities, label and symbol angles and margins draw their file's
+    value, with no note.  The rows are
     read when the graph is registered and travel with the dashboard, with
     what Stata's own scheme files declare that {cmd:dash}'s copies do not
     (such as {cmd:s2color}'s {cmd:linestyle p1line}), so {cmd:dash serve}
