@@ -198,7 +198,8 @@ class TestTheHelpers:
 
 class TestFxFy:
     """D-45-04.c: fxsize(#)/fysize(#) keep the graph and draw the plot in
-    # percent of four inches, centred (twoway, sizing_truth.json and
+    # percent of the scheme's reference side (WP-45 VF-4: 4 inches under
+    s2color, 4.5 under stcolor), centred (twoway, sizing_truth.json and
     figure_geometry_truth.json G_fx50/G_fy50 keep 7.5 x 4.5)."""
 
     @pytest.mark.parametrize("mode", _MODES)
@@ -213,18 +214,95 @@ class TestFxFy:
         assert f.aspect_ratio == pytest.approx(_inner(7.5 / 4.5))
         assert "max-width" not in dict(f.styles or {})
         est = f._dash_frame_est
-        # The 192 px box holds the plot region and its axes, centred: the
-        # rest of the nominal 720 x 432 graph is split on its two sides.
+        # Flipped (WP-45 VF-4): the box was 50% of 4 inches (192 px) under
+        # every scheme; twoway's is # percent of the scheme's reference
+        # side, 4.5 inches under stcolor (G_fx50: the plot region and its
+        # axes 1890..3510 of 5400 SVG units, 2.25 in; G_fy50 810..2430 of
+        # 3240), so 216 px holds the plot region and its axes, centred:
+        # the rest of the nominal 720 x 432 graph is split on its sides.
+        # The axes inside it are drawn at stcolor's 1.125 unit (D66), so
+        # each estimated border grows by an eighth beside the slack.
+        t = _truth()["G_" + opt[:2] + "50"]
+
+        def grown(side, key):
+            return max(5.0, est[key]) * 1.125
         if opt == "fxsize":
-            assert f.min_border_left - est["left"] == pytest.approx(264,
-                                                                    abs=1)
-            assert f.min_border_right - est["right"] == pytest.approx(264,
-                                                                      abs=1)
+            assert f.min_border_left - grown("left", "left") == \
+                pytest.approx(252, abs=1)
+            assert f.min_border_right - grown("right", "right") == \
+                pytest.approx(252, abs=1)
+            plot = [r for r in t["rects"] if r["stroke"] is None
+                    and r["w"] < 5400][0]
+            # twoway's: the plot region less G_stcolor's 409.4-unit y
+            # axis on its left starts 1890 units in, (5400 - 1620) / 2.
+            assert plot["x"] - 409.4 == pytest.approx(1890, abs=1)
         else:
-            assert f.min_border_top - est["above"] == pytest.approx(120,
-                                                                    abs=1)
-            assert f.min_border_bottom - est["below"] == pytest.approx(
-                120, abs=1)
+            assert f.min_border_top - grown("top", "above") == \
+                pytest.approx(108, abs=1)
+            assert f.min_border_bottom - grown("bottom", "below") == \
+                pytest.approx(108, abs=1)
+            plot = [r for r in t["rects"] if r["stroke"] is None
+                    and r["h"] < 3240][0]
+            assert plot["y"] == pytest.approx(810, abs=1)
+        assert f._dash_gm_item["fxy"]["ref"] == pytest.approx(4.5)
+
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("opt", ["fxsize", "fysize"])
+    def test_by_array(self, opt, mode):
+        """by(foreign) fxsize(50)/fysize(50): twoway keeps the 7.5 x 4.5
+        graph and draws the array -- strips, panels and axes -- in 50% of
+        the 4.5-inch reference side, centred (G_fx50_by: the panels'
+        left 2329.93 of 5400, G_by_stcolor's 553.33 less its 439.93
+        units beside the array, 1890 = (5400 - 1620) / 2; G_fy50_by: the
+        strips at 848.81 of 3240, by_indiv's 38.91 units under the
+        array's top, 809.9).  Before: the array was 192 px at any drawn
+        width (unscaled, D66), fysize() shortened the whole graph and
+        neither was centred in the graph's height."""
+        t = _truth()
+        if opt == "fxsize":
+            px = t["G_fx50_by"]["rects"][3]["x"]
+            base = t["G_by_stcolor"]["rects"][3]["x"]
+            assert px - (base - 113.4) == pytest.approx(1890, abs=1)
+        else:
+            sy = t["G_fy50_by"]["rects"][7]["y"]
+            base = t["G_by_stcolor"]["rects"][7]["y"]
+            assert sy - (base - 113.4) == pytest.approx(810, abs=1)
+        roots, figs = _figs(mode, {"by": "foreign", opt: "50"})
+        boxes = [m for r in roots for m in r.references()
+                 if "dash_graph_region" in (getattr(m, "tags", None) or [])]
+        assert len(boxes) == 1, boxes
+        st = dict(boxes[0].styles or {})
+        # The graph region keeps the graph's shape and centres the array.
+        assert st.get("aspect-ratio") == "7.5 / 4.5", st
+        assert st.get("justify-content") == "center", st
+        grid = next(iter(tbk._grids(roots).values()))
+        cbs = [cb for f in figs for k in dr._DASH_SPAN_KEYS
+               for cb in f.js_property_callbacks.get("change:" + k, [])
+               if cb.code == dr._DASH_BY_FIT_JS]
+        assert cbs, figs
+        a = cbs[0].args
+        pct = dr._dash_graph_margin_pct({}, dr.SchemeParser("stcolor"))
+        inner = 720.0 * (1 - (pct[0] + pct[1]) / 100.0)
+        assert a["cnom"] == pytest.approx(inner)
+        [wcb] = {cb.id: cb for f in figs for k in dr._DASH_SPAN_KEYS
+                 for cb in f.js_property_callbacks.get("change:" + k, [])
+                 if cb.code == dr._DASH_WIDTH_SCALE_JS}.values()
+        if opt == "fxsize":
+            assert a["fx_px"] == 216 and a["fy_px"] is None
+            gst = dict(grid.styles or {})
+            assert gst["width"] == "%.4g%%" % (216 / inner * 100), gst
+            assert gst["margin-left"] == "auto", gst
+            # D66: the array's width is 216 nominal px.
+            assert wcb.args["nominal"] == pytest.approx(216)
+        else:
+            # 216 nominal px less the first row's by_indiv top margin
+            # (1.2 units: the 9 px row spacing halved at 3.84 px a unit,
+            # as a share of the 7.5 in width), which the graph region's
+            # padding holds.
+            top = round(2.4 * 3.84) / 2.0 / 3.84 * 4.5 / 7.5 / 100 * 720
+            assert a["fy_px"] == pytest.approx(216 - top)
+            assert a["fx_px"] is None
+            assert wcb.args["nominal"] == pytest.approx(inner)
 
 
 class TestOnePicture:

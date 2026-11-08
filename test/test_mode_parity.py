@@ -3124,6 +3124,9 @@ CORPUS = [
     _case("fxsize(50)", [_sc()], go={"fxsize": "50"}),
     _case("by() xsize(8) ysize(4)", [_sc()],
           go={"by": "foreign", "xsize": "8", "ysize": "4"}),
+    # WP-45 VF-4: a by() array at fxsize()/fysize(), centred in the graph.
+    _case("by() fxsize(50)", [_sc()], go={"by": "foreign", "fxsize": "50"}),
+    _case("by() fysize(50)", [_sc()], go={"by": "foreign", "fysize": "50"}),
     # WP-34 PIC-1: an area's whole outline, one ring, and its key swatch.
     _case("area default outline", [plot_for("area")]),
     _case("area cmissing outline", [plot_for("area", {"cmissing": "n"})]),

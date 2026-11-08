@@ -130,10 +130,16 @@ fg U_05in stcolor `"`one', xsize(0.5in)"'
 fg U_300cm stcolor `"`one', xsize(300cm)"'
 fg U_200 stcolor `"`one', xsize(200)"'
 fg U_05 stcolor `"`one', xsize(0.5)"'
-fg U_10CM stcolor `"`one', xsize(10CM)"'
+// U_10CMup, not U_10CM: the probe files are named by id, and on a
+// case-blind file system U_10CM.log is U_10cm.log (the 10cm row read
+// 10CM's log and picture).
+fg U_10CMup stcolor `"`one', xsize(10CM)"'
 fg U_10_cm stcolor `"`one', xsize(10 cm)"'
 fg U_abc stcolor `"`one', xsize(abc)"'
 fg U_y200pt stcolor `"`one', ysize(200pt)"'
+fg U_y05in stcolor `"`one', ysize(0.5in)"'
+fg U_y200 stcolor `"`one', ysize(200)"'
+fg U_3_in stcolor `"`one', xsize(3 in)"'
 // GW-6/VF-7: the graph region's outline and margin
 foreach s in s2color stcolor s1color {
     fg M_`s' `s' `"`one',"'

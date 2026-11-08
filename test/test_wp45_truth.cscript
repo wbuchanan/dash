@@ -1195,6 +1195,156 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
 }
 * ==== end S03 ====
 
+// ---- S04 helpers (WP-45 section 45-04) ----
+// _w45s04_dash dir name cmd: `dash <cmd> name(<name>)' on auto, its spec
+// and data written to dir (rc in w45s04_drc).  _w45s04_models(sp, dp,
+// app): the saved page's models and the served app's, each built from
+// one spec.  _w45s04_fxy(...): Q4504-1's readings (globals w45s04_*).
+capture program drop _w45s04_dash
+program define _w45s04_dash
+    version 19
+    gettoken dir 0 : 0
+    gettoken nm 0 : 0
+    quietly sysuse auto, clear
+    quietly sort weight mpg make
+    capture dash clear
+    capture noisily dash `macval(0)' name(`nm')
+    global w45s04_drc = _rc
+    if !_rc {
+        capture erase "`dir'/`nm'.json"
+        capture erase "`dir'/`nm'_d.json"
+        _dash_serve_spec, specpath("`dir'/`nm'.json") datapath("`dir'/`nm'_d.json")
+    }
+end
+
+python:
+import os as _w45s04_os, sys as _w45s04_sys
+for _w45s04_p in (_w45s04_os.path.abspath(".."),
+                  _w45s04_os.path.abspath(_w45s04_os.path.join("..", "scripts"))):
+    if _w45s04_p not in _w45s04_sys.path:
+        _w45s04_sys.path.insert(0, _w45s04_p)
+
+
+def _w45s04_models(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_w45s04_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_w45s04_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    return list(r._last_layout_root.references()), list(doc.models)
+
+
+def _w45s04_fxy(sp, dp, app, probe):
+    """Q4504-1: twoway's box for *probe* (figure_geometry_truth.json: the
+    plot and its axes, or the by() array, in nominal px of the 7.5-inch
+    graph's 720) and each mode's: a lone figure's fxy follow box, a by()
+    graph's fit hook box; and whether a by() graph's region keeps the
+    graph's shape (aspect-ratio 7.5 / 4.5, centred).  Globals w45s04_tw,
+    w45s04_got (saved served), w45s04_shape."""
+    import json
+    from sfi import Macro
+    import dash_render as dr
+    with open(_w45s04_os.path.join("fixtures", "figure_geometry_truth.json"),
+              encoding="utf-8") as fh:
+        t = json.load(fh)["probes"]
+    base = {"G_fx50": ("G_stcolor", "x", 0), "G_fy50": ("G_stcolor", "y", 0),
+            "G_fx50_by": ("G_by_stcolor", "x", 3),
+            "G_fy50_by": ("G_by_stcolor", "y", 7)}[probe]
+    def plots(pid):
+        if base[2]:
+            return [t[pid]["rects"][base[2]]]
+        return [r for r in t[pid]["rects"] if r["fill"] == "#ffffff"
+                and r["stroke"] is None and r["w"] < 5400]
+    rects, brects = plots(probe), plots(base[0])
+    k = base[1]
+    # The box's start: the plot region (strip) less what the default graph
+    # draws between the margin and it; centred, the box is the canvas less
+    # twice that start.
+    start = rects[0][k] - (brects[0][k] - 113.4)
+    side = 5400.0 if k == "x" else 3240.0
+    Macro.setGlobal("w45s04_tw", "%.1f" % ((side - 2 * start) / 5400.0 * 720))
+    got, shape = [], []
+    for models in _w45s04_models(sp, dp, app):
+        figs = [m for m in models if type(m).__name__ == "figure"]
+        if probe.endswith("_by"):
+            cbs = [cb for f in figs for cbl in f.js_property_callbacks.values()
+                   for cb in cbl if cb.code == dr._DASH_BY_FIT_JS]
+            a = cbs[0].args if cbs else {}
+            got.append("%s" % (a.get("fx_px") if k == "x" else
+                               round(float(a.get("fy_px") or 0) + 5.0625)))
+            reg = [m for m in models if "dash_graph_region"
+                   in (getattr(m, "tags", None) or [])]
+            st = dict(reg[0].styles or {}) if reg else {}
+            shape.append(str(st.get("aspect-ratio") == "7.5 / 4.5"
+                             and st.get("justify-content") == "center"))
+        else:
+            it = getattr(figs[0], "_dash_gm_item", None) or {}
+            x = it.get("fxy") or {}
+            v = x.get("fx") if k == "x" else x.get("fy")
+            got.append("%.1f" % (float(v) / 100 * float(x.get("ref", 4)) * 96)
+                       if v is not None else "none")
+            shape.append("True")
+    Macro.setGlobal("w45s04_got", " ".join(got))
+    Macro.setGlobal("w45s04_shape", " ".join(shape))
+end
+
+* ==== S04 VF-4: fxsize() and fysize() at the scheme's reference side ====
+local only : env WP45_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w45_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    local s04d "`w45_work'/s04"
+    capture mkdir "`s04d'"
+
+    // ------------------------------------------------------------
+    // Q4504-1: twoway's fxsize(50) and fysize(50) under stcolor draw the
+    // plot and its axes (a by() graph's array) in 2.25 of the 4.5-inch
+    // reference side, centred (figure_geometry_truth.json G_fx50, G_fy50,
+    // G_fx50_by, G_fy50_by: 216 nominal px of 720); dash's box is the
+    // same in each mode, and a by() graph's region keeps the 7.5 x 4.5
+    // shape round the centred array.  (The by() fysize() box less the
+    // first row's 5.06 nominal px by_indiv top margin, which the region's
+    // padding holds, is read back with it added.)
+    // ------------------------------------------------------------
+    foreach pr in "G_fx50|fxsize(50)" "G_fy50|fysize(50)" "G_fx50_by|by(foreign) fxsize(50)" "G_fy50_by|by(foreign) fysize(50)" {
+        gettoken s04p s04o : pr, parse("|")
+        local s04o = substr("`s04o'", 2, .)
+        _w45s04_dash "`s04d'" w45s04p scatter mpg weight, `s04o' scheme(stcolor)
+        _w45_expect Q4504-1 "(${w45s04_drc} == 0)" "dash rc ${w45s04_drc}: `s04o'"
+        if !${w45s04_drc} {
+            python: import __main__ as _w45m; _w45m._w45s04_fxy("`s04d'/w45s04p.json", "`s04d'/w45s04p_d.json", "`s04d'/a.py", "`s04p'")
+            local s04_ok 1
+            foreach g of global w45s04_got {
+                if abs(real("`g'") - ${w45s04_tw}) > 1 local s04_ok 0
+            }
+            _w45_expect Q4504-1 "(`s04_ok' & `: word count ${w45s04_got}' == 2)" "`s04o': box saved/served ${w45s04_got}, twoway ${w45s04_tw}"
+            _w45_expect Q4504-1 `"("${w45s04_shape}" == "True True")"' "`s04o': the graph region keeps the graph's shape: ${w45s04_shape}"
+        }
+    }
+    _w45_done Q4504-1 "fxsize()/fysize() draw twoway's box at the scheme's reference side, a by() array centred, saved and served"
+
+    capture dash clear
+    macro drop w45s04_*
+    foreach f in w45s04p.json w45s04p_d.json a.py {
+        capture erase "`s04d'/`f'"
+    }
+    capture rmdir "`s04d'"
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 // ---- S05 helpers (WP-45 section 45-05) ----
 // _w45s05_models(sp, dp, app): the saved page's models and the served
 // app's, each built from one spec (test_wp43_truth.cscript's

@@ -1,8 +1,8 @@
 {
 "_meta": {
-"born_date": "14 Oct 2026",
-"dash_commit": "d6aec16bb9ab4f5e8e756db9ae81790f98c7b3ee",
-"extracted": " 1 Nov 2026 07:41:31",
+"born_date": "04 Nov 2026",
+"dash_commit": "57088ab6005b8ba8bca31e8249a6bfa7038ac6c3",
+"extracted": " 8 Nov 2026 12:59:05",
 "source": "scripts/extract_figure_geometry_truth.do",
 "stata_version": "19.5"
 },
@@ -8288,7 +8288,7 @@
 "rc": 198,
 "scheme": "stcolor"
 },
-"U_10CM": {
+"U_10CMup": {
 "canvas": {
 "h": 3240.0,
 "w": 5400.0,
@@ -8622,27 +8622,24 @@
 "U_10cm": {
 "canvas": {
 "h": 3240.0,
-"w": 5400.0,
+"w": 2835.0,
 "x": 0.0,
 "y": 0.0
 },
 "command": "scatter mpg weight, xsize(10cm)",
 "inches": [
-7.5,
+3.937,
 4.5
 ],
 "line": "",
 "line_widths": [
-6.48,
-9.72
+5.67,
+8.5
 ],
-"log": [
-"(note:  named style 10CM not found in class graphsize, default attributes used)",
-"(note:  named style 5 not found in class graphsize, default attributes used)"
-],
+"log": [],
 "marker_r": [
-16.88,
-21.74
+14.78,
+19.04
 ],
 "rc": 0,
 "rects": [
@@ -8651,45 +8648,45 @@
 "h": 3240.0,
 "stroke": "none",
 "sw": null,
-"w": 5400.0,
+"w": 2835.0,
 "x": 0.0,
 "y": 0.0
 },
 {
 "fill": "#ffffff",
-"h": 3240.0,
+"h": 3239.9,
 "stroke": null,
 "sw": null,
-"w": 5400.0,
+"w": 2835.0,
 "x": 0.0,
-"y": 0.0
+"y": 0.1
 },
 {
 "fill": "none",
-"h": 3233.52,
+"h": 3234.23,
 "stroke": "#ffffff",
-"sw": 6.48,
-"w": 5393.52,
-"x": 3.24,
-"y": 3.24
+"sw": 5.67,
+"w": 2829.33,
+"x": 2.83,
+"y": 2.94
 },
 {
 "fill": "#ffffff",
-"h": 2653.26,
+"h": 2726.66,
 "stroke": null,
 "sw": null,
-"w": 4763.81,
-"x": 522.79,
-"y": 113.4
+"w": 2278.35,
+"x": 457.41,
+"y": 99.22
 },
 {
 "fill": "none",
-"h": 2646.78,
+"h": 2720.99,
 "stroke": "#ffffff",
-"sw": 6.48,
-"w": 4757.33,
-"x": 526.03,
-"y": 116.64
+"sw": 5.67,
+"w": 2272.68,
+"x": 460.25,
+"y": 102.06
 }
 ],
 "scheme": "stcolor",
@@ -8698,91 +8695,91 @@
 "anchor": "end",
 "fill": "#000000",
 "rot": null,
-"size": 112.56,
+"size": 98.43,
 "t": "10",
-"x": 455.29,
-"y": 2734.71
+"x": 398.27,
+"y": 2797.99
 },
 {
 "anchor": "end",
 "fill": "#000000",
 "rot": null,
-"size": 112.56,
+"size": 98.43,
 "t": "20",
-"x": 455.29,
-"y": 1924.88
+"x": 398.27,
+"y": 1958.63
 },
 {
 "anchor": "end",
 "fill": "#000000",
 "rot": null,
-"size": 112.56,
+"size": 98.43,
 "t": "30",
-"x": 455.29,
-"y": 1115.05
+"x": 398.27,
+"y": 1119.36
 },
 {
 "anchor": "end",
 "fill": "#000000",
 "rot": null,
-"size": 112.56,
+"size": 98.43,
 "t": "40",
-"x": 455.29,
-"y": 305.05
+"x": 398.27,
+"y": 280.0
 },
 {
 "anchor": "middle",
 "fill": "#000000",
 "rot": -90.0,
-"size": 112.56,
+"size": 98.43,
 "t": "Mileage (mpg)",
-"x": 214.55,
-"y": 1439.94
+"x": 187.73,
+"y": 1462.56
 },
 {
 "anchor": "middle",
 "fill": "#000000",
 "rot": null,
-"size": 112.56,
+"size": 98.43,
 "t": "2,000",
-"x": 936.39,
-"y": 2912.86
+"x": 679.28,
+"y": 2953.76
 },
 {
 "anchor": "middle",
 "fill": "#000000",
 "rot": null,
-"size": 112.56,
+"size": 98.43,
 "t": "3,000",
-"x": 2362.67,
-"y": 2912.86
+"x": 1343.98,
+"y": 2953.76
 },
 {
 "anchor": "middle",
 "fill": "#000000",
 "rot": null,
-"size": 112.56,
+"size": 98.43,
 "t": "4,000",
-"x": 3788.94,
-"y": 2912.86
+"x": 2008.68,
+"y": 2953.76
 },
 {
 "anchor": "middle",
 "fill": "#000000",
 "rot": null,
-"size": 112.56,
+"size": 98.43,
 "t": "5,000",
-"x": 5215.39,
-"y": 2912.86
+"x": 2673.38,
+"y": 2953.76
 },
 {
 "anchor": "middle",
 "fill": "#000000",
 "rot": null,
-"size": 112.56,
+"size": 98.43,
 "t": "Weight (lbs.)",
-"x": 2904.69,
-"y": 3070.31
+"x": 1596.54,
+"y": 3091.56
 }
 ]
 },
@@ -9134,6 +9131,170 @@
 ],
 "rc": 198,
 "scheme": "stcolor"
+},
+"U_3_in": {
+"canvas": {
+"h": 3240.0,
+"w": 2160.0,
+"x": 0.0,
+"y": 0.0
+},
+"command": "scatter mpg weight, xsize(3 in)",
+"inches": [
+3.0,
+4.5
+],
+"line": "",
+"line_widths": [
+4.32,
+6.48
+],
+"log": [],
+"marker_r": [
+11.24,
+14.48
+],
+"rc": 0,
+"rects": [
+{
+"fill": "#ffffff",
+"h": 3240.0,
+"stroke": "none",
+"sw": null,
+"w": 2160.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "#ffffff",
+"h": 3240.0,
+"stroke": null,
+"sw": null,
+"w": 2160.0,
+"x": 0.0,
+"y": 0.0
+},
+{
+"fill": "none",
+"h": 3235.68,
+"stroke": "#ffffff",
+"sw": 4.32,
+"w": 2155.68,
+"x": 2.16,
+"y": 2.16
+},
+{
+"fill": "#ffffff",
+"h": 2848.77,
+"stroke": null,
+"sw": null,
+"w": 1735.86,
+"x": 348.51,
+"y": 75.63
+},
+{
+"fill": "none",
+"h": 2844.45,
+"stroke": "#ffffff",
+"sw": 4.32,
+"w": 1731.54,
+"x": 350.67,
+"y": 77.79
+}
+],
+"scheme": "stcolor",
+"texts": [
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 75.03,
+"t": "10",
+"x": 303.45,
+"y": 2903.2
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 75.03,
+"t": "20",
+"x": 303.45,
+"y": 2014.83
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 75.03,
+"t": "30",
+"x": 303.45,
+"y": 1126.57
+},
+{
+"anchor": "end",
+"fill": "#000000",
+"rot": null,
+"size": 75.03,
+"t": "40",
+"x": 303.45,
+"y": 238.3
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": -90.0,
+"size": 75.03,
+"t": "Mileage (mpg)",
+"x": 143.09,
+"y": 1500.02
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 75.03,
+"t": "2,000",
+"x": 517.5,
+"y": 3021.83
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 75.03,
+"t": "3,000",
+"x": 1023.96,
+"y": 3021.83
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 75.03,
+"t": "4,000",
+"x": 1530.42,
+"y": 3021.83
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 75.03,
+"t": "5,000",
+"x": 2036.88,
+"y": 3021.83
+},
+{
+"anchor": "middle",
+"fill": "#000000",
+"rot": null,
+"size": 75.03,
+"t": "Weight (lbs.)",
+"x": 1216.44,
+"y": 3126.82
+}
+]
 },
 "U_3in": {
 "canvas": {
@@ -9628,6 +9789,28 @@
 "y": 3070.31
 }
 ]
+},
+"U_y05in": {
+"command": "scatter mpg weight, ysize(0.5in)",
+"line": "graph ysize invalid;",
+"log": [
+"graph ysize invalid;",
+"minimum ysize is 1 inch",
+"maximum ysize is 100 inches"
+],
+"rc": 198,
+"scheme": "stcolor"
+},
+"U_y200": {
+"command": "scatter mpg weight, ysize(200)",
+"line": "graph ysize invalid;",
+"log": [
+"graph ysize invalid;",
+"minimum ysize is 1 inch",
+"maximum ysize is 100 inches"
+],
+"rc": 198,
+"scheme": "stcolor"
 },
 "U_y200pt": {
 "canvas": {

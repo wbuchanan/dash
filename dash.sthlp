@@ -6721,9 +6721,12 @@ every size at 0 and a negative {it:#} is refused, r(198), in
 On a {cmd:by()} graph only {cmd:by(, scale())} acts.{p_end}
 
 {phang2}{opt fxsize(#)} and {opt fysize(#)} keep the graph's size and draw
-the plot -- the plot region and its axes -- {it:#} percent of four inches
-wide or tall (192 pixels at 50), centred, as {helpb twoway} does; under
-{cmd:by()} the array of panels is that wide or tall.  A value of 0 or less, or of 100 and more, changes
+the plot -- the plot region and its axes -- {it:#} percent of the scheme's
+reference side wide or tall (four inches under {cmd:s2color}, 192 pixels at
+50; 4.5 inches under {cmd:stcolor}, 216 pixels at 50, at the graph's nominal
+width), centred, as {helpb twoway} does; under {cmd:by()} the array of
+panels, its strips and axes included, is that wide or tall, centred in the
+graph, whose size is kept.  A value of 0 or less, or of 100 and more, changes
 nothing; a word is refused, r(198), as {cmd:twoway} refuses it.  Both
 may be shortened to five letters, as in {cmd:twoway}.{p_end}
 

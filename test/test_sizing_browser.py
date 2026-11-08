@@ -477,3 +477,95 @@ class TestEveryLabelInsideInChrome:
                 x0, y0, x1, y1 = q[2:]
                 assert x0 >= -0.5 and y0 >= -0.5, (q, pl)
                 assert x1 <= cw + 0.5 and y1 <= ch + 0.5, (q, pl)
+
+
+#: The graph region box, the by() array (the deepest GridBox) and every
+#: plot frame, in page px.
+_FXY_JS = r"""
+<script>
+addEventListener('load', () => setTimeout(() => {
+  const frames = []; let region = null, grid = null, deep = -1;
+  const visit = (v, d) => {
+    if (!v) return;
+    if (v.model && v.el && region === null
+        && (v.model.tags || []).includes('dash_graph_region')) {
+      const q = v.el.getBoundingClientRect();
+      region = [q.left, q.top, q.width, q.height];
+    }
+    if (v.model && v.el && v.model.type === 'GridBox' && d > deep) {
+      const q = v.el.getBoundingClientRect();
+      grid = [q.left, q.top, q.width, q.height]; deep = d;
+    }
+    if (v.frame && v.model && v.el) {
+      const r = v.el.getBoundingClientRect(), f = v.frame.bbox;
+      if (f.width > 20 && f.height > 20)
+        frames.push([r.left + f.x0, r.top + f.y0, f.width, f.height]);
+    }
+    for (const c of (v.child_views || [])) visit(c, d + 1);
+  };
+  for (const v of Object.values(Bokeh.index)) { if (!v.parent) visit(v, 0); }
+  parent.postMessage('DASHPROBE' + JSON.stringify({W: innerWidth, region,
+                                                   grid, frames}), '*');
+}, 3000));
+</script>
+"""
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestFxFyInChrome:
+    """WP-45 VF-4 (VF-11, GW-20): at 1400 px a stcolor graph with
+    fxsize(50) or fysize(50) keeps its 1400 x 840 size and draws the plot
+    -- a by() graph's array -- in 50% of the 4.5-inch reference side, 420
+    px, centred (figure_geometry_truth.json G_fx50, G_fy50, G_fx50_by,
+    G_fy50_by: 1890..3510 of 5400 and 810..2430 of 3240 SVG units).
+    Before: the box was 192 px at any width, and under by() fysize()
+    shortened the whole graph with its array at the top."""
+
+    @pytest.mark.parametrize("opt", ["fxsize", "fysize"])
+    def test_by_array(self, opt, mode, tmp_path):
+        html = TestTheThreeCasesInChrome._page(
+            mode, {"by": "foreign", opt: "50"}, tmp_path)
+        mp = pytest.MonkeyPatch()
+        mp.setattr(responsive_probe, "PROBE_JS", _FXY_JS)
+        try:
+            rec = responsive_probe.measure_many(html, (1400,))[1400]
+        finally:
+            mp.undo()
+        rl, rt, rw, rh = rec["region"]
+        assert abs(rw - 1400) <= 2 and abs(rh - 840) <= 3, rec
+        gl, gt, gw, gh = rec["grid"]
+        panels = sorted(rec["frames"], key=lambda q: -q[2] * q[3])[:2]
+        # The two panels side by side, as twoway's (a narrowed array does
+        # not stack).
+        assert abs(panels[0][1] - panels[1][1]) <= 1, rec
+        if opt == "fxsize":
+            assert abs(gw - 420) <= 4 and abs(gl - 490) <= 4, rec
+        else:
+            # The array's top holds its first row's by_indiv margin (1.2
+            # units of 4.5 in, 10.1 px) above the strips, as twoway's.
+            assert abs(gt - (210 + 10.1)) <= 4, rec
+            assert abs(gt + gh - 630) <= 4, rec
+
+    @pytest.mark.parametrize("opt", ["fxsize", "fysize"])
+    def test_lone(self, opt, mode, tmp_path):
+        """The plot region at twoway's: G_fx50's 2299.39 + 1210.61 of
+        5400 SVG units (596.1 + 313.9 px at 1400), G_fy50's 810 + 1260.06
+        of 3240 (210 + 326.7 px)."""
+        html = TestTheThreeCasesInChrome._page(mode, {opt: "50"}, tmp_path)
+        mp = pytest.MonkeyPatch()
+        mp.setattr(responsive_probe, "PROBE_JS", _FXY_JS)
+        try:
+            rec = responsive_probe.measure_many(html, (1400,))[1400]
+        finally:
+            mp.undo()
+        rl, rt, rw, rh = rec["region"]
+        assert abs(rw - 1400) <= 2 and abs(rh - 840) <= 3, rec
+        fl, ft, fw, fh = rec["frames"][0]
+        if opt == "fxsize":
+            assert abs(fl - 596.1) <= 10 and abs(fw - 313.9) <= 10, rec
+        else:
+            # Measured 08nov2026: 220.4 + 311 px.  dash's top border keeps
+            # Bokeh's 5 px minimum (11 px drawn at this width) where
+            # twoway's plot region starts at the box's top, and its x axis
+            # is 6 px taller than twoway's 93.
+            assert abs(ft - 210) <= 12 and abs(fh - 326.7) <= 18, rec
