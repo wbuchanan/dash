@@ -62211,16 +62211,32 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
                    and getattr(title, "align", None)
                    == ("left" if place["clock"] == 1 else "right"))
         if in_band:
-            band = Label(x=Node(target=title, symbol=align),
-                         y=Node(target=title, symbol="top"),
+            # WP-45 PIC-4: a row of the above panel, not fig.center --
+            # BokehJS clips every centre annotation to the frame
+            # (AnnotationView.needs_clip is `layout == null'), so the
+            # Label on the Title's Nodes there was never painted.  Its
+            # Nodes put the box where twoway's is (test/fixtures/
+            # economist_truth.json N_note_pr): the top at the graph
+            # margin below the canvas's top, the right (left at clock 11)
+            # edge at the plot region's, which is the frame's.  The
+            # offset is a graph-margin gap (tag dash_margin_offset), in
+            # the 4-inch px every other size of the model is in (3.84 px
+            # a relative unit; D66 scales it with the drawn width).
+            _gm_t = float(scheme.graph_margin_sides[3]) \
+                if scheme is not None else 0.0
+            _px = OptionTranslator.PT_PER_RS * OptionTranslator.PX_PER_PT
+            band = Label(x=Node(target="frame", symbol=align),
+                         y=Node(target="canvas", symbol="top"),
+                         y_offset=-round(_gm_t * _px),
                          anchor="top_" + align, text=text,
                          background_fill_color=fill,
                          tags=["dash_textbox", ann_key,
-                               _dash_ring_tag(place["ring"])])
+                               _dash_ring_tag(place["ring"]),
+                               "dash_margin_offset"])
             _dash_textbox_style(band, opts, fig, scheme, ann_key,
                                 base_size=size_default,
                                 base_color=color_default)
-            fig.center = [band] + list(fig.center)
+            fig.above = [band] + list(fig.above)
         else:
             _dash_textbox_draw(fig, ann_key, text, opts, scheme, place,
                                base_size=size_default,

@@ -90,7 +90,9 @@ def _textboxes(fig):
             if isinstance(r, Title) and r is not fig.title \
                     and "dash_stale_cue" not in (r.tags or []):
                 out.append(("Title", side, r.align, r.text))
-    for r in fig.center:
+    # WP-45 PIC-4: the in-band note is a Label row of the above panel
+    # (BokehJS clips fig.center to the frame).
+    for r in list(fig.above) + list(fig.center):
         if isinstance(r, Label):
             out.append(("Label", "center", r.anchor, r.text))
     return out
@@ -190,12 +192,17 @@ class TestTextboxesSitAtTheirClock:
         assert below == [("Title", "below", "left", "NTE"),
                          ("Title", "below", "left", "CAP")]
 
+    # Flipped (WP-45 PIC-4): a Label on Title Nodes in fig.center is never
+    # painted by BokehJS (it clips the centre to the frame); a row of the
+    # above panel on the canvas's top and the frame's right edge is
+    # (test_economist_scheme.py::TestTheNoteIsPainted).
     def test_economists_note_is_in_the_title_band(self, mode):
         f = _fig(mode, _spec("economist", _FULL))
-        lab = f.center[0]
-        assert isinstance(lab, Label) and lab.text == "NTE"
+        [lab] = [m for m in f.above if isinstance(m, Label)]
+        assert lab.text == "NTE"
+        assert not [m for m in f.center if isinstance(m, Label)]
         assert isinstance(lab.x, Node) and isinstance(lab.y, Node)
-        assert lab.x.target is f.title and lab.y.target is f.title
+        assert (lab.x.target, lab.y.target) == ("frame", "canvas")
         assert (lab.x.symbol, lab.y.symbol) == ("right", "top")
         assert lab.anchor == "top_right"
         assert lab.background_fill_color == "#7b92a8"

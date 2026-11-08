@@ -371,6 +371,7 @@ GENERATORS = {
     "default_axes_truth.json": "scripts/extract_default_axes_truth.do",
     "default_base_truth.json": "scripts/extract_default_base_truth.do",
     "dot_truth.json": "scripts/extract_dot_truth.do",
+    "economist_truth.json": "scripts/extract_economist_truth.do",
     "edge_title_truth.json": "scripts/extract_edge_title_truth.do",
     "embedded_rows_truth.json": "scripts/extract_embedded_rows_truth.do",
     "emptied_layer_truth.json": "scripts/extract_emptied_layer_truth.do",

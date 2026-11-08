@@ -473,13 +473,17 @@ class TestSilentWhenHonoured:
 class TestEconomistBandUnchanged:
 
     @pytest.mark.parametrize("mode", MODES)
+    # Flipped (WP-45 PIC-4): a Label on Title Nodes is never painted by
+    # BokehJS (fig.center is clipped to the frame); the band's Label is a
+    # row of the above panel on the canvas's top and the frame's edge.
     def test_band(self, mode):
         f, _c = _fig(mode, {"title": '"T"', "note": '"N"'},
                      scheme="economist")
-        labs = [m for m in f.center if isinstance(m, Label)
+        labs = [m for m in f.above if isinstance(m, Label)
                 and m.text == "N"]
         assert len(labs) == 1
-        assert labs[0].x.target is f.title and labs[0].y.symbol == "top"
+        assert labs[0].x.target == "frame" and labs[0].y.target == "canvas"
+        assert labs[0].y.symbol == "top"
 
 
 class TestOnAByGraph:

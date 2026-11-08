@@ -102,7 +102,10 @@ def chrome_texts(cell):
         out.append(str(title.text))
     rows = [m for m in reversed(list(cell.above))
             if type(m).__name__ == "Title"]
-    rows += [m for m in cell.center if type(m).__name__ == "Label"]
+    # WP-45 PIC-4: the in-band Label is a row of the above panel (BokehJS
+    # clips fig.center to the frame), as well as any in the centre.
+    rows += [m for m in list(cell.above) + list(cell.center)
+             if type(m).__name__ == "Label"]
     rows += [m for m in cell.below if type(m).__name__ == "Title"]
     out += [str(m.text) for m in rows if str(m.text or "")]
     return out

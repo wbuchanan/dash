@@ -3457,7 +3457,8 @@ def _s15_fig(fig):
                     and r.text in ("SUB", "NTE", "CAP")):
                 d[r.text.lower()] = "%s/%s/%s" % (
                     side, r.align, r.text_font_style)
-    for r in fig.center:
+    # WP-45 PIC-4: the in-band note is a Label row of the above panel.
+    for r in list(fig.above) + list(fig.center):
         if isinstance(r, Label) and r.text in ("SUB", "NTE", "CAP"):
             d[r.text.lower()] = "above/%s/normal" % str(r.anchor).split("_")[-1]
     xs = [a for a in fig.below if isinstance(a, Axis)]

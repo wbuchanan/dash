@@ -296,6 +296,34 @@ string scalar _q4502_mata()
 }
 end
 
+* ==== S01 PIC-4: economist note painted ====
+local only : env WP45_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w45_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+    local q01 "`w45_work'/s01"
+    capture mkdir "`q01'"
+    global q4501_repo : env DASH_REPO
+    if `"${q4501_repo}"' == "" global q4501_repo ".."
+
+    // Q4501-1: twoway draws economist's note in a #7b92a8 box with white
+    // text at the top right of the title's band; dash's saved and served
+    // Label is a row of the above panel (BokehJS clips fig.center to the
+    // frame, so a centre Label is never painted there), anchored top
+    // right on the frame's right edge and the canvas's top, in twoway's
+    // fill and text colour.  Chrome's pixels: test_economist_scheme.py
+    // TestTheNoteIsPainted::test_pixels (release tier).
+    _q4501_reg "`q01'" 1 "note" scatter mpg weight, title("T") note("The note") scheme(economist)
+    _w45_expect Q4501-1 `"("${q4501_tw}" != "none")"' "twoway drew no #7b92a8 note box"
+    _w45_expect Q4501-1 `"("${q4501_s}" == "${q4501_tw}")"' "saved: ${q4501_s}; twoway ${q4501_tw}"
+    _w45_expect Q4501-1 `"("${q4501_v}" == "${q4501_tw}")"' "served: ${q4501_v}; twoway ${q4501_tw}"
+    _w45_done Q4501-1 "the economist note: twoway ${q4501_tw}; saved and served the same"
+
+    capture graph drop _all
+    dash clear
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== S02 ST-1: style words read per class ====
 local only : env WP45_ONLY
 if inlist("`only'", "", "S02") & `: list posof "S02" in w45_run' {
@@ -418,6 +446,173 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w45_run' {
     display as text "S02 end " c(current_date) " " c(current_time)
 }
 * ==== end S02 ====
+
+// ----------------------------------------------------------------
+// S01 helpers (WP-45 45-01, economist).  _q4501_reg draws one command
+// with twoway (SVG) and registers it with dash; the python helper
+// _q4501_check builds both modes from the spec and puts twoway's answer
+// in $q4501_tw and the saved and served answers in $q4501_s and
+// $q4501_v.  Cases: "note" (the note box's fill and text colour and
+// where dash's Label is anchored), "width:<type>" (the drawn line width
+// of the plot's shaft, its heads and its markers, relative units).
+// ----------------------------------------------------------------
+python:
+def _q4501_docs(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_q4501_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_q4501_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+    return list(r.figures.values()), sv
+
+
+def _q4501_note_dash(figs):
+    f = [g for g in figs if getattr(g, "above", None) is not None][0]
+    labs = [m for s in ("above", "center") for m in getattr(f, s)
+            if type(m).__name__ == "Label" and "note" in (m.tags or [])]
+    if len(labs) != 1:
+        return "labels %d" % len(labs)
+    m = labs[0]
+    side = "above" if any(x is m for x in f.above) else "center"
+
+    def node(n):
+        if type(n).__name__ != "Node":
+            return "number"
+        return "%s.%s" % (n.target if isinstance(n.target, str)
+                          else type(n.target).__name__, n.symbol)
+    return "%s %s %s %s %s %s" % (side, node(m.x), node(m.y), m.anchor,
+                                  str(m.background_fill_color).lower(),
+                                  str(m.text_color).lower())
+
+
+def _q4501_note_tw(svg):
+    import svg_truth
+    doc = svg_truth.svg_document(svg)
+    t = [x for x in doc["texts"] if x["text"] == "The note"]
+    pr = [r for r in doc["rects"] if str(r["fill"]).lower() == "#7b92a8"]
+    if not t or not pr:
+        return "none"
+    # dash's anchors for twoway's box: the right edge at the plot
+    # region's (the frame), the top at the graph margin below the top.
+    return "above frame.right canvas.top top_right %s %s" % (
+        str(pr[0]["fill"]).lower(), str(t[0]["fill"]).lower())
+
+
+def _q4501_widths_dash(figs):
+    """'shaft heads markers' line widths in relative units (px / 3.84)
+    of the plot's glyphs; '.' where it draws none."""
+    f = [g for g in figs if getattr(g, "renderers", None)][0]
+    shaft, heads, marks = set(), set(), set()
+    for r in f.renderers:
+        g = getattr(r, "glyph", None)
+        if g is None or not getattr(r, "visible", True):
+            continue
+        tags = [str(t) for t in (r.tags or [])]
+        if any(t.startswith("dash_legend") for t in tags):
+            continue
+        w = getattr(g, "line_width", None)
+        if isinstance(w, bool) or not isinstance(w, (int, float)):
+            continue
+        rs = round(float(w) / 3.84, 2)
+        kind = type(g).__name__
+        if "dash-arrowhead" in tags:
+            heads.add(rs)
+        elif kind in ("Line", "Segment", "MultiLine"):
+            shaft.add(rs)
+        elif kind == "Scatter":
+            marks.add(rs)
+    return " ".join(",".join("%g" % v for v in sorted(s)) or "."
+                    for s in (shaft, heads, marks))
+
+
+def _q4501_widths_tw(ptype):
+    """The fixture's economist strokes of *ptype* in the same form: the
+    shaft is the line, path or area outline drawn fewest times (an
+    inside-aligned clipped outline draws half its width), the heads the
+    other lines, the markers the circles."""
+    import json
+    import os
+    from sfi import Macro
+    repo = os.path.abspath(Macro.getGlobal("q4501_repo"))
+    with open(os.path.join(repo, "test", "fixtures", "economist_truth.json"),
+              encoding="utf-8") as fh:
+        st = json.load(fh)["widths"]["economist"][ptype]["strokes"]
+    shaft, heads, marks = set(), set(), set()
+    n_min = min(s[2] for s in st if s[0] in ("line", "path", "use"))
+    for tag, rs, n, clipped in st:
+        rs = round(rs / 2.0 if clipped else rs, 2)
+        if tag == "circle":
+            marks.add(rs)
+        elif n == n_min:
+            shaft.add(rs)
+        else:
+            heads.add(rs)
+    return " ".join(",".join("%g" % v for v in sorted(s)) or "."
+                    for s in (shaft, heads, marks))
+
+
+def _q4501_check(sp, dp, app, svg, case):
+    import os
+    import sys
+    from sfi import Macro
+    repo = os.path.abspath(Macro.getGlobal("q4501_repo"))
+    for d in (repo, os.path.join(repo, "scripts")):
+        if d not in sys.path:
+            sys.path.insert(0, d)
+    a, b = _q4501_docs(sp, dp, app)
+    kind, _, arg = case.partition(":")
+    if kind == "note":
+        Macro.setGlobal("q4501_tw", _q4501_note_tw(svg))
+        Macro.setGlobal("q4501_s", _q4501_note_dash(a))
+        Macro.setGlobal("q4501_v", _q4501_note_dash(b))
+    else:
+        Macro.setGlobal("q4501_tw", _q4501_widths_tw(arg))
+        Macro.setGlobal("q4501_s", _q4501_widths_dash(a))
+        Macro.setGlobal("q4501_v", _q4501_widths_dash(b))
+end
+
+capture program drop _q4501_reg
+program define _q4501_reg
+    // _q4501_reg <dir> <k> <case> <command with options...>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken case 0 : 0
+    sysuse auto, clear
+    quietly generate lo = price - 1000
+    quietly generate hi = price + 1000
+    quietly generate w2 = weight + 100
+    capture graph drop q4501t
+    capture noisily twoway `0' name(q4501t, replace)
+    capture erase "`dir'/t`k'.svg"
+    quietly graph export "`dir'/t`k'.svg", replace
+    graph drop q4501t
+    dash clear
+    capture noisily dash `0' name(zq4501`k')
+    local drc = _rc
+    if `drc' {
+        global q4501_tw "(twoway drawn)"
+        global q4501_s "rc `drc'"
+        global q4501_v "rc `drc'"
+        exit
+    }
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _q4501_m; _q4501_m._q4501_check("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg", "`case'")
+end
 
 * ==== append new blocks above this line ====
 

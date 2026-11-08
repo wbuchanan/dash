@@ -506,7 +506,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **DG-4 Tracked:** Closed in WP-44, BUGS.md "Parenthesised dates holding blanks ((1 jan 2001)) are refused in tlabel(), tline() and tscale(range())", commit aa829fa.
 - **DG-9 Tracked:** Closed in WP-44, BUGS.md "A non-number in a label list (.a, a bare word) is noted and drawn; twoway refuses 'invalid label specifier'", commit fd34f03.
 - **DG-13 Tracked:** Closed in WP-44, BUGS.md "ylabel(minmax) on an empty scale draws Bokeh's default ticks; data spanning about ±8e307 give an OverflowError traceback (twoway gives r(199))", commit f391788.
-- **PIC-4 Tracked:** Open (WP-45 section 45-01).
+- **PIC-4 Tracked:** Closed in WP-45, BUGS.md "economist: a graph's note() is never painted (the Label targets a Title Node BokehJS does not resolve)", commit pending.
 - **PIC-7 Tracked:** Open (WP-45 section 45-01).
 - **ST-1 Tracked:** Closed in WP-45, BUGS.md "Style-word abbreviations and names twoway reads are not read: compass2dir (nor, N, rig ...), tb_orientstyle (hor, vertic), clockdir names (top, bottom, left ...: title position(bottom) drawn above), gridringstyle (inside/outside; title ring(in) accepted where twoway refuses), anglestyle (v, rv, rh), connectstyle (st, up, no drawn direct); twoway-worded notes are invented for them, and justification(l)'s note is missing", commit pending.
 - **ST-7 Tracked:** Open (WP-45 section 45-03).

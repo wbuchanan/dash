@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'PIC-4': "economist: a graph's note() is never painted (the Label targets a Title Node BokehJS does not resolve)",
     'PIC-7': 'economist widths: range, spike, dropline and pc lines at 1.2 (linewidth p) where twoway uses pother 0.8; the rarea outline at 0.8 centred where twoway uses parea 0.2 inside',
     'ST-7': 'Leaf style files on the ado-path (linepattern, linewidth, symbolsize, gsize, intensity, anglestyle, margin) are not read',
     'ST-15': 'color-*.style and textboxstyle-*.style files are not read (mcolor(mine) draws black)',

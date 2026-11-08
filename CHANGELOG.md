@@ -1017,6 +1017,7 @@ and now matches Stata.
 - A graph is drawn as one picture: its text, markers, lines, gaps and keys grow with the width it is drawn at, against the scheme's width in inches and at twoway's unit, so scatter mpg weight drawn 1,400 px wide draws 29 px tick labels (was 13 px); a page has one toolbar, over the graph's top right corner and shown on hover, where a by() graph had two rows of toolbars above it (WP-45, VF-4)
 - A graph, by() included, keeps twoway's shape at any width with no height band (1400 x 840 px for stcolor's 7.5 x 4.5 in a 1400 px cell, was 1400 x 560), xsize()/ysize() draw the exact box, aspectratio() alone shapes the plot region, and fxsize()/fysize() keep the graph's size (WP-45, VF-4)
 - position(bottom), legend(ring(in)), connect(st), mlabangle(v), orientation(vertic) and the other spellings twoway reads draw as twoway (were noted and drawn at defaults); a title's position(), orientation() and justification() word twoway does not read gets twoway's note (WP-45, ST-1)
+- Under economist a graph's note() is painted in its box at the top right (was never drawn) (WP-45, PIC-4)
 
 ### Fixed in WP-44
 

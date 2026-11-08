@@ -1,0 +1,742 @@
+{
+ "_about": "SVG user units, 720 per inch.  note: the box rect [x, y, w, h] filled #7b92a8, the note and title texts, the plot region rect where plotregion(fcolor(red)) was drawn.  widths: twoway <type> lo hi weight (range), lo weight hi w2 (pc), price weight (spike, dropline) on sysuse auto; every stroke in plot 1's line, area-line or marker-line colour as [tag, relative width, count, clipped], relative = SVG width / (min(W, H) / 100); a clipped stroke draws half its width (inside aligned).",
+ "_meta": {
+  "born_date": "14 Oct 2026",
+  "dash_commit": "0338987645f4555fe468a0f4db2bd6e2996689ad",
+  "extracted": " 8 Nov 2026 03:29:04",
+  "source": "scripts/extract_economist_truth.do",
+  "stata_version": "19.5"
+ },
+ "note": {
+  "N_none_pr": {
+   "graph": [
+    1584.0,
+    1584.0
+   ],
+   "note_box": null,
+   "note_box_fill": null,
+   "note_text": null,
+   "plotregion": [
+    55.44,
+    55.49,
+    1287.09,
+    1324.57
+   ],
+   "title_text": null
+  },
+  "N_note": {
+   "graph": [
+    1584.0,
+    1584.0
+   ],
+   "note_box": [
+    1056.02,
+    55.49,
+    286.51,
+    84.99
+   ],
+   "note_box_fill": "#7b92a8",
+   "note_text": {
+    "anchor": "end",
+    "fill": "#ffffff",
+    "size": 65.99,
+    "text": "The note",
+    "x": 1333.03,
+    "y": 121.12
+   },
+   "title_text": {
+    "anchor": "start",
+    "fill": "#000000",
+    "size": 95.04,
+    "text": "T",
+    "x": 90.29,
+    "y": 156.84
+   }
+  },
+  "N_note_only_pr": {
+   "graph": [
+    1584.0,
+    1584.0
+   ],
+   "note_box": [
+    1056.02,
+    55.49,
+    286.51,
+    84.99
+   ],
+   "note_box_fill": "#7b92a8",
+   "note_text": {
+    "anchor": "end",
+    "fill": "#ffffff",
+    "size": 65.99,
+    "text": "The note",
+    "x": 1333.03,
+    "y": 121.12
+   },
+   "plotregion": [
+    55.44,
+    140.48,
+    1287.09,
+    1239.58
+   ],
+   "title_text": null
+  },
+  "N_note_pr": {
+   "graph": [
+    1584.0,
+    1584.0
+   ],
+   "note_box": [
+    1056.02,
+    55.49,
+    286.51,
+    84.99
+   ],
+   "note_box_fill": "#7b92a8",
+   "note_text": {
+    "anchor": "end",
+    "fill": "#ffffff",
+    "size": 65.99,
+    "text": "The note",
+    "x": 1333.03,
+    "y": 121.12
+   },
+   "plotregion": [
+    55.44,
+    220.23,
+    1287.09,
+    1159.83
+   ],
+   "title_text": {
+    "anchor": "start",
+    "fill": "#000000",
+    "size": 95.04,
+    "text": "T",
+    "x": 90.29,
+    "y": 156.84
+   }
+  },
+  "N_note_s2": {
+   "graph": [
+    3960.0,
+    2880.0
+   ],
+   "note_box": null,
+   "note_box_fill": null,
+   "note_text": {
+    "anchor": "start",
+    "fill": "#000000",
+    "size": 79.94,
+    "text": "The note",
+    "x": 408.0,
+    "y": 2737.89
+   },
+   "title_text": {
+    "anchor": "middle",
+    "fill": "#1e2d53",
+    "size": 139.96,
+    "text": "T",
+    "x": 2124.91,
+    "y": 215.98
+   }
+  },
+  "N_title_pr": {
+   "graph": [
+    1584.0,
+    1584.0
+   ],
+   "note_box": null,
+   "note_box_fill": null,
+   "note_text": null,
+   "plotregion": [
+    55.44,
+    220.23,
+    1287.09,
+    1159.83
+   ],
+   "title_text": {
+    "anchor": "start",
+    "fill": "#000000",
+    "size": 95.04,
+    "text": "T",
+    "x": 90.29,
+    "y": 156.84
+   }
+  }
+ },
+ "schemes": {
+  "wt45": "#include s2color\nlinewidth pother vvthick\nlinewidth p1arrowline vthick\nlinewidth parea vthin\n"
+ },
+ "widths": {
+  "economist": {
+   "dropline": {
+    "colours": [
+     "#3e647d"
+    ],
+    "strokes": [
+     [
+      "circle",
+      1.2,
+      74,
+      false
+     ],
+     [
+      "line",
+      0.8,
+      74,
+      false
+     ]
+    ]
+   },
+   "pcarrow": {
+    "colours": [
+     "#3e647d"
+    ],
+    "strokes": [
+     [
+      "line",
+      0.8,
+      74,
+      false
+     ],
+     [
+      "line",
+      1.2,
+      148,
+      false
+     ]
+    ]
+   },
+   "pcbarrow": {
+    "colours": [
+     "#3e647d"
+    ],
+    "strokes": [
+     [
+      "line",
+      0.8,
+      74,
+      false
+     ],
+     [
+      "line",
+      1.2,
+      296,
+      false
+     ]
+    ]
+   },
+   "pccapsym": {
+    "colours": [
+     "#3e647d"
+    ],
+    "strokes": [
+     [
+      "circle",
+      1.2,
+      148,
+      false
+     ],
+     [
+      "line",
+      0.8,
+      74,
+      false
+     ]
+    ]
+   },
+   "pcspike": {
+    "colours": [
+     "#3e647d"
+    ],
+    "strokes": [
+     [
+      "line",
+      0.8,
+      74,
+      false
+     ]
+    ]
+   },
+   "rarea": {
+    "colours": [
+     "#3e647d"
+    ],
+    "strokes": [
+     [
+      "use",
+      0.4,
+      1,
+      true
+     ]
+    ]
+   },
+   "rcap": {
+    "colours": [
+     "#3e647d"
+    ],
+    "strokes": [
+     [
+      "line",
+      0.8,
+      222,
+      false
+     ]
+    ]
+   },
+   "rcapsym": {
+    "colours": [
+     "#3e647d"
+    ],
+    "strokes": [
+     [
+      "circle",
+      1.2,
+      148,
+      false
+     ],
+     [
+      "line",
+      0.8,
+      74,
+      false
+     ]
+    ]
+   },
+   "rconnected": {
+    "colours": [
+     "#3e647d"
+    ],
+    "strokes": [
+     [
+      "circle",
+      1.2,
+      148,
+      false
+     ],
+     [
+      "path",
+      0.8,
+      2,
+      false
+     ]
+    ]
+   },
+   "rline": {
+    "colours": [
+     "#3e647d"
+    ],
+    "strokes": [
+     [
+      "path",
+      0.8,
+      2,
+      false
+     ]
+    ]
+   },
+   "rspike": {
+    "colours": [
+     "#3e647d"
+    ],
+    "strokes": [
+     [
+      "line",
+      0.8,
+      74,
+      false
+     ]
+    ]
+   },
+   "spike": {
+    "colours": [
+     "#3e647d"
+    ],
+    "strokes": [
+     [
+      "line",
+      0.8,
+      74,
+      false
+     ]
+    ]
+   }
+  },
+  "s2color": {
+   "dropline": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "circle",
+      0.3,
+      74,
+      false
+     ],
+     [
+      "line",
+      0.3,
+      74,
+      false
+     ]
+    ]
+   },
+   "pcarrow": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "line",
+      0.3,
+      222,
+      false
+     ]
+    ]
+   },
+   "pcbarrow": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "line",
+      0.3,
+      370,
+      false
+     ]
+    ]
+   },
+   "pccapsym": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "circle",
+      0.3,
+      148,
+      false
+     ],
+     [
+      "line",
+      0.3,
+      74,
+      false
+     ]
+    ]
+   },
+   "pcspike": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "line",
+      0.3,
+      74,
+      false
+     ]
+    ]
+   },
+   "rarea": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "use",
+      0.6,
+      1,
+      true
+     ]
+    ]
+   },
+   "rcap": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "line",
+      0.3,
+      222,
+      false
+     ]
+    ]
+   },
+   "rcapsym": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "circle",
+      0.3,
+      148,
+      false
+     ],
+     [
+      "line",
+      0.3,
+      74,
+      false
+     ]
+    ]
+   },
+   "rconnected": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "circle",
+      0.3,
+      148,
+      false
+     ],
+     [
+      "path",
+      0.3,
+      2,
+      false
+     ]
+    ]
+   },
+   "rline": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "path",
+      0.3,
+      2,
+      false
+     ]
+    ]
+   },
+   "rspike": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "line",
+      0.3,
+      74,
+      false
+     ]
+    ]
+   },
+   "spike": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "line",
+      0.3,
+      74,
+      false
+     ]
+    ]
+   }
+  },
+  "wt45": {
+   "dropline": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "circle",
+      0.3,
+      74,
+      false
+     ],
+     [
+      "line",
+      2.6,
+      74,
+      false
+     ]
+    ]
+   },
+   "pcarrow": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "line",
+      0.3,
+      148,
+      false
+     ],
+     [
+      "line",
+      2.6,
+      74,
+      false
+     ]
+    ]
+   },
+   "pcbarrow": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "line",
+      0.3,
+      296,
+      false
+     ],
+     [
+      "line",
+      2.6,
+      74,
+      false
+     ]
+    ]
+   },
+   "pccapsym": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "circle",
+      0.3,
+      148,
+      false
+     ],
+     [
+      "line",
+      2.6,
+      74,
+      false
+     ]
+    ]
+   },
+   "pcspike": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "line",
+      2.6,
+      74,
+      false
+     ]
+    ]
+   },
+   "rarea": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "use",
+      0.3,
+      1,
+      true
+     ]
+    ]
+   },
+   "rcap": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "line",
+      2.6,
+      222,
+      false
+     ]
+    ]
+   },
+   "rcapsym": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "circle",
+      0.3,
+      148,
+      false
+     ],
+     [
+      "line",
+      2.6,
+      74,
+      false
+     ]
+    ]
+   },
+   "rconnected": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "circle",
+      0.3,
+      148,
+      false
+     ],
+     [
+      "path",
+      2.6,
+      2,
+      false
+     ]
+    ]
+   },
+   "rline": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "path",
+      2.6,
+      2,
+      false
+     ]
+    ]
+   },
+   "rspike": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "line",
+      2.6,
+      74,
+      false
+     ]
+    ]
+   },
+   "spike": {
+    "colours": [
+     "#1a476f"
+    ],
+    "strokes": [
+     [
+      "line",
+      2.6,
+      74,
+      false
+     ]
+    ]
+   }
+  }
+ }
+}

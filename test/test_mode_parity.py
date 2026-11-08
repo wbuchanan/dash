@@ -1706,6 +1706,9 @@ CORPUS = [
     _case("scheme economist with title, subtitle, note, caption and a legend",
           [_sc(), plot_for("line")], {"scheme": "economist"},
           {"title": "T", "subtitle": "S", "note": "N", "caption": "C"}),
+    # WP-45 PIC-4: the in-band note, a Label row of the above panel.
+    _case("economist note", [_sc()], {"scheme": "economist"},
+          {"title": "T", "note": "N"}),
     _case("scheme stcolor legend default placement",
           [_sc(), plot_for("lfit")], {"scheme": "stcolor"}),
     _case("kpi with explicit bgcolor under economist", [_sc()],
