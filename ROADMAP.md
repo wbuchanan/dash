@@ -5397,6 +5397,26 @@ Summarised from .ultraplan/sections/index.md (WP-45) and .ultraplan/review/DECIS
 - **Left open:** sizes in five corpus guard examples (BUGS.md "Five corpus guard examples draw text, marker or line sizes unlike twoway's", VF-4, S3); an axis's room under scale() (BUGS.md "An axis's room under scale() keeps about 5 px that twoway's does not", GW-6, S3); the margin estimate beside a second axis or a legend (BUGS.md "A lone graph's plot-region margin leaves out a second axis's and a legend's room", ST-21, S3); the economist note's row (BUGS.md "The economist note's row deepens the title band by the box's height; twoway's band holds the title and the note side by side", PIC-4, S3).
 - **Gate (09nov2026):** `make test-all` -- first on 5855ea9, pytest 5 failed of 44,500 (583 s) and cert 74 of 78 (679 s), 1,262 s in all; `make cert-all` on 5855ea9, 76 of 81: pins and fixtures WP-45's batches left stale (VF-4's residual ledger rows, the Differences items' order and a sub-point's link, the value refusal table after GW-1, HC8-12 after ST-16, U39-09's comparer after GW-6, Q3307-5's spec digest after GW-10) and one test bug (Q4503-1/2: twoway sees a style file added after a session's first graph only past discard), fixed in 41a4f05; then on 41a4f05, pytest 44,500 passed (682 s), cert 78 of 78 (718 s), 1,400 s in all, and `make cert-all` 81 of 81 registered scripts passed (3 sessions, all tier, 1,233 s). The suite runs about 23 minutes, over the 5-minute rule (CLAUDE.md 11); the cuts are proposed as their own work.
 
+## WP-46 · recast() and horizontal (P14) — DONE
+
+**GAPS4 closed:** RH-1, RH-9, RH-11, RH-3, RH-5 · **documented:** RH-8
+
+As a Stata user who draws a layer as another type with recast(), and turns it with horizontal, I want recast() read, refused and drawn as twoway reads, refuses and draws it, so that a recast layer on a dashboard is the layer twoway draws: turned where twoway turns it, with both bounds of a range on its axis, title and key, and a recast histogram in the histogram's own style.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (WP-46) and the section decisions D-46-01.a..e and D-46-02.a..g, which hold them in full.
+
+- **Orientation (46-01).** horizontal and vertical judged as twoway judges them: a range source drawn as line, scatter or connected turned; bar, area, spike, dropline and dot targets drawn as twoway draws them; dot with a non-bar recast and recast(b)/(ba) refused in twoway's words; scatteri recast to a bar-like type turned; an unknown name's class notes printed after the flags are judged.
+- **Names on range sources (46-01).** Abbreviated yx names (sc, li, co, b) and a repeated yx name on a y2xtype source or histogram noted and drawn as rspike, as twoway does.
+- **Second bound (46-02).** A range source or ciplot() band drawn as a yx type keeps its second bound on the axis, in the default title and in the key, in both modes and after a move.
+- **Histogram recast (46-02).** A recast histogram drawn in the histogram's fill and outline (the user's colours kept), recast(bar) a bin wide after gap(), and 0 on the height axis.
+- **recast() with horizontal on histogram and rbar (46-02).** Documented under Differences from twoway: twoway draws a broken picture, dash the upright layer turned.
+
+- **Entries.** 6 WP-46 entries; 5 closed, 1 documented, 0 partly closed; BUGS.md holds 64 open entries.
+- **Left open:** the unknown-name note for two different yx names on a two-y layer (BUGS.md "recast() with two different yx names on a two-y layer: twoway's note runs the names together, once per y; dash's names them apart, once", S3); the mangle() and barbsize() notes (BUGS.md "pcarrow mangle(abc) and barbsize(abc) print no note; twoway names each unknown style", S3).
+- **Gate (09nov2026):** `make test-all` on d95dbad: pytest 44,659 passed (746 s), cert 79 of 79 (683 s), 1,429 s in all; `make cert-release` on d95dbad: 3 of 3 (the WP-29/30/31 truth scripts, 586 s). The two run about 34 minutes, over the 5-minute rule (CLAUDE.md 11); the cuts are proposed as their own work.
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.
