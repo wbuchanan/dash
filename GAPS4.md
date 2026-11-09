@@ -520,12 +520,12 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-1 Tracked:** Closed in WP-45, BUGS.md "xsize()/ysize() with units (10cm, 3in, 200pt) are ignored with a note that leaks 'None'", commit f89a739.
 - **ST-22 Tracked:** Closed in WP-45, BUGS.md "Colour edges: navy*52 intensity rule, blank stylelist element refused in dash's words", commit e0d4fd7.
 - **GW-10 Tracked:** Closed in WP-45, BUGS.md "graph set window/svg fontface for plain text is not read (only stSans/stSerif/stMono tags)", commit 3dcd745.
-- **RH-1 Tracked:** Closed in WP-46, BUGS.md "A range source recast to line/scatter/connected refuses horizontal/vertical (twoway turns it); recast to bar/area/spike/dropline/dot with horizontal is turned by dash where twoway draws it upright", commit pending.
+- **RH-1 Tracked:** Closed in WP-46, BUGS.md "A range source recast to line/scatter/connected refuses horizontal/vertical (twoway turns it); recast to bar/area/spike/dropline/dot with horizontal is turned by dash where twoway draws it upright", commit 56cccb2.
 - **RH-3 Tracked:** Open (WP-46 section 46-02).
 - **RH-5 Tracked:** Open (WP-46 section 46-02).
 - **RH-8 Tracked:** Open (WP-46 section 46-02).
-- **RH-9 Tracked:** Closed in WP-46, BUGS.md "Orientation flags judged differently: dot with a non-bar recast takes h/v (twoway refuses); scatteri recast to bar-like refuses h/v (twoway turns it); recast(b)/(ba) takes h/v and draws p1bar (twoway refuses and draws p1)", commit pending.
-- **RH-11 Tracked:** Closed in WP-46, BUGS.md "Abbreviated yx names on y2xtype sources (sc, li, co, b) are read as full names; twoway notes them and draws rspike", commit pending.
+- **RH-9 Tracked:** Closed in WP-46, BUGS.md "Orientation flags judged differently: dot with a non-bar recast takes h/v (twoway refuses); scatteri recast to bar-like refuses h/v (twoway turns it); recast(b)/(ba) takes h/v and draws p1bar (twoway refuses and draws p1)", commit 4aa663f.
+- **RH-11 Tracked:** Closed in WP-46, BUGS.md "Abbreviated yx names on y2xtype sources (sc, li, co, b) are read as full names; twoway notes them and draws rspike", commit 492ce02.
 - **basic:PT-1 Tracked:** Open (WP-47 section 47-01).
 - **MS-7 Tracked:** Open (WP-47 section 47-01).
 - **MS-2 Tracked:** Open (WP-47 section 47-02).
