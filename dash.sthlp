@@ -4354,8 +4354,11 @@ draws its first bound and keeps both on the axis, in its title and key
 {cmd:tsline} and {cmd:tsrline} still join in time order.  The fits and smooths, {cmd:kdensity}, {cmd:function},
 {cmd:histogram} and {cmd:scatteri} keep their computed points and draw
 them as {cmd:scatter}, {cmd:line}, {cmd:connected}, {cmd:area},
-{cmd:bar} (one x unit wide), {cmd:spike}, {cmd:dropline} or {cmd:dot},
-keyed as the layer is keyed without it; on the saved page a recast fit
+{cmd:bar} ({cmd:histogram}: one bin wide; the others: one x unit
+wide), {cmd:spike}, {cmd:dropline} or {cmd:dot},
+keyed as the layer is keyed without it; a recast {cmd:histogram} is
+drawn in the histogram's own colours and line width, its markers keeping
+their fill, with 0 on its height axis, as {cmd:twoway} draws it; on the saved page a recast fit
 is marked after a filter move, and a recast histogram or density is
 recounted as the bars and the curve are (drawn as {cmd:dot}, or a
 histogram as a range type, it is

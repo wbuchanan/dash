@@ -24009,6 +24009,8 @@ class GlyphMapper:
             _rb = len(fig.renderers)
             _ret = self._dash_draw_range_as(fig, _rng, "x", "lo", "hi", _tgt,
                                             _hopts, color_idx)
+            # WP-46 RH-5: in the histogram's own style.
+            self._dash_hist_restyle(fig, _rb, options, color_idx, yvar)
             _bin_tag(_rb)
             return _ret
         # recast(): the bars' midpoints and heights drawn as the target,
@@ -24019,10 +24021,19 @@ class GlyphMapper:
                       + np.asarray(axis_edges[i0 + 1:i1 + 1], dtype=float))
                 / 2.0,
                 "y": np.asarray(tops[i0:i1], dtype=float)})
+            # WP-46 RH-6: the histogram's own keys are not the target's
+            # (as on the range branch); a bar is the histogram's bar, a
+            # bin wide after gap() (recast_truth.json RH5-01, RH5-05).
+            _yopts = {k: v for k, v in options.items()
+                      if k not in self._HIST_RECAST_KEYS}
+            if options["recast"] == "bar" and len(_hl):
+                _yopts["barwidth"] = "%.17g" % float(_hr[0] - _hl[0])
             _before = len(fig.renderers)
             _first = self._dash_draw_xy_as(fig, _mid, "x", "y",
-                                           options["recast"], options,
+                                           options["recast"], _yopts,
                                            color_idx)
+            # WP-46 RH-5: in the histogram's own style.
+            self._dash_hist_restyle(fig, _before, options, color_idx, yvar)
             # The recast layer is recounted after a saved move like the
             # bars it stands for (WP-31 C16): the bars' config, with the
             # role of each column of the target's own source.
@@ -24151,6 +24162,54 @@ class GlyphMapper:
         if _wk in _STATA_DATE_KINDS:
             cfg["wdatekind"] = _wk
         return cfg
+
+    #: The marker options that keep a recast histogram's marker outline
+    #: the target's (WP-46 RH-5).
+    _HIST_MARKER_KEYS = ("mcolor", "mlcolor", "mlwidth", "mstyle",
+                         "mlstyle")
+
+    def _dash_hist_restyle(self, fig, before, options, color_idx, yvar):
+        """Draw what a recast histogram's target drew (*fig*'s renderers
+        from *before*) in the histogram's own style (WP-46 RH-5,
+        D-46-02.d): twoway restyles every recast histogram view
+        style(histogram) (twoway_histogram_parse.class:188), so a bar's
+        and an area's fill is the bars' fill, and every line, outline and
+        marker outline the bars' outline colour and width; a marker keeps
+        its own fill (recast_truth.json RH5-00..04, RH5-07, RH5-09).  The
+        style is the bars' as _histogram_quads resolves it -- color(),
+        fcolor(), lcolor() and lwidth() included (RH5-10) -- read off a
+        quad drawn on a scratch figure; a marker outline given by an
+        option of _HIST_MARKER_KEYS stays the target's.  An area's key
+        swatch is restyled with it; the rows of dots, the bound's extent
+        and a colorvar() legend's swatches are left alone."""
+        q = self._histogram_quads(
+            type(fig)(), ColumnDataSource({"top": [], "left": [],
+                                           "right": []}),
+            options, color_idx, yvar).glyph
+        own_marker = any(str((options or {}).get(k, "") or "").strip()
+                         for k in self._HIST_MARKER_KEYS)
+        for r in list(fig.renderers[before:]):
+            g = getattr(r, "glyph", None)
+            tags = getattr(r, "tags", None) or ()
+            # An area's key swatch (WP-34 PIC-1) is restyled with it.
+            if g is None or "dash_dots" in tags \
+                    or "dash_bound_extent" in tags or (
+                        _dash_is_swatch(r)
+                        and not getattr(r, "_dash_key_glyph", False)):
+                continue
+            if type(g).__name__ == "Scatter":
+                if not own_marker:
+                    g.line_color = q.line_color
+                    g.line_width = q.line_width
+                    g.line_alpha = q.line_alpha
+                continue
+            if hasattr(g, "fill_color"):
+                g.fill_color = q.fill_color
+                g.fill_alpha = q.fill_alpha
+            if hasattr(g, "line_color"):
+                g.line_color = q.line_color
+                g.line_width = q.line_width
+                g.line_alpha = q.line_alpha
 
     @staticmethod
     def _tag_recast(added, xs, ys, cfg, rows):
@@ -73803,10 +73862,14 @@ def _dash_tag_eval_extent(mapper, fig, before, pt, source, view, options,
     axis's 0, so one of no rows runs -1 to 1.  The axis hull reads the
     values (:func:`_dash_layer_extent`, :func:`_dash_secondary_values`,
     the saved page's axis plan); the saved page's refit and the served
-    redraw write them again after a move.  A recast(), a range(), or a
-    date variable leaves the layer unstamped.  Python attribute only."""
+    redraw write them again after a move.  A recast() (but a histogram's,
+    WP-46 RH-7), a range(), or a date variable leaves the layer
+    unstamped.  Python attribute only."""
     try:
-        if str((options or {}).get("recast", "") or "").strip():
+        # WP-46 RH-7: a recast histogram keeps its 0 (twoway's unswapped
+        # serset carries a zero series; recast_truth.json RH5-06, RH5-07).
+        if str((options or {}).get("recast", "") or "").strip() \
+                and pt != "histogram":
             return
         new = [r for r in getattr(fig, "renderers", None) or ()
                if id(r) not in before and getattr(r, "glyph", None)

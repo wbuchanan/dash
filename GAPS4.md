@@ -522,7 +522,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-10 Tracked:** Closed in WP-45, BUGS.md "graph set window/svg fontface for plain text is not read (only stSans/stSerif/stMono tags)", commit 3dcd745.
 - **RH-1 Tracked:** Closed in WP-46, BUGS.md "A range source recast to line/scatter/connected refuses horizontal/vertical (twoway turns it); recast to bar/area/spike/dropline/dot with horizontal is turned by dash where twoway draws it upright", commit 56cccb2.
 - **RH-3 Tracked:** Closed in WP-46, BUGS.md "A range source or ciplot() drawn as a yx type leaves the second bound out of the axis, the default title and the key", commit pending.
-- **RH-5 Tracked:** Open (WP-46 section 46-02).
+- **RH-5 Tracked:** Closed in WP-46, BUGS.md "histogram recast(): drawn in the target's style (twoway keeps the histogram style), bars one unit wide (twoway uses the bin width), and 0 left out of the height axis", commit pending.
 - **RH-8 Tracked:** Open (WP-46 section 46-02).
 - **RH-9 Tracked:** Closed in WP-46, BUGS.md "Orientation flags judged differently: dot with a non-bar recast takes h/v (twoway refuses); scatteri recast to bar-like refuses h/v (twoway turns it); recast(b)/(ba) takes h/v and draws p1bar (twoway refuses and draws p1)", commit 4aa663f.
 - **RH-11 Tracked:** Closed in WP-46, BUGS.md "Abbreviated yx names on y2xtype sources (sc, li, co, b) are read as full names; twoway notes them and draws rspike", commit 492ce02.

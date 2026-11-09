@@ -3330,6 +3330,9 @@ CORPUS = [
             "xvar": "weight", "options": {"recast_hi": "price"}}]),
     _case("lfitci ciplot(bar) (WP-46 RH-3)",
           [plot_for("lfitci", {"ciplot": "bar"})]),
+    # WP-46 RH-5: a recast histogram in its own style, a bin wide.
+    _case("histogram recast(bar) gap(50) (WP-46 RH-5)",
+          [plot_for("histogram", {"recast": "bar", "gap": "50"})]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

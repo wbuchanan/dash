@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'RH-5': "histogram recast(): drawn in the target's style (twoway keeps the histogram style), bars one unit wide (twoway uses the bin width), and 0 left out of the height axis",
     'RH-8': 'histogram/rbar with recast() plus horizontal: twoway draws a broken swapped serset; dash draws a clean transpose',
     'basic:PT-1': 'headlabel is ignored on pcscatter/pccapsym with mlabel() and on pcarrowi labels: labels stay at the first point',
     'MS-7': 'Immediate-type labels: pci labels dropped under recast() with a false note; scatteri labels vanish under recast(); mlabel(nosuch) on scatteri is refused r(111)',

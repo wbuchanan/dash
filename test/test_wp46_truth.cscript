@@ -460,7 +460,7 @@ def _q4602_verdict(case, tw, fig):
         if yr[1] < 11 - eps:
             return "y range %r leaves out the second bound's 11" % (yr,)
         return "ok"
-    if case == "RH5-06":
+    if case == "RH5-04":
         # 0 on the height axis, as twoway's labels start at 0.
         if not (tw["y"] and tw["y"][0] == 0.0):
             return "twoway's y labels %r do not start at 0" % (tw["y"],)
@@ -534,6 +534,36 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w46_run' {
     _w46_expect Q4602-1 `"("${q4602_s}" == "ok")"' "saved: ${q4602_s} (twoway: ${q4602_tw})"
     _w46_expect Q4602-1 `"("${q4602_v}" == "ok")"' "served: ${q4602_v} (twoway: ${q4602_tw})"
     _w46_done Q4602-1 "rline recast(line) keeps both bounds on the axis and in its title, in both modes"
+
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
+* ==== S02 RH-5: a recast histogram from zero, in its own style ====
+local only : env WP46_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w46_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4602-2 (as RH5-04): histogram y, recast(scatter) on ten values
+    // whose bins are all well above 0 (test_mode_parity._DF's mpg):
+    // twoway's height axis starts at 0; dash's y range starts at or
+    // below 0, in both modes.  (An area or dropline target holds 0 by
+    // its base already.)
+    // ------------------------------------------------------------
+    clear
+    quietly set obs 10
+    generate double y = .
+    local ys 22 17 25 30 21 19 14 28 16 23
+    forvalues i = 1/10 {
+        quietly replace y = `: word `i' of `ys'' in `i'
+    }
+    _q4602_draw "`w46_work'" 2 RH5-04 histogram y, recast(scatter)
+    _w46_expect Q4602-2 "(${q4602_trc} == 0)" "twoway rc ${q4602_trc}"
+    _w46_expect Q4602-2 "(${q4602_trc} != 0 | ${q4602_drc} == 0)" "dash rc ${q4602_drc}"
+    _w46_expect Q4602-2 `"("${q4602_s}" == "ok")"' "saved: ${q4602_s} (twoway: ${q4602_tw})"
+    _w46_expect Q4602-2 `"("${q4602_v}" == "ok")"' "served: ${q4602_v} (twoway: ${q4602_tw})"
+    _w46_done Q4602-2 "histogram recast(scatter) keeps 0 on its height axis, in both modes"
 
     display as text "S02 end " c(current_date) " " c(current_time)
 }

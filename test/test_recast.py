@@ -523,3 +523,149 @@ class TestTheBoundHelp:
             flat = re.sub(r"\s+", " ", fh.read())
         assert ("a range type named as a yx type draws its first bound "
                 "and keeps both on the axis, in its title and key") in flat
+
+    def test_the_histogram_style_is_documented(self):
+        """WP-46 RH-5: a recast histogram's bar is one bin wide, drawn in
+        the histogram's own colours, with 0 on its height axis."""
+        with open(_HELP, encoding="utf-8") as fh:
+            flat = re.sub(r"\s+", " ", fh.read())
+        assert "{cmd:bar} ({cmd:histogram}: one bin wide; the others: " \
+            "one x unit wide)" in flat
+        assert ("a recast {cmd:histogram} is drawn in the histogram's own "
+                "colours and line width, its markers keeping their fill, "
+                "with 0 on its height axis") in flat
+
+
+# ===========================================================================
+# WP-46 RH-5 (with RH-6, RH-7): a recast histogram is drawn in the
+# histogram's own style, its bars a bin wide, 0 on its height axis
+# ===========================================================================
+
+def _hist_figs(mode, opts):
+    return _rb_figs(mode, [plot_for("histogram", opts)])
+
+
+def _hist_style(fig):
+    """The plain histogram's fill, outline colour and outline width."""
+    [q] = [r.glyph for r in drawn_renderers(fig)
+           if type(r.glyph).__name__ in ("Quad", "VBar")]
+    return q.fill_color, q.line_color, float(q.line_width)
+
+
+def _marks(fig):
+    """{(kind, role): {(colour, width)}} of what a recast layer drew:
+    fills of bars and areas, lines of lines, segments and outlines, and
+    marker outlines."""
+    out = {}
+    for r in drawn_renderers(fig):
+        if "dash_bound_extent" in (r.tags or []):
+            continue
+        g = r.glyph
+        k = type(g).__name__
+        if k in ("VBar", "Quad", "VArea", "Patch"):
+            out.setdefault("fill", set()).add(g.fill_color)
+        if k in ("VBar", "Quad", "Line", "Segment", "MultiLine"):
+            out.setdefault("line", set()).add((g.line_color,
+                                               float(g.line_width)))
+        if k == "Scatter":
+            out.setdefault("mline", set()).add((g.line_color,
+                                                float(g.line_width)))
+    return out
+
+
+@pytest.mark.parametrize("mode", ["saved", "served"])
+class TestHistogramRecast:
+
+    @pytest.mark.parametrize("pid", ["RH5-01", "RH5-02", "RH5-03",
+                                     "RH5-04", "RH5-09"])
+    def test_histogram_style(self, mode, pid):
+        """twoway draws a recast histogram in the histogram's style: the
+        bars' and area's fill #3191ff, every line and outline #5faaff at
+        the bars' width (fixture marks equal to RH5-00's); a marker keeps
+        its p1 fill.  dash draws the target's fills, lines and marker
+        outlines in the plain histogram's colours and width."""
+        probes = _truth()["probes"]
+        base = {tuple(m) for m in probes["RH5-00"]["marks"]}
+        fill = [m[1] for m in base if m[1] not in ("", "none")][0]
+        line = [(m[2], m[3]) for m in base if m[2] not in ("", "none")][0]
+        for m in probes[pid]["marks"]:
+            if m[1] not in ("", "none") and m[0] != "circle":
+                assert m[1] == fill, (pid, m)
+            if m[2] not in ("", "none"):
+                assert m[2] == line[0], (pid, m)
+        tgt = re.search(r"recast\((\w+)\)", probes[pid]["cmd"]).group(1)
+        [plain] = _hist_figs(mode, {})
+        hf, hl, hw = _hist_style(plain)
+        [f] = _hist_figs(mode, {"recast": tgt})
+        got = _marks(f)
+        assert got, tgt
+        for c in got.get("fill", ()):
+            assert c == hf, (tgt, "fill", c, hf)
+        for c, w in got.get("line", set()) | got.get("mline", set()):
+            assert (c, w) == (hl, hw), (tgt, "line", c, w, hl, hw)
+
+    @pytest.mark.parametrize("pid,gap", [("RH5-01", None), ("RH5-05", "50")])
+    def test_bar_is_a_bin_wide(self, mode, pid, gap):
+        """twoway's recast(bar) bars are as wide as the histogram's own
+        (bar_w 3.63 = the bin; 1.81 under gap(50), RH5-00, RH5-08);
+        dash's VBar is the plain histogram's bar width."""
+        probes = _truth()["probes"]
+        base = "RH5-08" if gap else "RH5-00"
+        assert abs(probes[pid]["bar_w"] - probes[base]["bar_w"]) < 1e-6
+        o = {"gap": gap} if gap else {}
+        [plain] = _hist_figs(mode, o)
+        [q] = [r.glyph for r in drawn_renderers(plain)
+               if type(r.glyph).__name__ == "Quad"]
+        d = [r for r in drawn_renderers(plain)
+             if type(r.glyph).__name__ == "Quad"][0].data_source.data
+        want = float(d["right"][0]) - float(d["left"][0])
+        [f] = _hist_figs(mode, dict(o, recast="bar"))
+        bars = [r.glyph for r in drawn_renderers(f)
+                if type(r.glyph).__name__ == "VBar"]
+        assert bars and all(abs(float(b.width) - want) < 1e-9
+                            for b in bars), ([b.width for b in bars], want)
+
+    @pytest.mark.parametrize("pid", ["RH5-06", "RH5-07"])
+    def test_zero_on_the_height_axis(self, mode, pid):
+        """twoway puts 0 on a recast histogram's height axis (RH5-06,
+        RH5-07: y labels from 0); dash's y range starts at or below 0."""
+        rec = _truth()["probes"][pid]
+        assert rec["yrange"][0] == 0.0 and rec["ylabels"][-1] == "0"
+        tgt = re.search(r"recast\((\w+)\)", rec["cmd"]).group(1)
+        [f] = _hist_figs(mode, {"recast": tgt})
+        assert f.y_range.start <= 1e-12, (f.y_range.start, f.y_range.end)
+
+    def test_user_colour_wins(self, mode):
+        """color(red) on a recast(bar) histogram draws red bars, as the
+        plain histogram's color(red) does (fixture RH5-10: #ff1919 fill,
+        #ff0000 outline)."""
+        assert _truth()["probes"]["RH5-10"]["marks"][0][1] == "#ff1919"
+        [plain] = _hist_figs(mode, {"color": "red"})
+        [f] = _hist_figs(mode, {"recast": "bar", "color": "red"})
+        assert _marks(f)["fill"] == {_hist_style(plain)[0]}
+
+
+class TestTheHistRestyle:
+
+    def test_restyles_the_target(self):
+        """GlyphMapper._dash_hist_restyle: a line drawn after *before*
+        takes the histogram bars' outline colour and width, a marker its
+        outline only (its fill kept), unless a marker option is given;
+        a renderer drawn before *before* is untouched."""
+        gm = dr.GlyphMapper()
+        q = gm._histogram_quads(figure(), ColumnDataSource(
+            {"top": [], "left": [], "right": []}), {}, 0, "mpg").glyph
+        fig = figure()
+        keep = fig.line(x=[1, 2], y=[1, 2], line_color="#123456")
+        ln = fig.line(x=[1, 2], y=[1, 2], line_color="#abcdef")
+        mk = fig.scatter(x=[1], y=[1], fill_color="#010101",
+                         line_color="#020202")
+        gm._dash_hist_restyle(fig, 1, {}, 0, "mpg")
+        assert keep.glyph.line_color == "#123456"
+        assert (ln.glyph.line_color, ln.glyph.line_width) == (
+            q.line_color, q.line_width)
+        assert mk.glyph.line_color == q.line_color
+        assert mk.glyph.fill_color == "#010101"
+        mk2 = fig.scatter(x=[1], y=[1], line_color="#020202")
+        gm._dash_hist_restyle(fig, 3, {"mlcolor": "red"}, 0, "mpg")
+        assert mk2.glyph.line_color == "#020202"

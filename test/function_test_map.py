@@ -1220,6 +1220,7 @@ FUNCTIONS = {
  '_dash_lpoly_degree_frozen': 'test/test_lpoly_edges.py::TestLpolyHighDegree::test_the_saved_page_keeps_it_with_the_cue',
  'GlyphMapper._lpoly_degree_note': 'test/test_lpoly_edges.py::TestLpolyHighDegree::test_draws_with_one_note',
  'GlyphMapper._tag_recast': 'test/test_recast_refit.py::TestRecastRefit::test_tagged',
+ 'GlyphMapper._dash_hist_restyle': 'test/test_recast.py::TestTheHistRestyle::test_restyles_the_target',
  'GlyphMapper._hist_agg_config': 'test/test_recast_refit.py::TestRecastRefit::test_js_equals_python',
  'GlyphMapper._kde_agg_config': 'test/test_recast_refit.py::TestRecastRefit::test_js_equals_python',
  '_dash_numlist_floats': 'test/test_distribution_odds.py::TestDroplineHelpers::test_helper',
