@@ -45177,6 +45177,15 @@ def _dash_margin_sides(text, start, scheme=None, short_in=4.0):
     return cur, None
 
 
+#: twoway's room for an axis -- its ticks, labels and title -- beside the
+#: plot region, in relative units of the graph's smaller side (WP-45
+#: ST-21 residual; figure_geometry_truth.json I_pmz84, I_pmz48: 12.6 on
+#: the left and 11.1 at the bottom under stcolor, scale_frame_truth.json
+#: A:1 10.1 on both under s2color), for the plot region's share of the
+#: graph :func:`_dash_plot_margin` takes its margin over.
+_DASH_AXIS_ROOM_RS = 11.0
+
+
 def _dash_plot_margin(scheme, graph_opts, panels=1, mult=None):
     """twoway's plot-region margin as fractions of the frame, per side:
     ``{"x": (left, right), "y": (bottom, top)}`` (WP-30 P1.3a, D1 b;
@@ -45199,7 +45208,18 @@ def _dash_plot_margin(scheme, graph_opts, panels=1, mult=None):
     WP-31 D10 (D-36.e): *mult*, when given, is by()'s whole multiplier
     -- f(k) x iscale(), :func:`_dash_by_size_mult` -- and replaces
     f(*panels*) (measured: by(g4, iscale(.5)) draws 2.2% x .50;
-    by_remainder_truth.json ``margin_*``)."""
+    by_remainder_truth.json ``margin_*``).
+
+    WP-45 ST-21 residual: a lone graph's sides are over the plot region's
+    side, not the graph's: twoway's margin is a share of the graph's
+    smaller side whatever the plot region's size (figure_geometry_truth
+    .json I_pmn84, I_pmn48: 288 of 2880 units at 8 x 4 and 4 x 8 in), and
+    the plot region is the graph less the scheme's graph margin
+    (:func:`_dash_graph_margin_pct`) and its axes' room,
+    :data:`_DASH_AXIS_ROOM_RS` of the smaller side on the left and at the
+    bottom.  Read from the options alone, so a reader of a page gets the
+    margin the page was built with; fixed at build (D74).  A by() panel
+    (*panels* above 1 or *mult*) keeps the share of the graph."""
     go = graph_opts or {}
     sizes = []
     for raw in (go.get("xsize"), go.get("ysize"),
@@ -45258,11 +45278,21 @@ def _dash_plot_margin(scheme, graph_opts, panels=1, mult=None):
             m = None
         if m is not None and math.isfinite(m) and m >= 0:
             f = m
+    share = {"x": 1.0, "y": 1.0}
+    if g == 1 and mult is None:
+        try:
+            gm = _dash_graph_margin_pct(go, scheme)
+        except Exception:  # noqa: BLE001 -- no graph margin known
+            gm = [0.0, 0.0, 0.0, 0.0]
+        room = _DASH_AXIS_ROOM_RS / 100.0 * short
+        share["x"] = 1.0 - (gm[0] + gm[1]) / 100.0 - room / w
+        share["y"] = 1.0 - (gm[2] + gm[3]) / 100.0 * w / h - room / h
+        share = {k: max(0.2, min(1.0, v)) for k, v in share.items()}
     out = {}
     for letter, extent, pair in (("x", w, sides[0:2]), ("y", h, sides[2:4])):
         vs = []
         for rs in pair:
-            v = rs / 100.0 * f * short / extent
+            v = rs / 100.0 * f * short / (extent * share[letter])
             if math.isnan(v):
                 v = 0.0
             vs.append(max(-0.45, min(0.45, v)))
@@ -79178,6 +79208,7 @@ class ServerAppBuilder:
                       "_DASH_ADDED_TEXT_VSHIFT",
                       "_DASH_TEXTBOX_DEFAULTS", "_DASH_EDGE_TITLES",
                       "_DASH_TITLE_LINE_EXCESS", "_DASH_TITLE_ROOM_KEYS",
+                      "_DASH_AXIS_ROOM_RS",
                       "_DASH_SCALE_SUBOPTS",
                       "_DASH_TEXT_BOX_JS",
                       "_DASH_TBSTYLE_ROWS", "_DASH_LEGEND_SUBOPT_TABLE",

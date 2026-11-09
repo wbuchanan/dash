@@ -702,6 +702,49 @@ class TestTitleRoom:
         assert t.standoff == round(5 * 2.88 * 4 / 3)
 
 
+class TestPlotMargin:
+    """WP-45 ST-21 residual: twoway's plot-region margin is a share of the
+    graph's smaller side, whatever the plot region's size
+    (figure_geometry_truth.json I_pmz84 against I_pmn84 and I_pmz48
+    against I_pmn48: plotregion(margin(10 10 10 10)) moves the "10" tick
+    label 288 of 2880 units at 8 x 4 and at 4 x 8 in, where the plot
+    regions are 2358.36 and 5238.36 tall), so as a share of the plot
+    region it is 288 over the region's side.  Before: dash took 10% of
+    the smaller side over the graph's own side as the frame's share, so
+    the margin was narrower by the frame's share of the graph (x at 4 x 8
+    in: 0.100 of the frame where twoway's is 288 / 2314.62 = 0.124)."""
+
+    @staticmethod
+    def _tick_shift(zero, ten):
+        t = _truth()
+        y0 = [x["y"] for x in t[zero]["texts"] if x["t"] == "10"][0]
+        y1 = [x["y"] for x in t[ten]["texts"] if x["t"] == "10"][0]
+        return y0 - y1
+
+    def test_the_fixture_reads_the_smaller_side(self):
+        for zero, ten in (("I_pmz84", "I_pmn84"), ("I_pmz48", "I_pmn48")):
+            assert self._tick_shift(zero, ten) == pytest.approx(288.0,
+                                                                abs=0.1)
+
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("probe,go", [
+        ("I_pmn84", {"xsize": "8", "ysize": "4"}),
+        ("I_pmn48", {"xsize": "4", "ysize": "8"}),
+    ])
+    def test_the_share_of_the_frame(self, probe, go, mode):
+        plot = [r for r in _truth()[probe]["rects"]
+                if r["fill"] == "#ffffff" and r["stroke"] is None
+                and r["x"] > 0][0]
+        go = dict(go, plotregion="margin(10 10 10 10)")
+        _, figs = _figs(mode, go)
+        m = figs[0]._dash_margin
+        for letter, side in (("x", plot["w"]), ("y", plot["h"])):
+            want = 288.0 / side
+            for got in m[letter]:
+                assert got == pytest.approx(want, rel=0.06), (
+                    letter, m, want)
+
+
 class TestTheLookupWalk:
     """``_dash_refs``: the models a page's lookup hooks see, as
     ``references()`` finds them, without building unread defaults."""

@@ -413,12 +413,20 @@ class TestTheHelpers:
         """Flipped (WP-30 P1.20b): one number per axis was wrong because
         twoway's plot-region margin is per side (margin_truth.json); the
         scheme's default is the same on both sides of each axis."""
+        # Flipped (WP-45 ST-21 residual): each side is over the plot
+        # region's estimated side (the graph less the scheme's graph margin
+        # and 11% of the smaller side for an axis), not the graph's: was
+        # (0.0132, 0.022), (0.016, 0.022), (0.006, 0.006) and (0.022, 0.022).
         bad = []
-        for scheme, go, want in (("stcolor", {}, (0.0132, 0.022)),
-                                 ("s2color", {}, (0.016, 0.022)),
-                                 ("economist", {}, (0.006, 0.006)),
+        for scheme, go, want in (("stcolor", {}, (0.014798206278026908,
+                                                  0.02682926829268293)),
+                                 ("s2color", {}, (0.018410041841004185,
+                                                  0.02682926829268293)),
+                                 ("economist", {}, (0.007317073170731708,
+                                                    0.007317073170731708)),
                                  ("stcolor", {"xsize": "4", "ysize": "4"},
-                                  (0.022, 0.022))):
+                                  (0.02682926829268293,
+                                   0.02682926829268293))):
             m = dr._dash_plot_margin(dr.SchemeParser(scheme), go)
             if any(abs(v - want[0]) > 1e-12 for v in m["x"]) \
                     or any(abs(v - want[1]) > 1e-12 for v in m["y"]):

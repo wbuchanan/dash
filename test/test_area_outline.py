@@ -386,10 +386,14 @@ class TestTheOutline:
     def test_no_tick_input(self, mode):
         fig = _fig(mode, [_area()])
         # The ticks and span of today's tree (measured at cd6aa39).
+        # Flipped (WP-45 ST-21 residual): the plot-region margin is a share
+        # of the graph's smaller side over the frame's own side, so the
+        # span is a little wider (was 36.11275946025105 to
+        # 80.98723853974896, the margin a share of the graph's side).
         assert list(fig.yaxis[0].ticker.ticks) == [40.0, 50.0, 60.0, 70.0,
                                                    80.0]
-        assert fig.y_range.start == pytest.approx(36.11275946025105)
-        assert fig.y_range.end == pytest.approx(80.98723853974896)
+        assert fig.y_range.start == pytest.approx(35.88376082989691)
+        assert fig.y_range.end == pytest.approx(81.2162371701031)
         (fill,) = _fills(fig)
         (ring_r,) = _rings(fig)
         for attr in ("x_range_name", "y_range_name"):

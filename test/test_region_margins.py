@@ -197,7 +197,10 @@ class TestTheSchemeLadder:
         assert sch.margin_ladder["medsmmargin"] == 5.0
         assert sch.plot_margin_sides == [5.0] * 4
         m = dr._dash_plot_margin(sch, {})
-        assert m["y"] == pytest.approx((0.05, 0.05))
+        # Flipped (WP-45 ST-21 residual): 5% of the 4 in smaller side over
+        # the plot region's estimated height (4 in less s2color's graph
+        # margin and 11% of axis room), was 0.05 of the graph's height.
+        assert m["y"] == pytest.approx((0.05 / (1 - 0.07 - 0.11),) * 2)
 
 
 class TestTheHelpers:
@@ -270,8 +273,14 @@ class _no_warning:
 
 class TestThePlotMargin:
     def test_probe(self):
-        """_dash_plot_margin, as a fraction of min(W, H), equals twoway's
-        margin_rel on every side of every probe within 0.0005."""
+        """A by() graph's _dash_plot_margin, as a fraction of min(W, H),
+        equals twoway's margin_rel on every side within 0.0005; a lone
+        graph's, a fraction of its frame, equals twoway's frame_frac
+        within 0.002 and 2% (Flipped, WP-45 ST-21 residual: the lone
+        graph's margin was over the graph's side, a frame fraction a
+        little narrower than twoway's, L10 0.089 of the frame against
+        0.101; now over the plot region's estimated side).  Y2's second
+        axis is not in the plot region's estimate."""
         rows, bad = _truth()["probes"], []
         for pid, row in sorted(rows.items()):
             if pid in _RESIDUAL or pid not in _PROBES or row["rc"] != 0:
@@ -284,6 +293,16 @@ class TestThePlotMargin:
             h = float(go.get("ysize") or sch.graphsize_y)
             short = min(w, h)
             for letter, ext in (("x", w), ("y", h)):
+                if panels == 1:
+                    if pid == "Y2" or "frame_frac" not in (
+                            row.get(letter) or {}):
+                        continue
+                    want = row[letter]["frame_frac"]
+                    for got, tw in zip(m[letter], (want["lo"], want["hi"])):
+                        if abs(got - tw) > 2e-3 + 0.02 * abs(tw):
+                            bad.append("%s %s dash %r twoway %r"
+                                       % (pid, letter, m[letter], want))
+                    continue
                 if "margin_rel" not in (row.get(letter) or {}):
                     continue
                 want = row[letter]["margin_rel"]

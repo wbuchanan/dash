@@ -653,3 +653,60 @@ class TestGraphOutlineInChrome:
             assert oc == "rgb(255, 0, 0)" and sty == "solid", rec
             assert abs(ow - 6.72) <= 1, rec
             assert off == (-ow if inside else 0), rec
+
+
+#: The plot frame's box, each range's ends and the hull of the first
+#: scatter's x and y columns, in page px and data units.
+_MARGIN_JS = r"""
+<script>
+addEventListener('load', () => setTimeout(() => {
+  let out = null;
+  const visit = (v) => {
+    if (!v || out) return;
+    if (v.frame && v.model && v.model.x_range) {
+      const f = v.frame.bbox, m = v.model;
+      const r = m.renderers.find((g) => g.glyph && g.glyph.x
+                                 && g.glyph.x.field && g.data_source);
+      const col = (n) => Array.from(r.data_source.data[n] || [])
+        .filter((z) => Number.isFinite(z));
+      const xs = col(r.glyph.x.field), ys = col(r.glyph.y.field);
+      out = [f.width, f.height, m.x_range.start, m.x_range.end,
+             m.y_range.start, m.y_range.end, Math.min(...xs),
+             Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+      return;
+    }
+    for (const c of (v.child_views || [])) visit(c);
+  };
+  for (const v of Object.values(Bokeh.index)) { if (!v.parent) visit(v); }
+  parent.postMessage('DASHPROBE' + JSON.stringify({W: innerWidth, out}),
+                     '*');
+}, 3000));
+</script>
+"""
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestPlotMarginInChrome:
+    """WP-45 ST-21 residual: plotregion(margin(10 10 10 10)) at xsize(4)
+    ysize(8) leaves 288 of 2880 SVG units between the plot region's edge
+    and its scale on each side (figure_geometry_truth.json I_pmn48 against
+    I_pmz48), 10% of the graph's 4 in smaller side: 38.4 px of the 384 px
+    box.  Before: 10% of the smaller side over the graph's own side as the
+    frame's share, about 31 px across and 35 down."""
+
+    def test_the_margin(self, mode, tmp_path):
+        html = TestTheThreeCasesInChrome._page(
+            mode, {"xsize": "4", "ysize": "8",
+                   "plotregion": "margin(10 10 10 10)"}, tmp_path)
+        mp = pytest.MonkeyPatch()
+        mp.setattr(responsive_probe, "PROBE_JS", _MARGIN_JS)
+        try:
+            rec = responsive_probe.measure_many(html, (1400,))[1400]["out"]
+        finally:
+            mp.undo()
+        fw, fh, x0, x1, y0, y1, xl, xh, yl, yh = rec
+        # The left and top sides, where the data's hull ends the scale
+        # (the right and bottom ones run on to the ticks 5,000 and 10).
+        got = [fw * (xl - x0) / (x1 - x0), fh * (y1 - yh) / (y1 - y0)]
+        for px in got:
+            assert abs(px - 38.4) <= 2.5, (got, rec)

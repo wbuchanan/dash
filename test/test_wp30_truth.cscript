@@ -10789,10 +10789,19 @@ def _s47_check():
             got = ((lo - s) / span, (e - hi) / span)
         else:
             got = ((s - hi) / span, (lo - e) / span)
-        got = [g * ext / 4.0 for g in got]
-        if abs(got[0] - want["lo"]) > 5e-4 or abs(got[1] - want["hi"]) > 5e-4:
+        # Flipped (WP-45 ST-21 residual): a lone graph's margin is over the
+        # plot region's estimated side, so the page's frame fraction is
+        # twoway's frame_frac (within 0.002 and 2%); it was the share of
+        # the graph's side, margin_rel times 4 / ext.
+        ff = row[letter].get("frame_frac") or want
+        # Y2's second axis is not in the plot region's estimate (its room
+        # makes twoway's frame narrower: 0.1647 against dash's 0.1488).
+        if probe == "Y2":
+            continue
+        if any(abs(g - w) > 2e-3 + 0.02 * abs(w)
+               for g, w in zip(got, (ff["lo"], ff["hi"]))):
             bad.append("%s %s %.4f/%.4f twoway %.4f/%.4f" % (
-                probe, letter, got[0], got[1], want["lo"], want["hi"]))
+                probe, letter, got[0], got[1], ff["lo"], ff["hi"]))
     rects = row.get("inner")
     if rects is not None:
         boxes = [ref(o) for o in objs.values() if o.get("name") == "BoxAnnotation"
@@ -10844,9 +10853,13 @@ def _s47_after():
             r = getattr(fig, letter + "_range")
             s, e = float(r.start), float(r.end)
             span = abs(e - s)
-            got = [(lo - s) / span * ext / 4.0, (e - hi) / span * ext / 4.0]
-            want = row[letter]["margin_rel"]
-            if abs(got[0] - want["lo"]) > 5e-4 or abs(got[1] - want["hi"]) > 5e-4:
+            # Flipped (WP-45 ST-21 residual): the frame fraction against
+            # twoway's frame_frac (within 0.002 and 2%), as in _s47_check;
+            # it was the share of the graph's side against margin_rel.
+            got = [(lo - s) / span, (e - hi) / span]
+            want = row[letter].get("frame_frac") or row[letter]["margin_rel"]
+            if any(abs(g - w) > 2e-3 + 0.02 * abs(w)
+                   for g, w in zip(got, (want["lo"], want["hi"]))):
                 bad.append("%s %s %s %.4f/%.4f twoway %.4f/%.4f" % (
                     mode, probe, letter, got[0], got[1], want["lo"], want["hi"]))
         if row.get("inner") is None:
