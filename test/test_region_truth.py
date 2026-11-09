@@ -205,10 +205,23 @@ class TestAgainstTwoway:
                 # WP-45 GW-6: the graph's outline is its graph region
                 # box's CSS outline, at the graph's edge.
                 gcol, galpha, gwidth, gdash = _graph_line(f)
+                # Flipped (WP-45 ST-21 residual): lalign(inside) (D36)
+                # draws the plot region's line as a frame-clipped
+                # BoxAnnotation twice its width (its inner half shows), not
+                # the frame's outline.
+                pbox = [m for m in f.center
+                        if "dash_plot_line" in (m.tags or [])]
+                if pbox:
+                    pcol, palpha, pwidth, pdash = (
+                        pbox[0].line_color, pbox[0].line_alpha,
+                        pbox[0].line_width / 2.0, pbox[0].line_dash)
+                else:
+                    pcol, palpha, pwidth, pdash = (
+                        f.outline_line_color, f.outline_line_alpha,
+                        f.outline_line_width, f.outline_line_dash)
                 for role, want, col, alpha, width, dash, tw0, d0 in (
-                        ("plot_line", pl, f.outline_line_color,
-                         f.outline_line_alpha, f.outline_line_width,
-                         f.outline_line_dash, base_tw["plot_line"]["width"],
+                        ("plot_line", pl, pcol, palpha, pwidth, pdash,
+                         base_tw["plot_line"]["width"],
                          base.outline_line_width),
                         ("graph_line", gl, gcol, galpha, gwidth, gdash,
                          base_tw["graph_line"]["width"],

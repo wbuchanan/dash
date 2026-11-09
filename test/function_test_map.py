@@ -1252,6 +1252,7 @@ FUNCTIONS = {
  '_dash_short_side_share': 'test/test_by_array.py::TestArrayInset::test_the_inset_follows_the_graphs_ratio',
  '_dash_short_side_share.<locals>._size': 'test/test_by_array.py::TestArrayInset::test_the_inset_follows_the_graphs_ratio',
  '_dash_textbox_margin_px': 'test/test_textbox_placement.py::TestBox::test_an_unspanned_box_is_its_text_and_margin',
+ '_dash_plot_line_align': 'test/test_figure_geometry.py::TestPlotLineAlign::test_the_models',
  '_dash_title_standoffs': 'test/test_figure_geometry.py::TestTitleRoom::test_the_room_is_twoways',
  '_dash_textbox_margin_rel': 'test/test_textbox_placement.py::TestSpan::test_the_text_box_margin_is_read_relative',
  '_dash_textbox_style': 'test/test_textbox_placement.py::TestBox::test_box_props',

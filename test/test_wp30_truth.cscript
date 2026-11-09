@@ -9627,10 +9627,13 @@ if inlist("`only'", "", "S38") & `: list posof "S38" in w30_run' {
     _s36_run `"dash scatter mpg weight, plotregion(lalign(inside) ifcolor(red)) scheme(s2color) saving("`s38pg'", replace)"' "`s38log'"
     local drc = r(rc)
     // Flipped (WP-30 P1.20b): ifcolor() is drawn now (the inner box).
-    _s36_count "`s38log'" "plotregion() sub-option(s) not implemented and ignored: lalign(inside)"
+    // Flipped (WP-45 ST-21 residual): lalign(inside) was named in one
+    // note; twoway draws the line inside the plot region's edge and dash
+    // now does (I_pli), so no note names it.
+    _s36_count "`s38log'" "plotregion() sub-option(s) not implemented and ignored"
     local nn = r(n)
-    _w30_expect RS-23 "(`drc' == 0 & `nn' == 1)" "rc `drc', notes `nn'"
-    _w30_done RS-23 "plotregion(lalign() ifcolor()) is rc 0 and lalign() named in one note"
+    _w30_expect RS-23 "(`drc' == 0 & `nn' == 0)" "rc `drc', notes `nn'"
+    _w30_done RS-23 "plotregion(lalign() ifcolor()) is rc 0 and names nothing"
     capture dash clear
     capture erase "`s38log'"
     capture erase "`s38pg'"

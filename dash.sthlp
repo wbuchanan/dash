@@ -1811,6 +1811,13 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:twoway} follows the path and reads any file; see
     {help dash##scheme:Stata scheme support}.
 
+{marker plot_lalign_outside}{...}
+{phang2}23.  {ul:plotregion(lalign(outside)) is drawn on the plot region's edge.}
+    {cmd:twoway} draws the plot region's line outside its edge, in the
+    graph's margin.  {cmd:dash} draws the plot region on a canvas that
+    ends at the frame on a side without an axis, so it centres the line
+    on the edge, half of it inside the plot region.
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -5099,12 +5106,15 @@ inside its edge, or in the margin with {cmd:ilalign(outside)}; and
 ({cmd:inside}, the default), half of it inside ({cmd:center}) or none
 of it ({cmd:outside}), as {cmd:twoway}'s picture shows it.  A
 {cmd:graphregion()} given outside {cmd:by()} draws no inner box, as in
-{cmd:twoway}.  {cmd:lalign()},
+{cmd:twoway}.  {cmd:plotregion(lalign(inside))} draws the plot
+region's line inside its edge and {cmd:lalign(center)} on it, as
+{cmd:twoway} draws them; {cmd:lalign(outside)} is drawn on the edge
+(see {help dash##plot_lalign_outside:item 23} under Differences from
+twoway), and with no {cmd:lalign()} the scheme's line is drawn on the
+edge where {cmd:twoway}'s lies inside it, half its width apart.
 {cmd:ilalign()}, {cmd:iintensity()} and {cmd:ishadestyle()} on
-{cmd:plotregion()} are accepted and named in a note, once per region:
-{it:difference from twoway}, which draws the plot region's line inside
-its edge (or outside with {cmd:lalign(outside)}) where Bokeh centres it
-on the edge.  A margin
+{cmd:plotregion()} are accepted and named in a note, once per region.
+A margin
 text {cmd:twoway} fails on -- a style name such as {cmd:allsides-ms}, or
 a term whose sign is followed by no number, such as {cmd:l+abc} -- fails
 here with its return code and words, r(7).

@@ -1412,6 +1412,31 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w45_run' {
     }
     _w45_done Q4504-3 "the graph region's outline and a box's margin are twoway's, saved and served"
 
+    // ------------------------------------------------------------
+    // Q4504-5: twoway takes plotregion(lalign()) at inside, center and
+    // outside, rc 0, and draws it (figure_geometry_truth.json I_pli,
+    // I_plc, I_pla); dash takes each, rc 0, and names it in no note
+    // (WP-45 ST-21 residual: inside drawn inside the plot region's edge,
+    // center on it, outside on it, a documented difference).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    foreach al in inside center outside {
+        capture quietly twoway scatter mpg weight, plotregion(lalign(`al') lcolor(red) lwidth(thick)) name(w45s04l, replace)
+        local s04_trc = _rc
+        dash clear
+        capture log close q4504l
+        quietly log using "`s04d'/l.log", text replace name(q4504l)
+        capture noisily dash scatter mpg weight, plotregion(lalign(`al') lcolor(red) lwidth(thick)) name(w45s04l)
+        local s04_drc = _rc
+        quietly log close q4504l
+        cert_log_has "`s04d'/l.log", needle("plotregion() sub-option")
+        local s04_n = r(found)
+        _w45_expect Q4504-5 "(`s04_trc' == 0 & `s04_drc' == 0 & !`s04_n')" "lalign(`al'): twoway rc `s04_trc', dash rc `s04_drc', named `s04_n'"
+    }
+    _w45_done Q4504-5 "plotregion(lalign()) is rc 0 in both and named in no note"
+    capture graph drop w45s04l
+    capture erase "`s04d'/l.log"
+
     capture dash clear
     macro drop w45s04_*
     foreach f in w45s04q.json w45s04q_d.json a.py {

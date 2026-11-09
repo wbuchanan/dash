@@ -710,3 +710,74 @@ class TestPlotMarginInChrome:
         got = [fw * (xl - x0) / (x1 - x0), fh * (y1 - yh) / (y1 - y0)]
         for px in got:
             assert abs(px - 38.4) <= 2.5, (got, rec)
+
+
+#: The plot frame's top edge, and the CSS px rows above and below it (a
+#: quarter px apart, 12 px each way) where the canvas is red, read at 40%
+#: of the frame's width (no axis, tick or title there).
+_LINE_JS = r"""
+<script>
+addEventListener('load', () => setTimeout(() => {
+  let out = null;
+  const visit = (v) => {
+    if (!v || out) return;
+    if (v.frame && v.canvas_view && v.frame.bbox.width > 20) {
+      const f = v.frame.bbox, ctx = v.canvas_view.primary.ctx;
+      const r = window.devicePixelRatio || 1;
+      const x = f.x0 + 0.4 * f.width, red = [];
+      for (let d = -12; d <= 12; d += 0.25) {
+        const p = ctx.getImageData(Math.floor(x * r),
+                                   Math.floor((f.y0 + d) * r), 1, 1).data;
+        if (p[0] > 200 && p[1] < 90 && p[2] < 90) red.push(d);
+      }
+      out = {red};
+      return;
+    }
+    for (const c of (v.child_views || [])) visit(c);
+  };
+  for (const v of Object.values(Bokeh.index)) { if (!v.parent) visit(v); }
+  parent.postMessage('DASHPROBE' + JSON.stringify({W: innerWidth, out}),
+                     '*');
+}, 3000));
+</script>
+"""
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+class TestPlotLineAlignInChrome:
+    """WP-45 ST-21 residual: at 1400 px a stcolor graph's
+    plotregion(lcolor(red) lwidth(thick) lalign()) line lies inside the
+    plot region's top edge at inside, across it at center and outside it
+    at outside, 6.72 px wide (figure_geometry_truth.json I_pli, I_plc,
+    I_pla: the 25.92-unit line's centre 12.96 units inside, on and 12.96
+    units outside the 113.4-unit edge of 3240, 840 px tall).  dash draws
+    inside and center as twoway does and outside centred, a documented
+    difference: the canvas ends 5 px above the frame on a side without an
+    axis, so an outside line was cut there (measured: rows -5 to 1 drawn
+    red where twoway's run -6.72 to 0).  Before: centred on the edge at
+    every lalign()."""
+
+    @pytest.mark.parametrize("al,probe", [("inside", "I_pli"),
+                                          ("center", "I_plc"),
+                                          ("outside", "I_plc")])
+    def test_the_line(self, al, probe, mode, tmp_path):
+        import test_figure_geometry as tfg
+        line = [r for r in tfg._truth()[probe]["rects"]
+                if r["stroke"] == "#ff0000"][0]
+        k = 840.0 / 3240.0
+        want = ((line["y"] - line["sw"] / 2 - 113.4) * k,
+                (line["y"] + line["sw"] / 2 - 113.4) * k)
+        html = TestTheThreeCasesInChrome._page(
+            mode, {"plotregion": "lalign(%s) lcolor(red) lwidth(thick)"
+                   % al}, tmp_path)
+        mp = pytest.MonkeyPatch()
+        mp.setattr(responsive_probe, "PROBE_JS", _LINE_JS)
+        try:
+            rec = responsive_probe.measure_many(html, (1400,))[1400]["out"]
+        finally:
+            mp.undo()
+        red = rec["red"]
+        assert red, rec
+        got = (min(red), max(red) + 0.25)
+        assert abs(got[0] - want[0]) <= 1.5 and \
+            abs(got[1] - want[1]) <= 1.5, (got, want)

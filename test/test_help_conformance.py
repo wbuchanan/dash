@@ -1611,4 +1611,7 @@ class TestInternalLinksResolve:
         # marker) (WP-45 GW-10).
         # old -> new: 195 -> 196 links: Differences item 22 links the
         # scheme section's safety bounds (WP-45 ST-17).
-        assert len(refs) == 196 and len(set(refs)) == 58
+        # old -> new: 196 -> 197 links, 58 -> 59 targets: the region
+        # paragraph links Differences item 23, plotregion(lalign(outside))
+        # (WP-45 ST-21).
+        assert len(refs) == 197 and len(set(refs)) == 59

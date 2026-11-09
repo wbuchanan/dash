@@ -1015,6 +1015,7 @@ and now matches Stata.
 
 ### Fixed in WP-45
 
+- plotregion(lalign(inside)) draws the plot region's line inside its edge and lalign(center) on it, as twoway draws them, and neither is named in a note any more; lalign(outside) is drawn on the edge, a documented difference (WP-45, ST-21)
 - plotregion(margin()) and the scheme's plot-region margin are a share of the graph's smaller side, as twoway draws them: plotregion(margin(10 10 10 10)) xsize(4) ysize(8) leaves 38 px between the plot region's edge and the data on each side (was 30 across and 35 down) (WP-45, ST-21)
 - A title, subtitle, note or caption above or below the plot takes twoway's room, its size plus its text box style's margin: title("T") under s2color leaves 23 px above the plot region at 528 px (was 31), and under scale(2) 48 px (was 64), as twoway's grows (WP-45, VF-4)
 - The help says a scheme's subtitle, note and caption at clock 2-4 or 8-10 are drawn beside the plot, as dash and twoway draw them (it said on the nearer of the top and bottom) (WP-45, ST-17)

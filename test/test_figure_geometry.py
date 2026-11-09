@@ -745,6 +745,59 @@ class TestPlotMargin:
                     letter, m, want)
 
 
+class TestPlotLineAlign:
+    """WP-45 ST-21 residual: plotregion(lalign()) as twoway draws it
+    (figure_geometry_truth.json I_pli, I_plc, I_pla: a 25.92-unit red line
+    inside the plot region's 522.79 edge at inside, centred on it at
+    center, outside it at outside).  inside: a BoxAnnotation over the frame
+    at the image level, twice the width, clipped by the frame to its inner
+    half, and no outline; center and outside: the outline (outside is a
+    documented difference).  Before: lalign() was named in a note and the
+    line centred."""
+
+    @staticmethod
+    def _boxes(f):
+        return [m for m in f.center if "dash_plot_line" in (m.tags or [])]
+
+    def test_the_truth(self):
+        t = _truth()
+        edge = 522.79
+        li = [r for r in t["I_pli"]["rects"] if r["stroke"] == "#ff0000"][0]
+        lc = [r for r in t["I_plc"]["rects"] if r["stroke"] == "#ff0000"][0]
+        lo = [r for r in t["I_pla"]["rects"] if r["stroke"] == "#ff0000"][0]
+        assert li["x"] - li["sw"] / 2 == pytest.approx(edge, abs=0.01)
+        assert lc["x"] == pytest.approx(edge, abs=0.01)
+        assert lo["x"] + lo["sw"] / 2 == pytest.approx(edge, abs=0.01)
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_the_models(self, mode):
+        go = "lcolor(red) lwidth(thick)"
+        _, (fc,) = _figs(mode, {"plotregion": "lalign(center) " + go})
+        w = fc.outline_line_width
+        assert str(fc.outline_line_color).lower() == "#ff0000"
+        assert not self._boxes(fc)
+        _, (fi,) = _figs(mode, {"plotregion": "lalign(inside) " + go})
+        (b,) = self._boxes(fi)
+        assert fi.outline_line_color is None
+        assert b.level == "image" and b.line_width == pytest.approx(2 * w)
+        assert str(b.line_color).lower() == "#ff0000" and b.fill_alpha == 0
+        # outside stays centred: no canvas outside the frame on a side
+        # without an axis (documented, Differences from twoway).
+        _, (fo,) = _figs(mode, {"plotregion": "lalign(outside) " + go})
+        assert not self._boxes(fo) and fo.outline_line_width == w
+        # The default line, no lalign(), stays Bokeh's centred outline.
+        _, (fd,) = _figs(mode, {"plotregion": go})
+        assert not self._boxes(fd) and fd.outline_line_width == w
+
+    @pytest.mark.parametrize("al", ["inside", "center", "outside"])
+    def test_lalign_is_not_named(self, al):
+        spec = tbk._spec([tbk._graph(
+            "g1", _ONE, {"plotregion": "lalign(%s)" % al}, title=False)],
+            scheme="stcolor")
+        _, notes, _ = tbk._build("saved", spec)
+        assert not [n for n in notes if "lalign" in n], notes
+
+
 class TestTheLookupWalk:
     """``_dash_refs``: the models a page's lookup hooks see, as
     ``references()`` finds them, without building unread defaults."""

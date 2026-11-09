@@ -8127,8 +8127,9 @@ def _dash_region_spec(raw, option, base, scheme=None, ref_in=4.0):
     # inner fill words fill the border (D-37.b); its inner outline stays
     # named.
     if option == "plotregion":
+        # WP-45 ST-21 residual: lalign() is drawn (_dash_plot_line_align).
         elsewhere = {"margin", "istyle", "icolor", "ifcolor", "ilstyle",
-                     "ilcolor", "ilwidth", "ilpattern"}
+                     "ilcolor", "ilwidth", "ilpattern", "lalign"}
     else:
         # WP-45 ST-21: the inner box's line and both alignments are drawn
         # (_dash_graph_inner_line, _dash_graph_outline).
@@ -8379,6 +8380,7 @@ def _dash_apply_regions(fig, graph_opts, scheme, seen=None, key=""):
     fig.outline_line_alpha = p["line_alpha"] if p["line_alpha"] is not None else 1.0
     fig.outline_line_width = p["line_width"]
     fig.outline_line_dash = p["line_dash"]
+    _dash_plot_line_align(fig, go.get("plotregion", ""))
     _dash_report_suboptions("graphregion", named_g, seen, key)
     _dash_report_suboptions("plotregion", named_p, seen, key)
 
@@ -29773,7 +29775,7 @@ def _dash_width_scale_entries(models):
     out, and so are the px counts of a key a span places."""
     from bokeh.models import (Axis, Grid, Title, Label, LabelSet, Legend,
                               Span, ColorBar, GlyphRenderer, Arrow, Plot,
-                              GridPlot, LayoutDOM)
+                              GridPlot, LayoutDOM, BoxAnnotation)
     out, seen, order = [], set(), []
 
     def walk(m):
@@ -29815,6 +29817,10 @@ def _dash_width_scale_entries(models):
             tables = ("ColorBar", "LabelBox") if getattr(
                 m, "name", None) == "dash_by_label_box" else ("ColorBar",)
         elif isinstance(m, Span):
+            tables = ("Span",)
+        elif isinstance(m, BoxAnnotation) and "dash_plot_line" in (
+                m.tags or ()):
+            # WP-45 ST-21: plotregion(lalign(inside))'s line.
             tables = ("Span",)
         elif isinstance(m, Arrow):
             tables = ("Arrow",)
@@ -66687,6 +66693,43 @@ def _dash_region_align(raw, word):
     return got
 
 
+def _dash_plot_line_align(fig, raw):
+    """plotregion(lalign()) as twoway draws it (WP-45 ST-21 residual;
+    figure_geometry_truth.json I_pli, I_plc, I_pla: a 25.92-unit line
+    inside the plot region's edge 522.79 at inside, its centre 535.75; on
+    the edge at center; outside it at outside, its centre 509.83).  Bokeh
+    strokes the frame's outline centred on the frame's edge and clips the
+    image level to the frame, so at inside the outline moves to a
+    BoxAnnotation over the whole frame at the image level, twice the
+    width: the frame's clip leaves its inner half, the width asked (D69:
+    an annotation inside the frame), drawn under the layers as twoway
+    draws it.  center and outside keep Bokeh's centred outline: outside
+    the frame there is no canvas on a side without an axis (the graph
+    region's margin is the page's, round the canvas), so an outside line
+    would be cut there (measured in Chrome at 1400 px: 5 of its 6.72 px
+    drawn above the frame); dash.sthlp documents it (Differences from
+    twoway).  Only when lalign(inside) is given: the default line stays
+    centred, half its width off twoway's.  The box is tagged
+    ``dash_plot_line`` (the width scale draws it at the outline's scale,
+    D66).  Returns the box, or None."""
+    from bokeh.models import BoxAnnotation
+    if _dash_region_align(raw, "lalign") != "inside" \
+            or fig.outline_line_color is None:
+        return None
+    w = fig.outline_line_width
+    if isinstance(w, bool) or not isinstance(w, (int, float)) or not w > 0:
+        return None
+    box = BoxAnnotation(
+        level="image", fill_color=None, fill_alpha=0.0,
+        line_color=fig.outline_line_color,
+        line_alpha=fig.outline_line_alpha, line_width=2.0 * w,
+        line_dash=fig.outline_line_dash, tags=["dash_plot_line"],
+        propagate_hover=False, editable=False)
+    fig.outline_line_color = None
+    fig.center = [box] + list(fig.center)
+    return box
+
+
 def _dash_graph_inner_line(fig, raw, sch, scheme, ref_in):
     """graphregion()'s inner box line on *fig* (WP-45 ST-21, GW-19), as
     twoway draws it (figure_geometry_truth.json I_ilc, I_ifc, I_ila): any
@@ -80177,6 +80220,7 @@ class ServerAppBuilder:
                          "_dash_apply_regions",
                          # WP-45 ST-21: graphregion's inner line, lalign().
                          "_dash_region_align", "_dash_graph_inner_line",
+                         "_dash_plot_line_align",
                          "_resolve_kpi_color", "_sanitize_css_color",
                          "_dash_kpi_card_html",
                          # An image panel's markup and Div (WP-33 33-06).

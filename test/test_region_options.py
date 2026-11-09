@@ -99,19 +99,24 @@ class TestTheSpec:
         graphregion's margin() were named; that was wrong because twoway
         draws them and dash now does (region_remainder_truth.json): only
         lalign() and the graph region's inner outline stay named."""
+        # Flipped (WP-45 ST-21 residual): plotregion's lalign() was named;
+        # twoway draws it and dash now does (I_pli, I_plc; outside a
+        # documented difference), so nothing here is named.
         _, named = dr._dash_region_spec(
             "lalign(inside) ilcolor(red) margin(zero) shadestyle(x) "
             "intensity(50) marginonly", "plotregion", _BASE, _S2, 4.0)
-        assert named == ["lalign(inside)"]
+        assert named == []
         # Flipped (WP-45 ST-21): graphregion's lalign() and inner outline
         # were named; twoway draws them and dash now does (I_gla, I_ilc).
         _, named = dr._dash_region_spec(
             "lalign(inside) ilcolor(red) margin(zero) marginonly",
             "graphregion", _BASE, _S2, 4.0)
         assert named == []
-        _, named = dr._dash_region_spec(" ".join(["lalign(1)"] * 25),
+        # Flipped (WP-45 ST-21 residual): the cap on iintensity(1), which
+        # stays named; lalign(1) is no longer named.
+        _, named = dr._dash_region_spec(" ".join(["iintensity(1)"] * 25),
                                         "plotregion", _BASE, _S2, 4.0)
-        assert named == ["lalign(1)"] * 10 + ["(+15 more)"]
+        assert named == ["iintensity(1)"] * 10 + ["(+15 more)"]
 
 
 class TestTheBlend:
@@ -145,9 +150,9 @@ class TestBothModes:
         # because twoway draws the plot region's inner box, and dash does.
         # Flipped (WP-31 D11): graphregion(margin(zero)) was named; that was
         # wrong because twoway draws it, and dash does (_dash_graph_margin).
-        assert sorted(notes) == [
-            "dash: plotregion() sub-option(s) not implemented and ignored: "
-            "lalign(inside)"], notes
+        # Flipped (WP-45 ST-21 residual): lalign(inside) was named; twoway
+        # draws it inside the plot region's edge and dash now does.
+        assert sorted(notes) == [], notes
 
 
 _GO = {"plotregion": "c(red) lc(navy) lp(dash) lw(thick)",
