@@ -417,6 +417,28 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w46_run' {
 }
 * ==== end S01 ====
 
+* ==== S01 RH-11: yx names on a y2xtype source read in full ====
+local only : env WP46_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w46_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4601-25 (RH11-01): rline recast(sc) is twoway's rspike, after its
+    // two notes: dash's x and y titles are twoway's and twoway's y labels
+    // lie inside dash's y range (the spikes span both bounds), in both
+    // modes.
+    // ------------------------------------------------------------
+    _q4601_draw "`w46_work'" 25 rc RH11-01 rline y y2 x, recast(sc)
+    _w46_expect Q4601-25 "(${q4601_trc} == 0)" "twoway rc ${q4601_trc}"
+    _w46_expect Q4601-25 "(${q4601_trc} != 0 | ${q4601_drc} == 0)" "dash rc ${q4601_drc}"
+    _w46_expect Q4601-25 `"("${q4601_s}" == "ok")"' "saved: ${q4601_s} (twoway: ${q4601_tw})"
+    _w46_expect Q4601-25 `"("${q4601_v}" == "ok")"' "served: ${q4601_v} (twoway: ${q4601_tw})"
+    _w46_done Q4601-25 "rline recast(sc) is drawn as twoway's rspike, in both modes"
+
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

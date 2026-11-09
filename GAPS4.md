@@ -525,7 +525,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **RH-5 Tracked:** Open (WP-46 section 46-02).
 - **RH-8 Tracked:** Open (WP-46 section 46-02).
 - **RH-9 Tracked:** Closed in WP-46, BUGS.md "Orientation flags judged differently: dot with a non-bar recast takes h/v (twoway refuses); scatteri recast to bar-like refuses h/v (twoway turns it); recast(b)/(ba) takes h/v and draws p1bar (twoway refuses and draws p1)", commit pending.
-- **RH-11 Tracked:** Open (WP-46 section 46-01).
+- **RH-11 Tracked:** Closed in WP-46, BUGS.md "Abbreviated yx names on y2xtype sources (sc, li, co, b) are read as full names; twoway notes them and draws rspike", commit pending.
 - **basic:PT-1 Tracked:** Open (WP-47 section 47-01).
 - **MS-7 Tracked:** Open (WP-47 section 47-01).
 - **MS-2 Tracked:** Open (WP-47 section 47-02).

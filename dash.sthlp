@@ -4371,7 +4371,10 @@ segments as the type named.  The
 spellings are {cmd:twoway}'s, case and all; a name outside the source's
 class prints {cmd:twoway}'s two notes and falls back -- a yx type to
 {cmd:scatter}, a range type to {cmd:rspike}, a {cmd:pc} type to
-{cmd:pcspike}, {cmd:function} to its own line.  On {cmd:dot},
+{cmd:pcspike}, {cmd:function} to its own line.  A range source or
+{cmd:histogram} takes the yx names in full only, as {cmd:twoway}'s
+y2xtype does: {cmd:rline} {it:y1 y2 x}{cmd:, recast(sc)} prints the two
+notes and draws {cmd:rspike}.  On {cmd:dot},
 {cmd:recast()} is taken and named in the note: {cmd:twoway} reads it
 there and draws the dot graph unchanged.  On {cmd:lfitci}, {cmd:qfitci}, {cmd:lpolyci} and
 {cmd:fpfitci} {cmd:recast()} and {cmd:recastas()}, and {cmd:type()}

@@ -4477,6 +4477,38 @@ if "`bad'" != "" local faillist "`faillist' RC-13"
 if "`bad'" != "" local nfail = `nfail' + 1
 if "`bad'" != "" display as error "RC-13 FAIL:`bad'"
 else display as text "RC-13 PASS: a recast layer's options are judged on the drawn type"
+
+// Q4601-19..22 (WP-46 RH-11): a range source or histogram reads the yx
+// names in full, as twoway's y2xtype does -- sc, li, co and b print
+// twoway's two notes and draw rspike (recast_truth.json RH11-01..05).
+local k 18
+foreach row in "rline lo hi weight, recast(sc)|sc" "histogram mpg, recast(li)|li" ///
+               "rline lo hi weight, recast(co)|co" "rbar lo hi weight, recast(b)|b" {
+    local ++k
+    gettoken cmd row : row, parse("|")
+    local nm = substr("`row'", 2, .)
+    local bad ""
+    _ztp_run `"dash `cmd' name(zqtp)"' "`logfile'"
+    if r(rc) local bad "`bad' rc"
+    _ztp_logged "`logfile'" "(note:  named style `nm' not found in class y2xtype, default attributes used)"
+    if !r(found) local bad "`bad' note1"
+    _ztp_logged "`logfile'" "(note:  y2xtype not found in scheme, default attributes used)"
+    if !r(found) local bad "`bad' note2"
+    if "`nm'" != "li" {
+        _zrc_spec `"{`q'type`q':`q'rspike`q'"'
+        if !r(found) local bad "`bad' type"
+    }
+    else {
+        _zrc_spec `"`q'recast`q':`q'rspike`q'"'
+        if !r(found) local bad "`bad' recast"
+    }
+    if "`bad'" != "" {
+        local nfail = `nfail' + 1
+        local faillist "`faillist' Q4601-`k'"
+        display as error "Q4601-`k' FAIL:`bad' -- `cmd'"
+    }
+    else display as text "Q4601-`k' PASS: `cmd' prints twoway's two notes and draws rspike"
+}
 capture program drop _zrc_spec
 
 // ----------------------------------------------------------------

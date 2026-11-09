@@ -1017,6 +1017,8 @@ and now matches Stata.
 
 ### Fixed in WP-46
 
+- sc, li, co and b on a range type or histogram print twoway's two notes and draw rspike, as twoway does; rline lo hi x, recast(sc) drew a scatter of lo, and histogram mpg, recast(li) a line (WP-46, RH-11)
+
 ### Fixed in WP-45
 
 - A figure has no border of Bokeh's own: the plot region of scatter mpg weight under s2color at 528 px lies 15 px from the graph's right edge, its graph margin and 1 px for the plot region's outline (was 19, Bokeh's 5 px added) (WP-45, GW-6)

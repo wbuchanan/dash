@@ -2925,7 +2925,6 @@ GAPS4_OPEN = {
     'RH-3': 'A range source or ciplot() drawn as a yx type leaves the second bound out of the axis, the default title and the key',
     'RH-5': "histogram recast(): drawn in the target's style (twoway keeps the histogram style), bars one unit wide (twoway uses the bin width), and 0 left out of the height axis",
     'RH-8': 'histogram/rbar with recast() plus horizontal: twoway draws a broken swapped serset; dash draws a clean transpose',
-    'RH-11': 'Abbreviated yx names on y2xtype sources (sc, li, co, b) are read as full names; twoway notes them and draws rspike',
     'basic:PT-1': 'headlabel is ignored on pcscatter/pccapsym with mlabel() and on pcarrowi labels: labels stay at the first point',
     'MS-7': 'Immediate-type labels: pci labels dropped under recast() with a false note; scatteri labels vanish under recast(); mlabel(nosuch) on scatteri is refused r(111)',
     'MS-2': 'yvarlabel()/xvarlabel() are ignored on scatteri, pci, pcarrowi, function, kdensity and histogram',

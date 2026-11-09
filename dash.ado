@@ -3722,7 +3722,10 @@ program define _dash_recast_opt, sclass
     local _sp_pc "pcarrow:4 pcbarrow:5 pcline:3 pcspike:4 pccapsym:6 pcscatter:4"
     if "`_rc_class'" == "yxyxtype" local _sp "`_sp_pc'"
     else if "`_rc_class'" == "y3xtype" local _sp "rpcap:5 rpspike:7"
-    else if "`_rc_class'" == "y2xtype" local _sp "`_sp_yx' `_sp_rng'"
+    // y2xtype reads the yx names in full (WP-46 RH-11: rline recast(sc)
+    // and histogram recast(li) print the two notes and draw rspike,
+    // recast_truth.json RH11-01..05; the ciplot canon's minimums).
+    else if "`_rc_class'" == "y2xtype" local _sp "`_sp_rng' scatter:7 line:4 connected:9 bar:3 area:4 spike:5 dropline:8 dot:3"
     else if "`_rc_class'" == "functiontype" local _sp "`_sp_yx' function:8"
     else local _sp "`_sp_yx'"
     local _rc_name ""

@@ -299,3 +299,67 @@ class TestTheHelp:
         assert "{cmd:pci} and {cmd:pcarrowi} take the {cmd:pc} types" in flat
         assert "{cmd:histogram} also takes the range types" in flat
         assert "name the plot type you want directly" not in flat
+
+
+# ===========================================================================
+# WP-46 RH-11: the yx names on a y2xtype source, read in full
+# ===========================================================================
+
+_ADO = os.path.join(os.path.dirname(_HERE), "dash.ado")
+
+
+def _y2x_spellings():
+    """``name:minimum`` pairs dash.ado's _dash_recast_opt reads for the
+    y2xtype class (range sources and histogram), its locals expanded."""
+    with open(_ADO, encoding="utf-8") as fh:
+        ado = fh.read()
+    body = ado[ado.index("program define _dash_recast_opt"):]
+    body = body[:body.index("\nend\n")]
+    loc = dict(re.findall(r'local (_sp_\w+) "([^"]*)"', body))
+    m = re.search(r'"`_rc_class\'" == "y2xtype" local _sp "([^"]*)"', body)
+    assert m, "no y2xtype spellings"
+    return re.sub(r"`(_sp_\w+)'", lambda g: loc[g.group(1)],
+                  m.group(1)).split()
+
+
+def _y2x_name(word):
+    """The name dash.ado's match loop gives *word* in class y2xtype, or
+    "" (twoway's two notes and rspike)."""
+    for e in _y2x_spellings():
+        n, mn = e.split(":")
+        if len(word) >= int(mn) and n[:len(word)] == word:
+            return n
+    return ""
+
+
+class TestY2xSpellings:
+
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    @pytest.mark.parametrize("pid", ["RH11-01", "RH11-02", "RH11-03",
+                                     "RH11-04", "RH11-05"])
+    def test_abbreviations_fall_back(self, mode, pid):
+        """sc, li, co and b on a range source or histogram print twoway's
+        two notes and draw rspike (fixture RH11-*: the notes, and the
+        picture B-rspike draws); the full names and the range names still
+        match."""
+        rec = _truth()["probes"][pid]
+        word = re.search(r"recast\((\w+)\)", rec["cmd"]).group(1)
+        assert rec["rc"] == 0
+        assert rec["lines"] == [
+            "(note:  named style %s not found in class y2xtype, default "
+            "attributes used)" % word,
+            "(note:  y2xtype not found in scheme, default attributes used)"]
+        if pid in ("RH11-01", "RH11-03", "RH11-04"):
+            assert rec["equal_to"] == "B-rspike"
+        assert _y2x_name(word) == ""
+        for full in ("scatter", "line", "connected", "bar", "rscatter",
+                     "rsc", "rbar"):
+            assert _y2x_name(full) == ("rscatter" if full == "rsc"
+                                       else full)
+        # The fallback both modes draw: the range as rspike segments.
+        p = dict(plot_for("rspike"), recast_from="rline")
+        spec = tp._spec(graphs=[("g0", [p])])
+        figs = (jo._saved_figs(jo._saved(spec, tp._DF)) if mode == "saved"
+                else jo._served_figs(jo._served(spec, tp._DF)))
+        kinds = set(_glyphs(figs[0]))
+        assert "Segment" in kinds and not kinds & {"Scatter", "Line"}, kinds
