@@ -26,16 +26,17 @@ the comparison against SCALE_FRAME_KNOWN.
 # scheme's margin drawn round the figure, so A:top, B:left and B:top's
 # intercepts agree and their rows are gone; the other intercepts are
 # Bokeh's own 5 px border inside the margin (GW-6's residual).
+# WP-45 VF-4 residual (08nov2026): each title-family box takes twoway's
+# room, its size plus its style's margin (_dash_title_standoffs), so
+# A:top and B:top's slopes agree and their rows are gone.
 SCALE_FRAME_KNOWN = {
     "A:bottom:intercept": "GW-6 (residual)",  # twoway 13.44 / dash 19.72 px (08nov2026)
     "A:left:intercept": "GW-6 (residual)",  # twoway 13.44 / dash 18.72 px (08nov2026)
     "A:right:intercept": "GW-6 (residual)",  # twoway 13.46 / dash 19.00 px (08nov2026)
-    "A:top:slope": "VF-4 (residual)",  # D43: twoway 23.28 / dash 32.31 px per unit
     "B:bottom:intercept": "GW-6 (residual)",  # twoway 13.44 / dash 21.15 px (08nov2026)
     "B:bottom:linear": "LT-6 (residual)",  # D43: twoway residual 0.01 / dash 2.86 px
     "B:left:slope": "LT-6 (residual)",  # D43: twoway 31.50 (legend widens) / dash 36.41
     "B:right:intercept": "GW-6 (residual)",  # twoway 13.46 / dash 19.00 px (08nov2026)
-    "B:top:slope": "VF-4 (residual)",  # D43: twoway 42.55 / dash 59.45 px per unit
 }
 
 SCALE_FRAME_DELIBERATE = {}

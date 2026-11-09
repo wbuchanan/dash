@@ -436,15 +436,18 @@ _FIXED = (
 _FIXED_IDS = ("ar2_8x4", "ar1_8", "ar05_6x3")
 
 #: The same box with a title, and a title and subtitle (D55), and the room
-#: above the frame headless Chrome gave them: title 14pt 31 px (bokeh 3.9;
-#: 33 under 3.8), a subtitle 11pt 26 px (28) under it.
+#: above the frame headless Chrome gave them: title 14pt 23 px (bokeh 3.9;
+#: 25 under 3.8), a subtitle 11pt 18 px (20) under it.  Flipped (WP-45
+#: VF-4 residual): was 31 (33) and 26 (28) px, Bokeh's 10 px standoff on
+#: each box; each now takes twoway's room, its size plus its style's
+#: 0.6 + 0.6-unit margin (_dash_title_standoffs).
 _FIXED_TITLED = (
     {"aspectratio": "2", "xsize": "8", "ysize": "4", "title": '"T"'},
     {"aspectratio": "2", "xsize": "8", "ysize": "4", "title": '"T"',
      "subtitle": '"S"'},
 )
 _FIXED_TITLED_IDS = ("ar2_title", "ar2_title_subtitle")
-_TITLE_ROOM = {"ar2_title": 33, "ar2_title_subtitle": 61}
+_TITLE_ROOM = {"ar2_title": 25, "ar2_title_subtitle": 45}  # old 33, 61: the standoff
 
 
 def _fixed_build(mode, wd, go):

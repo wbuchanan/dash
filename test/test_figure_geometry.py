@@ -648,6 +648,60 @@ class TestInnerBox:
         assert "outline" not in dict(_region_of(roots).styles or {})
 
 
+class TestTitleRoom:
+    """WP-45 VF-4 residual: twoway's room for a title, subtitle, note or
+    caption outside the plot region is the text's size plus its text box
+    style's top and bottom margin (test/fixtures/scale_frame_truth.json:
+    title("T") takes 139.96 + 34.62 SVG units at scale(1), the subtitle
+    under it 110.01 + 34.54 more, s2color's 0.6 + 0.6 units, and both
+    grow with scale()).  Bokeh's Title takes its line box (about 1.15 of
+    the size, the font's ascent and descent), its padding and its
+    standoff.  Before: Bokeh's default 10 px standoff, scaled by scale(),
+    so the room grew 32.31 px per unit where twoway's grows 23.28."""
+
+    @staticmethod
+    def _room(mode, go):
+        _, figs = _figs(mode, go, scheme="s2color")
+        f = figs[0]
+        out = {}
+        for m in [f.title] + list(f.above) + list(f.below):
+            if type(m).__name__ != "Title" or not str(m.text or "").strip():
+                continue
+            fs = _pt(m.text_font_size) * dr.OptionTranslator.PX_PER_PT
+            out[str(m.text)] = (
+                fs * (1 + dr._DASH_TITLE_LINE_EXCESS) + m.standoff, fs)
+        return out
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_the_room_is_twoways(self, mode):
+        with open(os.path.join(_HERE, "fixtures", "scale_frame_truth.json"),
+                  encoding="utf-8") as fh:
+            sf = json.load(fh)
+        for cmd, go, texts in (
+                ("A", {"title": '"T"'}, ("T",)),
+                ("B", {"title": '"T"', "subtitle": '"S"'}, ("T", "S"))):
+            r = sf["%s:1" % cmd]
+            size = {t["text"]: t["size"] for t in r["texts"]}
+            got = self._room(mode, go)
+            for text in texts:
+                # twoway's box: the size plus 34.56 units (1.2 of 28.8, the
+                # 4 in side's unit), at 96 px an inch (7.5 units a px).
+                want = (size[text] + 1.2 * 28.8) / 7.5
+                assert got[text][0] == pytest.approx(want, abs=1.0), (
+                    cmd, text, got)
+            # The two boxes stack to twoway's room above the plot region.
+            top = r["plot"]["top"] - sf["rules"][cmd]["top"]["intercept"]
+            assert sum(got[t][0] for t in texts) == pytest.approx(
+                top / 7.5, abs=1.5), got
+
+    def test_a_given_bmargin_is_kept(self):
+        _, figs = _figs("saved", {"title": '"T", bmargin(5 5 5 5)'},
+                        scheme="s2color")
+        t = [m for m in [figs[0].title] + list(figs[0].above)
+             if type(m).__name__ == "Title" and str(m.text) == "T"][0]
+        assert t.standoff == round(5 * 2.88 * 4 / 3)
+
+
 class TestTheLookupWalk:
     """``_dash_refs``: the models a page's lookup hooks see, as
     ``references()`` finds them, without building unread defaults."""

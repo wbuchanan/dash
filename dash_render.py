@@ -62162,6 +62162,62 @@ def _dash_textbox_margin_rel(scheme, option):
         return None
 
 
+#: Bokeh's one-line text box over its font's size, less one: the font's
+#: ascent plus descent (WP-45 VF-4 residual, measured 08nov2026 in Chrome
+#: at 528 px: title("T") at 18.67 px drew a 21 px line box under BokehJS
+#: 3.9 and 23 under 3.8, D55), where twoway's line box is the size.
+_DASH_TITLE_LINE_EXCESS = 0.15
+
+#: The text boxes whose room :func:`_dash_title_standoffs` sets.
+_DASH_TITLE_ROOM_KEYS = ("title", "subtitle", "note", "caption")
+
+
+def _dash_title_standoffs(fig):
+    """twoway's room for each title, subtitle, note and caption box outside
+    *fig*'s plot region (WP-45 VF-4 residual): the text's size plus its
+    text box style's top and bottom margin (scale_frame_truth.json: each
+    box adds its size plus 34.6 SVG units, s2color's 0.6 + 0.6 units, at
+    every scale()).  Bokeh's Title takes its line box (the size times 1 +
+    :data:`_DASH_TITLE_LINE_EXCESS`), its padding and its standoff, so the
+    standoff is the margin less the padding and the line box's excess, in
+    whole px at the 4-inch reference (scale() and the width scale grow it
+    with the text).  A standoff already set (bmargin()) stays, and so does
+    every box when the scheme does not table its margin.  Before: Bokeh's
+    default 10 px, so the room grew 32.31 px per unit of scale() where
+    twoway's grows 23.28.  Run once, before scale()."""
+    from bokeh.models import Title
+    sch = getattr(fig, "_dash_scheme", None)
+    if fig is None or sch is None:
+        return
+    T = OptionTranslator
+    cands = [(fig.title, "title")]
+    for side in ("above", "below", "left", "right"):
+        for m in getattr(fig, side, None) or ():
+            tags = [str(t) for t in (getattr(m, "tags", None) or ())]
+            if "dash_textbox" in tags:
+                key = [t for t in tags if t in _DASH_TITLE_ROOM_KEYS]
+                if key:
+                    cands.append((m, key[0]))
+    for m, key in cands:
+        if not isinstance(m, Title) or not m.visible \
+                or not str(m.text or "").strip() \
+                or str(m.name or "").startswith("dash_by") \
+                or "standoff" in m.properties_with_values(
+                    include_defaults=False):
+            continue
+        rel = _dash_textbox_margin_rel(sch, key)
+        pt = T.css_to_pt(m.text_font_size)
+        if rel is None or pt is None:
+            continue
+        pad = m.padding if isinstance(m.padding, dict) else dict.fromkeys(
+            ("top", "bottom"), m.padding or 0)
+        want = ((rel[2] + rel[3]) * T.PT_PER_RS * T.PX_PER_PT
+                - float(pad.get("top", 0) or 0)
+                - float(pad.get("bottom", 0) or 0)
+                - _DASH_TITLE_LINE_EXCESS * pt * T.PX_PER_PT)
+        m.standoff = max(0, int(round(want)))
+
+
 def _dash_textbox_style(model, opts, fig, scheme, option, *, base_size=None,
                         base_color=None):
     """Draw a textbox's sub-options on its ``Title`` or ``Label`` (WP-31
@@ -75781,6 +75837,7 @@ class DashRenderer:
 
         # WP-31 D5: scale() over everything drawn, then the overhangs'
         # borders and the figure's box and plot region (WP-45 VF-4), last.
+        _dash_title_standoffs(fig)
         _dash_apply_scale(fig, _dash_scale_factor(graph_opts))
         fig._dash_gsize = (getattr(self.scheme, "graphsize_x", None) or 5.5,
                            getattr(self.scheme, "graphsize_y", None) or 4.0)
@@ -79120,6 +79177,7 @@ class ServerAppBuilder:
                       "_DASH_ADDED_TEXT_HONOURED",
                       "_DASH_ADDED_TEXT_VSHIFT",
                       "_DASH_TEXTBOX_DEFAULTS", "_DASH_EDGE_TITLES",
+                      "_DASH_TITLE_LINE_EXCESS", "_DASH_TITLE_ROOM_KEYS",
                       "_DASH_SCALE_SUBOPTS",
                       "_DASH_TEXT_BOX_JS",
                       "_DASH_TBSTYLE_ROWS", "_DASH_LEGEND_SUBOPT_TABLE",
@@ -80334,6 +80392,8 @@ class ServerAppBuilder:
                     _dash_graph_color, _dash_ref_in, _dash_scheme_at_ref,
                     _dash_figure_aspect, _dash_scale_factor,
                     _dash_scale_columns, _dash_apply_scale, _dash_frame_aspect,
+                    # WP-45 VF-4 residual: twoway's title room.
+                    _dash_title_standoffs,
                     _dash_frame_borders, _dash_frame_sizes,
                     _dash_apply_frame_aspect, _dash_overhangs, _dash_fxy_size,
                     _dash_by_fxy_px,
@@ -83058,6 +83118,7 @@ class ServerAppBuilder:
             "        # WP-31 D5: scale(), the overhangs and the figure's box and",
             "        # plot region (WP-45 VF-4), last, as the saved renderer",
             "        # applies them.",
+            "        _dash_title_standoffs(fig)",
             "        _dash_apply_scale(fig, _dash_scale_factor(go))",
             "        fig._dash_gsize = (_SCHEME_GRAPHSIZE_X or 5.5, _SCHEME_GRAPHSIZE_Y or 4.0)",
             "        fig._dash_gmargin = _dash_graph_margin_pct(go, _dash_cur_scheme())",
