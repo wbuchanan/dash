@@ -5880,6 +5880,18 @@
   - Suggested fix: Use full-name minimums for yx names in the y2xtype table
   - Resolution: Fixed 09nov2026 (WP-46, RH-11). _dash_recast_opt reads the yx names in full on a y2xtype source (the range types, tsrline and histogram): its y2xtype spellings are the range names and scatter:7 line:4 connected:9 bar:3 area:4 spike:5 dropline:8 dot:3, the ciplot canon's minimums, so sc, li, co and b print twoway's two notes, named style <word> not found in class y2xtype and y2xtype not found in scheme, and draw rspike, as twoway draws them (measured: test/fixtures/recast_truth.json RH11-01..05, the SVGs of rline recast(sc), (co) and rbar recast(b) equal B-rspike's), both modes; a yxtype source keeps its abbreviations. Pinned by test/test_recast.py::TestY2xSpellings::test_abbreviations_fall_back, test/test_twoway_option_parity.cscript Q4601-19..22, test/test_wp46_truth.cscript Q4601-25. Closes GAPS4 RH-11 (WP-46, RH-11).
 
+- [x] Title: An unknown recast() name's two class notes were printed before a refusal of horizontal or vertical; twoway prints the refusal alone
+  - File Names and Line Numbers: dash.ado _dash_recast_opt (the unknown-name branch), _dash_process_segment (after _dash_hz_check)
+  - Description: Found by the WP-46 46-01 agent and measured 09nov2026: twoway lfit y x, recast(rsc) horizontal and twoway scatter y x, recast(zz) horizontal print only "option horizontal not allowed", r(198); dash printed "(note:  named style rsc not found in class yxtype, default attributes used)" and "(note:  yxtype not found in scheme, default attributes used)" first. Where the flag is taken (rline y y2 x, recast(sc) horizontal) both print the notes.
+  - Suggested fix: Print the notes after the orientation flags are judged.
+  - Resolution: Fixed 09nov2026 (WP-46 46-01 follow-up). _dash_recast_opt returns the unknown name and its class (s(_recast_unknown), s(_recast_class)) instead of printing; _dash_process_segment prints the two notes after _dash_hz_check takes the flags. Pinned by test/test_option_validation.cscript Q4601-34..36 (_hz_case now compares the count of class notes with twoway's for every case).
+
+- [ ] Title: pcarrow mangle(abc) and barbsize(abc) print no note; twoway names each unknown style
+  - File Names and Line Numbers: dash.ado or dash_render.py, the mangle() and barbsize() readers
+  - Description: Measured 09nov2026 (test/test_option_validation.cscript U02-08's twoway log): twoway pcarrow mpg weight trunk length, mangle(abc) barbsize(abc) prints "(note:  named style abc not found in class anglestyle, default attributes used)" and "(note:  named style abc not found in class symbolsize, default attributes used)", rc 0; dash prints neither, rc 0.
+  - Suggested fix: Name each unreadable mangle() and barbsize() value in twoway's note, as the other style readers do.
+  - Resolution: Not fixed because it was found by the WP-46 46-01 follow-up's note check and is outside recast(). Graded S3 (WP-46): a missing note.
+
 - [ ] Title: headlabel is ignored on pcscatter/pccapsym with mlabel() and on pcarrowi labels: labels stay at the first point
   - File Names and Line Numbers: map_pcscatter/map_pccapsym/map_pcarrowi (dash_render.py:25019-25079, 25692, 25834-25886); tw SVGs move labels; tw_silent headlabel row came from a probe without mlabel
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids basic:PT-1, basic:PT-2, MS-6; confirmed; tracked: untracked. Registered as GAPS4 basic:PT-1 (WP-47, section 47-01, Fix).

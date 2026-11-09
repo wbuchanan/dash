@@ -3662,6 +3662,8 @@ program define _dash_recast_opt, sclass
     sreturn local _recast_kind ""
     sreturn local _recast_ts ""
     sreturn local _recast_typed ""
+    sreturn local _recast_unknown ""
+    sreturn local _recast_class ""
     sreturn local typesfx ""
     mata: st_local("_rc_bad", ustrregexm(" " + st_global("s(_unknown)"), "[ ,](rec|reca|recas)\(") ? ustrregexs(1) : "")
     if "`_rc_bad'" != "" {
@@ -3744,8 +3746,11 @@ program define _dash_recast_opt, sclass
         local _rc_name ""
     }
     if "`_rc_name'" == "" {
-        mata: _dash_note("named style ", st_local("_rc_v"), " not found in class `_rc_class', default attributes used")
-        mata: _dash_note("`_rc_class' not found in scheme, default attributes used", "", "")
+        // The two class notes are the caller's to print, after the
+        // orientation flags are judged: twoway refuses a flag without
+        // them (lfit, recast(rsc) horizontal; measured 09nov2026).
+        mata: st_global("s(_recast_unknown)", st_local("_rc_v"))
+        sreturn local _recast_class "`_rc_class'"
         if "`_rc_class'" == "yxtype" local _rc_name scatter
         else if "`_rc_class'" == "y2xtype" local _rc_name rspike
         else if "`_rc_class'" == "yxyxtype" local _rc_name pcspike
@@ -7358,10 +7363,18 @@ program define _dash_process_segment, rclass
         // horizontal and vertical refused where twoway refuses them,
         // judged after recast() (WP-30 P1.9a): _dash_hz_check.
         // judged on the recast word as typed (WP-46 RH-9).
-        tempname _hz_s _hz_t
+        tempname _hz_s _hz_t _rc_un
         mata: st_strscalar("`_hz_s'", st_local("opts_raw"))
         mata: st_strscalar("`_hz_t'", st_global("s(_recast_typed)"))
+        mata: st_strscalar("`_rc_un'", st_global("s(_recast_unknown)"))
+        local _rc_cls "`s(_recast_class)'"
         _dash_hz_check "`ptype'" "`_rc_target'" "`_rc_kind'" `_hz_s' `_hz_t'
+        // An unknown recast name's two class notes, once the flags are
+        // taken (_dash_recast_opt).
+        if "`_rc_cls'" != "" {
+            mata: _dash_note("named style ", st_strscalar("`_rc_un'"), " not found in class `_rc_cls', default attributes used")
+            mata: _dash_note("`_rc_cls' not found in scheme, default attributes used", "", "")
+        }
         // A bar named by an abbreviation of bar is drawn in the plain p#
         // style, as twoway draws it (its type suffix is empty: D-46-01.d;
         // recast_truth.json RH9-10, RH9-12).  No other yx name has an

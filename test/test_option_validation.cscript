@@ -1682,6 +1682,11 @@ program define _hz_case
     capture noisily twoway `cmd' nodraw
     local trc = _rc
     log close _ovlog
+    // The recast() class notes twoway prints ("<class>type not found in
+    // scheme", one per unknown name): none before a refusal of
+    // the flags (WP-46: lfit, recast(rsc) horizontal).
+    _ov_count "`logfile'" "type not found in scheme"
+    local tnote = r(n)
     _ov_count "`logfile'" "not allowed"
     local tline `"`r(line)'"'
     if `trc' != 0 & `"`tline'"' == "" {
@@ -1704,9 +1709,11 @@ program define _hz_case
     }
     _ov_count "`logfile'" "unsupported option"
     local named = r(n)
-    local bad = (`trc' != `drc') | (strtrim(`"`tline'"') != strtrim(`"`dline'"')) | (`drc' == 0 & `named' > 0)
+    _ov_count "`logfile'" "type not found in scheme"
+    local dnote = r(n)
+    local bad = (`trc' != `drc') | (strtrim(`"`tline'"') != strtrim(`"`dline'"')) | (`drc' == 0 & `named' > 0) | (`tnote' != `dnote')
     if `bad' {
-        display as error `"`id' FAIL: twoway rc `trc' [`tline'], dash rc `drc' [`dline'], named `named': `cmd'"'
+        display as error `"`id' FAIL: twoway rc `trc' [`tline'], dash rc `drc' [`dline'], named `named', class notes `tnote' vs `dnote': `cmd'"'
         global ov_nfail    = ${ov_nfail} + 1
         global ov_faillist "${ov_faillist} `id'"
     }
@@ -1768,6 +1775,11 @@ _hz_case Q4601-29 "dot mpg weight, recast(dot dot) horizontal"
 _hz_case Q4601-30 "scatter mpg weight, recast(bar bar) horizontal"
 _hz_case Q4601-31 "kdensity mpg, recast(b) horizontal"
 _hz_case Q4601-32 "tsline mpg, recast(b) horizontal"
+// An unknown recast name with a refused flag: twoway prints the refusal
+// alone, no class notes (measured 09nov2026); taken, the notes stay.
+_hz_case Q4601-34 "lfit mpg weight, recast(rsc) horizontal"
+_hz_case Q4601-35 "scatter mpg weight, recast(zz) horizontal"
+_hz_case Q4601-36 "rline mpg price weight, recast(sc) horizontal"
 // An abbreviated bar recast is drawn in the plain p# style (D-46-01.d):
 // the spec carries typesfx generic; recast(bar) does not.
 capture dash clear
