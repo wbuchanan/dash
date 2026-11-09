@@ -1013,6 +1013,8 @@ and now matches Stata.
   3.12, as on 3.13. (WP-30, P1.33)
 - Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64, and measured on MP only. Every dash and dash_setup program declared version 16.0, which implied Stata 16 support that was never tested; all 91 now declare version 19. (WP-30, P1.35)
 
+### Fixed in WP-46
+
 ### Fixed in WP-45
 
 - A figure has no border of Bokeh's own: the plot region of scatter mpg weight under s2color at 528 px lies 15 px from the graph's right edge, its graph margin and 1 px for the plot region's outline (was 19, Bokeh's 5 px added) (WP-45, GW-6)
