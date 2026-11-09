@@ -1686,7 +1686,7 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:Working values in s().}  {cmd:dash} leaves its parsers' values in s(); see {help dash##graphintegration:Stata graph integration}.
 
-{phang2}    {ul:The window font face.}  {cmd:graph set window fontface} is not read; the svg faces are; see {help dash##graph_text:Text in graphs}.
+{phang2}    {ul:The window font face.}  {cmd:graph set window fontface} is not read; the svg faces are (see {help dash##graph_text:Text in graphs}); see {help dash##graphintegration:Stata graph integration}.
 
 {marker partial_markup}{...}
 {phang2}15.  {ul:Markup on part of a text is drawn in one style.}
@@ -1777,7 +1777,20 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:scatter z weight, yscale(log)}).  {cmd:dash} draws the positive values on the axis and
     leaves out the rest and the 0 tick, which a log axis cannot place.
 
-{phang2}21.  {ul:Resource limits.}  {cmd:twoway} draws any amount of data
+{phang2}21.  {ul:Scheme and style files are read with safety bounds.}
+    A scheme named by a path, a scheme or style file over 1,048,576 bytes,
+    and a file linked from outside its folder are not read, where
+    {cmd:twoway} follows the path and reads any file; see
+    {help dash##scheme:Stata scheme support}.
+
+{marker plot_lalign_outside}{...}
+{phang2}22.  {ul:plotregion(lalign(outside)) is drawn on the plot region's edge.}
+    {cmd:twoway} draws the plot region's line outside its edge, in the
+    graph's margin.  {cmd:dash} draws the plot region on a canvas that
+    ends at the frame on a side without an axis, so it centres the line
+    on the edge, half of it inside the plot region.
+
+{phang2}23.  {ul:Resource limits.}  {cmd:twoway} draws any amount of data
     and any number of plots, panels, lines and texts; {cmd:dash} also takes
     data of any size; it refuses, trims or rebins only beyond the limits in
     {help dash##limits:Resource limits} -- its count limits and its fixed
@@ -1804,19 +1817,6 @@ there, is an invalid point.  The literal is read as data and never run.
 {phang2}    {ul:Long text.}  A {cmd:text()} or text option whose globals expand past 4,000 characters is refused, {cmd:r(198)}, where {cmd:twoway} draws it; see {help dash##limits:Resource limits}.
 
 {phang2}    {ul:A global's =exp outside the listed functions is drawn as written.}  A {cmd:`=}{it:exp}{cmd:'} in a global's value in a graph's text is evaluated as {cmd:twoway} evaluates it when {it:exp} uses only the operators and functions listed there; one that names a variable, a scalar, a result or another function, and a macro reference, is drawn as written with a note; see {help dash##added_text:Added text}.
-
-{phang2}22.  {ul:Scheme and style files are read with safety bounds.}
-    A scheme named by a path, a scheme or style file over 1,048,576 bytes,
-    and a file linked from outside its folder are not read, where
-    {cmd:twoway} follows the path and reads any file; see
-    {help dash##scheme:Stata scheme support}.
-
-{marker plot_lalign_outside}{...}
-{phang2}23.  {ul:plotregion(lalign(outside)) is drawn on the plot region's edge.}
-    {cmd:twoway} draws the plot region's line outside its edge, in the
-    graph's margin.  {cmd:dash} draws the plot region on a canvas that
-    ends at the frame on a side without an axis, so it centres the line
-    on the edge, half of it inside the plot region.
 
 
 {marker subcommands}
@@ -5109,7 +5109,7 @@ of it ({cmd:outside}), as {cmd:twoway}'s picture shows it.  A
 {cmd:twoway}.  {cmd:plotregion(lalign(inside))} draws the plot
 region's line inside its edge and {cmd:lalign(center)} on it, as
 {cmd:twoway} draws them; {cmd:lalign(outside)} is drawn on the edge
-(see {help dash##plot_lalign_outside:item 23} under Differences from
+(see {help dash##plot_lalign_outside:item 22} under Differences from
 twoway), and with no {cmd:lalign()} the scheme's line is drawn on the
 edge where {cmd:twoway}'s lies inside it, half its width apart.
 {cmd:ilalign()}, {cmd:iintensity()} and {cmd:ishadestyle()} on

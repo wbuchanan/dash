@@ -6,4 +6,3 @@ syn:SD-22 (documented)	rc	contour	\blevels?\(	twoway contour with levels() ignor
 VF-4 (residual)	text_size	*	*	text is drawn at a fixed 2.88 pt relative size, 0.889x twoway's under stcolor (45-04)
 VF-4 (residual)	marker_size	*	*	marker sizes are relative sizes, 0.889x twoway's under stcolor (45-04)
 VF-4 (residual)	line_width	*	*	line widths are relative sizes, 0.889x twoway's under stcolor (45-04)
-VF-4 (residual)	frame_aspect	line	text\(48\.5 1923\b	a line graph with a title, subtitle, note and boxed text() has a wider plot region: less room left and right, more above (45-04)

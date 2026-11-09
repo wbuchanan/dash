@@ -1,8 +1,8 @@
 {
   "_meta": {
-    "born_date": "14 Oct 2026",
-    "dash_commit": "d088459ea1ff4824371013d9c26655a4f1227e7b",
-    "extracted": " 3 Nov 2026 01:37:26",
+    "born_date": "04 Nov 2026",
+    "dash_commit": "5855ea99db8f8cbd5deafcd86c6ad934b5bccf73",
+    "extracted": " 9 Nov 2026 05:43:10",
     "ledger": "test/fixtures/corpus_ledger.json",
     "rules": "test/fixtures/corpus_verdict_rules.json",
     "source": "scripts/extract_corpus_guard_truth.do",
@@ -11,14 +11,11 @@
   "examples": {
     "help-added_text_options-0a48288d": {
       "checks": [
-        "frame_aspect",
         "margins"
       ],
-      "first_dash": "(note:  dash: text() draws no width(); see help dash##added_text)",
+      "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -45,8 +42,8 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7066,
-      "summary": "margins, plot region shape",
+      "ssim": 0.6899,
+      "summary": "margins",
       "verdict": "Close"
     },
     "help-added_text_options-60798f5e": {
@@ -88,7 +85,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7665,
+      "ssim": 0.7676,
       "summary": "margins, line width",
       "verdict": "Close"
     },
@@ -130,7 +127,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.8118,
+      "ssim": 0.8188,
       "summary": "y-axis ticks, y-axis labels, text size, margins",
       "verdict": "Differs"
     },
@@ -167,7 +164,7 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.8753,
+      "ssim": 0.8741,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -206,7 +203,7 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.5452,
+      "ssim": 0.6655,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -247,12 +244,13 @@
         ]
       },
       "size_matched": true,
-      "ssim": 0.7671,
+      "ssim": 0.7766,
       "summary": "margins",
       "verdict": "Close"
     },
     "help-graph_text-a2e86192": {
       "checks": [
+        "frame_aspect",
         "margins"
       ],
       "first_dash": "(note:  dash: graph '': {sup:} or {sub:} around a character with no raised or lowered form in a title, subtitle, note or caption is drawn on the line (help dash, Text in graphs).)",
@@ -284,8 +282,8 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.8411,
-      "summary": "margins",
+      "ssim": 0.8429,
+      "summary": "margins, plot region shape",
       "verdict": "Close"
     },
     "help-graph_twoway-30a8a3a3": {
@@ -321,7 +319,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7973,
+      "ssim": 0.7962,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -362,7 +360,7 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.7781,
+      "ssim": 0.7786,
       "summary": "legend keys, margins, plot region shape",
       "verdict": "Differs"
     },
@@ -403,12 +401,13 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7164,
+      "ssim": 0.7203,
       "summary": "margins",
       "verdict": "Close"
     },
     "help-twoway_area-17337f6e": {
       "checks": [
+        "frame_aspect",
         "line_width",
         "margins"
       ],
@@ -443,13 +442,12 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.5734,
-      "summary": "margins, line width",
+      "ssim": 0.5789,
+      "summary": "margins, line width, plot region shape",
       "verdict": "Close"
     },
     "help-twoway_bar-129aaf18": {
       "checks": [
-        "frame_aspect",
         "margins"
       ],
       "first_dash": null,
@@ -483,8 +481,8 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.5899,
-      "summary": "margins, plot region shape",
+      "ssim": 0.5821,
+      "summary": "margins",
       "verdict": "Close"
     },
     "help-twoway_dot-11245001": {
@@ -524,7 +522,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.3794,
+      "ssim": 0.3461,
       "summary": "number of markers, margins, marker size",
       "verdict": "Differs"
     },
@@ -561,7 +559,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.766,
+      "ssim": 0.7502,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -637,7 +635,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.8188,
+      "ssim": 0.8233,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -674,7 +672,7 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.8105,
+      "ssim": 0.8093,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -711,7 +709,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.8054,
+      "ssim": 0.7996,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -751,7 +749,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7685,
+      "ssim": 0.7628,
       "summary": "margins, line width",
       "verdict": "Close"
     },
@@ -788,7 +786,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7687,
+      "ssim": 0.7631,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -827,7 +825,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.6919,
+      "ssim": 0.6849,
       "summary": "margins",
       "verdict": "Close"
     }

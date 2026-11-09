@@ -818,6 +818,11 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
     capture mkdir "`s03u'"
     python: import __main__ as _w45m; _w45m._w45s03_files("`s03u'")
     quietly adopath ++ "`s03u'"
+    // twoway reads its style lists once a session has drawn a graph and
+    // sees a style file added after that only past -discard- (measured
+    // 09nov2026: lwidth(<new name>) noted "not found" after a graph,
+    // drawn after discard); the certification session has drawn many.
+    discard
 
     // ------------------------------------------------------------
     // Q4503-1: a linewidth-, linepattern-, symbolsize-, gsize- and
@@ -877,6 +882,7 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
     capture mkdir "`s03u'"
     python: import __main__ as _w45m; _w45m._w45s03_files("`s03u'")
     quietly adopath ++ "`s03u'"
+    discard    // twoway's style lists see the new files (see S03 ST-7)
 
     // ------------------------------------------------------------
     // Q4503-2: a color-zqc.style (set rgb "200 30 40") and a
@@ -935,6 +941,7 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
     file write `s03fh' "#include s2color" _n "color p1 red" _n
     file close `s03fh'
     quietly adopath ++ "`s03u'"
+    discard    // twoway's style lists see the new files (see S03 ST-7)
 
     // ------------------------------------------------------------
     // Q4503-3: scheme-economist.scheme (#include s2color, color p1 red) in
@@ -984,6 +991,7 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
     capture mkdir "`s03u'"
     python: import __main__ as _w45m; _w45m._w45s03_files("`s03u'")
     quietly adopath ++ "`s03u'"
+    discard    // twoway's style lists see the new files (see S03 ST-7)
 
     // ------------------------------------------------------------
     // Q4503-4: user schemes (#include s2color) with clockdir p 9,
@@ -1092,6 +1100,7 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
     capture mkdir "`s03u'"
     python: import __main__ as _w45m; _w45m._w45s03_files("`s03u'")
     quietly adopath ++ "`s03u'"
+    discard    // twoway's style lists see the new files (see S03 ST-7)
 
     // ------------------------------------------------------------
     // Q4503-6: a user scheme's clockdir subtitle_position, note_position
@@ -1148,6 +1157,7 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w45_run' {
     capture mkdir "`s03u'"
     python: import __main__ as _w45m; _w45m._w45s03_files("`s03u'")
     quietly adopath ++ "`s03u'"
+    discard    // twoway's style lists see the new files (see S03 ST-7)
 
     // ------------------------------------------------------------
     // Q4503-7: a 2 x 2 legend.  twoway draws a scheme's legend_col_gap

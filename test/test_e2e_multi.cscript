@@ -445,7 +445,12 @@ python: _q37M.setLocal("dig", _q37_digest(_q37M.getLocal("q37s"), _q37M.getLocal
 // style readers take (AX-5, AX-14, AX-9); with those keys taken out the
 // spec is 05db2ea's and the data are byte for byte the same (measured
 // 07nov2026, at WP-44's closeout).
-local base_digest "be199f004c40eac0b60809a6057fa6b84c6cb0fde060a5c4940626a4ae530bea"
+// be199f00... -> c5a14913...: the spec's build_options gains
+// "fontface":"Helvetica", the plain-text face graph set gives this
+// session (WP-45 GW-10, 3dcd745); with that key taken out the spec is
+// 11ea068's and the data are byte for byte the same (measured 09nov2026,
+// at WP-45's closeout).
+local base_digest "c5a14913d4e7b4e17a1d070d08ad35d9be9d5d619d3332254234b64c0ed2b820"
 display "Q3307-5 digest `dig'"
 assert "`dig'" == "`base_digest'"
 display "Q3307-5 PASS: a build whose graphs share its frame writes the same spec and data"

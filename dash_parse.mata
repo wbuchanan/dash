@@ -10137,9 +10137,6 @@ string matrix _dash_tw_value_tab()
     t = t \ ("start", "*", "nan", "121", "start() invalid -- invalid number")
     t = t \ ("width", "*", "below", "125", "width() invalid -- invalid number, outside of allowed range")
     t = t \ ("width", "*", "nan", "121", "width() invalid -- invalid number")
-    t = t \ ("xsize", "*", "above", "198", "graph xsize invalid;")
-    t = t \ ("xsize", "*", "below", "198", "graph xsize invalid;")
-    t = t \ ("ysize", "*", "below", "198", "graph ysize invalid;")
     // END tw_value
     return(t)
 }

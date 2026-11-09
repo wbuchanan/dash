@@ -43,7 +43,8 @@
 *!   HC8-11  a working-directory scheme, by bare name and by file name,
 *!           inside a layer's parentheses and on dash serve's spec path; the
 *!           served app built from that spec carries it.
-*!   HC8-12  a scheme name carrying a directory separator is refused.
+*!   HC8-12  a scheme name carrying a directory separator is not read: noted
+*!           and drawn as s2color on a graph, refused on dash build.
 *!   HC8-13  `set scheme NAME' takes scheme-NAME.scheme over NAME.scheme,
 *!           and dash's translations beside it change nothing twoway draws.
 *!   HC8-14  clwidth(): twoway refuses 10001 and -1 where it draws the line
@@ -737,13 +738,18 @@ foreach nm in mytheme mytheme.scheme {
 _hc_done "HC8-11" "bare and file names work in a layer and on dash serve; the app carries the file"
 
 // ================================================================
-// HC8-12 -- a directory separator is refused
+// HC8-12 -- a directory separator is not read
 // ================================================================
+// Flipped (WP-45 ST-16): on a graph a path-like scheme() name is noted as
+// twoway notes a scheme it cannot find and drawn as s2color, rc 0, and no
+// file is looked for; dash build's and dash serve's scheme() keep r(198).
 _hc_run "" `"dash scatter mpg weight, scheme(sub/mytheme) saving("`hc_dir'/hc12.html", replace)"'
-_hc_expect "HC8-12" "(`r(rc)' == 198)" "scheme(sub/mytheme) on scatter: rc `r(rc)'"
+local lf "`r(logfile)'"
+_hc_expect "HC8-12" "(`r(rc)' == 0)" "scheme(sub/mytheme) on scatter: rc `r(rc)'"
+_hc_log "HC8-12" "`lf'" "(note: scheme sub/mytheme not found, using s2color)" 1 1
 _hc_run "dash scatter mpg weight, name(g1)" `"dash build, saving("`hc_dir'/hc12.html") scheme(sub/mytheme) replace"'
 _hc_expect "HC8-12" "(`r(rc)' == 198)" "scheme(sub/mytheme) on build: rc `r(rc)'"
-_hc_done "HC8-12" "a name with a directory separator is r(198), although sub/mytheme.scheme exists"
+_hc_done "HC8-12" "a name with a directory separator is not read, although sub/mytheme.scheme exists: noted and s2color on a graph, r(198) on build"
 
 // ================================================================
 // HC8-13 -- set scheme's lookup, and twoway beside dash's translations

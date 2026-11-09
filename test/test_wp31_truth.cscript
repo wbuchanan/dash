@@ -9444,8 +9444,12 @@ def _u37_regions(sp, dp, app, svg, svg0):
             d = (gaps[i] - g0[i]) / 28.8
             v = getattr(f, attr)
             bord.append("." if v is None else str(int(v)))
+            # Flipped (WP-45 GW-6): min_border is no longer Bokeh's 5 px
+            # but the plot region outline's room (1 px for a thin line),
+            # which a side set by graphregion(margin()) keeps on top of its
+            # margin, a margin drawn as zero (l=1e400) included.
             want.append("." if abs(d) < 0.05 else
-                        str(int(round(max(0.0, f.min_border + d / 100.0 * short)))))
+                        str(int(f.min_border) + int(round(max(0.0, d / 100.0 * short)))))
         Macro.setGlobal("u37_" + sfx, "%s %s %s" % (
             str(f.border_fill_color).lower(),
             str(f.background_fill_color).lower(), " ".join(bord)))

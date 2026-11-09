@@ -1614,4 +1614,7 @@ class TestInternalLinksResolve:
         # old -> new: 196 -> 197 links, 58 -> 59 targets: the region
         # paragraph links Differences item 23, plotregion(lalign(outside))
         # (WP-45 ST-21).
-        assert len(refs) == 197 and len(set(refs)) == 59
+        # old -> new: 197 -> 198 links: The window font face sub-point also
+        # ends in the Stata graph integration link every sub-point of its
+        # item takes (WP-45 WE; the item is now 22).
+        assert len(refs) == 198 and len(set(refs)) == 59
