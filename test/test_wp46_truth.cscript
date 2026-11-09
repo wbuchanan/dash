@@ -569,6 +569,28 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w46_run' {
 }
 * ==== end S02 ====
 
+* ==== S02 RH-8: recast() with horizontal drawn as the transpose ====
+local only : env WP46_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w46_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4602-3 (RH8-01): histogram mpg, recast(bar) horizontal: twoway
+    // draws a broken picture (documented, Q25); dash takes it, rc 0, and
+    // draws horizontal bars, the transpose, in both modes.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    _q4602_draw "`w46_work'" 3 RH8-01 histogram mpg, recast(bar) horizontal
+    _w46_expect Q4602-3 "(${q4602_trc} == 0)" "twoway rc ${q4602_trc}"
+    _w46_expect Q4602-3 "(${q4602_drc} == 0)" "dash rc ${q4602_drc}"
+    _w46_expect Q4602-3 `"("${q4602_s}" == "ok")"' "saved: ${q4602_s}"
+    _w46_expect Q4602-3 `"("${q4602_v}" == "ok")"' "served: ${q4602_v}"
+    _w46_done Q4602-3 "histogram recast(bar) horizontal is drawn as horizontal bars, in both modes"
+
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

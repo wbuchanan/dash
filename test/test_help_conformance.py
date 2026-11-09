@@ -1617,4 +1617,6 @@ class TestInternalLinksResolve:
         # old -> new: 197 -> 198 links: The window font face sub-point also
         # ends in the Stata graph integration link every sub-point of its
         # item takes (WP-45 WE; the item is now 22).
-        assert len(refs) == 198 and len(set(refs)) == 59
+        # old -> new: 198 -> 199 links, 59 -> 60 targets: WP-46 RH-8 the
+        # Differences line links the Recast paragraph's new marker recast.
+        assert len(refs) == 199 and len(set(refs)) == 60

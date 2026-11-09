@@ -238,3 +238,69 @@ class TestTheUnreadStyleFiles:
                            "textboxstyle"]
         assert ('f"{prefix}: {head} is not a recognised {what}; using '
                 '{using}.",') in _render()
+
+
+# ===========================================================================
+# WP-46 RH-8 (documented, Q25): histogram and rbar with recast() and
+# horizontal are drawn turned; twoway draws a broken picture there
+# ===========================================================================
+
+class TestRecastHorizontalDifference:
+
+    def test_the_sentence(self):
+        """The Differences list names the item in one line linked to the
+        Recast paragraph, whose note gives the measured example
+        (recast_truth.json RH8-01, RH8-02)."""
+        text = _help()
+        diff = _flat(_between(text, "{marker differences}",
+                              "{marker validation}"))
+        assert ("{cmd:histogram} and {cmd:rbar} with {cmd:recast()} and "
+                "{cmd:horizontal} are drawn turned; {cmd:twoway} draws a "
+                "broken picture there -- see {help dash##recast:Recast}"
+                ) in diff
+        assert "{marker recast}" in text
+        rec = _flat(_between(text, "{marker recast}", "{it:Legend keys"))
+        assert ("{cmd:histogram mpg, recast(bar) horizontal}" in rec
+                and "-1.81 to 1.91" in rec
+                and "{cmd:rbar} {it:lo hi x}{cmd:, recast(rcap) horizontal}"
+                in rec)
+
+    def test_the_example_is_measured(self):
+        import json
+        with open(os.path.join(_HERE, "fixtures", "recast_truth.json"),
+                  encoding="utf-8") as fh:
+            p = json.load(fh)["probes"]
+        lo, hi = p["RH8-01"]["xrange"]
+        assert (round(lo, 2), round(hi, 2)) == (-1.81, 1.91)
+        assert p["RH8-01"]["xlabels"][0] == "0"
+        # rbar y y2 x, recast(rcap) horizontal: y2 up the y axis, y across.
+        t = p["RH8-02"]["texts"]
+        assert t.index("y2") < t.index("y") and p["RH8-02"]["yrange"] == [
+            4.0, 12.0]
+
+    def test_dash_draws_the_transpose(self):
+        """dash draws histogram mpg, recast(bar) horizontal as horizontal
+        bars whose right ends are the bins' heights (a guard of the
+        documented behaviour), in both modes."""
+        import sys
+        sys.path.insert(0, _HERE)
+        sys.path.insert(0, _ROOT)
+        import test_join_order as jo
+        import test_mode_parity as tp
+        from test_server_layer_defects import plot_for
+        from conftest import drawn_renderers
+        spec = tp._spec(plots=[plot_for(
+            "histogram", {"recast": "bar", "horizontal": "horizontal"})])
+        plain = tp._spec(plots=[plot_for("histogram")])
+        tops = sorted(float(v) for f in jo._saved_figs(jo._saved(
+            plain, tp._DF)) for r in drawn_renderers(f)
+            if type(r.glyph).__name__ == "Quad"
+            for v in r.data_source.data["top"])
+        for figs in (jo._saved_figs(jo._saved(spec, tp._DF)),
+                     jo._served_figs(jo._served(spec, tp._DF))):
+            bars = [r for f in figs for r in drawn_renderers(f)
+                    if type(r.glyph).__name__ == "HBar"]
+            assert bars
+            got = sorted(float(v) for r in bars
+                         for v in r.data_source.data[r.glyph.right])
+            assert got == tops

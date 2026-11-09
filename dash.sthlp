@@ -1359,6 +1359,12 @@ there, is an invalid point.  The literal is read as data and never run.
     the graph's width, where {cmd:dash}'s is 0.931); every key text is
     drawn in both.
 
+{phang2}
+    {ul:recast() with horizontal on histogram and rbar.}  {cmd:histogram}
+    and {cmd:rbar} with {cmd:recast()} and {cmd:horizontal} are drawn
+    turned; {cmd:twoway} draws a broken picture there -- see
+    {help dash##recast:Recast}.
+
 {marker validation}
 {phang2}    {ul:Option values.}  A value is refused where {cmd:twoway}
     refuses it, and a word is refused where a number-only option was given
@@ -4341,6 +4347,7 @@ without them, and so does {cmd:dash}; {cmd:fpfit} refuses them, as
 {opt estcmd()} -- is made once in each panel from that panel's rows, and
 the Total panel's from all of them, as {cmd:twoway} makes it.
 
+{marker recast}{...}
 {phang}{ul:Recast.}  {opt recast(plottype)}, and its synonyms
 {opt recastas(plottype)} and {opt type(plottype)}, are read as
 {cmd:twoway} reads them: {cmd:recast()} and {cmd:recastas()} win over
@@ -4385,7 +4392,13 @@ there and draws the dot graph unchanged.  On {cmd:lfitci}, {cmd:qfitci}, {cmd:lp
 typed in full, are refused, r(198), as {cmd:twoway} refuses them, and so
 is a spelling of {cmd:recast()} shorter than its name; the shorter
 spellings {cmd:ty} and {cmd:typ} of {cmd:type()} are taken there and drawn
-as {cmd:ciplot()} draws them, as in {cmd:twoway}.
+as {cmd:ciplot()} draws them, as in {cmd:twoway}.  A {cmd:histogram} or
+{cmd:rbar} recast with {cmd:horizontal} is drawn as the exact transpose
+of the upright layer; {cmd:twoway} draws a broken picture there:
+{cmd:histogram mpg, recast(bar) horizontal} (auto data) draws its
+bars on an x axis running from -1.81 to 1.91 under labels 0 to .1, and
+{cmd:rbar} {it:lo hi x}{cmd:, recast(rcap) horizontal} draws {it:lo}
+across against {it:hi} up the y axis.
 
 {pstd}
 {it:Legend keys and default axis titles.}  Each layer is keyed as

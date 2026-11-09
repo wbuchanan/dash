@@ -1017,6 +1017,7 @@ and now matches Stata.
 
 ### Fixed in WP-46
 
+- The help states that histogram and rbar with recast() and horizontal are drawn as the transpose of the upright layer, where twoway draws a broken picture (WP-46, RH-8)
 - histogram with recast() draws in the histogram's own style, bars a bin wide, with 0 on its axis, as twoway does; histogram mpg, recast(bar) drew bars one mpg wide in the bar colour (WP-46, RH-5)
 - A range type or ciplot() drawn as a yx type keeps both bounds on the axis and in its title and key, as twoway does; rline mpg price weight, recast(line) drew y 13.5..30.5 keyed mpg, now up to price's 11,385 keyed mpg/price (WP-46, RH-3)
 - An unknown recast() name refused with horizontal or vertical prints the refusal alone, as twoway does; lfit y x, recast(rsc) horizontal printed the two class notes first (WP-46, 46-01)
