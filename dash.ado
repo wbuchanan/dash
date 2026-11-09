@@ -3730,6 +3730,20 @@ program define _dash_recast_opt, sclass
     else if "`_rc_class'" == "y2xtype" local _sp "`_sp_rng' scatter:7 line:4 connected:9 bar:3 area:4 spike:5 dropline:8 dot:3"
     else if "`_rc_class'" == "functiontype" local _sp "`_sp_yx' function:8"
     else local _sp "`_sp_yx'"
+    // y2xtype reads a repeated yx name whole, one unknown name (rline
+    // recast(line line): the two notes and rspike); a repeated range name
+    // is that name (recast(rline rline)); recast_truth.json RH11-06..08.
+    mata: st_local("_rc_rep", strofreal(st_local("_rc_v") != st_local("_rc_r")))
+    if `_rc_rep' & "`_rc_class'" == "y2xtype" {
+        local _rc_rng 0
+        foreach _e of local _sp_rng {
+            gettoken _n _m : _e, parse(":")
+            local _m = substr("`_m'", 2, .)
+            mata: st_local("_hit", strofreal(strlen(st_local("_rc_v")) >= `_m' & st_local("_rc_v") == substr("`_n'", 1, strlen(st_local("_rc_v")))))
+            if `_hit' local _rc_rng 1
+        }
+        if !`_rc_rng' mata: st_local("_rc_v", st_local("_rc_r"))
+    }
     local _rc_name ""
     mata: st_local("_rb", strofreal(st_local("_rc_v") == "rbarm"))
     if `_rb' & "`_rc_class'" == "y2xtype" local _rc_name rbar

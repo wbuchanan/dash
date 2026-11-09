@@ -334,6 +334,24 @@ def _y2x_name(word):
 
 class TestY2xSpellings:
 
+    def test_a_repeated_yx_name_is_one_unknown_name(self):
+        """twoway reads recast(line line) on a range source or histogram
+        as one unknown y2xtype name, the whole value in its note, and
+        draws rspike; recast(rline rline) is rline, with no note (fixture
+        RH11-06..08; dash's side: test_twoway_option_parity.cscript
+        Q4601-37..39)."""
+        probes = _truth()["probes"]
+        for pid in ("RH11-06", "RH11-08"):
+            rec = probes[pid]
+            assert rec["rc"] == 0
+            assert rec["lines"][0].startswith(
+                "(note:  named style line line not found in class y2xtype")
+            assert rec["lines"][1] == ("(note:  y2xtype not found in "
+                                       "scheme, default attributes used)")
+        assert probes["RH11-06"]["equal_to"] == "B-rspike"
+        assert probes["RH11-07"]["rc"] == 0
+        assert probes["RH11-07"]["lines"] == []
+
     @pytest.mark.parametrize("mode", ["saved", "served"])
     @pytest.mark.parametrize("pid", ["RH11-01", "RH11-02", "RH11-03",
                                      "RH11-04", "RH11-05"])

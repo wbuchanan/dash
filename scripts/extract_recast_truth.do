@@ -11,6 +11,7 @@
 *                 the RH9- rows (WP-46 46-01) also bar_strokes: the
 *                 stroke-width of each outlined rect in a plot colour
 *                 (not the white frames), distinct, in SVG units.
+*                 RH11-06..08: a repeated name on a range source.
 *   classes       Stata's four type classes, read from
 *                 the style files *type-*.style of c(sysdir_base).
 *
@@ -180,11 +181,16 @@ _rc_probe RH11-01 "twoway rline y y2 x, recast(sc)"
 _rc_probe RH11-03 "twoway rline y y2 x, recast(co)"
 _rc_probe RH11-04 "twoway rbar y y2 x, recast(b)"
 _rc_probe RH11-05 "twoway tsrline y y2, recast(li)"
+* A repeated yx name is one unknown y2xtype name; a repeated range name
+* is that name (measured 09nov2026).
+_rc_probe RH11-06 "twoway rline y y2 x, recast(line line)"
+_rc_probe RH11-07 "twoway rline y y2 x, recast(rline rline)"
 _rc_probe RH9-10  "twoway scatter y x, recast(b)"
 _rc_probe RH9-11  "twoway scatter y x, recast(bar)"
 _rc_probe RH9-12  "twoway bar y x, recast(b)"
 sysuse auto, clear
 _rc_probe RH11-02 "twoway histogram mpg, recast(li)"
+_rc_probe RH11-08 "twoway histogram mpg, recast(line line)"
 file close `rh'
 
 python:

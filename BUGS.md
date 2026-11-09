@@ -5886,6 +5886,18 @@
   - Suggested fix: Print the notes after the orientation flags are judged.
   - Resolution: Fixed 09nov2026 (WP-46 46-01 follow-up). _dash_recast_opt returns the unknown name and its class (s(_recast_unknown), s(_recast_class)) instead of printing; _dash_process_segment prints the two notes after _dash_hz_check takes the flags. Pinned by test/test_option_validation.cscript Q4601-34..36 (_hz_case now compares the count of class notes with twoway's for every case).
 
+- [x] Title: A repeated yx name in recast() on a range source or histogram was read as that name; twoway reads it as one unknown name, notes it and draws rspike
+  - File Names and Line Numbers: dash.ado _dash_recast_opt (the one-distinct-word reduction)
+  - Description: Found by the WP-46 46-01 agent and measured 09nov2026 (test/fixtures/recast_truth.json RH11-06..08): twoway rline y y2 x, recast(line line) and histogram mpg, recast(line line) print "(note:  named style line line not found in class y2xtype, default attributes used)" and "(note:  y2xtype not found in scheme, default attributes used)" and draw rspike (rline's SVG equals B-rspike's); recast(rline rline) is rline with no note, and scatter y x and scatter y lo x, recast(line line) are line with no note. dash drew line in silence.
+  - Suggested fix: On a y2xtype source, keep the value whole unless its one word is a range name.
+  - Resolution: Fixed 09nov2026 (WP-46 46-01 follow-up). On a y2xtype source _dash_recast_opt reduces a repeated word only when the word is one of the range spellings; otherwise the whole value is matched, finds no name, and takes the existing fallback: the two notes, naming the whole value, and rspike. Pinned by test/test_recast.py::TestY2xSpellings::test_a_repeated_yx_name_is_one_unknown_name, test/test_twoway_option_parity.cscript Q4601-37..39.
+
+- [ ] Title: recast() with two different yx names on a two-y layer: twoway's note runs the names together, once per y; dash's names them apart, once
+  - File Names and Line Numbers: dash.ado _dash_recast_opt (the unknown-name note)
+  - Description: Measured 09nov2026: twoway scatter y lo x, recast(line bar) prints "(note:  named style linebar not found in class yxtype, default attributes used)" and "(note:  yxtype not found in scheme, default attributes used)" twice, once per y; dash prints "named style line bar not found..." and the second note once. Both draw rc 0.
+  - Suggested fix: Measure one, two and three y with two and three words, then print twoway's spelling and count.
+  - Resolution: Not fixed because it was found while fixing the repeated-name note and its rule is not yet measured beyond one case. Graded S3 (WP-46): note wording.
+
 - [ ] Title: pcarrow mangle(abc) and barbsize(abc) print no note; twoway names each unknown style
   - File Names and Line Numbers: dash.ado or dash_render.py, the mangle() and barbsize() readers
   - Description: Measured 09nov2026 (test/test_option_validation.cscript U02-08's twoway log): twoway pcarrow mpg weight trunk length, mangle(abc) barbsize(abc) prints "(note:  named style abc not found in class anglestyle, default attributes used)" and "(note:  named style abc not found in class symbolsize, default attributes used)", rc 0; dash prints neither, rc 0.

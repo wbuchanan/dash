@@ -50,7 +50,7 @@
     "pcspike"
    ]
   },
-  "dash_commit": "441678dac74fe2b3a1871a5bf0e9764e88379fec",
+  "dash_commit": "e42755f66602a6edbdd09650f06b949b95bfc2ff",
   "extracted": " 9 Nov 2026",
   "scheme": "stcolor",
   "source": "scripts/extract_recast_truth.do",
@@ -749,6 +749,51 @@
    "equal_to": "",
    "lines": [
     "(note:  named style li not found in class y2xtype, default attributes used)",
+    "(note:  y2xtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "RH11-06": {
+   "cmd": "twoway rline y y2 x, recast(line line)",
+   "counts": {
+    "circle": 0,
+    "line": 308,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-rspike",
+   "lines": [
+    "(note:  named style line line not found in class y2xtype, default attributes",
+    "(note:  y2xtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "RH11-07": {
+   "cmd": "twoway rline y y2 x, recast(rline rline)",
+   "counts": {
+    "circle": 0,
+    "line": 300,
+    "path": 2,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "RH11-08": {
+   "cmd": "twoway histogram mpg, recast(line line)",
+   "counts": {
+    "circle": 0,
+    "line": 484,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [
+    "(note:  named style line line not found in class y2xtype, default attributes",
     "(note:  y2xtype not found in scheme, default attributes used)"
    ],
    "rc": 0

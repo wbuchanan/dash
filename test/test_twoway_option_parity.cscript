@@ -4509,6 +4509,43 @@ foreach row in "rline lo hi weight, recast(sc)|sc" "histogram mpg, recast(li)|li
     }
     else display as text "Q4601-`k' PASS: `cmd' prints twoway's two notes and draws rspike"
 }
+// Q4601-37..39: a repeated yx name is one unknown name on a range source
+// or histogram, as twoway reads it (recast_truth.json RH11-06..08):
+// recast(line line) prints the two notes, the whole value named, and
+// draws rspike; a repeated range name is still that name.
+local k 36
+foreach row in "rline lo hi weight, recast(line line)|line line" "histogram mpg, recast(line line)|line line" {
+    local ++k
+    gettoken cmd row : row, parse("|")
+    local nm = substr("`row'", 2, .)
+    local bad ""
+    _ztp_run `"dash `cmd' name(zqtp)"' "`logfile'"
+    if r(rc) local bad "`bad' rc"
+    _ztp_logged "`logfile'" "(note:  named style `nm' not found in class y2xtype, default attributes used)"
+    if !r(found) local bad "`bad' note1"
+    _ztp_logged "`logfile'" "(note:  y2xtype not found in scheme, default attributes used)"
+    if !r(found) local bad "`bad' note2"
+    if substr("`cmd'", 1, 4) == "rlin" _zrc_spec `"{`q'type`q':`q'rspike`q'"'
+    else _zrc_spec `"`q'recast`q':`q'rspike`q'"'
+    if !r(found) local bad "`bad' rspike"
+    if "`bad'" != "" {
+        local nfail = `nfail' + 1
+        local faillist "`faillist' Q4601-`k'"
+        display as error "Q4601-`k' FAIL:`bad' -- `cmd'"
+    }
+    else display as text "Q4601-`k' PASS: `cmd' prints twoway's two notes and draws rspike"
+}
+local bad ""
+_ztp_run `"dash rline lo hi weight, recast(rline rline) name(zqtp)"' "`logfile'"
+if r(rc) | r(note) local bad "`bad' rc/note"
+_zrc_spec `"{`q'type`q':`q'rline`q'"'
+if !r(found) local bad "`bad' type"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' Q4601-39"
+    display as error "Q4601-39 FAIL:`bad' -- rline, recast(rline rline)"
+}
+else display as text "Q4601-39 PASS: rline, recast(rline rline) is rline, no note"
 capture program drop _zrc_spec
 
 // ----------------------------------------------------------------

@@ -1018,6 +1018,7 @@ and now matches Stata.
 ### Fixed in WP-46
 
 - An unknown recast() name refused with horizontal or vertical prints the refusal alone, as twoway does; lfit y x, recast(rsc) horizontal printed the two class notes first (WP-46, 46-01)
+- A repeated yx name in recast() on a range type or histogram is one unknown name, as twoway reads it: rline lo hi x, recast(line line) prints the two notes and draws rspike, where it drew a line in silence; recast(rline rline) is still rline (WP-46, 46-01)
 - sc, li, co and b on a range type or histogram print twoway's two notes and draw rspike, as twoway does; rline lo hi x, recast(sc) drew a scatter of lo, and histogram mpg, recast(li) a line (WP-46, RH-11)
 
 ### Fixed in WP-45
