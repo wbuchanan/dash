@@ -439,6 +439,106 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w46_run' {
 }
 * ==== end S01 ====
 
+// ----------------------------------------------------------------
+// S02 helpers (WP-46 46-02): one recast layer drawn by twoway and by
+// dash in both modes, on the data in memory, judged by _q4602_check
+// with S01's readers (_q4601_docs, _q4601_tw).
+// ----------------------------------------------------------------
+python:
+def _q4602_verdict(case, tw, fig):
+    """'ok', or what differs, for one mode's figure."""
+    xt = fig.xaxis[0].axis_label or ""
+    yt = fig.yaxis[0].axis_label or ""
+    yr = sorted((fig.y_range.start, fig.y_range.end))
+    eps = 1e-9
+    if case == "RB-01":
+        # Both bounds on the axis (y2 reaches 11) and in the title.
+        if (xt, yt) != (tw["b1"], tw["l1"]):
+            return "titles %r, twoway's %r" % ((xt, yt), (tw["b1"], tw["l1"]))
+        if not (yr[0] <= tw["y"][0] + eps and yr[1] >= tw["y"][-1] - eps):
+            return "y range %r, twoway's y labels %r" % (yr, tw["y"])
+        if yr[1] < 11 - eps:
+            return "y range %r leaves out the second bound's 11" % (yr,)
+        return "ok"
+    if case == "RH5-06":
+        # 0 on the height axis, as twoway's labels start at 0.
+        if not (tw["y"] and tw["y"][0] == 0.0):
+            return "twoway's y labels %r do not start at 0" % (tw["y"],)
+        if yr[0] > eps:
+            return "y range %r leaves out 0" % (yr,)
+        return "ok"
+    if case == "RH8-01":
+        # The documented transpose: horizontal bars.
+        kinds = {type(r.glyph).__name__ for r in fig.renderers
+                 if getattr(r, "glyph", None) is not None}
+        return "ok" if "HBar" in kinds else "no HBar: %r" % sorted(kinds)
+    return "unknown case " + case
+
+
+def _q4602_check(sp, dp, app, svg, case):
+    from sfi import Macro
+    tw = _q4601_tw(svg)
+    a, b = _q4601_docs(sp, dp, app)
+    Macro.setGlobal("q4602_tw", "b1 %r l1 %r x %r y %r" % (
+        tw["b1"], tw["l1"], tw["x"], tw["y"]))
+    for figs, sfx in ((a, "s"), (b, "v")):
+        Macro.setGlobal("q4602_" + sfx, _q4602_verdict(case, tw, figs[0])
+                        if len(figs) == 1 else "%d figures" % len(figs))
+end
+
+capture program drop _q4602_draw
+program define _q4602_draw
+    // _q4602_draw <dir> <k> <case> <command with options...>: twoway
+    // draws the command on the data in memory into t<k>.svg, dash builds
+    // it, and the case's verdict for each mode lands in $q4602_s and
+    // $q4602_v (twoway's rc in $q4602_trc, dash's in $q4602_drc).
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken case 0 : 0
+    global q4602_s ""
+    global q4602_v ""
+    global q4602_tw ""
+    global q4602_drc = -1
+    capture graph drop q4602t
+    capture noisily twoway `0' name(q4602t, replace)
+    global q4602_trc = _rc
+    if ${q4602_trc} exit
+    capture erase "`dir'/t`k'.svg"
+    cert_svg_export, name(q4602t) file("`dir'/t`k'.svg")
+    capture graph drop q4602t
+    capture dash clear
+    capture noisily dash `0' name(zq4602`k')
+    global q4602_drc = _rc
+    if ${q4602_drc} exit
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _q4602_m; _q4602_m._q4602_check("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg", "`case'")
+    capture dash clear
+end
+
+* ==== S02 RH-3: a recast range layer keeps its second bound ====
+local only : env WP46_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w46_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4602-1 (RB-01): rline y y2 x, recast(line) draws the line through
+    // y, but twoway's y axis spans both bounds (0..11) and is titled
+    // y/y2; dash's y range covers twoway's y labels and the second
+    // bound, and its titles are twoway's, in both modes.
+    // ------------------------------------------------------------
+    _q4601_data rc
+    _q4602_draw "`w46_work'" 1 RB-01 rline y y2 x, recast(line)
+    _w46_expect Q4602-1 "(${q4602_trc} == 0)" "twoway rc ${q4602_trc}"
+    _w46_expect Q4602-1 "(${q4602_trc} != 0 | ${q4602_drc} == 0)" "dash rc ${q4602_drc}"
+    _w46_expect Q4602-1 `"("${q4602_s}" == "ok")"' "saved: ${q4602_s} (twoway: ${q4602_tw})"
+    _w46_expect Q4602-1 `"("${q4602_v}" == "ok")"' "served: ${q4602_v} (twoway: ${q4602_tw})"
+    _w46_done Q4602-1 "rline recast(line) keeps both bounds on the axis and in its title, in both modes"
+
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

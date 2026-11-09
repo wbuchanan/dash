@@ -3665,6 +3665,7 @@ program define _dash_recast_opt, sclass
     sreturn local _recast_unknown ""
     sreturn local _recast_class ""
     sreturn local typesfx ""
+    sreturn local recast_hi ""
     mata: st_local("_rc_bad", ustrregexm(" " + st_global("s(_unknown)"), "[ ,](rec|reca|recas)\(") ? ustrregexs(1) : "")
     if "`_rc_bad'" != "" {
         mata: _dash_say("err", "option ", st_local("_rc_bad"), "() not allowed")
@@ -3802,8 +3803,8 @@ program define _dash_recast_opt, sclass
 end
 
 // _dash_recast_s <key> <value>: sets s(<key>) for _dash_process_segment,
-// an rclass program (WP-30 P1.8b).  <key> is recast, sort1 or typesfx
-// (WP-46 RH-9), <value> a type or variable name or a word dash wrote,
+// an rclass program (WP-30 P1.8b).  <key> is recast, sort1, typesfx
+// (WP-46 RH-9) or recast_hi (RH-3), <value> a type or variable name or a word dash wrote,
 // never the user's text.
 program define _dash_recast_s, sclass
     version 19
@@ -6106,7 +6107,7 @@ program define _dash_plot_opts_to_json, rclass
                    lineopts fitopts color mlwidth mstyle lstyle mlstyle ///
                    clstyle astyle alstyle bstyle blstyle dstyle dlstyle bmlinestyle p mlpattern ///
                    dotextend ndots dsymbol dcolor dfcolor dsize dlcolor dlwidth dlalign ///
-                   blabel horizontal vertical sort range range_var range_panels typesfx colorlist jitterseed ///
+                   blabel horizontal vertical sort range range_var range_panels typesfx recast_hi colorlist jitterseed ///
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///
                    mlabvposition mlabtextstyle ///
@@ -7397,6 +7398,11 @@ program define _dash_process_segment, rclass
             mata: st_local("_rc_gen", strofreal(st_strscalar("`_hz_t'") != "" & st_strscalar("`_hz_t'") != "bar" & length(tokens(st_strscalar("`_hz_t'"))) == 1))
             if `_rc_gen' _dash_recast_s typesfx generic
         }
+        // A range source drawn as a yx type is drawn through its first
+        // bound; its second stays on the axis, in its title and key, as
+        // twoway's y2xview keeps both (options.recast_hi; WP-46 RH-3,
+        // recast_truth.json RB-01..03).
+        if "`_rc_kind'" == "range2yx" _dash_recast_s recast_hi "`yvar2'"
         // connect() and cmissing() as twoway reads them (WP-30 P1.8a): a
         // scatter y given a connect() element is twoway's connected type,
         // and the folds, checks and sort below read it as connected.  A

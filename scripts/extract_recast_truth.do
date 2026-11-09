@@ -12,6 +12,13 @@
 *                 stroke-width of each outlined rect in a plot colour
 *                 (not the white frames), distinct, in SVG units.
 *                 RH11-06..08: a repeated name on a range source.
+*                 The RB-, RH5- and RH8- rows (WP-46 46-02) also yrange
+*                 and xrange (.Graph's plot-region scale, curmin and
+*                 curmax), ylabels and xlabels (svg_truth's axis
+*                 reading), texts (every <text>, in order), marks (each
+*                 plot rect, path and circle: fill, stroke and stroke
+*                 width, distinct) and bar_w (the first plot rect's
+*                 width in x units).
 *   classes       Stata's four type classes, read from
 *                 the style files *type-*.style of c(sysdir_base).
 *
@@ -91,14 +98,19 @@ program _rc_probe
     if `rc' == 0 {
         quietly graph export "`tmp'/`f'.svg", replace
         local svg "svg"
+        if inlist(substr("`id'", 1, 3), "RB-", "RH5", "RH8") {
+            file write $RC_AH `"`id'|`.Graph.plotregion1.yscale.curmin'|`.Graph.plotregion1.yscale.curmax'|`.Graph.plotregion1.xscale.curmin'|`.Graph.plotregion1.xscale.curmax'"' _n
+        }
     }
     file write $RC_RH `"`id'|`rc'|`svg'`f'|`cmd'"' _n
 end
 
-tempfile recs
-tempname rh
+tempfile recs axr
+tempname rh ah
 file open `rh' using "`recs'", write text replace
 global RC_RH `rh'
+file open `ah' using "`axr'", write text replace
+global RC_AH `ah'
 global RC_SEQ 0
 
 _rc_data
@@ -191,14 +203,46 @@ _rc_probe RH9-12  "twoway bar y x, recast(b)"
 sysuse auto, clear
 _rc_probe RH11-02 "twoway histogram mpg, recast(li)"
 _rc_probe RH11-08 "twoway histogram mpg, recast(line line)"
+* WP-46 46-02: a range source drawn as a yx type keeps both bounds
+* (RH-3), ciplot() as a yx type (RH-4), a recast histogram's style, bar
+* width and zero (RH-5..7), and recast() with horizontal (RH-8).
+_rc_data
+_rc_probe RB-01 "twoway rline y y2 x, recast(line)"
+_rc_probe RB-02 "twoway (rcap y y2 x, recast(scatter)) (scatter y x)"
+_rc_probe RB-03 "twoway rbar y y2 x, recast(bar)"
+_rc_probe RB-07 "twoway rline y y2 x"
+_rc_probe RH8-02 "twoway rbar y y2 x, recast(rcap) horizontal"
+sysuse auto, clear
+_rc_probe RB-04 "twoway lfitci mpg weight, ciplot(area)"
+_rc_probe RB-05 "twoway lfitci mpg weight, ciplot(bar)"
+_rc_probe RB-06 "twoway lfitci mpg weight, ciplot(scatter)"
+_rc_probe RB-08 "twoway lfitci mpg weight"
+_rc_probe RH5-00 "twoway histogram mpg"
+_rc_probe RH5-01 "twoway histogram mpg, recast(bar)"
+_rc_probe RH5-02 "twoway histogram mpg, recast(area)"
+_rc_probe RH5-03 "twoway histogram mpg, recast(spike)"
+_rc_probe RH5-04 "twoway histogram mpg, recast(scatter)"
+_rc_probe RH5-05 "twoway histogram mpg, recast(bar) gap(50)"
+_rc_probe RH5-08 "twoway histogram mpg, gap(50)"
+_rc_probe RH5-09 "twoway histogram mpg, recast(line)"
+_rc_probe RH5-10 "twoway histogram mpg, recast(bar) color(red)"
+_rc_probe RH8-01 "twoway histogram mpg, recast(bar) horizontal"
+clear
+quietly set obs 3
+generate y = _n
+_rc_probe RH5-06 "twoway histogram y, recast(area)"
+_rc_probe RH5-07 "twoway histogram y, recast(dropline)"
 file close `rh'
+file close `ah'
 
 python:
-import json, os, re, glob
+import json, os, re, glob, sys
 from sfi import Macro
 repo = Macro.getLocal("repo")
 tmp = Macro.getLocal("tmp")
 base = Macro.getLocal("sysbase")
+sys.path.insert(0, os.path.join(repo, "scripts"))
+import svg_truth
 
 def _body(path):
     with open(path, encoding="utf-8") as fh:
@@ -234,6 +278,60 @@ def _bar_strokes(path):
             out.add(float(w.group(1)))
     return sorted(out)
 
+def _num(s):
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+_axr = {}
+with open(Macro.getLocal("axr"), encoding="utf-8") as fh:
+    for line in fh:
+        parts = line.rstrip("\n").split("|")
+        if len(parts) == 5:
+            _axr[parts[0]] = [_num(v) for v in parts[1:]]
+
+_STYLE = re.compile(r"<(rect|path|circle|use|line)[^>]*style=\"([^\"]*)\"")
+
+def _marks(path):
+    # Each plot mark's fill, stroke and stroke width, distinct: the
+    # white region frames, the canvas, the axes (black) and the
+    # gridlines (#f0f0f0) left out.  An area is a <use> of a path.
+    out = set()
+    for m in _STYLE.finditer(_body(path)):
+        st = dict(kv.split(":", 1) for kv in m.group(2).split(";")
+                  if ":" in kv)
+        fill = st.get("fill", "").strip().lower()
+        stroke = st.get("stroke", "").strip().lower()
+        if fill in ("#ffffff", "", "none") and stroke in ("#ffffff", "none", "", "#000000", "#f0f0f0"):
+            continue
+        out.add((m.group(1), fill, stroke,
+                 st.get("stroke-width", "").strip()))
+    return [list(t) for t in sorted(out)]
+
+def _axes(rec, pid, p):
+    yr = _axr.get(pid)
+    if yr:
+        rec["yrange"] = yr[:2]
+        rec["xrange"] = yr[2:]
+    doc = svg_truth.svg_document(p)
+    rec["texts"] = [t["text"] for t in doc["texts"]]
+    rx = svg_truth.svg_axis_reading(p, "x", doc=doc)
+    ry = svg_truth.svg_axis_reading(p, "y", doc=doc)
+    rec["xlabels"] = list(rx.get("labels") or [])
+    rec["ylabels"] = list(ry.get("labels") or [])
+    rec["marks"] = _marks(p)
+    rec["bar_w"] = None
+    fit = rx.get("fit")
+    pr = doc["plotregion"]
+    plot = [r for r in svg_truth.svg_rects(p)
+            if r["w"] and r["h"] and r["fill"] not in (None, "none", "#ffffff")
+            and pr and r["x"] >= pr["left"] - 0.5
+            and r["x"] + r["w"] <= pr["right"] + 0.5
+            and r["w"] < 0.5 * (pr["right"] - pr["left"])]
+    if fit and plot:
+        rec["bar_w"] = round(abs(plot[0]["w"] * fit["units_per_px"]), 6)
+
 probes = {}
 with open(Macro.getLocal("recs"), encoding="utf-8") as fh:
     for line in fh:
@@ -249,6 +347,8 @@ with open(Macro.getLocal("recs"), encoding="utf-8") as fh:
             rec["counts"] = _counts(p)
             if pid.startswith("RH9-"):
                 rec["bar_strokes"] = _bar_strokes(p)
+            if pid[:3] in ("RB-", "RH5", "RH8"):
+                _axes(rec, pid, p)
             rec["_body"] = _body(p)
         probes[pid] = rec
 

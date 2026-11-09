@@ -191,9 +191,13 @@ class TestRecastKeepsTheSeriesLabel:
         layer's; a base layer's is the variables' as before."""
         assert (dr._dash_legend_key(plot_for("lfit", {"recast": "scatter"}))
                 == dr._dash_legend_key(plot_for("lfit")))
+        # Flipped (WP-46 RH-3): the rline -> line layer keyed "mpg" by its
+        # first bound was a dash-internal pin with no twoway truth: twoway
+        # keys it by both bounds (recast_truth.json RB-02 "y/y2"), and
+        # dash.ado now writes the second as options.recast_hi.
         p = {"type": "line", "recast_from": "rline", "yvar": "mpg",
-             "xvar": "weight", "options": {}}
-        assert dr._dash_legend_key(p) == "mpg"
+             "xvar": "weight", "options": {"recast_hi": "price"}}
+        assert dr._dash_legend_key(p) == "mpg/price"
 
 
 class TestBaseRecast:
@@ -211,18 +215,31 @@ class TestBaseRecast:
             p = plot_for(tgt)
             graphs.append((f"g{i}", [dict(p, recast_from=src)]))
             plain.append((f"g{i}", [plot_for(tgt)]))
-        # The rline -> line form: its first bound.
+        # The rline -> line form: its first bound.  Flipped (WP-46 RH-3):
+        # "equals a plain line" was wrong because twoway keeps the second
+        # bound on the axis (recast_truth.json RB-01); it equals a plain
+        # line plus one invisible dash_bound_extent renderer at the second
+        # bound, compared without it.
         graphs.append(("gr", [{"type": "line", "recast_from": "rline",
                                "yvar": "mpg", "xvar": "weight",
-                               "options": {}}]))
+                               "options": {"recast_hi": "price"}}]))
         plain.append(("gr", [plot_for("line")]))
-        got = []
+        got, ext = [], []
         for gs in (graphs, plain):
             spec = tp._spec(graphs=gs)
             figs = (jo._saved_figs(jo._saved(spec, tp._DF)) if mode == "saved"
                     else jo._served_figs(jo._served(spec, tp._DF)))
-            got.append([(_glyphs(f), sorted(_points(f))) for f in figs])
+            ext.append([len([r for r in f.renderers if "dash_bound_extent"
+                             in (r.tags or [])]) for f in figs])
+            got.append([(_glyphs([r for r in drawn_renderers(f)
+                                  if "dash_bound_extent" not in
+                                  (r.tags or [])]),
+                         sorted(_points([r for r in drawn_renderers(f)
+                                         if "dash_bound_extent" not in
+                                         (r.tags or [])])))
+                        for f in figs])
         assert got[0] == got[1]
+        assert ext == [[0] * len(pairs) + [1], [0] * (len(pairs) + 1)]
 
 
 class TestRecastAfterAMove:
@@ -381,3 +398,128 @@ class TestY2xSpellings:
                 else jo._served_figs(jo._served(spec, tp._DF)))
         kinds = set(_glyphs(figs[0]))
         assert "Segment" in kinds and not kinds & {"Scatter", "Line"}, kinds
+
+
+# ===========================================================================
+# WP-46 RH-3 (with RH-4): a range source or ciplot() drawn as a yx type
+# keeps its second bound on the axis, in its title and in its key
+# ===========================================================================
+
+def _rb_plot(target, src):
+    """The spec dash.ado writes for ``<src> mpg price weight,
+    recast(<target>)``: the drawn type, the typed type as recast_from,
+    the first bound as y and the second as options.recast_hi (WP-46
+    RH-3)."""
+    return {"type": target, "recast_from": src, "yvar": "mpg",
+            "xvar": "weight", "options": {"recast_hi": "price"}}
+
+
+_RB = {"RB-01": ("line", "rline"), "RB-03": ("bar", "rbar"),
+       "RB-02": ("scatter", "rcap")}
+
+
+def _rb_figs(mode, plots, build_options=None):
+    spec = tp._spec(plots=plots, build_options=build_options)
+    return (jo._saved_figs(jo._saved(spec, tp._DF)) if mode == "saved"
+            else jo._served_figs(jo._served(spec, tp._DF)))
+
+
+def _kept_x(r):
+    """The x values renderer *r* draws through its view."""
+    d = r.data_source.data
+    xs = np.asarray(d[r.glyph.x], dtype=float)
+    m = dr.GlyphMapper._view_mask(r.view, len(xs))
+    return sorted(xs if m is None else xs[np.asarray(m, dtype=bool)])
+
+
+@pytest.mark.parametrize("mode", ["saved", "served"])
+class TestRangeRecastBounds:
+
+    @pytest.mark.parametrize("pid", ["RB-01", "RB-03"])
+    def test_axis_spans_both_bounds(self, mode, pid):
+        """twoway's y axis spans both bounds of a range source drawn as
+        a yx type (fixture: y2 reaches 11, the axis runs to 11); dash's
+        y range covers the second bound too, in both modes."""
+        rec = _truth()["probes"][pid]
+        assert rec["rc"] == 0 and rec["yrange"][1] >= 11.0
+        [f] = _rb_figs(mode, [_rb_plot(*_RB[pid])])
+        assert f.y_range.end >= float(tp._DF["price"].max()), (
+            f.y_range.start, f.y_range.end)
+        assert f.y_range.start <= float(tp._DF["mpg"].min())
+
+    @pytest.mark.parametrize("pid", ["RB-01", "RB-02"])
+    def test_key_and_title(self, mode, pid):
+        """twoway titles and keys the layer with both bounds, y/y2
+        (fixture texts); dash keys and titles it mpg/price."""
+        assert "y/y2" in _truth()["probes"][pid]["texts"]
+        p = _rb_plot(*_RB[pid])
+        assert dr._dash_legend_key(p) == "mpg/price"
+        assert dr._dash_axis_default_titles([p])[1] == "mpg/price"
+        [f] = _rb_figs(mode, [p, plot_for("scatter")] if pid == "RB-02"
+                       else [p])
+        if pid == "RB-01":
+            assert f.yaxis[0].axis_label == "mpg/price"
+
+    def test_after_a_move(self, mode):
+        """After a filter move the bound's extent renderer draws the
+        rows the layer draws (it shares the layer's source and view)."""
+        spec = tp._spec(plots=[_rb_plot("line", "rline")],
+                        build_options={"filter": "foreign, type(dropdown)"})
+        act = ("Select", "Domestic")
+        if mode == "saved":
+            figs = jo._saved_figs(jo._saved_move(spec, tp._DF, act))
+        else:
+            figs = jo._served_figs(jo._served_move(spec, tp._DF, act)[0])
+        [f] = figs
+        ext = [r for r in f.renderers
+               if "dash_bound_extent" in (r.tags or [])]
+        line = [r for r in drawn_renderers(f)
+                if type(r.glyph).__name__ == "Line"]
+        assert len(ext) == 1 and line
+        assert ext[0].glyph.y == "price"
+        assert _kept_x(ext[0]) == _kept_x(line[0])
+        assert len(_kept_x(ext[0])) == 5
+
+    @pytest.mark.parametrize("pid", ["RB-04", "RB-05", "RB-06"])
+    def test_ciplot_yx_spans_both_limits(self, mode, pid):
+        """lfitci, ciplot(area|bar|scatter): twoway's y axis spans both
+        limits, as the plain lfitci's does (fixture yrange equal to
+        RB-08's); dash's y range covers the upper limit too."""
+        probes = _truth()["probes"]
+        assert probes[pid]["yrange"] == probes["RB-08"]["yrange"]
+        tgt = re.search(r"ciplot\((\w+)\)", probes[pid]["cmd"]).group(1)
+        [plain] = _rb_figs(mode, [plot_for("lfitci")])
+        [f] = _rb_figs(mode, [plot_for("lfitci", {"ciplot": tgt})])
+        assert f.y_range.end >= plain.y_range.end - 1e-9, (
+            f.y_range.end, plain.y_range.end)
+
+
+class TestTheBoundExtent:
+
+    def test_drawn_from_the_layer_source(self):
+        """_dash_bound_extent: an invisible scatter at x and recast_hi on
+        the layer's own source and view, tagged dash_bound_extent; none
+        without the option or its column."""
+        from bokeh.models import BooleanFilter, CDSView
+        src = ColumnDataSource({"x": [1.0, 2.0], "lo": [1.0, 2.0],
+                                "hi": [5.0, 6.0]})
+        view = CDSView(filter=BooleanFilter([True, False]))
+        fig = figure()
+        r = dr._dash_bound_extent(fig, src, view, "x", {"recast_hi": "hi"})
+        assert r is fig.renderers[-1] and r.tags == ["dash_bound_extent"]
+        assert (r.glyph.x, r.glyph.y) == ("x", "hi")
+        assert r.data_source is src and r.view is view
+        assert float(r.glyph.size) == 0.0
+        for o in ({}, {"recast_hi": "nope"}):
+            assert dr._dash_bound_extent(figure(), src, None, "x", o) is None
+
+
+class TestTheBoundHelp:
+
+    def test_the_second_bound_is_documented(self):
+        """WP-46 RH-3: the Recast paragraph says a range type drawn as a
+        yx type keeps both bounds on the axis, in its title and key."""
+        with open(_HELP, encoding="utf-8") as fh:
+            flat = re.sub(r"\s+", " ", fh.read())
+        assert ("a range type named as a yx type draws its first bound "
+                "and keeps both on the axis, in its title and key") in flat

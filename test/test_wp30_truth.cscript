@@ -10657,8 +10657,11 @@ if inlist("`only'", "", "S45") & `: list posof "S45" in w30_run' {
     local s45pg "`w30_work'/zrc.html"
     // RC-20: base recasts draw the target (recast_truth.json W-sc-line,
     // W-rl-line, W-ts-conn: equal to twoway's line y x, one path, and
-    // connected y t, sort).
-    foreach row in "scatter y x, recast(line)|Line:8" "rline y y2 x, recast(line)|Line:8" ///
+    // connected y t, sort).  Flipped (WP-46 RH-3): rline's "Line:8" was
+    // wrong because twoway keeps the second bound on the axis
+    // (recast_truth.json RB-01, y 0..11); dash draws it as an invisible
+    // extent scatter of 8 points beside the line.
+    foreach row in "scatter y x, recast(line)|Line:8" "rline y y2 x, recast(line)|Line:8 Scatter:8" ///
                    "tsline y, recast(connected)|Line:8 Scatter:8" {
         gettoken c want : row, parse("|")
         local want = substr("`want'", 2, .)

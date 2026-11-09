@@ -4032,7 +4032,9 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
 
     // Include "colorvar" so the variable referenced by colorvar() is added to
     // the jsonio varlist; without this, foreign/etc. is missing from the data
-    // JSON and value labels never reach the Python renderer.
+    // JSON and value labels never reach the Python renderer.  recast_hi
+    // is the second bound of a range source drawn as a yx type (WP-46
+    // RH-3): exported so its extent and title can be drawn.
     keys    = (char(34)+"yvar"+char(34)+":",   char(34)+"xvar"+char(34)+":",  char(34)+"var"+char(34)+":",
                char(34)+"yvar1"+char(34)+":", char(34)+"yvar2"+char(34)+":",
                char(34)+"y1var"+char(34)+":", char(34)+"x1var"+char(34)+":", char(34)+"y2var"+char(34)+":", char(34)+"x2var"+char(34)+":",
@@ -4040,7 +4042,8 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
                char(34)+"mlabvposition"+char(34)+":",
                char(34)+"colorvar"+char(34)+":",
                char(34)+"wexp"+char(34)+":",
-               char(34)+"zvar"+char(34)+":")
+               char(34)+"zvar"+char(34)+":",
+               char(34)+"recast_hi"+char(34)+":")
     varlist = ""
 
     for (k = 1; k <= cols(keys); k++) {

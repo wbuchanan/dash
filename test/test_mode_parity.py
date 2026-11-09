@@ -3323,6 +3323,13 @@ CORPUS = [
     _case("graph set svg fontface (WP-45 45-05)",
           [_sc(mlabel="foreign")], {"fontface": "Courier"},
           go={"title": '"T"', "subtitle": '"{stSerif:S}"'}),
+    # WP-46 RH-3: a range source drawn as a yx type keeps its second
+    # bound; ciplot() drawn as a yx type keeps its upper limit.
+    _case("rline recast(line) both bounds (WP-46 RH-3)",
+          [{"type": "line", "recast_from": "rline", "yvar": "mpg",
+            "xvar": "weight", "options": {"recast_hi": "price"}}]),
+    _case("lfitci ciplot(bar) (WP-46 RH-3)",
+          [plot_for("lfitci", {"ciplot": "bar"})]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

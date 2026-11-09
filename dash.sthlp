@@ -4349,8 +4349,9 @@ serves every y variable.  A {cmd:scatter},
 {cmd:line}, {cmd:connected}, {cmd:area}, {cmd:bar}, {cmd:spike},
 {cmd:dropline}, range, {cmd:pc} or time-series layer is drawn as the
 type named, as {cmd:twoway} draws it; a range type named as a yx type
-draws its first bound, and {cmd:tsline} and {cmd:tsrline} still join in
-time order.  The fits and smooths, {cmd:kdensity}, {cmd:function},
+draws its first bound and keeps both on the axis, in its title and key
+({cmd:ciplot()} drawn as a yx type keeps both limits on the axis), and
+{cmd:tsline} and {cmd:tsrline} still join in time order.  The fits and smooths, {cmd:kdensity}, {cmd:function},
 {cmd:histogram} and {cmd:scatteri} keep their computed points and draw
 them as {cmd:scatter}, {cmd:line}, {cmd:connected}, {cmd:area},
 {cmd:bar} (one x unit wide), {cmd:spike}, {cmd:dropline} or {cmd:dot},

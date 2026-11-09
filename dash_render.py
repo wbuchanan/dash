@@ -28658,7 +28658,7 @@ class GlyphMapper:
                      "dropline", "dot")
 
     def _dash_draw_xy_as(self, fig, source, xcol, ycol, target, options,
-                         color_idx=0):
+                         color_idx=0, hicol=None):
         """Draw a derived layer's computed points as *target* (WP-30 P1.8b).
 
         twoway draws ``kdensity x, recast(area)`` as an area under the
@@ -28674,6 +28674,11 @@ class GlyphMapper:
         membership in ``_RECAST_DRAWN`` and never reaches ``getattr``; any
         other name (a hand-written spec) draws nothing and says so in the
         words of the "no glyph mapper" path.
+
+        *hicol* (a ci band drawn as a yx type, WP-46 RH-4): the upper
+        limit, a ``y2`` column of the fresh source drawn invisibly after
+        the target (tagged ``dash_bound_extent``), so the axis spans both
+        limits as twoway's does (recast_truth.json RB-04..06).
 
         Returns the first renderer the target drew (None when it drew
         none).
@@ -28693,6 +28698,13 @@ class GlyphMapper:
         _dash_glyph_dispatch(self)[0][target](
             fig, pts, "y", "x", opts, view=None, color_idx=color_idx, **kw)
         added = list(fig.renderers[before:])
+        if hicol is not None and hicol in data:
+            # After the target, so it is never the renderer returned.
+            pts.data["y2"] = np.asarray(data[hicol], dtype=float)
+            fig.scatter(x="x", y="y2", source=pts, size=0,
+                        fill_color=None, line_color=None, fill_alpha=0,
+                        line_alpha=0, line_width=0).tags = [
+                            "dash_bound_extent"]
         return added[0] if added else None
 
     #: A histogram's own option keys, not handed to the range type its
@@ -28731,7 +28743,7 @@ class GlyphMapper:
                 if k not in self._FIT_DRAW_KEYS}
         if isinstance(target, str) and target in self._RECAST_DRAWN:
             return self._dash_draw_xy_as(fig, source, xcol, locol, target,
-                                         opts, color_idx)
+                                         opts, color_idx, hicol=hicol)
         if not isinstance(target, str) or target not in self._CIPLOT_RANGE:
             warnings.warn(
                 "dash: no glyph mapper for plot type %r; nothing was drawn "
@@ -59580,7 +59592,10 @@ def _dash_header_models(title_text, subtitle_text, css=""):
 #: _dash_layer_source's extra_cols -- so the mappers can read it.
 #: mlabvposition() names a variable of per-row clock positions (WP-30
 #: P1.24), read by the label applier from the layer's source.
-_DASH_OPT_VAR_KEYS = ("colorvar", "mlabel", "mlabvposition", "wexp")
+_DASH_OPT_VAR_KEYS = ("colorvar", "mlabel", "mlabvposition", "wexp",
+                      # WP-46 RH-3: a range source drawn as a yx type's
+                      # second bound (dash.ado's recast_hi).
+                      "recast_hi")
 #: Plot KEYS that name a dataset column: one tuple for the saved column
 #: lists, the served app and the embed plan (WP-29 P0.11).  The served
 #: placeholder listed five of them, so a paired-coordinate layer's columns
@@ -68808,6 +68823,16 @@ def _dash_layer_series(plot, var_labels=None, default_level=None):
     opts = plot.get("options")
     opts = opts if isinstance(opts, dict) else {}
     ptype = str(plot.get("type", "") or "").strip().lower()
+    # WP-46 RH-3: a range source drawn as a yx type (dash.ado's
+    # options.recast_hi, its second bound) is titled and keyed as its
+    # range type is, by both bounds (twoway's y2xview_g dimtitle;
+    # recast_truth.json RB-01, RB-02: "y/y2").
+    _rfrom = str(plot.get("recast_from", "") or "").strip().lower()
+    _rhi = str(opts.get("recast_hi", "") or "").strip()
+    if _rhi and _rfrom in _DASH_RANGE_TYPES and plot.get("yvar"):
+        q = dict(plot, type=_rfrom, yvar1=plot.get("yvar"), yvar2=_rhi)
+        q.pop("recast_from", None)
+        return _dash_layer_series(q, var_labels, default_level)
 
     def L(name):
         return _dash_var_label(vl, name) if name not in (None, "") else ""
@@ -69044,8 +69069,11 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
         # is keyed by them alone.
         keyed = [r for r in rends if getattr(r, "_dash_key_glyph", False)]
         # WP-31 B5b: twoway keys dot's marker, not its rows of dots.
+        # WP-46 RH-3: nor a recast range layer's invisible second bound.
         rends = [r for r in rends if not _dash_is_swatch(r)
-                 and "dash_dots" not in (getattr(r, "tags", None) or ())]
+                 and "dash_dots" not in (getattr(r, "tags", None) or ())
+                 and "dash_bound_extent" not in (getattr(r, "tags", None)
+                                                 or ())]
         # WP-42 CV-7: a colorvar() renderer is keyed by its proxy, in the
         # series colour (GlyphMapper._colorvar_key_proxy).
         _kr = []
@@ -73721,6 +73749,7 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
         # WP-32: what the layer evaluates is on its scale, drawn or not.
         _dash_tag_eval_extent(mapper, fig, _before, pt, source, view,
                               options, yvar, xvar)
+        _dash_bound_extent(fig, source, view, xvar, options)
         return out
     finally:
         # Bokeh made the layer's nonselection and muted copies when
@@ -73728,6 +73757,28 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
         # them the glyph's drawn values (WP-30 P1.12a, ratification
         # row 27, Evidence E10).
         GlyphMapper._sync_brushed_copies(fig, _before)
+
+
+def _dash_bound_extent(fig, source, view, xvar, options):
+    """The second bound of a range source drawn as a yx type (WP-46 RH-3,
+    D-46-02.a): *options*' ``recast_hi`` (dash.ado writes it for
+    ``rline lo hi x, recast(line)``) drawn at *xvar* from the layer's own
+    *source* and *view*, invisibly, tagged ``dash_bound_extent``, so the
+    axis hull spans both bounds as twoway's y2xview does
+    (recast_truth.json RB-01..03) and a filter move keeps it on the
+    layer's rows.  The legend skips it (_dash_legend_keys); the layer's
+    transposer turns it under horizontal.  Returns the renderer, or None
+    when there is no such option or column."""
+    hi = str((options or {}).get("recast_hi", "") or "").strip()
+    data = getattr(source, "data", None) or {}
+    if not hi or not xvar or hi not in data or xvar not in data:
+        return None
+    kw = {"view": view} if view is not None else {}
+    r = fig.scatter(x=xvar, y=hi, source=source, size=0, fill_color=None,
+                    line_color=None, fill_alpha=0, line_alpha=0,
+                    line_width=0, **kw)
+    r.tags = ["dash_bound_extent"]
+    return r
 
 
 #: WP-32 (BUGS.md "Axes of a layer that draws no point: twoway keeps the
@@ -80633,7 +80684,9 @@ class ServerAppBuilder:
                     _stata_if_to_pandas,
                     # WP-30 P1.31a: the estimator memo the app wraps
                     # lowess, fpfit and lpoly in.
-                    _dash_memo_key, _dash_memo_wrap):
+                    _dash_memo_key, _dash_memo_wrap,
+                    # WP-46 RH-3: a recast range layer's second bound.
+                    _dash_bound_extent):
             out += _dash_copied_lines(_fn)
             out += ["", ""]
 
