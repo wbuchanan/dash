@@ -637,10 +637,11 @@ class TestGraphOutlineInChrome:
         rec = self._probe(mode, {"xsize": "4", "ysize": "4"}, tmp_path)
         l, t, w, h = rec["region"][:4]
         assert abs(w - 384) <= 1 and abs(h - 384) <= 1, rec
-        # The plot region's top: the 13.44 px margin and Bokeh's own 5 px
-        # border above the frame (as on a stretched graph).
+        # The plot region's top: the 13.44 px margin and the 1 px border
+        # the plot region's thin outline needs (Flipped, WP-45 GW-6
+        # residual: was Bokeh's own 5 px border).
         fl, ft = rec["frames"][0][:2]
-        assert abs(ft - t - (13.44 + 5)) <= 1.5, rec
+        assert abs(ft - t - (13.44 + 1)) <= 1.5, rec
 
     def test_the_inner_line(self, mode, tmp_path):
         """WP-45 ST-21: graphregion(ilcolor(red) ilwidth(thick)) strokes
@@ -752,8 +753,9 @@ class TestPlotLineAlignInChrome:
     I_pla: the 25.92-unit line's centre 12.96 units inside, on and 12.96
     units outside the 113.4-unit edge of 3240, 840 px tall).  dash draws
     inside and center as twoway does and outside centred, a documented
-    difference: the canvas ends 5 px above the frame on a side without an
-    axis, so an outside line was cut there (measured: rows -5 to 1 drawn
+    difference: the canvas ends at the frame on a side without an axis
+    (5 px above it before GW-6's min_border 0), so an outside line is cut
+    there (measured with the 5 px border: rows -5 to 1 drawn
     red where twoway's run -6.72 to 0).  Before: centred on the edge at
     every lalign()."""
 

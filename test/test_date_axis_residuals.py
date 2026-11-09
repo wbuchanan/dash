@@ -710,6 +710,11 @@ _PLAIN_DIGESTS = {
     # null y grid).  A masked model diff against the tree before 44-04
     # differs in the x range's finish callback code alone, in both cases.
     ("saved", "plain"):
+        # WP-45 GW-6 residual: no border of Bokeh's own, min_border the
+        # plot region outline's width: 50e68c33... -> 60f159ab... (saved)
+        # and 8c828242... -> 716bad35... (served); yaxis2 ff05e549... ->
+        # ef52ed54... and 397b78b8... -> 4ebf96d9..., under Bokeh 3.8 and
+        # 3.9.
         # WP-45 ST-21 residual: a lone graph's plot-region margin over the
         # plot region's estimated side moves the padded ranges: 26179bc0...
         # -> 50e68c33... (saved) and f08c9445... -> 8c828242... (served);
@@ -720,13 +725,13 @@ _PLAIN_DIGESTS = {
         # and cb2e0754... -> f08c9445... (served); yaxis2 b72f9d52... ->
         # f6d4fc4a... and 9f8feced... -> edc34f85..., under Bokeh 3.8 and
         # 3.9.
-        "50e68c339b8079af09306ea9a5813da5baa23797fecb30150d01661f59b0dce1",
+        "60f159abdefd25990e143e385b73e436cc4a95b451130ab1a6875645f8c2dde5",
     ("saved", "yaxis2"):
-        "ff05e5493bd6efaac0a4a6e98e50c65644f12be5507d01f9036dab5faf1e4aa2",
+        "ef52ed547b038f7092e0c58266365922b2a2c183ae33faf1124ae732c010de83",
     ("served", "plain"):
-        "8c828242aae3c644a3cb09d102020a405e5e01b1caae302a5b798cb88f5d5312",
+        "716bad358c7672e68e2d4465bf9e00bcf90206b226d828be5b8df6dacb0cb46a",
     ("served", "yaxis2"):
-        "397b78b83ce4dc45bba0b70bb69b6ffd2a1ac69bcc4dfff5a3fddf60cf5abd84",
+        "4ebf96d9897dd21cbf0d6fe4fd34dac8133af41695e5cf12d49cb005c250dc11",
 }
 
 

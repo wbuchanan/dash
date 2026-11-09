@@ -1015,6 +1015,7 @@ and now matches Stata.
 
 ### Fixed in WP-45
 
+- A figure has no border of Bokeh's own: the plot region of scatter mpg weight under s2color at 528 px lies 15 px from the graph's right edge, its graph margin and 1 px for the plot region's outline (was 19, Bokeh's 5 px added) (WP-45, GW-6)
 - plotregion(lalign(inside)) draws the plot region's line inside its edge and lalign(center) on it, as twoway draws them, and neither is named in a note any more; lalign(outside) is drawn on the edge, a documented difference (WP-45, ST-21)
 - plotregion(margin()) and the scheme's plot-region margin are a share of the graph's smaller side, as twoway draws them: plotregion(margin(10 10 10 10)) xsize(4) ysize(8) leaves 38 px between the plot region's edge and the data on each side (was 30 across and 35 down) (WP-45, ST-21)
 - A title, subtitle, note or caption above or below the plot takes twoway's room, its size plus its text box style's margin: title("T") under s2color leaves 23 px above the plot region at 528 px (was 31), and under scale(2) 48 px (was 64), as twoway's grows (WP-45, VF-4)

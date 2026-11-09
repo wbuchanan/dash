@@ -25,18 +25,23 @@ the comparison against SCALE_FRAME_KNOWN.
 # WP-45 GW-6 (08nov2026): the comparison reads the graph region box, the
 # scheme's margin drawn round the figure, so A:top, B:left and B:top's
 # intercepts agree and their rows are gone; the other intercepts are
-# Bokeh's own 5 px border inside the margin (GW-6's residual).
+# Bokeh's own 5 px border inside the margin (GW-6's residual), gone
+# since every figure's min_border is 0 (WP-45 GW-6, 08nov2026): the
+# A:right and B:right intercept rows too (15.00 px against 13.46: the
+# margin and the plot region outline's 1 px).  The
+# A:bottom, A:left and B:bottom intercepts did not move (an axis side's
+# border was never Bokeh's 5 px): an axis's room extrapolated to
+# scale(0) keeps about 5 px twoway's does not, the residual BUGS.md
+# "An axis's room under scale() keeps about 5 px that twoway's does not".
 # WP-45 VF-4 residual (08nov2026): each title-family box takes twoway's
 # room, its size plus its style's margin (_dash_title_standoffs), so
 # A:top and B:top's slopes agree and their rows are gone.
 SCALE_FRAME_KNOWN = {
     "A:bottom:intercept": "GW-6 (residual)",  # twoway 13.44 / dash 19.72 px (08nov2026)
     "A:left:intercept": "GW-6 (residual)",  # twoway 13.44 / dash 18.72 px (08nov2026)
-    "A:right:intercept": "GW-6 (residual)",  # twoway 13.46 / dash 19.00 px (08nov2026)
-    "B:bottom:intercept": "GW-6 (residual)",  # twoway 13.44 / dash 21.15 px (08nov2026)
+    "B:bottom:intercept": "GW-6 (residual)",  # twoway 13.44 / dash 21.16 px (08nov2026)
     "B:bottom:linear": "LT-6 (residual)",  # D43: twoway residual 0.01 / dash 2.86 px
     "B:left:slope": "LT-6 (residual)",  # D43: twoway 31.50 (legend widens) / dash 36.41
-    "B:right:intercept": "GW-6 (residual)",  # twoway 13.46 / dash 19.00 px (08nov2026)
 }
 
 SCALE_FRAME_DELIBERATE = {}

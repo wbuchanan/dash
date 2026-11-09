@@ -62208,6 +62208,33 @@ _DASH_TITLE_LINE_EXCESS = 0.15
 _DASH_TITLE_ROOM_KEYS = ("title", "subtitle", "note", "caption")
 
 
+def _dash_outline_border(fig):
+    """*fig*'s ``min_border``: no border of Bokeh's own (WP-45 GW-6; its
+    5 px minimum put the plot region 5 px further in than twoway's on a
+    side with no axis text), but the room the plot region's outline
+    needs.  Bokeh centres the outline on the frame's edge, so its outer
+    half lies on the border, and the canvas ends at the frame on a side
+    with no axis or title: the outline's width in whole px at the 4-inch
+    model (1 px for a scheme's thin line), which holds that half up to
+    about 2.6 x the drawn width scale (D66); 0 with no outline.  A side
+    already set (graphregion(margin()), outergap(): additions to the base)
+    gains the same room, so it stays the base plus its addition.  Run once
+    the figure's regions are drawn, before scale()."""
+    w = getattr(fig, "outline_line_width", None)
+    if fig.outline_line_color is None or isinstance(w, bool) \
+            or not isinstance(w, (int, float)) or not math.isfinite(w):
+        new = 0
+    else:
+        new = int(math.ceil(max(0.0, float(w))))
+    old = fig.min_border if isinstance(fig.min_border, int) else 0
+    for side in ("left", "right", "top", "bottom"):
+        cur = getattr(fig, "min_border_" + side, None)
+        if isinstance(cur, (int, float)) and not isinstance(cur, bool):
+            setattr(fig, "min_border_" + side,
+                    max(0, int(round(cur + new - old))))
+    fig.min_border = new
+
+
 def _dash_title_standoffs(fig):
     """twoway's room for each title, subtitle, note and caption box outside
     *fig*'s plot region (WP-45 VF-4 residual): the text's size plus its
@@ -66706,9 +66733,9 @@ def _dash_plot_line_align(fig, raw):
     draws it.  center and outside keep Bokeh's centred outline: outside
     the frame there is no canvas on a side without an axis (the graph
     region's margin is the page's, round the canvas), so an outside line
-    would be cut there (measured in Chrome at 1400 px: 5 of its 6.72 px
-    drawn above the frame); dash.sthlp documents it (Differences from
-    twoway).  Only when lalign(inside) is given: the default line stays
+    would be cut there (measured in Chrome at 1400 px, before GW-6 set
+    min_border 0: 5 of its 6.72 px drawn above the frame; now none);
+    dash.sthlp documents it (Differences from twoway).  Only when lalign(inside) is given: the default line stays
     centred, half its width off twoway's.  The box is tagged
     ``dash_plot_line`` (the width scale draws it at the outline's scale,
     D66).  Returns the box, or None."""
@@ -75333,6 +75360,12 @@ class DashRenderer:
             sizing_mode="stretch_width",
             # The one tool list, which the generated app passes too.
             tools=_DASH_FIGURE_TOOLS,
+            # WP-45 GW-6: no border of Bokeh's own (its 5 px minimum on
+            # every side), so the scheme's graph margin round the figure
+            # and each side's axis and title room are the whole border,
+            # as twoway draws the plot region its margin in from the
+            # graph's edge on a side with no axis text.
+            min_border=0,
         )
         if aspect_ratio is not None:
             fig_kwargs["aspect_ratio"] = aspect_ratio
@@ -75911,6 +75944,7 @@ class DashRenderer:
         # WP-31 D5: scale() over everything drawn, then the overhangs'
         # borders and the figure's box and plot region (WP-45 VF-4), last.
         _dash_title_standoffs(fig)
+        _dash_outline_border(fig)
         _dash_apply_scale(fig, _dash_scale_factor(graph_opts))
         fig._dash_gsize = (getattr(self.scheme, "graphsize_x", None) or 5.5,
                            getattr(self.scheme, "graphsize_y", None) or 4.0)
@@ -80469,6 +80503,7 @@ class ServerAppBuilder:
                     _dash_scale_columns, _dash_apply_scale, _dash_frame_aspect,
                     # WP-45 VF-4 residual: twoway's title room.
                     _dash_title_standoffs,
+                    _dash_outline_border,
                     _dash_frame_borders, _dash_frame_sizes,
                     _dash_apply_frame_aspect, _dash_overhangs, _dash_fxy_size,
                     _dash_by_fxy_px,
@@ -82777,6 +82812,8 @@ class ServerAppBuilder:
             "            tools=_DASH_FIGURE_TOOLS,",
             "            sizing_mode='stretch_width',",
             "            output_backend=backend,",
+            "            # WP-45 GW-6: no border of Bokeh's own (min_border 0).",
+            "            min_border=0,",
             "        )",
             "        # xsize()/ysize(): the helper the saved renderer runs, which",
             "        # names a bad aspectratio() too.  With neither given, the",
@@ -83194,6 +83231,7 @@ class ServerAppBuilder:
             "        # plot region (WP-45 VF-4), last, as the saved renderer",
             "        # applies them.",
             "        _dash_title_standoffs(fig)",
+            "        _dash_outline_border(fig)",
             "        _dash_apply_scale(fig, _dash_scale_factor(go))",
             "        fig._dash_gsize = (_SCHEME_GRAPHSIZE_X or 5.5, _SCHEME_GRAPHSIZE_Y or 4.0)",
             "        fig._dash_gmargin = _dash_graph_margin_pct(go, _dash_cur_scheme())",

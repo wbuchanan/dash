@@ -18,6 +18,7 @@ inches with tick labels at 11.26 pt, ``G_s2color`` 5.5 x 4 with 10.0 pt
 ``G_by_xs84`` 8 x 4; ``G_fx50``/``G_fy50`` keep the 7.5 x 4.5 graph.
 """
 import json
+import math
 import os
 import sys
 
@@ -235,8 +236,10 @@ class TestFxFy:
         # each estimated border grows by an eighth beside the slack.
         t = _truth()["G_" + opt[:2] + "50"]
 
+        # Flipped (WP-45 GW-6 residual): a side's estimate is at least 0
+        # px, the figure's min_border; it was Bokeh's 5 px minimum.
         def grown(side, key):
-            return max(5.0, est[key]) * 1.125
+            return max(0.0, est[key]) * 1.125
         if opt == "fxsize":
             assert f.min_border_left - grown("left", "left") == \
                 pytest.approx(252, abs=1)
@@ -796,6 +799,30 @@ class TestPlotLineAlign:
             scheme="stcolor")
         _, notes, _ = tbk._build("saved", spec)
         assert not [n for n in notes if "lalign" in n], notes
+
+
+class TestNoBokehBorder:
+    """WP-45 GW-6 residual: twoway's plot region on a side with no axis
+    text lies its graph margin in from the graph's edge (13.44 px at 528
+    px, test_scale_frame.py), so dash's figure has no border of Bokeh's
+    own (Bokeh still grows a side for its axis or title) but the room the
+    plot region's centred outline needs, its width in whole px (1 px for
+    the scheme's thin line), and none without an outline.  Before:
+    Bokeh's 5 px minimum on every side."""
+
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("go", [{}, {"by": "foreign"},
+                                    {"xsize": "4", "ysize": "4"},
+                                    {"plotregion": "lalign(inside) "
+                                     "lwidth(thick)"},
+                                    {"plotregion": "lwidth(thick)"}])
+    def test_min_border(self, go, mode):
+        _, figs = _figs(mode, go)
+        assert figs
+        for f in figs:
+            want = (0 if f.outline_line_color is None else
+                    math.ceil(f.outline_line_width))
+            assert f.min_border == want, (go, f.min_border)
 
 
 class TestTheLookupWalk:

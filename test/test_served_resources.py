@@ -724,7 +724,8 @@ _SAVED_DIGEST = (
     # outline in its styles) and the width scale's --dash-k on the box:
     # 0a7ba62d... -> 11a6ea31..., the same under Bokeh 3.8 and 3.9.
     # 11a6ea31 -> 85a686cf: WP-45 ST-21 residual: a lone graph's plot-region margin over the plot region's estimated side moves every padded range, the same under both Pythons.
-    "85a686cf5f48f78d855692b9ae9b2c30fce38e92797e499f6314f4cce95f5aca")
+    # 85a686cf -> a6e3fc6a: WP-45 GW-6 residual: no border of Bokeh's own, min_border the plot region outline's width, the same under both Pythons.
+    "a6e3fc6a561f2de02da5d1b8f785a003ebaddc5a2b077305cb84d146aa6eb658")
 
 
 # ===========================================================================

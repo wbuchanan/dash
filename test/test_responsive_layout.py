@@ -246,8 +246,12 @@ def _check(name, results):
         # "sw" above).  Only that box's layers may lie past the edge.
         past = [tuple(int(v) for v in p.rsplit(":", 1)[1].split("+"))
                 for p in r.get("past", [])]
-        box = [x for x, wd in past if wd == FIXED_W]
-        inside = bool(box) and all(x + wd <= box[0] + FIXED_W
+        # Flipped (WP-45 GW-6 residual): with no border of Bokeh's own the
+        # probe's first six elements past the edge are the figure's canvas
+        # layers inside the graph margin (947 px of the 960 px box), not
+        # the box; either is the box the layers must lie within.
+        box = [(x, wd) for x, wd in past if FIXED_W - 16 <= wd <= FIXED_W]
+        inside = bool(box) and all(x + wd <= box[0][0] + box[0][1]
                                    for x, wd in past)
         if r["offscreen"] and (name.split()[-1] != "bs_facet"
                                or not inside):
