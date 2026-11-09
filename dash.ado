@@ -3309,8 +3309,8 @@ program define _dash_fold_typed, sclass
 end
 
 // ================================================================
-// _dash_hz_check <ptype> <target> <kind> <S>  -- horizontal and vertical
-// refused as twoway refuses them (WP-30 P1.9a)
+// _dash_hz_check <ptype> <target> <kind> <S> <T>  -- horizontal and
+// vertical refused as twoway refuses them (WP-30 P1.9a)
 //
 // Called by _dash_process_segment right after _dash_recast_opt, so ptype
 // is the type drawn (a base, range, pc or time-series layer's recast
@@ -3323,25 +3323,46 @@ end
 //   * a range layer drawn as a yx type (kind "range2yx") takes both, as
 //     twoway_y2xview_parse reads them for every range source (WP-46
 //     RH-1; horizontal_truth.json recast.RH1-*);
-//   * a derived type (_hz_derived) is refused only when it and its recast
-//     target both refuse the flag;
+//   * a derived type (_hz_derived, scatteri among them, WP-46 RH-9) is
+//     refused only when it and its recast target both refuse the flag;
+//   * judged on the recast word as typed (WP-46 RH-9; twoway's
+//     BarOrBarDerived compares the typed word): a bar, area, spike,
+//     dropline or dot target named by an abbreviation, or by a value of
+//     several words, takes neither flag, the type's own acceptance aside
+//     on a derived type; on dot (kind "dotrecast") the flags are taken
+//     only under recast(bar), (area), (dot), (dropline) or (spike) typed
+//     in full;
 //   * a refusing type names the first refused flag in the order typed,
 //     as typed (Mata _dash_hz_order; "option vert not allowed"); then the
 //     two together are "may not combine
 //     options horizontal and vertical", r(198).
 // The lists equal dash_render.py's _DASH_HORIZONTAL_TYPES,
 // _DASH_VERTICAL_TYPES and _DASH_DERIVED_ORIENT_TYPES (test_horizontal.py).
-// S names a string scalar holding the plot's option text, read by value;
-// messages are constant text.  sclass:
+// S names a string scalar holding the plot's option text and T one
+// holding the recast word as typed ("" without recast()), each read by
+// value; messages are constant text.  sclass:
 // it reads s(horizontal) and s(vertical) and changes nothing in s().
 // ================================================================
 program define _dash_hz_check, sclass
     version 19
-    args ptype target kind S
+    args ptype target kind S T
     local _hz_htypes area bar spike dropline dot histogram kdensity rarea rbar rspike rcap rcapsym rline rconnected rscatter rpcap rpspike pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi function tsrline contour contourline
     local _hz_vtypes area bar spike dropline dot histogram rarea rbar rspike rcap rcapsym rline rconnected rscatter rpcap rpspike pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi tsrline contour contourline
-    local _hz_derived lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mband mspline kdensity function histogram
+    local _hz_derived lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mband mspline kdensity function histogram scatteri
     if `"`s(horizontal)'`s(vertical)'"' == "" exit
+    // The recast word as typed against the canonical target (WP-46 RH-9):
+    // _hz_ab, an abbreviated bar-like target; _hz_dok, dot's recast word
+    // one twoway takes the flags under.
+    local _hz_bar bar area spike dropline dot
+    local _hz_canon "`target'"
+    if inlist("`kind'", "base", "ts", "") local _hz_canon "`ptype'"
+    local _hz_ab 0
+    local _hz_dok 0
+    if "`T'" != "" {
+        mata: st_local("_hz_ab", strofreal(st_strscalar("`T'") != "" & st_strscalar("`T'") != st_local("_hz_canon")))
+        mata: st_local("_hz_dok", strofreal(anyof(tokens(st_local("_hz_bar")), st_strscalar("`T'"))))
+    }
+    if "`_hz_canon'" == "" | !`: list _hz_canon in _hz_bar' local _hz_ab 0
     mata: st_local("_hz_order", _dash_hz_order(st_strscalar("`S'")))
     if "`_hz_order'" == "" {
         if `"`s(horizontal)'"' != "" local _hz_order horizontal
@@ -3355,12 +3376,14 @@ program define _dash_hz_check, sclass
         if "`kind'" == "range2yx" local _hz_ok 1
         if "`f'" == "horizontal" {
             if `: list ptype in _hz_htypes' local _hz_ok 1
-            if "`kind'" == "derived" & `: list ptype in _hz_derived' & `: list target in _hz_htypes' local _hz_ok 1
+            if "`kind'" == "derived" & `: list ptype in _hz_derived' & `: list target in _hz_htypes' & !`_hz_ab' local _hz_ok 1
         }
         else {
             if `: list ptype in _hz_vtypes' local _hz_ok 1
-            if "`kind'" == "derived" & `: list ptype in _hz_derived' & `: list target in _hz_vtypes' local _hz_ok 1
+            if "`kind'" == "derived" & `: list ptype in _hz_derived' & `: list target in _hz_vtypes' & !`_hz_ab' local _hz_ok 1
         }
+        if `_hz_ab' & inlist("`kind'", "base", "ts", "") local _hz_ok 0
+        if "`kind'" == "dotrecast" local _hz_ok `_hz_dok'
         if !`_hz_ok' {
             display as error "option `w' not allowed"
             exit 198
@@ -3620,12 +3643,14 @@ end
 //     in the class prints twoway's two notes and falls back -- yxtype to
 //     scatter, y2xtype to rspike, yxyxtype to pcspike, functiontype to
 //     function's own line.
-// Returns s(_recast_type) (the type drawn: the target for a base, range,
+// Returns s(_recast_typed) (the value as typed, trimmed; WP-46 RH-9),
+// s(_recast_type) (the type drawn: the target for a base, range,
 // pc or time-series source, the typed type for a derived one),
 // s(_recast_target) (the canonical target, empty when there is none) and
 // s(_recast_kind): base, range2yx (a range source drawn as a yx type: its
 // first bound), ts, derived, literal (pci and pcarrowi drawn as the pc
-// type named, WP-31 C7) or empty; a range target or the fallback on
+// type named, WP-31 C7), dotrecast (dot, drawn unchanged, WP-46 RH-9)
+// or empty; a range target or the fallback on
 // histogram is derived.  The value is read by value; echoes go through
 // _dash_say and _dash_note.
 // ================================================================
@@ -3636,6 +3661,8 @@ program define _dash_recast_opt, sclass
     sreturn local _recast_target ""
     sreturn local _recast_kind ""
     sreturn local _recast_ts ""
+    sreturn local _recast_typed ""
+    sreturn local typesfx ""
     mata: st_local("_rc_bad", ustrregexm(" " + st_global("s(_unknown)"), "[ ,](rec|reca|recas)\(") ? ustrregexs(1) : "")
     if "`_rc_bad'" != "" {
         mata: _dash_say("err", "option ", st_local("_rc_bad"), "() not allowed")
@@ -3651,6 +3678,7 @@ program define _dash_recast_opt, sclass
     sreturn local recast ""
     sreturn local type ""
     if `: length local _rc_r' == 0 exit
+    mata: st_global("s(_recast_typed)", st_local("_rc_r"))
     local _rc_ci "lfitci qfitci lpolyci fpfitci"
     if `: list ptype in _rc_ci' {
         if "`_rc_word'" == "recast" display as error "recastas() option not allowed"
@@ -3661,7 +3689,10 @@ program define _dash_recast_opt, sclass
     // unchanged (twoway dot mpg weight, recast(line) and recast(scatter):
     // rc 0, the same SVG; test/fixtures/rbar_dot_truth.json probes), so
     // it is named in the note, not dropped in silence.
+    // Its orientation flags are judged on the word typed (kind
+    // dotrecast, WP-46 RH-9).
     if "`ptype'" == "dot" {
+        sreturn local _recast_kind dotrecast
         _dash_recast_named `_rc_word'
         exit
     }
@@ -3749,8 +3780,9 @@ program define _dash_recast_opt, sclass
 end
 
 // _dash_recast_s <key> <value>: sets s(<key>) for _dash_process_segment,
-// an rclass program (WP-30 P1.8b).  <key> is recast or sort1, <value> a
-// type or variable name dash wrote, never the user's text.
+// an rclass program (WP-30 P1.8b).  <key> is recast, sort1 or typesfx
+// (WP-46 RH-9), <value> a type or variable name or a word dash wrote,
+// never the user's text.
 program define _dash_recast_s, sclass
     version 19
     args key value
@@ -6052,7 +6084,7 @@ program define _dash_plot_opts_to_json, rclass
                    lineopts fitopts color mlwidth mstyle lstyle mlstyle ///
                    clstyle astyle alstyle bstyle blstyle dstyle dlstyle bmlinestyle p mlpattern ///
                    dotextend ndots dsymbol dcolor dfcolor dsize dlcolor dlwidth dlalign ///
-                   blabel horizontal vertical sort range range_var range_panels colorlist jitterseed ///
+                   blabel horizontal vertical sort range range_var range_panels typesfx colorlist jitterseed ///
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///
                    mlabvposition mlabtextstyle ///
@@ -7322,9 +7354,19 @@ program define _dash_process_segment, rclass
         if "`_rc_kind'" == "range2yx" local yvar "`yvar1'"
         // horizontal and vertical refused where twoway refuses them,
         // judged after recast() (WP-30 P1.9a): _dash_hz_check.
-        tempname _hz_s
+        // judged on the recast word as typed (WP-46 RH-9).
+        tempname _hz_s _hz_t
         mata: st_strscalar("`_hz_s'", st_local("opts_raw"))
-        _dash_hz_check "`ptype'" "`_rc_target'" "`_rc_kind'" `_hz_s'
+        mata: st_strscalar("`_hz_t'", st_global("s(_recast_typed)"))
+        _dash_hz_check "`ptype'" "`_rc_target'" "`_rc_kind'" `_hz_s' `_hz_t'
+        // A bar named by an abbreviation of bar is drawn in the plain p#
+        // style, as twoway draws it (its type suffix is empty: D-46-01.d;
+        // recast_truth.json RH9-10, RH9-12).  No other yx name has an
+        // abbreviation that is not a refusal's or a fallback's.
+        if inlist("`_rc_kind'", "base", "ts", "") & "`ptype'" == "bar" {
+            mata: st_local("_rc_gen", strofreal(st_strscalar("`_hz_t'") != "" & st_strscalar("`_hz_t'") != "bar" & length(tokens(st_strscalar("`_hz_t'"))) == 1))
+            if `_rc_gen' _dash_recast_s typesfx generic
+        }
         // connect() and cmissing() as twoway reads them (WP-30 P1.8a): a
         // scatter y given a connect() element is twoway's connected type,
         // and the folds, checks and sort below read it as connected.  A

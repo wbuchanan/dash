@@ -1748,6 +1748,38 @@ _hz_case Q4601-7 "rcap mpg price weight, recast(dropline) horizontal"
 _hz_case Q4601-8 "rbar mpg price weight, recast(dot) horizontal"
 _hz_case Q4601-9 "rarea mpg price weight, recast(line) horizontal vertical"
 _hz_case Q4601-26 "tsrline mpg price, recast(line) horizontal"
+// WP-46 RH-9: judged on the recast word as typed -- dot takes the flags
+// only under a bar-like recast typed in full; scatteri recast to a
+// bar-like type takes them; an abbreviated bar-like recast takes neither
+// (BarOrBarDerived compares the typed word; horizontal_truth.json
+// recast.RH9-*).
+_hz_case Q4601-10 "dot mpg weight, recast(line) horizontal"
+_hz_case Q4601-11 "dot mpg weight, recast(scatter) vertical"
+_hz_case Q4601-12 "dot mpg weight, recast(bar) horizontal"
+_hz_case Q4601-13 "dot mpg weight, recast(b) horizontal"
+_hz_case Q4601-14 "scatteri 1 1 2 2 3 1, recast(bar) horizontal"
+_hz_case Q4601-15 "scatteri 1 1 2 2 3 1, recast(area) vertical"
+_hz_case Q4601-16 "scatter mpg weight, recast(b) horizontal"
+_hz_case Q4601-17 "scatter mpg weight, recast(ba) horizontal"
+_hz_case Q4601-18 "scatter mpg weight, recast(bar) horizontal"
+_hz_case Q4601-27 "bar mpg weight, recast(b) horizontal"
+_hz_case Q4601-28 "lfit mpg weight, recast(b) horizontal"
+_hz_case Q4601-29 "dot mpg weight, recast(dot dot) horizontal"
+_hz_case Q4601-30 "scatter mpg weight, recast(bar bar) horizontal"
+_hz_case Q4601-31 "kdensity mpg, recast(b) horizontal"
+_hz_case Q4601-32 "tsline mpg, recast(b) horizontal"
+// An abbreviated bar recast is drawn in the plain p# style (D-46-01.d):
+// the spec carries typesfx generic; recast(bar) does not.
+capture dash clear
+capture noisily dash scatter mpg weight, recast(b) name(q4601g)
+local _q46_rc = _rc
+_ov_has "q4601g" `""typesfx":"generic""'
+local _q46_g = r(found)
+capture noisily dash scatter mpg weight, recast(bar) name(q4601b)
+_ov_has "q4601b" `""typesfx""'
+local _q46_b = r(found)
+_ov_assert Q4601-33 "(`_q46_rc' == 0) & (`_q46_g' == 1) & (`_q46_b' == 0)" "recast(b) writes typesfx generic, recast(bar) none (rc `_q46_rc', `_q46_g', `_q46_b')"
+capture dash clear
 
 // ----------------------------------------------------------------
 // U04: an option twoway refuses on a plot type is refused there (WP-31 C3)

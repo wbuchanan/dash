@@ -20501,6 +20501,22 @@ class GlyphMapper:
         # as twoway draws it; the outline keeps the colour (WP-30 P1.2b).
         _fill_base = _bar_default_color
         _f = self.scheme.p_bar_intensity[color_idx % 15]
+        # recast(b): a bar named by an abbreviation is drawn in the plain
+        # p# style, areastyle p# (WP-46 RH-9, D-46-01.d; twoway's type
+        # suffix is empty there: recast_truth.json RH9-10, outline 9.72
+        # against recast(bar)'s 6.48 under stcolor).
+        _bar_generic = None
+        if str(options.get("typesfx", "") or "") == "generic":
+            _gbs = list(getattr(self.scheme, "p_other_band_styles",
+                                None) or ())
+            if _gbs:
+                _bar_generic = _gbs[color_idx % len(_gbs)]
+        if _bar_generic is not None:
+            _bar_default_color = _bar_generic.get("line") \
+                or _bar_default_color
+            _fill_base = _bar_generic.get("fill") or _fill_base
+            if _bar_generic.get("intensity") is not None:
+                _f = _bar_generic["intensity"]
         # A named style's areastyle is the base (WP-30 P1.14a, D-32e).
         _fill_base = self._style_value(options, "area", "fill", _fill_base)
         _f = self._style_value(options, "area", "intensity", _f)
@@ -20527,6 +20543,9 @@ class GlyphMapper:
         # `linewidth p#bar' -> `linewidth pbar' (plot_line_width); absent,
         # the outline keeps the width it is drawn at today.
         _bar_lw = self.scheme.plot_line_width(color_idx, "bar")
+        if _bar_generic is not None \
+                and _bar_generic.get("line_width") is not None:
+            _bar_lw = _bar_generic["line_width"]
         if _bar_lw is not None:
             _vbar_kwargs["line_width"] = _bar_lw
         # No view here: clean_source already holds only the selected rows.
@@ -51588,11 +51607,13 @@ _DASH_VERTICAL_TYPES = (
     "pcscatter", "pccapsym", "pci", "pcarrowi", "tsrline",
     "contour", "contourline")
 #: Types that keep their own type under recast() and carry the target
-#: (S45): a flag is refused only when both refuse it (E4).
+#: (S45): a flag is refused only when both refuse it (E4); scatteri
+#: among them (WP-46 RH-9: scatteri 1 1 2 2, recast(bar) horizontal is
+#: taken and turned).
 _DASH_DERIVED_ORIENT_TYPES = (
     "lfit", "qfit", "lfitci", "qfitci", "fpfit", "fpfitci", "lowess",
     "lpoly", "lpolyci", "mband", "mspline", "kdensity", "function",
-    "histogram")
+    "histogram", "scatteri")
 #: The range types a layer drawn as a yx type keeps as ``recast_from``
 #: (WP-46 RH-1, D-46-01.b): twoway turns such a layer under
 #: ``horizontal`` only when the target is line, scatter or connected; a

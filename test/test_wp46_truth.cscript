@@ -396,6 +396,27 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w46_run' {
 }
 * ==== end S01 ====
 
+* ==== S01 RH-9: horizontal judged on the typed recast word ====
+local only : env WP46_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w46_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4601-24 (RH9-05): scatteri recast to bar under horizontal is
+    // taken and turned, as twoway turns it: twoway's x and y labels lie
+    // inside dash's x and y ranges in both modes.
+    // ------------------------------------------------------------
+    _q4601_draw "`w46_work'" 24 hz RH9-05 scatteri 1 1 2 2 3 1, recast(bar) horizontal
+    _w46_expect Q4601-24 "(${q4601_trc} == 0)" "twoway rc ${q4601_trc}"
+    _w46_expect Q4601-24 "(${q4601_trc} != 0 | ${q4601_drc} == 0)" "dash rc ${q4601_drc}"
+    _w46_expect Q4601-24 `"("${q4601_s}" == "ok")"' "saved: ${q4601_s} (twoway: ${q4601_tw})"
+    _w46_expect Q4601-24 `"("${q4601_v}" == "ok")"' "served: ${q4601_v} (twoway: ${q4601_tw})"
+    _w46_done Q4601-24 "scatteri recast(bar) horizontal is turned as twoway turns it, in both modes"
+
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

@@ -147,7 +147,14 @@ class TestDotRecast:
         assert '"dot" exit' not in ado
         body = ado[ado.index("program define _dash_recast_opt"):]
         body = body[:body.index("\nend\n")]
+        # Flipped (WP-46 RH-9): the branch also marks the layer kind
+        # dotrecast before naming recast() -- the pin read the naming as
+        # the branch's first line, which was wrong once twoway's judgement
+        # of horizontal on dot's recast word was measured
+        # (horizontal_truth.json recast.RH9-01..04); the dot graph is
+        # still drawn unchanged.
         assert re.search(r'if "`ptype\'" == "dot" \{\s*\n\s*'
+                         r'sreturn local _recast_kind dotrecast\s*\n\s*'
                          r'_dash_recast_named `_rc_word\'\s*\n\s*exit', body)
 
 

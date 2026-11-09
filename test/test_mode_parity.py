@@ -2706,6 +2706,12 @@ CORPUS = [
     _case("rspike recast(bar) horizontal",
           [plot_for("bar", {"horizontal": "horizontal"},
                     recast_from="rspike")]),
+    # WP-46 RH-9: scatteri turned under a bar recast; recast(b)'s style.
+    _case("scatteri recast(bar) horizontal",
+          [plot_for("scatteri", {"horizontal": "horizontal",
+                                 "recast": "bar"})]),
+    _case("scatter recast(b) generic bar",
+          [plot_for("bar", {"typesfx": "generic"}, recast_from="scatter")]),
     _case("horizontal area on a second y axis (WP-30 P1.9a)",
           [_sc(), plot_for("area", {"horizontal": "horizontal",
                                     "yaxis": "2"})]),

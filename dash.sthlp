@@ -426,8 +426,13 @@ r(198), judged on the type {cmd:recast()} names, as {cmd:twoway} judges
 it: a range type recast to {cmd:line}, {cmd:scatter} or
 {cmd:connected} takes both and is turned; recast to {cmd:bar},
 {cmd:area}, {cmd:spike}, {cmd:dropline} or {cmd:dot} it takes them and
-is drawn upright.  The two together are "may not combine options
-horizontal and vertical", r(198).
+is drawn upright; {cmd:scatteri} recast to {cmd:bar} or {cmd:area} takes
+them and is turned; an abbreviation of {cmd:bar}, such as
+{cmd:recast(b)}, takes neither and draws the plain plot style (the
+outline of {cmd:pstyle(p1)}, not that of a bar); on {cmd:dot} only a
+recast to {cmd:bar}, {cmd:area}, {cmd:dot}, {cmd:dropline} or
+{cmd:spike} typed in full takes them.  The two together are "may not
+combine options horizontal and vertical", r(198).
 
 {pstd}
 {ul:Time-series operators.}  A plot variable may carry {cmd:L.}, {cmd:F.},

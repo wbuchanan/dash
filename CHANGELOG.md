@@ -696,6 +696,7 @@ and now matches Stata.
 
 ### Changed behaviour (may need your do-files changed)
 
+- horizontal and vertical are judged on the recast word as twoway judges them: dot with a non-bar recast, an abbreviated recast(b) or recast(ba) and a recast of several words are refused r(198) (were taken), scatteri recast to bar or area is taken and turned (was refused r(198)), and recast(b) draws its bars in the plain p# style, the outline 1.5 times a bar's (WP-46, RH-9)
 - A range type recast to line, scatter or connected takes horizontal and vertical and is turned, and one recast to bar, area, spike, dropline or dot is drawn upright, as twoway does; rarea lo hi x, recast(line) horizontal was refused r(198) and rspike lo hi x, recast(bar) horizontal was turned (WP-46, RH-1)
 - xsize(10cm) draws a 3.937-inch graph (was ignored with a note) and xsize(0.5in) is refused as twoway refuses it, r(198) in its three lines "graph xsize invalid;", "minimum xsize is 1 inch", "maximum xsize is 100 inches"; ysize() alike, ysize(101) included (was dash's own sentence) (WP-45, GW-1)
 - scheme(nosuchscheme) on a graph draws s2color with twoway's note, (note: scheme nosuchscheme not found, using s2color), rc 0 (was r(198)); a path-like scheme(../x) gets the same note and no file is read; dash build's and dash serve's scheme() still refuse an unknown name (WP-45, ST-16)

@@ -625,3 +625,67 @@ def test_is_horizontal_rule():
     bad = [(p, dr._dash_is_horizontal(p)) for p, want in cases
            if dr._dash_is_horizontal(p) != want]
     assert not bad, bad
+
+
+# ===========================================================================
+# WP-46 RH-9: horizontal judged on the typed recast word
+# ===========================================================================
+
+def _rh_rc_truth():
+    with open(os.path.join(_HERE, "fixtures", "recast_truth.json"),
+              encoding="utf-8") as fh:
+        return json.load(fh)["probes"]
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestDerivedOrientation:
+
+    def test_scatteri_bar_turned(self, mode):
+        """``scatteri 1 1 2 2 3 1, recast(bar) horizontal`` is taken and
+        turned by twoway (fixture RH9-05): scatteri is a derived type of
+        both orientation lists, and its bars are drawn across, twoway's
+        x and y labels inside dash's ranges."""
+        rec = _truth()["recast"]["RH9-05"]
+        draw = _truth()["draw"]["RH9-05"]
+        assert rec["rc"] == 0
+        assert "scatteri" in dr._DASH_DERIVED_ORIENT_TYPES
+        with open(_ADO, encoding="utf-8") as fh:
+            m = re.search(r"local _hz_derived\s+(.*?)\n", fh.read())
+        assert m and "scatteri" in m.group(1).split()
+        p = {"type": "scatteri", "values": [[1.0, 1.0], [2.0, 2.0],
+                                            [3.0, 1.0]],
+             "options": dict(_H, recast="bar")}
+        fig = _build(tp._spec(graphs=[("si", [p])]), mode, _TDF)[0]
+        kinds = {type(r.glyph).__name__ for r in drawn_renderers(fig)}
+        assert "HBar" in kinds, kinds
+        for ax, rng in (("x", fig.x_range), ("y", fig.y_range)):
+            lo, hi = sorted((rng.start, rng.end))
+            vals = [float(v) for v in draw[ax + "labels"]]
+            assert lo <= min(vals) and hi >= max(vals), (ax, lo, hi, vals)
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestGenericStyle:
+
+    def test_recast_b_outline(self, mode):
+        """``scatter y x, recast(b)`` draws its bars in the plain p1
+        style, as twoway does (D-46-01.d): the outline 1.5 times
+        recast(bar)'s (fixture RH9-10 against RH9-11)."""
+        rc = _rh_rc_truth()
+        want = rc["RH9-10"]["bar_strokes"][0] / rc["RH9-11"]["bar_strokes"][0]
+        assert rc["RH9-12"]["bar_strokes"] == rc["RH9-10"]["bar_strokes"]
+        plain = {"type": "bar", "recast_from": "scatter", "yvar": "Yvar",
+                 "xvar": "Xvar", "options": {}}
+        generic = dict(plain, options={"typesfx": "generic"})
+        figs = _build(tp._spec(graphs=[("gb", [plain]), ("gg", [generic])]),
+                      mode, _TDF)
+        w = []
+        for fig in figs:
+            bars = [r for r in drawn_renderers(fig)
+                    if type(r.glyph).__name__ == "VBar"]
+            assert len(bars) == 1
+            w.append(_num(bars[0].glyph.line_width))
+            fill = bars[0].glyph.fill_color
+            w.append(fill)
+        assert abs(w[2] / w[0] - want) < 0.01, (w, want)
+        assert w[1] == w[3], w
