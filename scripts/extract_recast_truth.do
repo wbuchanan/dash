@@ -7,7 +7,10 @@
 *   probes[<id>]  cmd, rc, lines (the log's "(note:" and error lines) and,
 *                 for rc 0, counts: the SVG's circle, path, line, rect and
 *                 polygon elements, and equal_to: the base probe whose SVG
-*                 equals this one's (apart from <desc>), or "".
+*                 equals this one's (apart from <desc>), or "";
+*                 the RH9- rows (WP-46 46-01) also bar_strokes: the
+*                 stroke-width of each outlined rect in a plot colour
+*                 (not the white frames), distinct, in SVG units.
 *   classes       Stata's four type classes, read from
 *                 the style files *type-*.style of c(sysdir_base).
 *
@@ -170,6 +173,18 @@ _rc_probe D-histogram-line  "twoway histogram mpg, recast(line)"
 _rc_probe D-histogram-base  "twoway histogram mpg"
 _rc_probe D-histogram-rline "twoway histogram mpg, recast(rline)"
 _rc_probe D-function-scatter "twoway function y=x^2, range(0 3) recast(scatter)"
+* WP-46 46-01: yx names on a y2xtype source (RH-11), and the generic
+* style of an abbreviated bar (RH-9).
+_rc_data
+_rc_probe RH11-01 "twoway rline y y2 x, recast(sc)"
+_rc_probe RH11-03 "twoway rline y y2 x, recast(co)"
+_rc_probe RH11-04 "twoway rbar y y2 x, recast(b)"
+_rc_probe RH11-05 "twoway tsrline y y2, recast(li)"
+_rc_probe RH9-10  "twoway scatter y x, recast(b)"
+_rc_probe RH9-11  "twoway scatter y x, recast(bar)"
+_rc_probe RH9-12  "twoway bar y x, recast(b)"
+sysuse auto, clear
+_rc_probe RH11-02 "twoway histogram mpg, recast(li)"
 file close `rh'
 
 python:
@@ -202,6 +217,17 @@ def _lines(log):
             out.append(s)
     return out
 
+def _bar_strokes(path):
+    out = set()
+    for m in re.finditer(r"<rect[^>]*style=\"([^\"]*)\"", _body(path)):
+        st = m.group(1)
+        if "fill:none" not in st or "stroke:#FFFFFF" in st:
+            continue
+        w = re.search(r"stroke-width:([0-9.]+)", st)
+        if w:
+            out.add(float(w.group(1)))
+    return sorted(out)
+
 probes = {}
 with open(Macro.getLocal("recs"), encoding="utf-8") as fh:
     for line in fh:
@@ -215,6 +241,8 @@ with open(Macro.getLocal("recs"), encoding="utf-8") as fh:
         p = os.path.join(tmp, f + ".svg")
         if svg.startswith("svg") and os.path.exists(p):
             rec["counts"] = _counts(p)
+            if pid.startswith("RH9-"):
+                rec["bar_strokes"] = _bar_strokes(p)
             rec["_body"] = _body(p)
         probes[pid] = rec
 

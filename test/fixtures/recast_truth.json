@@ -1,6 +1,6 @@
 {
  "_meta": {
-  "born_date": "12 Aug 2026",
+  "born_date": "04 Nov 2026",
   "classes": {
    "functiontype": [
     "area",
@@ -50,8 +50,8 @@
     "pcspike"
    ]
   },
-  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
-  "extracted": "18 Oct 2026",
+  "dash_commit": "441678dac74fe2b3a1871a5bf0e9764e88379fec",
+  "extracted": " 9 Nov 2026",
   "scheme": "stcolor",
   "source": "scripts/extract_recast_truth.do",
   "stata_version": "19.5"
@@ -672,6 +672,134 @@
     "option rec() not allowed"
    ],
    "rc": 198
+  },
+  "RH11-01": {
+   "cmd": "twoway rline y y2 x, recast(sc)",
+   "counts": {
+    "circle": 0,
+    "line": 308,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-rspike",
+   "lines": [
+    "(note:  named style sc not found in class y2xtype, default attributes used)",
+    "(note:  y2xtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "RH11-02": {
+   "cmd": "twoway histogram mpg, recast(li)",
+   "counts": {
+    "circle": 0,
+    "line": 484,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [
+    "(note:  named style li not found in class y2xtype, default attributes used)",
+    "(note:  y2xtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "RH11-03": {
+   "cmd": "twoway rline y y2 x, recast(co)",
+   "counts": {
+    "circle": 0,
+    "line": 308,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-rspike",
+   "lines": [
+    "(note:  named style co not found in class y2xtype, default attributes used)",
+    "(note:  y2xtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "RH11-04": {
+   "cmd": "twoway rbar y y2 x, recast(b)",
+   "counts": {
+    "circle": 0,
+    "line": 308,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-rspike",
+   "lines": [
+    "(note:  named style b not found in class y2xtype, default attributes used)",
+    "(note:  y2xtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "RH11-05": {
+   "cmd": "twoway tsrline y y2, recast(li)",
+   "counts": {
+    "circle": 0,
+    "line": 308,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [
+    "(note:  named style li not found in class y2xtype, default attributes used)",
+    "(note:  y2xtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "RH9-10": {
+   "bar_strokes": [
+    9.72
+   ],
+   "cmd": "twoway scatter y x, recast(b)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 21
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "RH9-11": {
+   "bar_strokes": [
+    6.48
+   ],
+   "cmd": "twoway scatter y x, recast(bar)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 21
+   },
+   "equal_to": "B-bar",
+   "lines": [],
+   "rc": 0
+  },
+  "RH9-12": {
+   "bar_strokes": [
+    9.72
+   ],
+   "cmd": "twoway bar y x, recast(b)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 21
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
   },
   "SP-LINE": {
    "cmd": "twoway scatter y x, recast(LINE)",

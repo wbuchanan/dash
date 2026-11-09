@@ -203,6 +203,199 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w46_run' {
 }
 * ==== end S00 ====
 
+// ----------------------------------------------------------------
+// S01 helpers (WP-46 46-01): one recast layer drawn by twoway and by
+// dash in both modes, read as the draw rows of
+// scripts/extract_horizontal_truth.do read twoway's SVG.
+// ----------------------------------------------------------------
+capture program drop _q4601_data
+program define _q4601_data
+    // _q4601_data hz|rc: the data of extract_horizontal_truth.do (hz) or
+    // of extract_recast_truth.do (rc).
+    version 19
+    args which
+    clear
+    if "`which'" == "hz" {
+        quietly set obs 5
+        generate double x = _n
+        generate double y = .
+        local ys 10 30 20 50 40
+        forvalues i = 1/5 {
+            quietly replace y = `: word `i' of `ys'' in `i'
+        }
+        generate double lo = y - 5
+        generate double hi = y + 5
+        label variable x "Xvar"
+        label variable y "Yvar"
+        label variable lo "Lovar"
+        label variable hi "Hivar"
+    }
+    else {
+        quietly set obs 8
+        generate double x = _n
+        generate double y = .
+        local ys 3 5 2 6 4 7 1 8
+        forvalues i = 1/8 {
+            quietly replace y = `: word `i' of `ys'' in `i'
+        }
+        generate double y2 = y + 3
+    }
+end
+
+python:
+import os as _q4601_os, sys as _q4601_sys
+for _q4601_p in (_q4601_os.path.abspath(".."),
+                 _q4601_os.path.abspath(_q4601_os.path.join("..", "scripts"))):
+    if _q4601_p not in _q4601_sys.path:
+        _q4601_sys.path.insert(0, _q4601_p)
+
+
+def _q4601_docs(sp, dp, app):
+    """Both modes' figures of one spec: (saved, served)."""
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_q4601_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_q4601_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+    return list(r.figures.values()), sv
+
+
+def _q4601_tw(svg):
+    """twoway's x and y labels (numbers) and its titles: b1 (flat, below
+    the plot region) and l1 (rotated, left of it)."""
+    import svg_truth
+    doc = svg_truth.svg_document(svg)
+    pr = doc["plotregion"]
+    out = {"b1": "", "l1": ""}
+    labs = set()
+    for ax in ("x", "y"):
+        rd = svg_truth.svg_axis_reading(svg, ax, doc=doc)
+        vals = [str(v) for v in (rd.get("labels") or [])]
+        labs |= set(vals)
+        out[ax] = sorted(float(v) for v in vals)
+    mid = (pr["left"] + pr["right"]) / 2.0
+    for t in doc["texts"]:
+        s = t.get("text", "")
+        if not s or s in labs:
+            continue
+        if t.get("rotate") is not None and t.get("x", 0) < mid:
+            out["l1"] = out["l1"] or s
+        elif t.get("rotate") is None and t.get("y", 0) > pr["bottom"]:
+            out["b1"] = out["b1"] or s
+    return out
+
+
+def _q4601_verdict(case, tw, fig):
+    """'ok', or what differs, for one mode's figure."""
+    xt = fig.xaxis[0].axis_label or ""
+    yt = fig.yaxis[0].axis_label or ""
+    xr = sorted((fig.x_range.start, fig.x_range.end))
+    yr = sorted((fig.y_range.start, fig.y_range.end))
+    eps = 1e-9
+    if case == "RH1-01":
+        # Turned: Xvar on the vertical axis, the first bound (5..45)
+        # across the horizontal one, inside twoway's x labels' span.
+        if yt != tw["l1"]:
+            return "y title %r, twoway's %r" % (yt, tw["l1"])
+        if not (xr[0] <= 5 + eps and xr[1] >= 45 - eps):
+            return "x range %r does not span the bound 5..45" % (xr,)
+        if not (xr[0] < tw["x"][-1] and xr[1] > tw["x"][0]):
+            return "x range %r misses twoway's x labels %r" % (xr, tw["x"])
+        return "ok"
+    if case == "RH9-05":
+        for ax, r in (("x", xr), ("y", yr)):
+            if not (r[0] <= tw[ax][0] + eps and r[1] >= tw[ax][-1] - eps):
+                return "%s range %r, twoway's %s labels %r" % (ax, r, ax,
+                                                              tw[ax])
+        return "ok"
+    if case == "RH11-01":
+        if (xt, yt) != (tw["b1"], tw["l1"]):
+            return "titles %r, twoway's %r" % ((xt, yt), (tw["b1"], tw["l1"]))
+        if not (yr[0] <= tw["y"][0] + eps and yr[1] >= tw["y"][-1] - eps):
+            return "y range %r, twoway's y labels %r" % (yr, tw["y"])
+        return "ok"
+    return "unknown case " + case
+
+
+def _q4601_check(sp, dp, app, svg, case):
+    from sfi import Macro
+    tw = _q4601_tw(svg)
+    a, b = _q4601_docs(sp, dp, app)
+    Macro.setGlobal("q4601_tw", "b1 %r l1 %r x %r y %r" % (
+        tw["b1"], tw["l1"], tw["x"], tw["y"]))
+    for figs, sfx in ((a, "s"), (b, "v")):
+        Macro.setGlobal("q4601_" + sfx, _q4601_verdict(case, tw, figs[0])
+                        if len(figs) == 1 else "%d figures" % len(figs))
+end
+
+capture program drop _q4601_draw
+program define _q4601_draw
+    // _q4601_draw <dir> <k> <hz|rc> <case> <command with options...>:
+    // twoway draws the command into t<k>.svg, dash builds it, and the
+    // case's verdict for each mode lands in $q4601_s and $q4601_v
+    // (twoway's rc in $q4601_trc, dash's in $q4601_drc).
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken data 0 : 0
+    gettoken case 0 : 0
+    global q4601_s ""
+    global q4601_v ""
+    global q4601_tw ""
+    global q4601_drc = -1
+    _q4601_data `data'
+    capture graph drop q4601t
+    capture noisily twoway `0' name(q4601t, replace)
+    global q4601_trc = _rc
+    if ${q4601_trc} exit
+    capture erase "`dir'/t`k'.svg"
+    cert_svg_export, name(q4601t) file("`dir'/t`k'.svg")
+    capture graph drop q4601t
+    capture dash clear
+    capture noisily dash `0' name(zq4601`k')
+    global q4601_drc = _rc
+    if ${q4601_drc} exit
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _q4601_m; _q4601_m._q4601_check("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg", "`case'")
+    capture dash clear
+end
+
+* ==== S01 RH-1: recast range layers take horizontal ====
+local only : env WP46_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w46_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4601-23 (RH1-01): a range layer recast to line under horizontal
+    // is taken and turned, as twoway turns it: Xvar on the vertical axis
+    // in both modes, the bound across the horizontal one.  The second
+    // bound's extent and title are RH-3's (46-02).
+    // ------------------------------------------------------------
+    _q4601_draw "`w46_work'" 23 hz RH1-01 rarea lo hi x, recast(line) horizontal
+    _w46_expect Q4601-23 "(${q4601_trc} == 0)" "twoway rc ${q4601_trc}"
+    _w46_expect Q4601-23 "(${q4601_trc} != 0 | ${q4601_drc} == 0)" "dash rc ${q4601_drc}"
+    _w46_expect Q4601-23 `"("${q4601_s}" == "ok")"' "saved: ${q4601_s} (twoway: ${q4601_tw})"
+    _w46_expect Q4601-23 `"("${q4601_v}" == "ok")"' "served: ${q4601_v} (twoway: ${q4601_tw})"
+    _w46_done Q4601-23 "rarea recast(line) horizontal is turned as twoway turns it, in both modes"
+
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

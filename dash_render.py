@@ -51593,6 +51593,20 @@ _DASH_DERIVED_ORIENT_TYPES = (
     "lfit", "qfit", "lfitci", "qfitci", "fpfit", "fpfitci", "lowess",
     "lpoly", "lpolyci", "mband", "mspline", "kdensity", "function",
     "histogram")
+#: The range types a layer drawn as a yx type keeps as ``recast_from``
+#: (WP-46 RH-1, D-46-01.b): twoway turns such a layer under
+#: ``horizontal`` only when the target is line, scatter or connected; a
+#: bar, area, spike, dropline or dot target is drawn upright
+#: (twoway_y2xview_parse.class log_edits sets bar_drop_to after the yx
+#: view's own; horizontal_truth.json draw.RH1-*).
+_DASH_RANGE_RECAST_SOURCES = (
+    "rarea", "rbar", "rspike", "rcap", "rline", "rconnected", "rcapsym",
+    "rscatter", "tsrline")
+#: The yx targets of such a layer, and those of them twoway turns.
+_DASH_RANGE_RECAST_YX = (
+    "scatter", "line", "connected", "area", "bar", "spike", "dropline",
+    "dot")
+_DASH_RANGE_RECAST_TURNED = ("line", "scatter", "connected")
 #: Glyph or annotation class -> (turned class, property pairs swapped):
 #: the one property map of ``_dash_transpose_layer``.  A constant; no
 #: property name is read from user input.
@@ -51623,7 +51637,8 @@ _DASH_TRANSPOSE = {
 def _dash_is_horizontal(plot):
     """Is *plot* drawn turned?  ``options.horizontal`` set and its type,
     or the canonical recast() target S45 writes into its options, one
-    twoway turns (WP-30 P1.9a, TR-49.2).  A hand-built spec with the flag
+    twoway turns (WP-30 P1.9a, TR-49.2); a range layer drawn as a yx
+    type only for a line, scatter or connected target (WP-46 RH-1).  A hand-built spec with the flag
     on a type and target that both refuse it draws upright (dash.ado
     refuses it first)."""
     if not isinstance(plot, dict):
@@ -51633,6 +51648,11 @@ def _dash_is_horizontal(plot):
             or not str(opts.get("horizontal", "") or "").strip():
         return False
     ptype = str(plot.get("type", "") or "").lower()
+    # A range layer drawn as a yx type (WP-46 RH-1): turned for a line,
+    # scatter or connected target only.
+    rf = str(plot.get("recast_from", "") or "").strip().lower()
+    if rf in _DASH_RANGE_RECAST_SOURCES and ptype in _DASH_RANGE_RECAST_YX:
+        return ptype in _DASH_RANGE_RECAST_TURNED
     target = str(opts.get("recast", "") or "").strip().lower()
     return (ptype in _DASH_HORIZONTAL_TYPES
             or target in _DASH_HORIZONTAL_TYPES)

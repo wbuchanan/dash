@@ -520,7 +520,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-1 Tracked:** Closed in WP-45, BUGS.md "xsize()/ysize() with units (10cm, 3in, 200pt) are ignored with a note that leaks 'None'", commit f89a739.
 - **ST-22 Tracked:** Closed in WP-45, BUGS.md "Colour edges: navy*52 intensity rule, blank stylelist element refused in dash's words", commit e0d4fd7.
 - **GW-10 Tracked:** Closed in WP-45, BUGS.md "graph set window/svg fontface for plain text is not read (only stSans/stSerif/stMono tags)", commit 3dcd745.
-- **RH-1 Tracked:** Open (WP-46 section 46-01).
+- **RH-1 Tracked:** Closed in WP-46, BUGS.md "A range source recast to line/scatter/connected refuses horizontal/vertical (twoway turns it); recast to bar/area/spike/dropline/dot with horizontal is turned by dash where twoway draws it upright", commit pending.
 - **RH-3 Tracked:** Open (WP-46 section 46-02).
 - **RH-5 Tracked:** Open (WP-46 section 46-02).
 - **RH-8 Tracked:** Open (WP-46 section 46-02).

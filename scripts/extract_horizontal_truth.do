@@ -8,7 +8,9 @@
 *   accept[<type>][<form>]  rc and first error line of the type given
 *                           horizontal, vertical, "horizontal vertical" and
 *                           "vertical horizontal" (forms h, v, hv, vh).
-*   recast[<id>]            cmd, rc, line: the recast() rows.
+*   recast[<id>]            cmd, rc, line: the recast() rows (HZ- and R-
+*                           on sysuse auto; RH1- and RH9-, WP-46 46-01, on
+*                           the data below).
 *   draw[<id>]              cmd, rc and, for rc 0, xlabels, ylabels (the
 *                           tick labels svg_truth reads on each axis),
 *                           ytitle, y2title (rotated texts left and right of
@@ -158,6 +160,34 @@ _hz_probe recast R-fn-line-v   "twoway function y=x, range(0 1) recast(line) ver
 _hz_probe recast R-hist-sc-h   "twoway histogram mpg, recast(scatter) horizontal nodraw"
 _hz_probe recast R-line-area-h "twoway line mpg weight, recast(area) horizontal nodraw"
 
+* recast: WP-46 46-01's rows (RH-1, RH-9), on this script's data.
+_hz_data
+_hz_probe recast RH1-01 "twoway rarea lo hi x, recast(line) horizontal nodraw"
+_hz_probe recast RH1-02 "twoway rcap lo hi x, recast(scatter) vertical nodraw"
+_hz_probe recast RH1-03 "twoway rarea lo hi x, recast(connected) horizontal nodraw"
+_hz_probe recast RH1-04 "twoway rspike lo hi x, recast(bar) horizontal nodraw"
+_hz_probe recast RH1-05 "twoway rarea lo hi x, recast(area) horizontal nodraw"
+_hz_probe recast RH1-06 "twoway rspike lo hi x, recast(spike) horizontal nodraw"
+_hz_probe recast RH1-07 "twoway rcap lo hi x, recast(dropline) horizontal nodraw"
+_hz_probe recast RH1-08 "twoway rbar lo hi x, recast(dot) horizontal nodraw"
+_hz_probe recast RH1-09 "twoway rarea lo hi x, recast(line) horizontal vertical nodraw"
+_hz_probe recast RH1-10 "twoway tsrline lo hi, recast(line) horizontal nodraw"
+_hz_probe recast RH9-01 "twoway dot y x, recast(line) horizontal nodraw"
+_hz_probe recast RH9-02 "twoway dot y x, recast(scatter) vertical nodraw"
+_hz_probe recast RH9-03 "twoway dot y x, recast(bar) horizontal nodraw"
+_hz_probe recast RH9-04 "twoway dot y x, recast(b) horizontal nodraw"
+_hz_probe recast RH9-05 "twoway scatteri 1 1 2 2 3 1, recast(bar) horizontal nodraw"
+_hz_probe recast RH9-06 "twoway scatteri 1 1 2 2 3 1, recast(area) vertical nodraw"
+_hz_probe recast RH9-07 "twoway scatter y x, recast(b) horizontal nodraw"
+_hz_probe recast RH9-08 "twoway scatter y x, recast(ba) horizontal nodraw"
+_hz_probe recast RH9-09 "twoway scatter y x, recast(bar) horizontal nodraw"
+_hz_probe recast RH9-12 "twoway bar y x, recast(b) horizontal nodraw"
+_hz_probe recast RH9-13 "twoway lfit y x, recast(b) horizontal nodraw"
+_hz_probe recast RH9-14 "twoway dot y x, recast(dot dot) horizontal nodraw"
+_hz_probe recast RH9-15 "twoway scatter y x, recast(bar bar) horizontal nodraw"
+_hz_probe recast RH9-16 "twoway kdensity y, recast(b) horizontal nodraw"
+_hz_probe recast RH9-17 "twoway tsline y, recast(b) horizontal nodraw"
+
 * draw: the 24 turned types and E3's titles, dates and second axes.
 _hz_data
 foreach tt in area bar spike dropline dot {
@@ -184,6 +214,12 @@ _hz_probe draw HZ-26 "twoway (scatter y d) (bar y d, horizontal)"
 _hz_probe draw HZ-27 "twoway (bar y d, horizontal) (scatter y d)"
 _hz_probe draw HZ-28 "twoway (scatter y x) (bar y x, horizontal yaxis(2))"
 _hz_probe draw hist-d "twoway histogram d, horizontal"
+* WP-46 46-01: recast layers drawn under horizontal.
+_hz_probe draw RH1-01 "twoway rarea lo hi x, recast(line) horizontal"
+_hz_probe draw RH1-03 "twoway rarea lo hi x, recast(connected) horizontal"
+_hz_probe draw RH1-04 "twoway rspike lo hi x, recast(bar) horizontal"
+_hz_probe draw RH1-05 "twoway rarea lo hi x, recast(area) horizontal"
+_hz_probe draw RH9-05 "twoway scatteri 1 1 2 2 3 1, recast(bar) horizontal"
 file close `rh'
 
 python:
@@ -258,7 +294,7 @@ out = {"accept": accept, "recast": recast, "draw": draw,
                  "dash_commit": Macro.getLocal("dash_commit").strip(),
                  "extracted": Macro.getLocal("extracted"),
                  "scheme": "stcolor",
-                 "data": "x 1..5 (Xvar), y 10 30 20 50 40 (Yvar), lo = y-5 (Lovar), hi = y+5 (Hivar), d %td from 08jan2020 step 25 (Day), t = _n tsset; recast rows on sysuse auto"}}
+                 "data": "x 1..5 (Xvar), y 10 30 20 50 40 (Yvar), lo = y-5 (Lovar), hi = y+5 (Hivar), d %td from 08jan2020 step 25 (Day), t = _n tsset; recast rows HZ- and R- on sysuse auto, RH1- and RH9- on these data"}}
 path = os.path.join(repo, "test", "fixtures", "horizontal_truth.json")
 with open(path, "w", encoding="utf-8") as fh:
     json.dump(out, fh, indent=1, sort_keys=True)

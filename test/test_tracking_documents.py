@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'RH-1': 'A range source recast to line/scatter/connected refuses horizontal/vertical (twoway turns it); recast to bar/area/spike/dropline/dot with horizontal is turned by dash where twoway draws it upright',
     'RH-3': 'A range source or ciplot() drawn as a yx type leaves the second bound out of the axis, the default title and the key',
     'RH-5': "histogram recast(): drawn in the target's style (twoway keeps the histogram style), bars one unit wide (twoway uses the bin width), and 0 left out of the height axis",
     'RH-8': 'histogram/rbar with recast() plus horizontal: twoway draws a broken swapped serset; dash draws a clean transpose',

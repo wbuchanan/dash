@@ -537,3 +537,91 @@ class TestUprightIsUntouched:
         assert len(types) == 44
         assert plain == patched
         assert plain == vert
+
+
+# ===========================================================================
+# WP-46 RH-1: a range layer recast to a yx type under horizontal
+# ===========================================================================
+
+def _rh_recast(source, target):
+    """The plot dash.ado writes for ``<source> Lovar Hivar Xvar,
+    recast(<target>) horizontal``: the yx target drawn from the first
+    bound, the typed type kept as ``recast_from``."""
+    return {"type": target, "recast_from": source, "yvar": "Lovar",
+            "xvar": "Xvar", "options": dict(_H)}
+
+
+#: The fixture's draw rows (WP-46 46-01) as dash.ado writes them.
+_RH_DRAW = {
+    "RH1-01": _rh_recast("rarea", "line"),
+    "RH1-03": _rh_recast("rarea", "connected"),
+    "RH1-04": _rh_recast("rspike", "bar"),
+    "RH1-05": _rh_recast("rarea", "area"),
+}
+_RH_DRAWN = {}
+
+
+def _rh_drawn(mode):
+    if mode not in _RH_DRAWN:
+        ids = sorted(_RH_DRAW)
+        spec = tp._spec(graphs=[(f"r{i}", [_RH_DRAW[k]])
+                                for i, k in enumerate(ids)])
+        _RH_DRAWN[mode] = dict(zip(ids, _build(spec, mode, _TDF)))
+    return _RH_DRAWN[mode]
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestRangeRecastOrientation:
+
+    @pytest.mark.parametrize("pid", ["RH1-01", "RH1-03"])
+    def test_line_targets_turned(self, mode, pid):
+        """twoway turns a range layer recast to line or connected: Xvar
+        on the vertical axis, the bound on the horizontal one (the
+        fixture's draw row; its second bound is RH-3's)."""
+        want = _truth()["draw"][pid]
+        fig = _rh_drawn(mode)[pid]
+        assert want["rc"] == 0 and want["ytitle"] == "Xvar"
+        assert (fig.yaxis[0].axis_label or "") == want["ytitle"]
+        assert (fig.xaxis[0].axis_label or "") \
+            == want["xtitle"].split("/")[0]
+
+    @pytest.mark.parametrize("pid", ["RH1-04", "RH1-05"])
+    def test_bar_targets_upright(self, mode, pid):
+        """twoway draws a range layer recast to bar or area upright under
+        horizontal: no turned glyph, Xvar on the horizontal axis."""
+        want = _truth()["draw"][pid]
+        fig = _rh_drawn(mode)[pid]
+        assert want["rc"] == 0 and want["xtitle"] == "Xvar"
+        kinds = {type(r.glyph).__name__ for r in drawn_renderers(fig)}
+        assert not kinds & {"HBar", "HArea"}, kinds
+        assert (fig.xaxis[0].axis_label or "") == want["xtitle"]
+        assert (fig.yaxis[0].axis_label or "") \
+            == want["ytitle"].split("/")[0]
+
+
+def test_is_horizontal_rule():
+    """The turn rule for a recast range layer (D-46-01.b): a line,
+    scatter or connected target is turned, a bar, area, spike, dropline
+    or dot target upright; a range or fallback target turns as its own
+    type does."""
+    cases = [
+        (_rh_recast("rarea", "line"), True),
+        (_rh_recast("rcap", "scatter"), True),
+        (_rh_recast("tsrline", "line"), True),
+        (_rh_recast("rarea", "connected"), True),
+        (_rh_recast("rspike", "bar"), False),
+        (_rh_recast("rarea", "area"), False),
+        (_rh_recast("rspike", "spike"), False),
+        (_rh_recast("rcap", "dropline"), False),
+        (_rh_recast("rbar", "dot"), False),
+        (_rh_recast("rline", "rscatter"), True),
+        (_rh_recast("rline", "rspike"), True),
+        (dict(_rh_recast("rarea", "line"), options={}), False),
+        ({"type": "line", "yvar": "y", "xvar": "x", "options": dict(_H)},
+         False),
+        ({"type": "bar", "recast_from": "scatter", "yvar": "y",
+          "xvar": "x", "options": dict(_H)}, True),
+    ]
+    bad = [(p, dr._dash_is_horizontal(p)) for p, want in cases
+           if dr._dash_is_horizontal(p) != want]
+    assert not bad, bad

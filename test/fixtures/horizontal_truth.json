@@ -1,9 +1,9 @@
 {
  "_meta": {
-  "born_date": "12 Aug 2026",
-  "dash_commit": "b7191935233892ff54101bbd89671a9e24122c82",
-  "data": "x 1..5 (Xvar), y 10 30 20 50 40 (Yvar), lo = y-5 (Lovar), hi = y+5 (Hivar), d %td from 08jan2020 step 25 (Day), t = _n tsset; recast rows on sysuse auto",
-  "extracted": "18 Oct 2026",
+  "born_date": "04 Nov 2026",
+  "dash_commit": "441678dac74fe2b3a1871a5bf0e9764e88379fec",
+  "data": "x 1..5 (Xvar), y 10 30 20 50 40 (Yvar), lo = y-5 (Lovar), hi = y+5 (Hivar), d %td from 08jan2020 step 25 (Day), t = _n tsset; recast rows HZ- and R- on sysuse auto, RH1- and RH9- on these data",
+  "extracted": " 9 Nov 2026",
   "scheme": "stcolor",
   "source": "scripts/extract_horizontal_truth.do",
   "stata_version": "19.5"
@@ -814,6 +814,108 @@
    ],
    "ytitle": "Yvar"
   },
+  "RH1-01": {
+   "cmd": "twoway rarea lo hi x, recast(line) horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "RH1-03": {
+   "cmd": "twoway rarea lo hi x, recast(connected) horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "RH1-04": {
+   "cmd": "twoway rspike lo hi x, recast(bar) horizontal",
+   "rc": 0,
+   "xlabels": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+   ],
+   "xtitle": "Xvar",
+   "y2title": "",
+   "ylabels": [
+    "60",
+    "40",
+    "20",
+    "0"
+   ],
+   "ytitle": "Lovar/Hivar"
+  },
+  "RH1-05": {
+   "cmd": "twoway rarea lo hi x, recast(area) horizontal",
+   "rc": 0,
+   "xlabels": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+   ],
+   "xtitle": "Xvar",
+   "y2title": "",
+   "ylabels": [
+    "60",
+    "40",
+    "20",
+    "0"
+   ],
+   "ytitle": "Lovar/Hivar"
+  },
+  "RH9-05": {
+   "cmd": "twoway scatteri 1 1 2 2 3 1, recast(bar) horizontal",
+   "rc": 0,
+   "xlabels": [
+    "1",
+    "1.5",
+    "2",
+    "2.5",
+    "3"
+   ],
+   "xtitle": "y",
+   "y2title": "",
+   "ylabels": [
+    "2",
+    "1.8",
+    "1.6",
+    "1.4",
+    "1.2",
+    "1"
+   ],
+   "ytitle": "x"
+  },
   "T-barh-barh": {
    "cmd": "twoway (bar y x, horizontal) (bar y x, horizontal)",
    "rc": 0,
@@ -1502,6 +1604,131 @@
   },
   "R-lowess-line": {
    "cmd": "twoway lowess mpg weight, recast(line) horizontal",
+   "line": "option horizontal not allowed",
+   "rc": 198
+  },
+  "RH1-01": {
+   "cmd": "twoway rarea lo hi x, recast(line) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "RH1-02": {
+   "cmd": "twoway rcap lo hi x, recast(scatter) vertical",
+   "line": "",
+   "rc": 0
+  },
+  "RH1-03": {
+   "cmd": "twoway rarea lo hi x, recast(connected) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "RH1-04": {
+   "cmd": "twoway rspike lo hi x, recast(bar) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "RH1-05": {
+   "cmd": "twoway rarea lo hi x, recast(area) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "RH1-06": {
+   "cmd": "twoway rspike lo hi x, recast(spike) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "RH1-07": {
+   "cmd": "twoway rcap lo hi x, recast(dropline) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "RH1-08": {
+   "cmd": "twoway rbar lo hi x, recast(dot) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "RH1-09": {
+   "cmd": "twoway rarea lo hi x, recast(line) horizontal vertical",
+   "line": "may not combine options horizontal and vertical",
+   "rc": 198
+  },
+  "RH1-10": {
+   "cmd": "twoway tsrline lo hi, recast(line) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "RH9-01": {
+   "cmd": "twoway dot y x, recast(line) horizontal",
+   "line": "option horizontal not allowed",
+   "rc": 198
+  },
+  "RH9-02": {
+   "cmd": "twoway dot y x, recast(scatter) vertical",
+   "line": "option vertical not allowed",
+   "rc": 198
+  },
+  "RH9-03": {
+   "cmd": "twoway dot y x, recast(bar) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "RH9-04": {
+   "cmd": "twoway dot y x, recast(b) horizontal",
+   "line": "option horizontal not allowed",
+   "rc": 198
+  },
+  "RH9-05": {
+   "cmd": "twoway scatteri 1 1 2 2 3 1, recast(bar) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "RH9-06": {
+   "cmd": "twoway scatteri 1 1 2 2 3 1, recast(area) vertical",
+   "line": "",
+   "rc": 0
+  },
+  "RH9-07": {
+   "cmd": "twoway scatter y x, recast(b) horizontal",
+   "line": "option horizontal not allowed",
+   "rc": 198
+  },
+  "RH9-08": {
+   "cmd": "twoway scatter y x, recast(ba) horizontal",
+   "line": "option horizontal not allowed",
+   "rc": 198
+  },
+  "RH9-09": {
+   "cmd": "twoway scatter y x, recast(bar) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "RH9-12": {
+   "cmd": "twoway bar y x, recast(b) horizontal",
+   "line": "option horizontal not allowed",
+   "rc": 198
+  },
+  "RH9-13": {
+   "cmd": "twoway lfit y x, recast(b) horizontal",
+   "line": "option horizontal not allowed",
+   "rc": 198
+  },
+  "RH9-14": {
+   "cmd": "twoway dot y x, recast(dot dot) horizontal",
+   "line": "option horizontal not allowed",
+   "rc": 198
+  },
+  "RH9-15": {
+   "cmd": "twoway scatter y x, recast(bar bar) horizontal",
+   "line": "option horizontal not allowed",
+   "rc": 198
+  },
+  "RH9-16": {
+   "cmd": "twoway kdensity y, recast(b) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "RH9-17": {
+   "cmd": "twoway tsline y, recast(b) horizontal",
    "line": "option horizontal not allowed",
    "rc": 198
   }

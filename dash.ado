@@ -3317,9 +3317,12 @@ end
 // target) and target the canonical recast() target of a derived layer
 // (kind "derived").  Measured on StataNow 19.5
 // (test/fixtures/horizontal_truth.json, scripts/extract_horizontal_truth.do):
-//   * horizontal is taken by the 24 types of _hz_htypes, vertical by the
-//     22 of _hz_vtypes; any other type refuses the flag, "option
+//   * horizontal is taken by the 28 types of _hz_htypes, vertical by the
+//     26 of _hz_vtypes; any other type refuses the flag, "option
 //     horizontal not allowed", r(198);
+//   * a range layer drawn as a yx type (kind "range2yx") takes both, as
+//     twoway_y2xview_parse reads them for every range source (WP-46
+//     RH-1; horizontal_truth.json recast.RH1-*);
 //   * a derived type (_hz_derived) is refused only when it and its recast
 //     target both refuse the flag;
 //   * a refusing type names the first refused flag in the order typed,
@@ -3349,6 +3352,7 @@ program define _dash_hz_check, sclass
         if substr("horizontal", 1, strlen("`w'")) == "`w'" local f horizontal
         if `"`s(`f')'"' == "" continue
         local _hz_ok 0
+        if "`kind'" == "range2yx" local _hz_ok 1
         if "`f'" == "horizontal" {
             if `: list ptype in _hz_htypes' local _hz_ok 1
             if "`kind'" == "derived" & `: list ptype in _hz_derived' & `: list target in _hz_htypes' local _hz_ok 1
@@ -7821,7 +7825,8 @@ program define _dash_process_segment, rclass
 
     // Options JSON
     // recast(): the typed type, when the layer is drawn as another
-    // (WP-30 P1.8b); the renderer keys nothing on it.
+    // (WP-30 P1.8b); the renderer reads it only to turn a range layer
+    // drawn as a yx type (_dash_is_horizontal, WP-46 RH-1).
     local _rcf ""
     if "`ptype'" != "`_ptype_typed'" local _rcf `","recast_from":"`_ptype_typed'""'
     _dash_plot_opts_to_json _opts_json 1

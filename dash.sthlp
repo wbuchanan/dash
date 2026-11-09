@@ -411,8 +411,9 @@ variables specified", r(102).
 {phang}{ul:Orientation.}  {opt horizontal} draws a plot on its side, as
 {cmd:twoway} draws it, on {cmd:area}, {cmd:bar}, {cmd:spike},
 {cmd:dropline}, {cmd:dot}, {cmd:histogram}, {cmd:kdensity}, the eight
-range types, the five paired-coordinate types, {cmd:pci},
-{cmd:pcarrowi}, {cmd:function} and {cmd:tsrline}: the {it:x} values run
+range types, {cmd:rpcap}, {cmd:rpspike}, the five paired-coordinate
+types, {cmd:pci}, {cmd:pcarrowi}, {cmd:function}, {cmd:tsrline},
+{cmd:contour} and {cmd:contourline}: the {it:x} values run
 up the y axis, the {it:y} values across, and the default axis titles and
 date labels follow them ({cmd:histogram} {it:var}{cmd:, horizontal}
 titles y with the variable and x "Density").  {opt vertical}, the
@@ -421,8 +422,12 @@ default, is taken on the same types except {cmd:kdensity} and
 (a sideways layer's {it:x} values on {cmd:yaxis(2)} are on the right),
 and marker labels keep their clock positions.  Either flag on a type
 that does not take it is refused, "option horizontal not allowed",
-r(198), judged after {cmd:recast()}; the two together are "may not
-combine options horizontal and vertical", r(198).
+r(198), judged on the type {cmd:recast()} names, as {cmd:twoway} judges
+it: a range type recast to {cmd:line}, {cmd:scatter} or
+{cmd:connected} takes both and is turned; recast to {cmd:bar},
+{cmd:area}, {cmd:spike}, {cmd:dropline} or {cmd:dot} it takes them and
+is drawn upright.  The two together are "may not combine options
+horizontal and vertical", r(198).
 
 {pstd}
 {ul:Time-series operators.}  A plot variable may carry {cmd:L.}, {cmd:F.},

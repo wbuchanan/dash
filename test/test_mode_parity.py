@@ -2699,6 +2699,13 @@ CORPUS = [
            plot_for("rcap", {"horizontal": "horizontal"}),
            plot_for("histogram", {"horizontal": "horizontal"}),
            plot_for("pcarrow", {"horizontal": "horizontal"})]),
+    # WP-46 RH-1: a range layer drawn as a yx type under horizontal.
+    _case("rarea recast(line) horizontal",
+          [plot_for("line", {"horizontal": "horizontal"},
+                    recast_from="rarea")]),
+    _case("rspike recast(bar) horizontal",
+          [plot_for("bar", {"horizontal": "horizontal"},
+                    recast_from="rspike")]),
     _case("horizontal area on a second y axis (WP-30 P1.9a)",
           [_sc(), plot_for("area", {"horizontal": "horizontal",
                                     "yaxis": "2"})]),
