@@ -3351,6 +3351,8 @@ CORPUS = [
     _case("scatter mlalign(outside)",
           [plot_for("scatter", {"mlalign": "outside",
                                 "mlwidth": "vthick"})]),
+    # WP-47 basic:PT-5: dots sized by dlalign().
+    _case("dot dlalign(center)", [plot_for("dot", {"dlalign": "center"})]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

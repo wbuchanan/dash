@@ -534,7 +534,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **basic:PT-3 Tracked:** Open (WP-47 section 47-02).
 - **basic:PT-4 Tracked:** Open (WP-47 section 47-03).
 - **basic:PT-6 Tracked:** Closed in WP-47, BUGS.md "mlalign(center) and inside draw one picture; the default marker is probably twoway's center picture", commit pending.
-- **basic:PT-5 Tracked:** Open (WP-47 section 47-03).
+- **basic:PT-5 Tracked:** Closed in WP-47, BUGS.md "dlalign(center|outside) changes dot size in twoway; dash drops it silently (tw_silent built from one default value)", commit pending.
 - **basic:PT-10 Tracked:** Open (WP-47 section 47-04).
 - **basic:PT-11 Tracked:** Open (WP-47 section 47-05).
 - **PIC-2 Tracked:** Open (WP-47 section 47-06).

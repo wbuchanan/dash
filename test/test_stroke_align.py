@@ -148,12 +148,39 @@ class TestMarkers:
         assert r.glyph.size == b.glyph.size
 
 
+class TestDots:
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("n, align", [(1, "inside"), (2, "center"),
+                                          (3, "outside"), (4, "")])
+    def test_dlalign_sizes(self, mode, n, align, tmp_path):
+        base = _scatters(figs(mode, tmp_path, [_dot()])[0], dots=True)
+        o = {"dlalign": align} if align else {}
+        fs, notes = figs(mode, tmp_path, [_dot(**o)])
+        dots = _scatters(fs, dots=True)
+        assert dots and len(dots) == len(base)
+        for d, b in zip(dots, base):
+            w = float(d.glyph.line_width)
+            assert w > 0
+            # The size the dots were given (vtiny, 0.384 px), before the
+            # alignment and the 1 px floor (D-18c, which 47-06 owns).
+            nom = d.glyph._dash_stroke_nominal[0]
+            assert b.glyph._dash_stroke_nominal[0] == nom
+            for k in ("st", "s2"):
+                want = nom + (_k("D%02d_%s" % (n, k)) - 1) * w
+                assert d.glyph.size == pytest.approx(max(want, 1.0),
+                                                     abs=0.01)
+        assert not [m for m in notes if "dlalign" in m
+                    or "alignstroke" in m]
+
+
 class TestSilence:
 
     @pytest.mark.parametrize("mode", MODES)
     @pytest.mark.parametrize("align", ALIGNS)
     def test_no_note(self, mode, align, tmp_path):
-        for plot in (sc(mlalign=align), _dot(mlalign=align)):
+        for plot in (sc(mlalign=align), _dot(mlalign=align),
+                     _dot(dlalign=align)):
             _, notes = figs(mode, tmp_path, [plot])
             assert not [m for m in notes if "align" in m], (plot, notes)
 
@@ -167,3 +194,15 @@ class TestSilence:
         (r,) = _scatters(fs)
         (b,) = _scatters(figs(mode, tmp_path, [sc()])[0])
         assert r.glyph.size == b.glyph.size
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_unknown_dlalign_word(self, mode, tmp_path):
+        # twoway notes it once and draws the default (U03).
+        assert T["U03"]["rc"] == 0
+        assert len(T["U03"]["lines"]) == 1
+        assert "not found in class alignstroke" in T["U03"]["lines"][0]
+        fs, notes = figs(mode, tmp_path, [_dot(dlalign="bogus")])
+        assert [m for m in notes if "alignstroke" in m] == [_NOTE]
+        dots = _scatters(fs, dots=True)
+        base = _scatters(figs(mode, tmp_path, [_dot()])[0], dots=True)
+        assert [d.glyph.size for d in dots] == [b.glyph.size for b in base]

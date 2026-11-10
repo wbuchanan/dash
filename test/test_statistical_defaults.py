@@ -905,7 +905,8 @@ class TestKdensityRange:
         # checks play() as twoway does, and draws the fitarea and other
         # options twoway draws; the seven left are dropped from the note
         # by type where twoway is silent (_dash_silent_drop).
-        assert len(pending) == 7, (len(pending), pending)
+        # 7 -> 6: WP-47 basic:PT-5 dlalign() drawn.
+        assert len(pending) == 6, (len(pending), pending)
         for really_pending in ("sort",):
             assert really_pending in pending, (really_pending, pending)
         assert "range" not in pending, (

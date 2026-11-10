@@ -1534,9 +1534,8 @@ program define _dash_parse_plot_opts, sclass
     // nothing else with them (test/fixtures/dot_truth.json D11k, D11n-t),
     // so elsewhere they are silent.
     if `: length local bmlinestyle' local _dash_pending `"`_dash_pending' bmlinestyle"'
-    // WP-31 B5b: dlalign() is accepted and named: a stroke cannot be
-    // aligned in Bokeh (as mlalign()).
-    if `: length local dlalign' local _dash_pending `"`_dash_pending' dlalign"'
+    // WP-47 basic:PT-5: dlalign() is drawn (GlyphMapper._dot_style), so it
+    // is no longer pending.
     // play() is not named: _dash_play_check refuses it, as twoway refuses
     // a recording it cannot find or read (WP-32).
     // fitarea_options, the look of a ci fit's band: twoway takes ac(),

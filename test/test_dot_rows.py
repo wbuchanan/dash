@@ -462,7 +462,9 @@ class TestTheAdoText:
                "dlwidth dlalign ///" in ado
         pend = re.findall(r"local _dash_pending `\"`_dash_pending' (\w+)\"'",
                           ado)
-        assert "dlalign" in pend
+        # Flipped (WP-47 basic:PT-5): dlalign() is drawn, so it is no
+        # longer pending.
+        assert "dlalign" not in pend
         assert "dstyle" not in pend and "dlstyle" not in pend
         assert "ndots@area|bar|spike|dropline|dot" in ado
         # p() drops the d-options, as twoway's p(p3) dcolor(red) draws

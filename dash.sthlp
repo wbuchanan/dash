@@ -4635,6 +4635,8 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     as {cmd:mlcolor()}{p_end}
 {synopt:{opt dlwidth(linewidthstyle)}}{cmd:dot}: the dots' outline
     width, as {cmd:mlwidth()}{p_end}
+{synopt:{opt dlalign(linealignmentstyle)}}{cmd:dot}: where the dots'
+    outline lies, as {cmd:mlalign()}{p_end}
 {synopt:{opt area(#)}}{cmd:kdensity}: every density multiplied by {it:#};
     positive ({cmd:option area() expects a positive number}, r(198)){p_end}
 {synopt:{opt boundary}}{cmd:kdensity}: the curve evaluated one bandwidth
@@ -7701,12 +7703,6 @@ in either direction.
     {cmd:twoway} draw anything different with it, so it is taken in
     silence.  A name {cmd:twoway} does not know is noted
     as {cmd:twoway} notes it.
-
-{phang2}{ul:A dot's alignment.}
-    {opt dlalign(linealignmentstyle)} -- whether the outline of the dots
-    of a {cmd:dot} plot is drawn inside, outside or centred on its edge;
-    {cmd:dash} draws it centred, and {cmd:twoway} draws the same picture
-    with it, so it is taken in silence.
 
 {phang2}{ul:Connection order.}
     {opt sort} and {opt sort(varlist)} on {cmd:scatter}, {cmd:bar},

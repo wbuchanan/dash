@@ -334,6 +334,48 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w47_run' {
 }
 * ==== end S03 ====
 
+* ==== S03 basic:PT-5: dots sized by dlalign() ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w47_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4703-3: twoway's dots grow with dlalign() (the ring's radius,
+    // measured live from its SVG), and dash takes dlalign(center) in
+    // silence; its drawn size is pinned by test_stroke_align.py TestDots.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local q3r ""
+    foreach a in inside center outside {
+        quietly twoway dot mpg weight in 1/5, dlalign(`a') name(q4703d, replace)
+        cert_svg_export, name(q4703d) file("`w47_work'/q4703d_`a'.svg")
+        python: import re as _re4703; _t = open(r"`w47_work'/q4703d_`a'.svg").read(); _rr = [float(v) for v in _re4703.findall(r'<circle[^>]* r="([0-9.]+)"', _t)][:2]; from sfi import Macro as _M4703; _M4703.setLocal("q3v", "%.2f" % _rr[-1])
+        local q3r "`q3r' `q3v'"
+        capture erase "`w47_work'/q4703d_`a'.svg"
+    }
+    capture graph drop q4703d
+    local q3a : word 1 of `q3r'
+    local q3b : word 2 of `q3r'
+    local q3c : word 3 of `q3r'
+    _w47_expect Q4703-3 "(`q3a' < `q3b' & `q3b' < `q3c')" "twoway's dot ring radii `q3r' do not grow inside < center < outside"
+    local lf "`w47_work'/q4703_3.log"
+    capture erase "`lf'"
+    quietly log using "`lf'", text replace name(q47033)
+    dash clear
+    capture noisily dash dot mpg weight in 1/5, dlalign(center) name(q4703c)
+    local drc = _rc
+    quietly log close q47033
+    _w47_expect Q4703-3 "(`drc' == 0)" "dash dlalign(center) rc `drc'"
+    cert_log_has "`lf'", needle("dlalign()")
+    _w47_expect Q4703-3 "(r(count) == 0)" "dash names dlalign() `r(count)' times"
+    cert_log_has "`lf'", needle("alignstroke")
+    _w47_expect Q4703-3 "(r(count) == 0)" "dash notes the alignment `r(count)' times"
+    dash clear
+    _w47_done Q4703-3 "twoway's dot ring radii `q3r'; dash takes dlalign(center) in silence"
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

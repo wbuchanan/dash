@@ -807,7 +807,8 @@ class TestTheParsersFoundSomething:
         # 10 -> 9: WP-32 play() refused, as twoway refuses a recording it
         # cannot find or read
         # 9 -> 7: WP-32 two contour options drawn
-        assert len(_ignored_options()) == 7
+        # 7 -> 6: WP-47 basic:PT-5 dlalign() drawn
+        assert len(_ignored_options()) == 6
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -852,7 +853,8 @@ class TestTheParsersFoundSomething:
         # 55 -> 53: WP-37 stat:PT-12 xlog and xtransform() drawn on lfit
         # and lfitci, taken silently on qfit, qfitci and fpfitci
         # (catchall_options_truth.json re-extracted).
-        assert len(_unsupported_section()) == 53
+        # 53 -> 52: WP-47 basic:PT-5 dlalign() drawn, its entry gone.
+        assert len(_unsupported_section()) == 52
 
     def test_the_undeclared_table_was_found(self):
         # WP-31 J1: 29 spellings of _dash_rep_und_tab's 52 rows are declared

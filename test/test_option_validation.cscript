@@ -4778,6 +4778,32 @@ sysuse auto, clear
 _ov_assert Q4504-2 `"(`"`q4504_bad'"' == "" & `q4504_m' >= 16)"' `"every U_ row's drawn size is twoway's (`q4504_m' rows)`q4504_bad'"'
 macro drop q4504_*
 
+// ----------------------------------------------------------------
+// Q4703-4 (WP-47 section 47-03, basic:PT-6, basic:PT-5): an alignment
+// word twoway does not know is noted in twoway's words and drawn as the
+// default: twoway prints "named style bogus not found in class
+// alignstroke, default attributes used" for lalign(), mlalign() and
+// dlalign() alike, rc 0 (stroke_align_truth.json U01-U03, measured
+// live here too).
+// ----------------------------------------------------------------
+sysuse auto, clear
+// lalign() is probed on line: a scatter draws no line, and dash notes the
+// word only where it draws one.
+foreach q47c in "line mpg weight, lalign(bogus)" "scatter mpg weight, mlalign(bogus)" "dot mpg weight in 1/5, dlalign(bogus)" {
+    capture log close _q47tw
+    capture erase "`c(tmpdir)'q4703_tw.log"
+    log using "`c(tmpdir)'q4703_tw.log", name(_q47tw) text replace
+    capture noisily twoway `q47c' nodraw
+    local q47trc = _rc
+    log close _q47tw
+    _ov_count "`c(tmpdir)'q4703_tw.log" "not found in class alignstroke"
+    _ov_assert Q4703-4 "(`q47trc' == 0 & r(n) >= 1)" `"twoway `q47c': rc `q47trc', the note `r(n)' times"'
+    capture erase "`c(tmpdir)'q4703_tw.log"
+    _u46_rc Q4703-4 0 `"dash `q47c'"'
+    _ov_said Q4703-4 "named style bogus not found in class alignstroke, default attributes used"
+}
+capture dash clear
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

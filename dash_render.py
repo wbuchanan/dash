@@ -25685,7 +25685,8 @@ class GlyphMapper:
         know is noted under the d-option's own name and the dots keep the
         scheme's value (an unknown colour draws black, as twoway draws
         it).  A size above zero is drawn at least 1 px across (D-18c):
-        vtiny is 0.384 px.  dlalign() is named by dash.ado, never read."""
+        vtiny is 0.384 px.  dlalign() sizes the dots' outline as twoway
+        aligns it (WP-47 basic:PT-5)."""
         opts = options or {}
         mo: dict = {}
         ref = getattr(self.scheme, "size_ref_in", 4.0)
@@ -25713,6 +25714,17 @@ class GlyphMapper:
             mo[mname] = v
         if mo:
             self._apply_marker_opts(dr, mo, traits=traits)
+        # dlalign() (WP-47 basic:PT-5): the dots' outline lies as twoway
+        # aligns it (stroke_align_truth.json D01-D04); another word is noted
+        # in twoway's words (U03) and drawn as the scheme's default.
+        _dla = str(opts.get("dlalign", "") or "").strip()
+        if _dla and _dla not in _DASH_STROKE_ALIGNS:
+            _dash_warn_once(
+                ("dlalign", _dash_display(_dla)),
+                f"dash: named style {_dash_display(_dla)} not found in class "
+                "alignstroke, default attributes used")
+        self._align_marker_size(dr, _dash_stroke_align(
+            opts, "dlalign", self.scheme, "dotmark"))
         g = dr.glyph
         if isinstance(g.size, (int, float)) and 0 < g.size < 1.0:
             g.size = 1.0

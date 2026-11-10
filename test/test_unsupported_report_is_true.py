@@ -112,8 +112,9 @@ PLOT_VALUES = {
     # twoway styles dot's rows of dots with them (dot_truth.json D08);
     # they are in LIVE_VALUES on dot.
     "bmlinestyle": ("p3", "p5", "scatter"),
-    # WP-31 B5b: accepted and named; a stroke cannot be aligned in Bokeh.
-    "dlalign": ("inside", "outside", "dot"),
+    # Flipped (WP-47 basic:PT-5): dlalign ("inside", "outside", "dot") --
+    # named and inert -- left this table: dlalign() is drawn, so it is no
+    # longer pending; it is in LIVE_VALUES on dot.
     "mlwidth": ("thick", "vthin", "scatter"),
     "n": ("30", "70", "kdensity"),
     "nodraw": ("nodraw", "", "scatter"),
@@ -297,7 +298,8 @@ class TestTheListIsCoveredAndHonest:
         # 10 -> 9 and 1 -> 0: WP-32 play() refused, as twoway refuses a
         # recording it cannot find or read
         # 9 -> 7: WP-32 two contour options drawn
-        assert len(_plot_pending()) == 7, sorted(_plot_pending())
+        # 7 -> 6: WP-47 basic:PT-5 dlalign() drawn
+        assert len(_plot_pending()) == 6, sorted(_plot_pending())
         assert len(_graph_pending()) == 0, sorted(_graph_pending())
 
 
@@ -544,6 +546,8 @@ _ML = {"mlabel": "foreign"}
 _FP_A = {"x": [2000.0, 3000.0], "y": [20.0, 25.0], "nobs": 10}
 _FP_B = {"x": [2000.0, 3000.0], "y": [18.0, 27.0], "nobs": 10}
 LIVE_VALUES = {
+    # WP-47 basic:PT-5: dlalign() sizes the dots' outline as twoway does.
+    "dlalign": ({"dlalign": "center"}, {"dlalign": "inside"}, "dot", {}),
     # Flipped (WP-31 C6): PLOT_VALUES cmissing ("n", "y", "area") -- "named
     # and inert on area" -- was wrong because twoway splits the area at a
     # missing row (area_cmissing_truth.json A01); probed on pricemiss, the

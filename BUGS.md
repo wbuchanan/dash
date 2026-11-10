@@ -5952,11 +5952,11 @@
   - Suggested fix: Measure diameters; compensate size (M12: resolved by drawing).
   - Resolution: Fixed 10nov2026 (WP-47, basic:PT-6). Measured (test/fixtures/stroke_align_truth.json M01-M04, stcolor and s2color): twoway draws a marker of size S with an outline w wide as a fill circle S + w across whose ring lies on the circle S across under inside (the default), on the fill's edge under center and half a width beyond it under outside, so its outer diameter is S + w, S + 2w or S + 3w. dash's default, drawn at S with Bokeh's centred stroke, was already twoway's inside picture (the audit's inferred centre picture was not what twoway draws); center and outside drew it too. GlyphMapper._align_marker_size now draws center at S + w and outside at S + 2w, weighted sizes through a CustomJSTransform, in both modes, and mlalign(outside) is no longer named. Pinned by test/test_stroke_align.py::TestMarkers::test_outer_diameter.
 
-- [ ] Title: dlalign(center|outside) changes dot size in twoway; dash drops it silently (tw_silent built from one default value)
+- [x] Title: dlalign(center|outside) changes dot size in twoway; dash drops it silently (tw_silent built from one default value)
   - File Names and Line Numbers: P43, Q24; dot_truth D30; extract_noted_option_truth.do:125
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids basic:PT-5; confirmed; tracked: untracked. Registered as GAPS4 basic:PT-5 (WP-47, section 47-03, Fix).
   - Suggested fix: Size the dot outline by alignment; probe non-default values for tw_silent
-  - Resolution: Not fixed because WP-47 section 47-03 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+  - Resolution: Fixed 10nov2026 (WP-47, basic:PT-5). Measured (test/fixtures/stroke_align_truth.json D01-D04, stcolor and s2color): twoway strokes a dot's ring on its nominal circle under inside, on the fill's edge under center and half a width beyond it under outside, as it does a marker's. GlyphMapper._dot_style now sizes the dots through _align_marker_size by dlalign() in both modes (center one outline width larger, outside two), before the 1 px floor; dash.ado no longer puts dlalign() on the pending list, and a word twoway does not know is noted in twoway's words (U03) and drawn as inside. Pinned by test/test_stroke_align.py::TestDots::test_dlalign_sizes.
 
 - [ ] Title: Spellings twoway draws as other options are only noted: symbol(), msymangle(), mlabels(), bcolor(), bfintensity(), blwidth(), blpattern(), afcolor(), afintensity(), bsymbol(), bmsize() on arrows (= barbsize)
   - File Names and Line Numbers: twoway_yxview_parse.class:141, 557-716; probe hashes
