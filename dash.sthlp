@@ -1165,8 +1165,8 @@ there, is an invalid point.  The literal is read as data and never run.
     cannot honour is named once per command, in a single note:
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
-{p 12 12 2}{cmd:. dash scatter mpg weight, afcolor(red)}{p_end}
-{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): afcolor())}{p_end}
+{p 12 12 2}{cmd:. dash scatter mpg weight, bmcolor(red)}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): bmcolor())}{p_end}
 
 {phang2}
     {ul:How a note is printed.}  Every note {cmd:dash} prints -- this one,
@@ -1186,7 +1186,7 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}
     The note names option {it:names}, never the values supplied, each as
-    {cmd:twoway} names it: {cmd:afcolor()} for one that takes a value,
+    {cmd:twoway} names it: {cmd:bmcolor()} for one that takes a value,
     {cmd:titling} for one typed without, and {cmd:sort} or {cmd:sort()}
     as it was typed.  A typo
     is refused as {cmd:twoway} refuses it: {cmd:titl(x)} is abbreviated
@@ -6948,6 +6948,12 @@ name them there.
 {synopt:{cmdab:col:or(}{it:color}{cmd:)}}the layer's colour -- its markers,
     lines and fills alike, as in {cmd:twoway}; {cmd:mcolor()},
     {cmd:lcolor()} and {cmd:fcolor()} win where given{p_end}
+{synopt:{it:older spellings}}{cmd:symbol()}, {cmd:msymangle()} and
+    {cmd:mlabels()} are {cmd:twoway}'s older spellings of {cmd:msymbol()},
+    {cmd:msangle()} and {cmd:mlabel()}, and are read as them; so are
+    {cmd:bcolor()}, {cmd:afcolor()}, {cmd:afintensity()},
+    {cmd:bfintensity()}, {cmd:blwidth()} and {cmd:blpattern()} for the
+    area and bar options they stand for{p_end}
 {synoptline}
 
 {pstd}
@@ -7627,8 +7633,8 @@ supplied and not drawn is named in that command's note, and an option
 ({cmd:r(198)}, {cmd:option X() not allowed}):
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
-{p 12 12 2}{cmd:. dash scatter mpg weight, afcolor(red) afintensity(50)}{p_end}
-{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): afcolor() afintensity())}{p_end}
+{p 12 12 2}{cmd:. dash scatter mpg weight, bmcolor(red) bmlcolor(red)}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): bmcolor() bmlcolor())}{p_end}
 
 {pstd}
 The note is built from the declarations in {cmd:dash.ado} and from what
@@ -7661,31 +7667,22 @@ in either direction.
     {cmd:twoway} draws, it names.
 
 {phang2}{ul:Area, bar and line edge styles.}
-    {opt afcolor(color)}, {opt afintensity(intensity)},
     {opt alalign(linealignmentstyle)} -- the rest of {cmd:twoway}'s
-    area-style options; {opt bcolor(color)}, {opt bfintensity(intensity)},
-    {opt blalign(linealignmentstyle)}, {opt blpattern(linepattern)},
-    {opt blwidth(linewidth)} -- its bar-style options; and
-    {opt clalign(linealignmentstyle)}, a connecting line's alignment.
-    {cmd:twoway} takes them on every plot type; {cmd:dash} draws a fill and
-    an outline from {cmd:color()}, {cmd:fcolor()}, {cmd:lcolor()},
-    {cmd:lwidth()} and {cmd:lpattern()}, and names these.
+    area-style options; {opt blalign(linealignmentstyle)} -- its bar-style
+    option; and {opt clalign(linealignmentstyle)}, a connecting line's
+    alignment.  {cmd:twoway} takes them on every plot type; {cmd:dash}
+    draws a fill and an outline from {cmd:color()}, {cmd:fcolor()},
+    {cmd:lcolor()}, {cmd:lwidth()} and {cmd:lpattern()}, and names these.
 
 {phang2}{ul:Back markers.}
     {opt bmcolor(color)}, {opt bmlalign(linealignmentstyle)},
     {opt bmlcolor(color)}, {opt bmlpattern(linepattern)},
     {opt bmlwidth(linewidth)}, {opt bmsize(markersizestyle)},
-    {opt bmsymbol(symbolstyle)} and its other spelling
-    {opt bsymbol(symbolstyle)} -- {cmd:twoway}'s back-marker style, taken
+    {opt bmsymbol(symbolstyle)} -- {cmd:twoway}'s back-marker style, taken
     on every plot type; {cmd:dash} draws no back marker, and names them.
-
-{phang2}{ul:Older spellings.}
-    {opt msymangle(anglestyle)} and
-    {opt mlabels(varname)} -- spellings {cmd:twoway} also takes for
-    {cmd:msangle()} and {cmd:mlabel()}.  {cmd:dash} takes
-    the names in this file, draws the default for these, and names them.
-    (The older spelling symbol, s at its shortest, is read as
-    {cmd:msymbol()}, as {cmd:twoway} reads it.)
+    {cmd:bsymbol()} is {cmd:twoway}'s other spelling of {opt bmsymbol()},
+    and {opt bmsize()} on {cmd:pcarrow}, {cmd:pcbarrow} and
+    {cmd:pcarrowi} is {cmd:barbsize()}, which dash draws.
 
 {phang2}{ul:Marker-label text layout.}
     {opt mlabalignment(alignmentstyle)},

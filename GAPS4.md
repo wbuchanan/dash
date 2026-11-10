@@ -535,7 +535,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **basic:PT-4 Tracked:** Closed in WP-47, BUGS.md "Outline alignment: twoway strokes bars, histogram bins, areas and rbar inside and honours lalign(); dash centres every stroke and calls lalign() 'the same picture'; rcap caps butt-ended, not round", commit 4ef9650.
 - **basic:PT-6 Tracked:** Closed in WP-47, BUGS.md "mlalign(center) and inside draw one picture; the default marker is probably twoway's center picture", commit 6578f68.
 - **basic:PT-5 Tracked:** Closed in WP-47, BUGS.md "dlalign(center|outside) changes dot size in twoway; dash drops it silently (tw_silent built from one default value)", commit 45602f2.
-- **basic:PT-10 Tracked:** Open (WP-47 section 47-04).
+- **basic:PT-10 Tracked:** Closed in WP-47, BUGS.md "Spellings twoway draws as other options are only noted: symbol(), msymangle(), mlabels(), bcolor(), bfintensity(), blwidth(), blpattern(), afcolor(), afintensity(), bsymbol(), bmsize() on arrows (= barbsize)", commit pending.
 - **basic:PT-11 Tracked:** Open (WP-47 section 47-05).
 - **PIC-2 Tracked:** Closed in WP-47, BUGS.md "Marker shapes: diamonds 2/3 as wide; V/v closed triangles (help says open chevron); + filled fat cross; arrow symbols without shaft; msymbol(invisible) draws nothing (twoway notes and draws the default)", commit 0ccbd3e.
 - **PIC-9 Tracked:** Closed in WP-47, BUGS.md "Empty histogram bins draw an outline segment along the base", commit 9c29f4e.

@@ -3412,6 +3412,15 @@ CORPUS = [
     # missing in row 1).
     _case("dot missing y rows (WP-47 PIC-10)", [plot_for("dot")],
           {"_parity_frame": "missing_first_y"}),
+    # WP-47 basic:PT-10: what dash.ado writes for scatter symbol(Oh), bar
+    # bcolor(red) blwidth(thick) and bar afcolor(navy) (the S04 block's
+    # specs): the targets, drawn alike in both modes.
+    _case("older spellings symbol bcolor afcolor (WP-47 basic:PT-10)",
+          [plot_for("scatter", {"msymbol": "Oh"}),
+           plot_for("bar", {"acolor": "red", "color": "red",
+                            "lcolor": "red", "alwidth": "thick",
+                            "lwidth": "thick"}),
+           plot_for("bar", {"fcolor": "navy"}, yvar="price")]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

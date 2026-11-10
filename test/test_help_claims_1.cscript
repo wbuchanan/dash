@@ -846,6 +846,10 @@ if _rc {
 else display as text "HC1-12 PASS: dash's name() registers the graph and leaves Stata's graph memory alone; twoway's stores it"
 dash clear
 
+// Flipped (WP-47 basic:PT-10): afcolor() and afintensity() are read as
+// fcolor() and fintensity() now, as twoway draws them (alias_truth.json
+// P1), and not named; bmcolor() and bmlcolor(), back-marker options
+// twoway takes on every type and dash names, take their place.
 // ================================================================
 // HC1-13 -- an unknown option is named without its value
 // ================================================================
@@ -854,10 +858,10 @@ dash clear
 // another word than twoway names first, and an unknown lower-case word is
 // noted where twoway refuses it"); afcolor(), which twoway takes and dash does
 // not draw, carries the value.
-_hc_logged 13 dash scatter mpg weight, afcolor(zq_secret_value_13) name(hc13)
+_hc_logged 13 dash scatter mpg weight, bmcolor(zq_secret_value_13) name(hc13)
 local rc = r(rc)
 local lf "`r(logfile)'"
-cert_log_has "`lf'", needle("dash: ignoring unsupported option(s): afcolor()")
+cert_log_has "`lf'", needle("dash: ignoring unsupported option(s): bmcolor()")
 local named = r(found)
 cert_log_has "`lf'", needle("zq_secret_value_13)")
 local echoed_cmd = r(found)

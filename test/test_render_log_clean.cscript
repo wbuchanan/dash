@@ -273,6 +273,10 @@ else {
     local nc_fail = `nc_fail' + 1
 }
 
+// Flipped (WP-47 basic:PT-10): afcolor() and afintensity() are read as
+// fcolor() and fintensity() now, as twoway draws them (alias_truth.json
+// P1), and not named; bmcolor() and bmlcolor(), back-marker options
+// twoway takes on every type and dash names, take their place.
 // NC-05: the note form, with no Python warning and no path of dash's.
 // // Flipped: WP-32 -- play() was named in the note, which was wrong because
 // twoway refuses a recording it cannot find, r(601), or read, r(198), and
@@ -280,7 +284,7 @@ else {
 // note, where twoway refuses a recording it cannot find or read"); afcolor(), which twoway takes and dash names, gives the
 // note here and in NC-06.
 log using "`nc_log'", name(_dashnc) text replace
-capture noisily dash scatter mpg weight, mcolor(notacolor) afcolor(red) saving("`nc_page'", replace)
+capture noisily dash scatter mpg weight, mcolor(notacolor) bmcolor(red) saving("`nc_page'", replace)
 local nc_rc3 = _rc
 log close _dashnc
 mata: st_local("nc_uw", strofreal(_rlc_count(st_local("nc_log"), "User" + "Warning")))
@@ -300,15 +304,15 @@ else {
 // renderer's escape is Mata _dash_smcl_text's twin.
 local nc6_bad ""
 log using "`nc_log'", name(_dashnc) text replace
-quietly dash scatter mpg weight, mcolor(notacolor) afcolor(red) saving("`nc_page'", replace)
+quietly dash scatter mpg weight, mcolor(notacolor) bmcolor(red) saving("`nc_page'", replace)
 log close _dashnc
 mata: st_local("nc_qa", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
-mata: st_local("nc_qi", strofreal(_rlc_count(st_local("nc_log"), "ignoring unsupported option(s): afcolor()")))
+mata: st_local("nc_qi", strofreal(_rlc_count(st_local("nc_log"), "ignoring unsupported option(s): bmcolor()")))
 if !(`nc_qa' >= 2 & `nc_qi' >= 1) {
-    local nc6_bad "`nc6_bad' (a) quietly: `nc_qa' note line(s), `nc_qi' naming afcolor();"
+    local nc6_bad "`nc6_bad' (a) quietly: `nc_qa' note line(s), `nc_qi' naming bmcolor();"
 }
 log using "`nc_log'", name(_dashnc) text replace
-capture dash scatter mpg weight, mcolor(notacolor) afcolor(red) saving("`nc_page'", replace)
+capture dash scatter mpg weight, mcolor(notacolor) bmcolor(red) saving("`nc_page'", replace)
 local nc_rc4 = _rc
 log close _dashnc
 mata: st_local("nc_cn", strofreal(_rlc_count(st_local("nc_log"), "(note:")))

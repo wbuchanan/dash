@@ -675,9 +675,13 @@ class TestTheParsersFoundSomething:
         # old -> new: 237 -> 238, sil:SD-1 the Differences sub-point
         # Histogram bins., which opens with width(), is read as defining
         # width() (WP-40 40-02).
-        assert len(found) == 238, (
-            f"{len(found)} options parsed out of dash.sthlp, 238 measured "
-            f"30oct2026: a reader of the parser lost a form, or the help "
+        # old -> new: 238 -> 232: basic:PT-10 the older spellings are read
+        # (WP-47 47-04): afcolor(), afintensity(), bcolor(), bfintensity(),
+        # blpattern(), blwidth() and mlabels() leave the Unsupported list,
+        # and the marker options' line naming them defines symbol().
+        assert len(found) == 232, (
+            f"{len(found)} options parsed out of dash.sthlp, 232 measured "
+            f"10nov2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
 
@@ -854,7 +858,11 @@ class TestTheParsersFoundSomething:
         # and lfitci, taken silently on qfit, qfitci and fpfitci
         # (catchall_options_truth.json re-extracted).
         # 53 -> 52: WP-47 basic:PT-5 dlalign() drawn, its entry gone.
-        assert len(_unsupported_section()) == 52
+        # old -> new: 52 -> 43: basic:PT-10 the older spellings are read
+        # (WP-47 47-04): afcolor(), afintensity(), bcolor(), bfintensity(),
+        # blpattern(), blwidth(), bsymbol(), mlabels() and msymangle()
+        # leave the list.
+        assert len(_unsupported_section()) == 43
 
     def test_the_undeclared_table_was_found(self):
         # WP-31 J1: 29 spellings of _dash_rep_und_tab's 52 rows are declared
@@ -1107,6 +1115,13 @@ class TestEveryDocumentedOptionIsAccepted:
         # WP-35 GW-3: maxaxes() is read out of the options as typed and
         # checked as twoway checks it (_dash_maxaxes_val), never declared.
         subopts |= {"maxaxes"}
+        # WP-47 basic:PT-10: twoway's older spellings are read out of the
+        # catch-all by value (_dash_fold_alias; symbol() by
+        # _dash_fold_stat_words), undeclared: the plot parser's syntax holds
+        # as many options as -syntax- takes.
+        subopts |= {"symbol", "msymangle", "mlabels", "bcolor",
+                    "bfintensity", "blwidth", "blpattern", "afcolor",
+                    "afintensity", "bsymbol", "bmsize"}
         missing = sorted(set(documented) - set(declared) - subopts)
         assert not missing, (
             f"{len(missing)} options the help documents are not declared by "

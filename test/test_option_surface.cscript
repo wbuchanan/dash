@@ -101,7 +101,7 @@
 *!                 r(198), although dash.sthlp:157-160 promises a warning for
 *!                 the first two.
 *!   O2-04  FAIL   r(198).
-*!   O2-05  FAIL   r(198) on afcolor(red).
+*!   O2-05  FAIL   r(198) on bmcolor(red).
 *!   O2-06  FAIL   r(198) on the two-segment command.
 *!   O2-07  PASS   vacuously, as O2-02.
 *!
@@ -730,13 +730,17 @@ if `dsp_ar_n' > 0 {
 // ================================================================
 display as text ""
 if `dsp_ar_n' > 0 {
+    // Flipped (WP-47 basic:PT-10): afcolor() and afintensity() are read as
+    // fcolor() and fintensity() now, as twoway draws them (alias_truth.json
+    // P1), and not named; bmcolor() and bmlcolor(), back-marker options
+    // twoway takes on every type and dash names, take their place.
     // Flipped: WP-32 -- play(), the one option of the fixture's list still
     // named, is refused as twoway refuses a recording it cannot find
     // (BUGS.md "play() is named in the note, where twoway refuses a
     // recording it cannot find or read"); afcolor() and afintensity(),
     // which twoway takes and dash names, are the unsupported pair.
-    local combo `"mcolor(red)`macval(ar_optlist)' afcolor(red) afintensity(50)"'
-    local ar_keylist `"`ar_keylist' afcolor afintensity"'
+    local combo `"mcolor(red)`macval(ar_optlist)' bmcolor(red) bmlcolor(red)"'
+    local ar_keylist `"`ar_keylist' bmcolor bmlcolor"'
     _dsp_probe "combo" "scatter mpg weight" `"`macval(combo)'"'
     local prc    = r(rc)
     local pnotes = r(nnotes)
@@ -786,7 +790,7 @@ if `dsp_ar_n' > 0 {
 // noted where twoway refuses it"); afcolor() twoway takes on every type.
 // ================================================================
 display as text ""
-_dsp_probe "unknown" "scatter mpg weight" "afcolor(red)"
+_dsp_probe "unknown" "scatter mpg weight" "bmcolor(red)"
 local prc    = r(rc)
 local pnotes = r(nnotes)
 local pnote  `"`r(note)'"'
@@ -802,9 +806,9 @@ else if `pnotes' != 1 {
     local bad = 1
 }
 else {
-    _dsp_names `"`macval(pnote)'"' "afcolor"
+    _dsp_names `"`macval(pnote)'"' "bmcolor"
     if r(found) == 0 {
-        display as error `"O2-05 FAIL: the note does not name afcolor(): `macval(pnote)'"'
+        display as error `"O2-05 FAIL: the note does not name bmcolor(): `macval(pnote)'"'
         local bad = 1
     }
 }
@@ -823,8 +827,8 @@ else display as text "O2-05 PASS: an option dash does not draw is accepted and r
 // afintensity() twoway takes on every type.
 // ================================================================
 display as text ""
-_dsp_probe "twoseg" "scatter mpg weight, afcolor(red) || line mpg weight" ///
-    "afintensity(50)"
+_dsp_probe "twoseg" "scatter mpg weight, bmcolor(red) || line mpg weight" ///
+    "bmlcolor(red)"
 local prc    = r(rc)
 local pnotes = r(nnotes)
 local pnote  `"`r(note)'"'
@@ -841,7 +845,7 @@ else if `pnotes' != 1 {
     local bad = 1
 }
 else {
-    foreach key in afcolor afintensity {
+    foreach key in bmcolor bmlcolor {
         _dsp_names `"`macval(pnote)'"' "`key'"
         if r(found) == 0 {
             display as error `"O2-06 FAIL: the note omits segment option `key': `macval(pnote)'"'

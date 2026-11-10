@@ -548,6 +548,10 @@ program define _cf_help_register
     c_local n_hbad `n_hbad'
 end
 
+// Flipped (WP-47 basic:PT-10): afcolor() and afintensity() are read as
+// fcolor() and fintensity() now, as twoway draws them (alias_truth.json
+// P1), and not named; bmcolor() and bmlcolor(), back-marker options
+// twoway takes on every type and dash names, take their place.
 // The control, registered under the same log: an option twoway has and
 // dash does not draw, so the note must name it.  Flipped: WP-32 -- it was
 // addplot(), which twoway refuses on scatter, r(198), and dash now refuses
@@ -559,7 +563,7 @@ end
 capture program drop _cf_help_control
 program define _cf_help_control
     version 16.0
-    capture noisily dash scatter mpg weight, afcolor(red) name(hctl)
+    capture noisily dash scatter mpg weight, bmcolor(red) name(hctl)
     c_local n_hctl_rc = _rc
 end
 
@@ -587,7 +591,7 @@ assert `n_hbad' == 0
 assert `n_hctl_rc' == 0
 cert_log_has "`helplog'", needle("dash: ignoring unsupported option(s):")
 local n_noted = r(count)
-cert_log_has "`helplog'", needle("dash: ignoring unsupported option(s): afcolor()")
+cert_log_has "`helplog'", needle("dash: ignoring unsupported option(s): bmcolor()")
 local n_ctl = r(count)
 if `n_noted' != 1 | `n_ctl' != 1 {
     display as error "C-05 FAIL: `n_noted' unsupported-option note(s), `n_ctl' of them the control's; the log:"

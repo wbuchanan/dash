@@ -1127,17 +1127,21 @@ _reg_refused graph g1 `"dash scatter price weight if make != "name(a, replace)",
 // refuses it, "option NAME() not allowed", and g1 left whole (it was
 // named in the note until TP-15, 24sep2026).
 _reg_refused upper g1 `"dash scatter price weight, name(g1) NAME(x, replace)"'
+// Flipped (WP-47 basic:PT-10): afcolor() and afintensity() are read as
+// fcolor() and fintensity() now, as twoway draws them (alias_truth.json
+// P1), and not named; bmcolor() and bmlcolor(), back-marker options
+// twoway takes on every type and dash names, take their place.
 // Flipped: WP-32 -- the control was zqname(x, replace), an option twoway
 // refuses, which dash now refuses as twoway does (BUGS.md "In a few mixed
 // lists dash names another word than twoway names first, and an unknown
 // lower-case word is noted where twoway refuses it"); afcolor(), which
 // twoway takes and dash names in its note, carries the same text.
-_reg_refused graph g1 `"dash scatter price weight, name(g1) afcolor(x, replace)"'
+_reg_refused graph g1 `"dash scatter price weight, name(g1) bmcolor(x, replace)"'
 // The control for the note a second name() must not print (REG-33 and
 // REG-37..41 look for it through this same log and search): this afcolor()
 // is noted, once, before g1 is refused.
 if "${REG_NOTED}" != "1" {
-    mata: st_global("REG_BAD", st_global("REG_BAD") + " | afcolor() was not noted, or the note not seen: [" + st_global("REG_NOTED") + "]")
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | bmcolor() was not noted, or the note not seen: [" + st_global("REG_NOTED") + "]")
 }
 _reg_refused graph k1 `"dash scatter price weight, name(k1) title("name(k1, replace)")"'
 _reg_still_g1

@@ -11,8 +11,8 @@
 *! DRAWS is read from `graph export' SVG.
 *!
 *!   HC8-01  the note the help prints for `dash scatter mpg weight,
-*!           afcolor(red) afintensity(50)' is, word for word, "dash:
-*!           ignoring unsupported option(s): afcolor() afintensity()".
+*!           bmcolor(red) bmlcolor(red)' is, word for word, "dash:
+*!           ignoring unsupported option(s): bmcolor() bmlcolor()".
 *!           (Flipped, WP-30 P1.14a: pstyle() is drawn now; flipped,
 *!           WP-31 D2: t1title() is drawn now.)
 *!   HC8-02  every option on the Unsupported list is accepted (rc 0) and
@@ -382,6 +382,10 @@ end
 
 generate pos = mod(_n, 12) + 1
 
+// Flipped (WP-47 basic:PT-10): afcolor() and afintensity() are read as
+// fcolor() and fintensity() now, as twoway draws them (alias_truth.json
+// P1), and not named; bmcolor() and bmlcolor(), back-marker options
+// twoway takes on every type and dash names, take their place.
 // ================================================================
 // HC8-01 -- the note, word for word
 // ================================================================
@@ -400,11 +404,11 @@ generate pos = mod(_n, 12) + 1
 // twoway refuses a recording it cannot find, r(601), and dash now does
 // (BUGS.md "play() is named in the note, where twoway refuses a recording
 // it cannot find or read"), and twoway draws nothing of bmlinestyle().
-_hc_run "" `"dash scatter mpg weight, afcolor(red) afintensity(50)"'
+_hc_run "" `"dash scatter mpg weight, bmcolor(red) bmlcolor(red)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
 _hc_expect "HC8-01" "(`rc' == 0)" "rc `rc'"
-_hc_log "HC8-01" "`lf'" "(note:  dash: ignoring unsupported option(s): afcolor() afintensity())" 1 1
+_hc_log "HC8-01" "`lf'" "(note:  dash: ignoring unsupported option(s): bmcolor() bmlcolor())" 1 1
 _hc_done "HC8-01" "the note is the help's, word for word"
 
 // ================================================================
@@ -432,7 +436,7 @@ _hc_done "HC8-01" "the note is the help's, word for word"
 // twoway refuses each on every type, r(198), and dash now does
 // (noted_option_truth.json); not given (24 -> 16 named, and after the
 // comma filter() and link() likewise, 3 -> 1).
-local p_opts `"afcolor(red) acolor(red) alcolor(red) alpattern(dash) alwidth(thick) b1title(b) b2title(b) bmlinestyle(p3) cmissing(n) colorlist(red blue) coloruseplegend connect(l) dlstyle(p3) dstyle(p3) fxsize(50) fysize(50) l1title(l) l2title(l) mlabtextstyle(heading) mlabvposition(pos) mlpattern(dash) r1title(r) r2title(r) scale(1.5) sort t1title(t) t2title(t) text(20 3000 "hi") xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
+local p_opts `"bmcolor(red) acolor(red) alcolor(red) alpattern(dash) alwidth(thick) b1title(b) b2title(b) bmlinestyle(p3) cmissing(n) colorlist(red blue) coloruseplegend connect(l) dlstyle(p3) dstyle(p3) fxsize(50) fysize(50) l1title(l) l2title(l) mlabtextstyle(heading) mlabvposition(pos) mlpattern(dash) r1title(r) r2title(r) scale(1.5) sort t1title(t) t2title(t) text(20 3000 "hi") xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
 // Flipped (WP-30 P1.10): text() named in the note was wrong, because dash
 // draws it as twoway does (added_text_truth.json); it is given and not
 // named, here and after the comma (39 -> 38 and 23 -> 22).
@@ -462,7 +466,7 @@ local p_opts `"afcolor(red) acolor(red) alcolor(red) alpattern(dash) alwidth(thi
 // BUGS.md "dash names options twoway takes and draws nothing of, where
 // twoway is silent"): taken in silence, in p_honoured; afcolor(), which
 // twoway takes and dash names, is the named one.
-local p_names "afcolor"
+local p_names "bmcolor"
 // Flipped (WP-30 P1.24): mlabvposition named in the note was wrong,
 // because dash draws it per row as twoway does; it is given and not named.
 // Flipped (WP-30 P1.24, part 2): mlabtextstyle likewise, drawn in the
@@ -645,10 +649,10 @@ _hc_done "HC8-06" "an abbreviation works; a misspelling is refused as twoway ref
 // mlabwidth() on every type, r(198), and dash now does.
 // Flipped (WP-32): bmlinestyle() -> afintensity(); twoway draws nothing
 // of bmlinestyle(), and dash takes it in silence.
-_hc_run "" "dash scatter mpg weight, afintensity(HC8SECRETVALUE) afcolor(HC8OTHERVALUE) name(hc07, replace)"
+_hc_run "" "dash scatter mpg weight, bmlcolor(HC8SECRETVALUE) bmcolor(HC8OTHERVALUE) name(hc07, replace)"
 local lf "`r(logfile)'"
 _hc_expect "HC8-07" "(`r(rc)' == 0)" "rc `r(rc)'"
-_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): afintensity() afcolor())" 1 1
+_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): bmlcolor() bmcolor())" 1 1
 _hc_log "HC8-07" "`lf'" "HC8SECRETVALUE" 0
 _hc_log "HC8-07" "`lf'" "HC8OTHERVALUE" 0
 _hc_done "HC8-07" "the note carries the names and neither value"

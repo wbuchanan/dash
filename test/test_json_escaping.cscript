@@ -1939,7 +1939,11 @@ _jg_log_on "`jg_l46'"
 * carries its text.  Flipped (WP-32): dlalign() is not named, as twoway
 * draws nothing different with it (BUGS.md "dash names options twoway
 * takes and draws nothing of, where twoway is silent").
-capture noisily dash scatter mpg weight, text(30 3000 `"'90s tp"') dlalign(1 `"'x"') afcolor(`"'90s fp"') afintensity(1) name(jg46g)
+// Flipped (WP-47 basic:PT-10): afcolor() and afintensity() are read as
+// fcolor() and fintensity() now, as twoway draws them (alias_truth.json
+// P1), and not named; bmcolor() and bmlcolor(), back-marker options
+// twoway takes on every type and dash names, take their place.
+capture noisily dash scatter mpg weight, text(30 3000 `"'90s tp"') dlalign(1 `"'x"') bmcolor(`"'90s fp"') bmlcolor(red) name(jg46g)
 local jg_r7 = _rc
 capture noisily dash (scatter mpg weight) (line mpg weight), text(30 3000 `"'90s tq"') name(jg46h)
 local jg_r8 = _rc
@@ -1947,7 +1951,7 @@ _jg_log_off
 * Flipped (WP-30 P1.10): text() is drawn, so the note names at() foo()
 * bar() and no note names text(); it was "at() text() foo() bar()" and
 * "text()" once each.
-cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): afcolor() afintensity()")
+cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): bmcolor() bmlcolor()")
 local jg_m1 = r(count)
 cert_log_has "`jg_l46'", needle("text()")
 local jg_m2 = r(count)
@@ -2033,7 +2037,7 @@ capture noisily dash scatter mpg weight, xaxis(2) xlabel(3000 "'3k", axis(2)) na
 local jg_q2 = _rc
 capture noisily dash scatter mpg weight, dlalign(1 "'x") name(jg46r3)
 local jg_q3 = _rc
-capture noisily dash scatter mpg weight, afcolor("'90s fp") name(jg46r4)
+capture noisily dash scatter mpg weight, bmcolor("'90s fp") name(jg46r4)
 local jg_q4 = _rc
 _jg_log_off
 cert_log_has "`jg_l46r'", needle("type mismatch")
@@ -2048,7 +2052,7 @@ capture twoway scatter mpg weight, xaxis(2) xlabel(3000 "'3k", axis(2)) name(jg4
 local jg_t2 = _rc
 capture twoway scatter mpg weight, dlalign(1 "'x") name(jg46r3)
 local jg_t3 = _rc
-capture twoway scatter mpg weight, afcolor("'90s fp") name(jg46r4)
+capture twoway scatter mpg weight, bmcolor("'90s fp") name(jg46r4)
 local jg_t4 = _rc
 capture graph drop _all
 display as text "  JSE-46r rc: `jg_q1' `jg_q2' `jg_q3' `jg_q4' (twoway `jg_t1' `jg_t2' `jg_t3' `jg_t4')  type mismatch: `jg_k1'  ) required: `jg_k2'  registered: [`jg_reg0']"

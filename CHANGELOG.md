@@ -1036,6 +1036,7 @@ and now matches Stata.
 - Under bokeh serve, every session after the first is built, keeps no slot once closed and recomputes on a move; the first session's end left later sessions an empty page, never freed its slot and logged the key unredacted.
 - A saved histogram given bin(), width(), start() or discrete is binned again over the kept rows after a move, as twoway and the served page bin them; it kept the full data's bins and was marked (bins unfiltered).
 - A marker smaller than twoway's smallest ring, msize(0) included, is drawn 0.2 px across, its outline round it, as twoway draws it; it painted nothing.
+- twoway's older spellings msymangle(), mlabels(), bcolor(), bfintensity(), blwidth(), blpattern(), afcolor(), afintensity() and, on the arrows, bmsize() are drawn as msangle(), mlabel(), acolor(), fintensity(), alwidth(), alpattern(), fcolor() and barbsize(), with twoway's precedence, and are not named in the note; bar mpg weight, bcolor(red) drew the default bars and named bcolor(), and scatter mpg weight, msymbol(T) symbol(Oh) drew triangles, now hollow circles (WP-47, basic:PT-10)
 
 ### Fixed in WP-46
 

@@ -1,24 +1,18 @@
 {
  "_meta": {
-  "born_date": "14 Oct 2026",
-  "dash_commit": "b34f4116d3e0d90d319f15d3da602230ca4e1ab0",
-  "extracted": "29 Oct 2026 14:00:31",
+  "born_date": "04 Nov 2026",
+  "dash_commit": "10387b9efd2fb981135fd72a95aad089e2da8a26",
+  "extracted": "10 Nov 2026 11:18:03",
   "source": "scripts/extract_catchall_options_truth.do",
   "stata_version": "19.5"
  },
  "options": [
-  "afcolor",
-  "afintensity",
   "alalign",
   "back",
   "bargap",
   "bartype",
-  "bcolor",
   "below",
-  "bfintensity",
   "blalign",
-  "blpattern",
-  "blwidth",
   "bmcolor",
   "bmlalign",
   "bmlcolor",
@@ -26,7 +20,6 @@
   "bmlwidth",
   "bmsize",
   "bmsymbol",
-  "bsymbol",
   "clalign",
   "copyscheme",
   "dlpattern",
@@ -34,9 +27,7 @@
   "heatlabel",
   "logging",
   "mlabalignment",
-  "mlabels",
   "mlabjustification",
-  "msymangle",
   "noback",
   "nologging",
   "norefscheme",
@@ -59,9 +50,7 @@
    "cmd": "scatter mpg weight, afcolor(red)",
    "dash_message": "",
    "dash_rc": 0,
-   "noted": [
-    "afcolor"
-   ],
+   "noted": [],
    "twoway_message": "",
    "twoway_rc": 0
   },
@@ -69,9 +58,7 @@
    "cmd": "scatter mpg weight, afintensity(50)",
    "dash_message": "",
    "dash_rc": 0,
-   "noted": [
-    "afintensity"
-   ],
+   "noted": [],
    "twoway_message": "",
    "twoway_rc": 0
   },
@@ -143,9 +130,7 @@
    "cmd": "scatter mpg weight, bcolor(red)",
    "dash_message": "",
    "dash_rc": 0,
-   "noted": [
-    "bcolor"
-   ],
+   "noted": [],
    "twoway_message": "",
    "twoway_rc": 0
   },
@@ -163,9 +148,7 @@
    "cmd": "scatter mpg weight, bfintensity(50)",
    "dash_message": "",
    "dash_rc": 0,
-   "noted": [
-    "bfintensity"
-   ],
+   "noted": [],
    "twoway_message": "",
    "twoway_rc": 0
   },
@@ -191,9 +174,7 @@
    "cmd": "scatter mpg weight, blpattern(dash)",
    "dash_message": "",
    "dash_rc": 0,
-   "noted": [
-    "blpattern"
-   ],
+   "noted": [],
    "twoway_message": "",
    "twoway_rc": 0
   },
@@ -201,9 +182,7 @@
    "cmd": "scatter mpg weight, blwidth(thin)",
    "dash_message": "",
    "dash_rc": 0,
-   "noted": [
-    "blwidth"
-   ],
+   "noted": [],
    "twoway_message": "",
    "twoway_rc": 0
   },
@@ -290,7 +269,7 @@
    "dash_message": "",
    "dash_rc": 0,
    "noted": [
-    "bsymbol"
+    "bmsymbol"
    ],
    "twoway_message": "",
    "twoway_rc": 0
@@ -649,9 +628,7 @@
    "cmd": "scatter mpg weight, mlabels(make)",
    "dash_message": "",
    "dash_rc": 0,
-   "noted": [
-    "mlabels"
-   ],
+   "noted": [],
    "twoway_message": "",
    "twoway_rc": 0
   },
@@ -709,9 +686,7 @@
    "cmd": "scatter mpg weight, msymangle(45)",
    "dash_message": "",
    "dash_rc": 0,
-   "noted": [
-    "msymangle"
-   ],
+   "noted": [],
    "twoway_message": "",
    "twoway_rc": 0
   },

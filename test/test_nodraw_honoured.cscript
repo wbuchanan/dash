@@ -79,6 +79,10 @@ assert r(found) == 0
 confirm file "`out1'"
 display as text "ND-01 PASS: nodraw emits no note and the file is written"
 
+// Flipped (WP-47 basic:PT-10): afcolor() and afintensity() are read as
+// fcolor() and fintensity() now, as twoway draws them (alias_truth.json
+// P1), and not named; bmcolor() and bmlcolor(), back-marker options
+// twoway takes on every type and dash names, take their place.
 // ----------------------------------------------------------------
 // ND-02
 // ----------------------------------------------------------------
@@ -90,15 +94,15 @@ display as text "ND-01 PASS: nodraw emits no note and the file is written"
 // dash now refuses it as twoway does (BUGS.md "play() is named in the
 // note, where twoway refuses a recording it cannot find or read"); afcolor(), which twoway takes and dash names, is the
 // named one.
-_nd_note_for `"dash scatter mpg weight, afcolor(red) nodraw saving("`out1'", replace)"' "`logfile'"
+_nd_note_for `"dash scatter mpg weight, bmcolor(red) nodraw saving("`out1'", replace)"' "`logfile'"
 assert r(rc) == 0
 cert_log_has "`logfile'", needle("ignoring unsupported")
 assert r(found) == 1
-cert_log_has "`logfile'", needle("afcolor()")
+cert_log_has "`logfile'", needle("bmcolor()")
 assert r(found) == 1
 cert_log_has "`logfile'", needle("nodraw()")
 assert r(found) == 0
-display as text "ND-02 PASS: afcolor() is named, nodraw is not"
+display as text "ND-02 PASS: bmcolor() is named, nodraw is not"
 
 // ----------------------------------------------------------------
 // ND-03
@@ -110,11 +114,11 @@ assert r(found) == 0
 // And paren mode does report a plot group's options: afcolor() in the group
 // is named, nodraw beside it is not.  Without this a paren mode that
 // reported nothing at all passed.
-_nd_note_for `"dash (scatter mpg weight, afcolor(red) nodraw), saving("`out1'", replace)"' "`logfile'"
+_nd_note_for `"dash (scatter mpg weight, bmcolor(red) nodraw), saving("`out1'", replace)"' "`logfile'"
 assert r(rc) == 0
 cert_log_has "`logfile'", needle("ignoring unsupported")
 assert r(found) == 1
-cert_log_has "`logfile'", needle("afcolor()")
+cert_log_has "`logfile'", needle("bmcolor()")
 assert r(found) == 1
 cert_log_has "`logfile'", needle("nodraw()")
 assert r(found) == 0

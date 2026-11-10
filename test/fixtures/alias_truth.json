@@ -1,0 +1,1488 @@
+{
+ "_meta": {
+  "born_date": "04 Nov 2026",
+  "dash_commit": "10387b9efd2fb981135fd72a95aad089e2da8a26",
+  "extracted": "10 Nov 2026 11:06:41",
+  "method": "graph export SVG, its <desc> lines aside and the per-export ids made one; draws names the single-option picture a two-option probe equals (first/second as listed), or neither",
+  "source": "scripts/extract_alias_truth.do",
+  "stata_version": "19.5"
+ },
+ "afcolor": {
+  "P1": {
+   "differs_from_base": true,
+   "rc": 0,
+   "same_as_target": true,
+   "same_as_target_w": true
+  },
+  "P2": {
+   "cmd": "bar mpg weight, fcolor(red) afcolor(blue)",
+   "draws": "first",
+   "rc": 0
+  },
+  "P3": {
+   "cmd": "bar mpg weight, afcolor(blue) fcolor(red)",
+   "draws": "second",
+   "rc": 0
+  },
+  "P4": {
+   "a": {
+    "draws_alias": null,
+    "first_line": "option a() not allowed",
+    "rc": 198
+   },
+   "af": {
+    "draws_alias": null,
+    "first_line": "option af() not allowed",
+    "rc": 198
+   },
+   "afc": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "afco": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "afcol": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "afcolo": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "afcolor": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   }
+  },
+  "P5": {
+   "alias": {
+    "cmd": "bar mpg weight, afcolor(bogus)",
+    "lines": [
+     "(note:  named style bogus not found in class color, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "target": {
+    "cmd": "bar mpg weight, fcolor(bogus)",
+    "lines": [
+     "(note:  named style bogus not found in class color, default attributes used)"
+    ],
+    "rc": 0
+   }
+  },
+  "command": "bar mpg weight,",
+  "min_abbrev": "afc",
+  "repeat": {
+   "cmd": "bar mpg weight, afcolor(red) afcolor(blue)",
+   "draws": "second",
+   "rc": 0
+  },
+  "target": "fcolor",
+  "v": "red",
+  "w": "blue"
+ },
+ "afintensity": {
+  "P1": {
+   "differs_from_base": true,
+   "rc": 0,
+   "same_as_target": true,
+   "same_as_target_w": true
+  },
+  "P2": {
+   "cmd": "bar mpg weight, fintensity(30) afintensity(80)",
+   "draws": "first",
+   "rc": 0
+  },
+  "P3": {
+   "cmd": "bar mpg weight, afintensity(80) fintensity(30)",
+   "draws": "second",
+   "rc": 0
+  },
+  "P4": {
+   "a": {
+    "draws_alias": null,
+    "first_line": "option a() not allowed",
+    "rc": 198
+   },
+   "af": {
+    "draws_alias": null,
+    "first_line": "option af() not allowed",
+    "rc": 198
+   },
+   "afi": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "afin": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "afint": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "afinte": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "afinten": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "afintens": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "afintensi": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "afintensit": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "afintensity": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   }
+  },
+  "P5": {
+   "alias": {
+    "cmd": "bar mpg weight, afintensity(abc)",
+    "lines": [
+     "(note:  named style abc not found in class intensity, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "target": {
+    "cmd": "bar mpg weight, fintensity(abc)",
+    "lines": [
+     "(note:  named style abc not found in class intensity, default attributes used)"
+    ],
+    "rc": 0
+   }
+  },
+  "command": "bar mpg weight,",
+  "min_abbrev": "afi",
+  "repeat": {
+   "cmd": "bar mpg weight, afintensity(30) afintensity(80)",
+   "draws": "second",
+   "rc": 0
+  },
+  "target": "fintensity",
+  "v": "30",
+  "w": "80"
+ },
+ "bcolor": {
+  "P1": {
+   "differs_from_base": true,
+   "rc": 0,
+   "same_as_target": true,
+   "same_as_target_w": true
+  },
+  "P2": {
+   "cmd": "bar mpg weight, acolor(red) bcolor(blue)",
+   "draws": "second",
+   "rc": 0
+  },
+  "P3": {
+   "cmd": "bar mpg weight, bcolor(blue) acolor(red)",
+   "draws": "first",
+   "rc": 0
+  },
+  "P4": {
+   "b": {
+    "draws_alias": false,
+    "first_line": "",
+    "rc": 0
+   },
+   "bc": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bco": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bcol": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bcolo": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bcolor": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   }
+  },
+  "P5": {
+   "alias": {
+    "cmd": "bar mpg weight, bcolor(bogus)",
+    "lines": [
+     "(note:  named style bogus not found in class color, default attributes used)",
+     "(note:  named style bogus not found in class color, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "target": {
+    "cmd": "bar mpg weight, acolor(bogus)",
+    "lines": [
+     "(note:  named style bogus not found in class color, default attributes used)",
+     "(note:  named style bogus not found in class color, default attributes used)"
+    ],
+    "rc": 0
+   }
+  },
+  "command": "bar mpg weight,",
+  "min_abbrev": "bc",
+  "repeat": {
+   "cmd": "bar mpg weight, bcolor(red) bcolor(blue)",
+   "draws": "second",
+   "rc": 0
+  },
+  "target": "acolor",
+  "v": "red",
+  "w": "blue"
+ },
+ "bfintensity": {
+  "P1": {
+   "differs_from_base": true,
+   "rc": 0,
+   "same_as_target": true,
+   "same_as_target_w": true
+  },
+  "P2": {
+   "cmd": "bar mpg weight, fintensity(30) bfintensity(80)",
+   "draws": "first",
+   "rc": 0
+  },
+  "P3": {
+   "cmd": "bar mpg weight, bfintensity(80) fintensity(30)",
+   "draws": "second",
+   "rc": 0
+  },
+  "P4": {
+   "b": {
+    "draws_alias": false,
+    "first_line": "",
+    "rc": 0
+   },
+   "bf": {
+    "draws_alias": null,
+    "first_line": "option bf() not allowed",
+    "rc": 198
+   },
+   "bfi": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bfin": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bfint": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bfinte": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bfinten": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bfintens": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bfintensi": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bfintensit": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bfintensity": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   }
+  },
+  "P5": {
+   "alias": {
+    "cmd": "bar mpg weight, bfintensity(abc)",
+    "lines": [
+     "(note:  named style abc not found in class intensity, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "target": {
+    "cmd": "bar mpg weight, fintensity(abc)",
+    "lines": [
+     "(note:  named style abc not found in class intensity, default attributes used)"
+    ],
+    "rc": 0
+   }
+  },
+  "command": "bar mpg weight,",
+  "min_abbrev": "bfi",
+  "repeat": {
+   "cmd": "bar mpg weight, bfintensity(30) bfintensity(80)",
+   "draws": "second",
+   "rc": 0
+  },
+  "target": "fintensity",
+  "v": "30",
+  "w": "80"
+ },
+ "blpattern": {
+  "P1": {
+   "differs_from_base": true,
+   "rc": 0,
+   "same_as_target": true,
+   "same_as_target_w": true
+  },
+  "P2": {
+   "cmd": "bar mpg weight, alpattern(dash) blpattern(dot)",
+   "draws": "second",
+   "rc": 0
+  },
+  "P3": {
+   "cmd": "bar mpg weight, blpattern(dot) alpattern(dash)",
+   "draws": "first",
+   "rc": 0
+  },
+  "P4": {
+   "b": {
+    "draws_alias": false,
+    "first_line": "",
+    "rc": 0
+   },
+   "bl": {
+    "draws_alias": false,
+    "first_line": "",
+    "rc": 0
+   },
+   "blp": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "blpa": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "blpat": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "blpatt": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "blpatte": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "blpatter": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "blpattern": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   }
+  },
+  "P5": {
+   "alias": {
+    "cmd": "bar mpg weight, blpattern(bogus)",
+    "lines": [
+     "(note:  named style bogus not found in class linepattern, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "target": {
+    "cmd": "bar mpg weight, alpattern(bogus)",
+    "lines": [
+     "(note:  named style bogus not found in class linepattern, default attributes used)"
+    ],
+    "rc": 0
+   }
+  },
+  "command": "bar mpg weight,",
+  "min_abbrev": "blp",
+  "repeat": {
+   "cmd": "bar mpg weight, blpattern(dash) blpattern(dot)",
+   "draws": "second",
+   "rc": 0
+  },
+  "target": "alpattern",
+  "v": "dash",
+  "w": "dot"
+ },
+ "blwidth": {
+  "P1": {
+   "differs_from_base": true,
+   "rc": 0,
+   "same_as_target": true,
+   "same_as_target_w": true
+  },
+  "P2": {
+   "cmd": "bar mpg weight, alwidth(thick) blwidth(vthin)",
+   "draws": "second",
+   "rc": 0
+  },
+  "P3": {
+   "cmd": "bar mpg weight, blwidth(vthin) alwidth(thick)",
+   "draws": "first",
+   "rc": 0
+  },
+  "P4": {
+   "b": {
+    "draws_alias": false,
+    "first_line": "",
+    "rc": 0
+   },
+   "bl": {
+    "draws_alias": false,
+    "first_line": "",
+    "rc": 0
+   },
+   "blw": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "blwi": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "blwid": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "blwidt": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "blwidth": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   }
+  },
+  "P5": {
+   "alias": {
+    "cmd": "bar mpg weight, blwidth(bogus)",
+    "lines": [
+     "(note:  named style bogus not found in class linewidth, default attributes used)",
+     "(note:  linewidth not found in scheme, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "target": {
+    "cmd": "bar mpg weight, alwidth(bogus)",
+    "lines": [
+     "(note:  named style bogus not found in class linewidth, default attributes used)",
+     "(note:  linewidth not found in scheme, default attributes used)"
+    ],
+    "rc": 0
+   }
+  },
+  "command": "bar mpg weight,",
+  "min_abbrev": "blw",
+  "repeat": {
+   "cmd": "bar mpg weight, blwidth(thick) blwidth(vthin)",
+   "draws": "second",
+   "rc": 0
+  },
+  "target": "alwidth",
+  "v": "thick",
+  "w": "vthin"
+ },
+ "bmsize": {
+  "P1": {
+   "differs_from_base": true,
+   "rc": 0,
+   "same_as_target": true,
+   "same_as_target_w": true
+  },
+  "P2": {
+   "cmd": "pcarrow mpg weight trunk turn, barbsize(3) bmsize(1)",
+   "draws": "second",
+   "rc": 0
+  },
+  "P3": {
+   "cmd": "pcarrow mpg weight trunk turn, bmsize(1) barbsize(3)",
+   "draws": "first",
+   "rc": 0
+  },
+  "P4": {
+   "b": {
+    "draws_alias": false,
+    "first_line": "",
+    "rc": 0
+   },
+   "bm": {
+    "draws_alias": null,
+    "first_line": "option bm() not allowed",
+    "rc": 198
+   },
+   "bms": {
+    "draws_alias": false,
+    "first_line": "",
+    "rc": 0
+   },
+   "bmsi": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bmsiz": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bmsize": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   }
+  },
+  "P5": {
+   "alias": {
+    "cmd": "pcarrow mpg weight trunk turn, bmsize(abc)",
+    "lines": [
+     "(note:  named style abc not found in class symbolsize, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "target": {
+    "cmd": "pcarrow mpg weight trunk turn, barbsize(abc)",
+    "lines": [
+     "(note:  named style abc not found in class symbolsize, default attributes used)"
+    ],
+    "rc": 0
+   }
+  },
+  "command": "pcarrow mpg weight trunk turn,",
+  "min_abbrev": "bmsi",
+  "repeat": {
+   "cmd": "pcarrow mpg weight trunk turn, bmsize(3) bmsize(1)",
+   "draws": "second",
+   "rc": 0
+  },
+  "target": "barbsize",
+  "v": "3",
+  "w": "1"
+ },
+ "bsymbol": {
+  "P1": {
+   "differs_from_base": true,
+   "rc": 0,
+   "same_as_target": true,
+   "same_as_target_w": true
+  },
+  "P2": {
+   "cmd": "scatter mpg weight, bmsymbol(O) bsymbol(T)",
+   "draws": "second",
+   "rc": 0
+  },
+  "P3": {
+   "cmd": "scatter mpg weight, bsymbol(T) bmsymbol(O)",
+   "draws": "first",
+   "rc": 0
+  },
+  "P4": {
+   "b": {
+    "draws_alias": false,
+    "first_line": "",
+    "rc": 0
+   },
+   "bs": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bsy": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bsym": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bsymb": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bsymbo": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "bsymbol": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   }
+  },
+  "P5": {
+   "alias": {
+    "cmd": "scatter mpg weight, bsymbol(bogus)",
+    "lines": [
+     "(note:  named style bogus not found in class symbol, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "target": {
+    "cmd": "scatter mpg weight, bmsymbol(bogus)",
+    "lines": [
+     "(note:  named style bogus not found in class symbol, default attributes used)"
+    ],
+    "rc": 0
+   }
+  },
+  "command": "scatter mpg weight,",
+  "min_abbrev": "bs",
+  "repeat": {
+   "cmd": "scatter mpg weight, bsymbol(O) bsymbol(T)",
+   "draws": "second",
+   "rc": 0
+  },
+  "target": "bmsymbol",
+  "v": "O",
+  "w": "T"
+ },
+ "mlabels": {
+  "P1": {
+   "differs_from_base": true,
+   "rc": 0,
+   "same_as_target": true,
+   "same_as_target_w": true
+  },
+  "P2": {
+   "cmd": "scatter mpg weight, mlabel(make) mlabels(foreign)",
+   "draws": "second",
+   "rc": 0
+  },
+  "P3": {
+   "cmd": "scatter mpg weight, mlabels(foreign) mlabel(make)",
+   "draws": "second",
+   "rc": 0
+  },
+  "P4": {
+   "m": {
+    "draws_alias": false,
+    "first_line": "",
+    "rc": 0
+   },
+   "ml": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "mla": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "mlab": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "mlabe": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "mlabel": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "mlabels": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   }
+  },
+  "P5": {
+   "alias": {
+    "cmd": "scatter mpg weight, mlabels(nosuchvar)",
+    "lines": [
+     "variable nosuchvar not found"
+    ],
+    "rc": 111
+   },
+   "target": {
+    "cmd": "scatter mpg weight, mlabel(nosuchvar)",
+    "lines": [
+     "variable nosuchvar not found"
+    ],
+    "rc": 111
+   }
+  },
+  "command": "scatter mpg weight,",
+  "min_abbrev": "ml",
+  "repeat": {
+   "cmd": "scatter mpg weight, mlabels(make) mlabels(foreign)",
+   "draws": "second",
+   "rc": 0
+  },
+  "target": "mlabel",
+  "v": "make",
+  "w": "foreign"
+ },
+ "msymangle": {
+  "P1": {
+   "differs_from_base": true,
+   "rc": 0,
+   "same_as_target": true,
+   "same_as_target_w": true
+  },
+  "P2": {
+   "cmd": "scatter mpg weight, msymbol(T) msangle(45) msymangle(10)",
+   "draws": "first",
+   "rc": 0
+  },
+  "P3": {
+   "cmd": "scatter mpg weight, msymbol(T) msymangle(10) msangle(45)",
+   "draws": "second",
+   "rc": 0
+  },
+  "P4": {
+   "m": {
+    "draws_alias": false,
+    "first_line": "",
+    "rc": 0
+   },
+   "ms": {
+    "draws_alias": false,
+    "first_line": "",
+    "rc": 0
+   },
+   "msy": {
+    "draws_alias": false,
+    "first_line": "",
+    "rc": 0
+   },
+   "msym": {
+    "draws_alias": false,
+    "first_line": "",
+    "rc": 0
+   },
+   "msyma": {
+    "draws_alias": null,
+    "first_line": "option msyma() not allowed",
+    "rc": 198
+   },
+   "msyman": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "msymang": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "msymangl": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "msymangle": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   }
+  },
+  "P5": {
+   "alias": {
+    "cmd": "scatter mpg weight, msymbol(T) msymangle(abc)",
+    "lines": [
+     "(note:  named style abc not found in class anglestyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "target": {
+    "cmd": "scatter mpg weight, msymbol(T) msangle(abc)",
+    "lines": [
+     "(note:  named style abc not found in class anglestyle, default attributes used)"
+    ],
+    "rc": 0
+   }
+  },
+  "command": "scatter mpg weight, msymbol(T)",
+  "min_abbrev": "msyman",
+  "repeat": {
+   "cmd": "scatter mpg weight, msymbol(T) msymangle(45) msymangle(10)",
+   "draws": "second",
+   "rc": 0
+  },
+  "target": "msangle",
+  "v": "45",
+  "w": "10"
+ },
+ "others": [
+  {
+   "alias": "bcolor",
+   "alias_differs_from_base": true,
+   "command": "area mpg t, bcolor(red)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "acolor",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "afcolor",
+   "alias_differs_from_base": true,
+   "command": "area mpg t, afcolor(red)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "fcolor",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "blwidth",
+   "alias_differs_from_base": true,
+   "command": "area mpg t, blwidth(thick)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "alwidth",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "bcolor",
+   "alias_differs_from_base": false,
+   "command": "scatter mpg weight, bcolor(red)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "acolor",
+   "target_differs_from_base": false
+  },
+  {
+   "alias": "bmsize",
+   "alias_differs_from_base": false,
+   "command": "scatter mpg weight, bmsize(3)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "barbsize",
+   "target_differs_from_base": false
+  },
+  {
+   "alias": "bmsize",
+   "alias_differs_from_base": true,
+   "command": "pcbarrow mpg weight trunk turn, bmsize(3)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "barbsize",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "bmsize",
+   "alias_differs_from_base": true,
+   "command": "pcarrowi 20 2000 30 4000, bmsize(3)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "barbsize",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "bmsize",
+   "alias_differs_from_base": false,
+   "command": "rcapsym mpg trunk weight, bmsize(3)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "barbsize",
+   "target_differs_from_base": false
+  },
+  {
+   "alias": "bsymbol",
+   "alias_differs_from_base": false,
+   "command": "pcbarrow mpg weight trunk turn, bsymbol(O)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "bmsymbol",
+   "target_differs_from_base": false
+  },
+  {
+   "alias": "bsymbol",
+   "alias_differs_from_base": false,
+   "command": "pcarrow mpg weight trunk turn, bsymbol(O)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "bmsymbol",
+   "target_differs_from_base": false
+  },
+  {
+   "alias": "symbol",
+   "alias_differs_from_base": false,
+   "command": "line mpg t, symbol(Oh)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "msymbol",
+   "target_differs_from_base": false
+  },
+  {
+   "alias": "symbol",
+   "alias_differs_from_base": true,
+   "command": "connected mpg t, symbol(Oh)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "msymbol",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "bcolor",
+   "alias_differs_from_base": true,
+   "command": "area mpg t, bcolor(red)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "color",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "bcolor",
+   "alias_differs_from_base": true,
+   "command": "rarea mpg trunk t, bcolor(red)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "acolor",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "bcolor",
+   "alias_differs_from_base": true,
+   "command": "rbar mpg trunk weight, bcolor(red)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "acolor",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "bcolor",
+   "alias_differs_from_base": true,
+   "command": "histogram mpg, bcolor(red)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "acolor",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "bcolor",
+   "alias_differs_from_base": true,
+   "command": "rspike mpg trunk weight, bcolor(red)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "acolor",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "bcolor",
+   "alias_differs_from_base": true,
+   "command": "lfitci mpg weight, bcolor(red)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "acolor",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "blwidth",
+   "alias_differs_from_base": true,
+   "command": "rbar mpg trunk weight, blwidth(thick)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "alwidth",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "afcolor",
+   "alias_differs_from_base": true,
+   "command": "rbar mpg trunk weight, afcolor(red)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "fcolor",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "msymangle",
+   "alias_differs_from_base": true,
+   "command": "connected mpg t, msymbol(T) msymangle(45)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "msangle",
+   "target_differs_from_base": true
+  },
+  {
+   "alias": "mlabels",
+   "alias_differs_from_base": false,
+   "command": "line mpg t, mlabels(make)",
+   "rc": 0,
+   "same_as_target": true,
+   "target": "mlabel",
+   "target_differs_from_base": false
+  }
+ ],
+ "pairs": {
+  "acolor_afcolor": {
+   "first": "acolor(red)",
+   "second": "afcolor(blue)",
+   "xy": {
+    "cmd": "bar mpg weight, acolor(red) afcolor(blue)",
+    "draws": "neither",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, afcolor(blue) acolor(red)",
+    "draws": "neither",
+    "rc": 0
+   }
+  },
+  "acolor_bcolor": {
+   "first": "acolor(red)",
+   "second": "bcolor(blue)",
+   "xy": {
+    "cmd": "bar mpg weight, acolor(red) bcolor(blue)",
+    "draws": "second",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, bcolor(blue) acolor(red)",
+    "draws": "second",
+    "rc": 0
+   }
+  },
+  "afintensity_bfintensity": {
+   "first": "afintensity(30)",
+   "second": "bfintensity(80)",
+   "xy": {
+    "cmd": "bar mpg weight, afintensity(30) bfintensity(80)",
+    "draws": "second",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, bfintensity(80) afintensity(30)",
+    "draws": "second",
+    "rc": 0
+   }
+  },
+  "alcolor_bcolor": {
+   "first": "alcolor(red)",
+   "second": "bcolor(blue)",
+   "xy": {
+    "cmd": "bar mpg weight, alcolor(red) bcolor(blue)",
+    "draws": "second",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, bcolor(blue) alcolor(red)",
+    "draws": "second",
+    "rc": 0
+   }
+  },
+  "alpattern_blpattern": {
+   "first": "alpattern(dash)",
+   "second": "blpattern(dot)",
+   "xy": {
+    "cmd": "bar mpg weight, alpattern(dash) blpattern(dot)",
+    "draws": "second",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, blpattern(dot) alpattern(dash)",
+    "draws": "second",
+    "rc": 0
+   }
+  },
+  "alwidth_blwidth": {
+   "first": "alwidth(thick)",
+   "second": "blwidth(vthin)",
+   "xy": {
+    "cmd": "bar mpg weight, alwidth(thick) blwidth(vthin)",
+    "draws": "second",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, blwidth(vthin) alwidth(thick)",
+    "draws": "second",
+    "rc": 0
+   }
+  },
+  "barbsize_bmsize": {
+   "first": "barbsize(1)",
+   "second": "bmsize(3)",
+   "xy": {
+    "cmd": "pcarrow mpg weight trunk turn, barbsize(1) bmsize(3)",
+    "draws": "second",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "pcarrow mpg weight trunk turn, bmsize(3) barbsize(1)",
+    "draws": "second",
+    "rc": 0
+   }
+  },
+  "bcolor_afcolor": {
+   "first": "bcolor(red)",
+   "second": "afcolor(blue)",
+   "xy": {
+    "cmd": "bar mpg weight, bcolor(red) afcolor(blue)",
+    "draws": "first",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, afcolor(blue) bcolor(red)",
+    "draws": "first",
+    "rc": 0
+   }
+  },
+  "bfcolor_afcolor": {
+   "first": "bfcolor(red)",
+   "second": "afcolor(blue)",
+   "xy": {
+    "cmd": "bar mpg weight, bfcolor(red) afcolor(blue)",
+    "draws": "first",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, afcolor(blue) bfcolor(red)",
+    "draws": "first",
+    "rc": 0
+   }
+  },
+  "bfcolor_bcolor": {
+   "first": "bfcolor(red)",
+   "second": "bcolor(blue)",
+   "xy": {
+    "cmd": "bar mpg weight, bfcolor(red) bcolor(blue)",
+    "draws": "neither",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, bcolor(blue) bfcolor(red)",
+    "draws": "neither",
+    "rc": 0
+   }
+  },
+  "blcolor_bcolor": {
+   "first": "blcolor(red)",
+   "second": "bcolor(blue)",
+   "xy": {
+    "cmd": "bar mpg weight, blcolor(red) bcolor(blue)",
+    "draws": "neither",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, bcolor(blue) blcolor(red)",
+    "draws": "neither",
+    "rc": 0
+   }
+  },
+  "bmsymbol_bsymbol": {
+   "first": "bmsymbol(O)",
+   "second": "bsymbol(T)",
+   "xy": {
+    "cmd": "scatter mpg weight, bmsymbol(O) bsymbol(T)",
+    "draws": "second",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "scatter mpg weight, bsymbol(T) bmsymbol(O)",
+    "draws": "second",
+    "rc": 0
+   }
+  },
+  "color_afcolor": {
+   "first": "color(red)",
+   "second": "afcolor(blue)",
+   "xy": {
+    "cmd": "bar mpg weight, color(red) afcolor(blue)",
+    "draws": "neither",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, afcolor(blue) color(red)",
+    "draws": "neither",
+    "rc": 0
+   }
+  },
+  "color_bcolor": {
+   "first": "color(red)",
+   "second": "bcolor(blue)",
+   "xy": {
+    "cmd": "bar mpg weight, color(red) bcolor(blue)",
+    "draws": "second",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, bcolor(blue) color(red)",
+    "draws": "second",
+    "rc": 0
+   }
+  },
+  "fcolor_afcolor": {
+   "first": "fcolor(red)",
+   "second": "afcolor(blue)",
+   "xy": {
+    "cmd": "bar mpg weight, fcolor(red) afcolor(blue)",
+    "draws": "first",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, afcolor(blue) fcolor(red)",
+    "draws": "first",
+    "rc": 0
+   }
+  },
+  "fcolor_bcolor": {
+   "first": "fcolor(red)",
+   "second": "bcolor(blue)",
+   "xy": {
+    "cmd": "bar mpg weight, fcolor(red) bcolor(blue)",
+    "draws": "neither",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, bcolor(blue) fcolor(red)",
+    "draws": "neither",
+    "rc": 0
+   }
+  },
+  "fintensity_afintensity": {
+   "first": "fintensity(30)",
+   "second": "afintensity(80)",
+   "xy": {
+    "cmd": "bar mpg weight, fintensity(30) afintensity(80)",
+    "draws": "first",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, afintensity(80) fintensity(30)",
+    "draws": "first",
+    "rc": 0
+   }
+  },
+  "fintensity_bfintensity": {
+   "first": "fintensity(30)",
+   "second": "bfintensity(80)",
+   "xy": {
+    "cmd": "bar mpg weight, fintensity(30) bfintensity(80)",
+    "draws": "first",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, bfintensity(80) fintensity(30)",
+    "draws": "first",
+    "rc": 0
+   }
+  },
+  "lcolor_bcolor": {
+   "first": "lcolor(red)",
+   "second": "bcolor(blue)",
+   "xy": {
+    "cmd": "bar mpg weight, lcolor(red) bcolor(blue)",
+    "draws": "second",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, bcolor(blue) lcolor(red)",
+    "draws": "second",
+    "rc": 0
+   }
+  },
+  "lpattern_blpattern": {
+   "first": "lpattern(dash)",
+   "second": "blpattern(dot)",
+   "xy": {
+    "cmd": "bar mpg weight, lpattern(dash) blpattern(dot)",
+    "draws": "second",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, blpattern(dot) lpattern(dash)",
+    "draws": "second",
+    "rc": 0
+   }
+  },
+  "lwidth_blwidth": {
+   "first": "lwidth(thick)",
+   "second": "blwidth(vthin)",
+   "xy": {
+    "cmd": "bar mpg weight, lwidth(thick) blwidth(vthin)",
+    "draws": "second",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "bar mpg weight, blwidth(vthin) lwidth(thick)",
+    "draws": "second",
+    "rc": 0
+   }
+  },
+  "mlabel_mlabels": {
+   "first": "mlabel(make)",
+   "second": "mlabels(foreign)",
+   "xy": {
+    "cmd": "scatter mpg weight, mlabel(make) mlabels(foreign)",
+    "draws": "second",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "scatter mpg weight, mlabels(foreign) mlabel(make)",
+    "draws": "first",
+    "rc": 0
+   }
+  },
+  "msangle_msymangle": {
+   "first": "msangle(10)",
+   "second": "msymangle(45)",
+   "xy": {
+    "cmd": "scatter mpg weight, msymbol(T) msangle(10) msymangle(45)",
+    "draws": "first",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "scatter mpg weight, msymbol(T) msymangle(45) msangle(10)",
+    "draws": "first",
+    "rc": 0
+   }
+  },
+  "msymbol_symbol": {
+   "first": "msymbol(Oh)",
+   "second": "symbol(T)",
+   "xy": {
+    "cmd": "scatter mpg weight, msymbol(Oh) symbol(T)",
+    "draws": "second",
+    "rc": 0
+   },
+   "yx": {
+    "cmd": "scatter mpg weight, symbol(T) msymbol(Oh)",
+    "draws": "second",
+    "rc": 0
+   }
+  }
+ },
+ "symbol": {
+  "P1": {
+   "differs_from_base": true,
+   "rc": 0,
+   "same_as_target": true,
+   "same_as_target_w": true
+  },
+  "P2": {
+   "cmd": "scatter mpg weight, msymbol(Oh) symbol(T)",
+   "draws": "second",
+   "rc": 0
+  },
+  "P3": {
+   "cmd": "scatter mpg weight, symbol(T) msymbol(Oh)",
+   "draws": "first",
+   "rc": 0
+  },
+  "P4": {
+   "s": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "sy": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "sym": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "symb": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "symbo": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   },
+   "symbol": {
+    "draws_alias": true,
+    "first_line": "",
+    "rc": 0
+   }
+  },
+  "P5": {
+   "alias": {
+    "cmd": "scatter mpg weight, symbol(bogus)",
+    "lines": [
+     "(note:  named style bogus not found in class symbol, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "target": {
+    "cmd": "scatter mpg weight, msymbol(bogus)",
+    "lines": [
+     "(note:  named style bogus not found in class symbol, default attributes used)"
+    ],
+    "rc": 0
+   }
+  },
+  "command": "scatter mpg weight,",
+  "min_abbrev": "s",
+  "repeat": {
+   "cmd": "scatter mpg weight, symbol(Oh) symbol(T)",
+   "draws": "second",
+   "rc": 0
+  },
+  "target": "msymbol",
+  "v": "Oh",
+  "w": "T"
+ }
+}

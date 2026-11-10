@@ -2342,9 +2342,11 @@ program define _dash_fold_stat_words, sclass
     // s() .. symbol() (syn:SD-20c): twoway_yxview_parse.class's Symbol,
     // factored as msymbol() is, on every plot type -- lpolyci s(line) is
     // msymbol(line), and scatter s(Oh) draws msymbol(Oh)'s SVG
-    // (stat_accept_truth.json sd20c.*) -- read as msymbol() when no
-    // msymbol() is given, the rightmost copy kept, and taken out of the
-    // catch-all, by value.
+    // (stat_accept_truth.json sd20c.*) -- read as msymbol(), the rightmost
+    // copy kept, and taken out of the catch-all, by value.  WP-47
+    // basic:PT-10: the class factors Symbol after Msymbol, so symbol() is
+    // drawn over msymbol() in either order (alias_truth.json pairs
+    // msymbol_symbol); it was read only when no msymbol() was given.
     mata: _fsw_u = _dash_opt_tokens(st_global("s(_unknown)"))
     mata: st_local("_fsw_k", strofreal(cols(_fsw_u)))
     local _fsw_sy ""
@@ -2360,8 +2362,7 @@ program define _dash_fold_stat_words, sclass
     }
     capture mata: mata drop _fsw_u
     if "`_fsw_hit'" == "1" {
-        mata: st_local("_fsw_m", strofreal(strtrim(st_global("s(msymbol)")) == ""))
-        if `_fsw_m' sreturn local msymbol : copy local _fsw_sy
+        sreturn local msymbol : copy local _fsw_sy
         sreturn local _unknown : copy local _fsw_rest
     }
     // ty() and typ() on the ci types (syn:SD-7): their parse classes
@@ -2408,6 +2409,152 @@ program define _dash_fold_stat_words, sclass
             }
         }
     }
+end
+
+// ================================================================
+// _dash_fold_alias ptype `"<options>"'  -- twoway's older spellings read as
+//                                         the options they stand for.
+//
+// WP-47 basic:PT-10 (section 47-04).  twoway_yxview_parse.class factors
+// each of these onto the edit its target is factored onto (:593-630 the
+// marker block, :676-724 the area and bar blocks, :141/:186 MLabels):
+// msymangle() is msangle(), mlabels() is mlabel() itself (its declared
+// full name), bcolor() is acolor() (the fill and the outline),
+// bfintensity() and afintensity() are fintensity(), blwidth() alwidth(),
+// blpattern() alpattern(), afcolor() fcolor() (the fill), bsymbol()
+// bmsymbol() and bmsize() barbsize() (measured: each alias draws its
+// target's SVG, test/fixtures/alias_truth.json P1; symbol() is read by
+// _dash_fold_stat_words).  dash named every one in its note and drew the
+// default.
+//
+// _fa_rows is alias:minimum:target:yields.  The minimum is twoway's
+// (alias_truth.json P4: msyman, bc, bfi, blw, blp, afc, afi, bs, bmsi;
+// mlabel() .. ml() are dash's own MLabel(), the same option, so only
+// mlabels reaches the catch-all).  yields names the options the alias
+// gives way to: the class factors an option later than another onto the
+// same edit, and the later one is drawn whatever the typed order (P2, P3
+// and pairs): msangle() over msymangle(); fintensity() over bfintensity()
+// over afintensity(); fcolor(), bfcolor() and bcolor() over afcolor()'s
+// fill; bcolor() over acolor() and alcolor(); blwidth() and blpattern()
+// over alwidth() and alpattern(); bmsize() over barbsize(); bsymbol()
+// over bmsymbol().  mlabels() and mlabel() are one option: the rightmost
+// copy is drawn.  What the alias gives way to is not overwritten; what it
+// is drawn over is (alcolor() emptied, as _dash_fold_typed would draw it
+// over acolor()).  Each target's rules then judge the value.
+//
+// bmsize() is barbsize() on pcarrow, pcbarrow and pcarrowi, where dash
+// draws it; elsewhere it is the back marker's size, not drawn, and stays
+// in the catch-all (47-05).  bsymbol() is written back to the catch-all
+// as bmsymbol(), which dash does not draw yet (47-05).
+//
+// Called by _dash_process_segment after _dash_opts_repeats, first in the
+// fold chain (before _dash_fold_mlabv and _dash_fold_bw, so before
+// _dash_validate_opts).  The words and values are the user's, read and
+// written by value.  sclass: it rewrites the targets' s(), s(_unknown) and
+// s(_pending) and touches nothing else.
+// ================================================================
+program define _dash_fold_alias, sclass
+    version 19
+    mata: _dash_text_args(1, 0, 0)
+    local ptype : copy local _dash_a1
+    local _fa_rows "msymangle:msyman:msangle:msangle mlabels:mlabels:mlabel:rightmost bcolor:bc:acolor:- bfintensity:bfi:fintensity:fintensity blwidth:blw:alwidth:- blpattern:blp:alpattern:- afcolor:afc:fcolor:fcolor+bfcolor+bcolor afintensity:afi:fintensity:fintensity+bfintensity bsymbol:bs:bmsymbol:- bmsize:bmsi:barbsize:-"
+    local arrow_types "pcarrow pcbarrow pcarrowi"
+    mata: _fa_u = _dash_opt_tokens(st_global("s(_unknown)"))
+    mata: st_local("_fa_k", strofreal(cols(_fa_u)))
+    mata: _fa_keep = J(1, 0, "")
+    local _fa_any 0
+    forvalues _fi = 1/`_fa_k' {
+        mata: st_local("_fa_nm", _dash_rep_optname(_fa_u[`_fi']))
+        mata: st_local("_fa_p", strofreal(strpos(_fa_u[`_fi'], "(") > 0))
+        local _fa_a ""
+        if `_fa_p' {
+            local _fa_L = strlen("`_fa_nm'")
+            foreach _fa_r of local _fa_rows {
+                tokenize "`_fa_r'", parse(":")
+                if `_fa_L' >= strlen("`3'") & `_fa_L' <= strlen("`1'") & "`_fa_nm'" == substr("`1'", 1, `_fa_L') local _fa_a "`1'"
+            }
+        }
+        if "`_fa_a'" == "bmsize" & !`: list ptype in arrow_types' local _fa_a ""
+        if "`_fa_a'" != "" {
+            // The rightmost copy (twoway's combop rightmost).
+            mata: st_local("_fa_v_`_fa_a'", substr(_fa_u[`_fi'], strpos(_fa_u[`_fi'], "(") + 1, strlen(_fa_u[`_fi']) - strpos(_fa_u[`_fi'], "(") - 1))
+            local _fa_on_`_fa_a' 1
+            local _fa_any 1
+        }
+        else mata: _fa_keep = _fa_keep, _fa_u[`_fi']
+    }
+    if !`_fa_any' {
+        capture mata: mata drop _fa_u _fa_keep
+        exit
+    }
+    // msymangle() gives way to msangle().
+    if "`_fa_on_msymangle'" == "1" {
+        mata: st_local("_fa_go", strofreal(strtrim(st_global("s(msangle)")) == ""))
+        if `_fa_go' mata: st_global("s(msangle)", _dash_stylelist_norm(st_local("_fa_v_msymangle")))
+    }
+    // mlabels() and mlabel() are one option: the rightmost copy as typed
+    // (ml() .. mlabel() are dash's MLabel()).
+    if "`_fa_on_mlabels'" == "1" {
+        mata: _fa_t = _dash_opt_tokens(st_local("_dash_txt"))
+        mata: st_local("_fa_n", strofreal(cols(_fa_t)))
+        local _fa_pm 0
+        local _fa_ps 0
+        forvalues _fi = 1/`_fa_n' {
+            mata: st_local("_fa_nm", _dash_rep_optname(_fa_t[`_fi']))
+            mata: st_local("_fa_p", strofreal(strpos(_fa_t[`_fi'], "(") > 0))
+            if !`_fa_p' continue
+            if "`_fa_nm'" == "mlabels" local _fa_ps `_fi'
+            else if inlist("`_fa_nm'", "ml", "mla", "mlab", "mlabe", "mlabel") local _fa_pm `_fi'
+        }
+        capture mata: mata drop _fa_t
+        mata: st_local("_fa_go", strofreal(strtrim(st_global("s(mlabel)")) == "" | `_fa_ps' > `_fa_pm'))
+        if `_fa_go' mata: st_global("s(mlabel)", _dash_stylelist_norm(st_local("_fa_v_mlabels")))
+    }
+    // afcolor() gives way to fcolor(), bfcolor() and bcolor().
+    if "`_fa_on_afcolor'" == "1" & "`_fa_on_bcolor'" != "1" {
+        mata: st_local("_fa_go", strofreal(strtrim(st_global("s(fcolor)")) == "" & strtrim(st_global("s(bfcolor)")) == ""))
+        if `_fa_go' mata: st_global("s(fcolor)", _dash_stylelist_norm(st_local("_fa_v_afcolor")))
+    }
+    // afintensity() gives way to fintensity() and bfintensity();
+    // bfintensity() to fintensity().
+    foreach _fa_a in afintensity bfintensity {
+        if "`_fa_on_`_fa_a''" != "1" continue
+        if "`_fa_a'" == "afintensity" & "`_fa_on_bfintensity'" == "1" continue
+        mata: st_local("_fa_go", strofreal(strtrim(st_global("s(fintensity)")) == ""))
+        if `_fa_go' mata: st_global("s(fintensity)", _dash_stylelist_norm(st_local("_fa_v_`_fa_a'")))
+    }
+    // bcolor(), blwidth() and blpattern() are drawn over acolor() and
+    // alcolor(), alwidth() and alpattern(); each target is named where
+    // dash names it (s(_pending); _dash_fold_typed takes it off where it
+    // is drawn, and _dash_silent_drop where twoway draws nothing for it).
+    foreach _fa_p in "bcolor acolor" "blwidth alwidth" "blpattern alpattern" {
+        gettoken _fa_a _fa_t : _fa_p
+        local _fa_t = strtrim("`_fa_t'")
+        if "`_fa_on_`_fa_a''" != "1" continue
+        mata: st_global("s(`_fa_t')", _dash_stylelist_norm(st_local("_fa_v_`_fa_a'")))
+        if "`_fa_a'" == "bcolor" sreturn local alcolor ""
+        mata: st_global("s(_pending)", anyof(tokens(st_global("s(_pending)")), "`_fa_t'") ? st_global("s(_pending)") : strtrim(st_global("s(_pending)") + " `_fa_t'"))
+    }
+    // bmsize() on the arrows is barbsize(), drawn over it.
+    if "`_fa_on_bmsize'" == "1" {
+        mata: st_global("s(barbsize)", st_local("_fa_v_bmsize"))
+    }
+    // bsymbol() is bmsymbol(), drawn over it: written back as bmsymbol()
+    // in place of any bmsymbol() .. bms() copy.
+    if "`_fa_on_bsymbol'" == "1" {
+        mata: _fa_w = J(1, 0, "")
+        mata: st_local("_fa_n", strofreal(cols(_fa_keep)))
+        forvalues _fi = 1/`_fa_n' {
+            mata: st_local("_fa_nm", _dash_rep_optname(_fa_keep[`_fi']))
+            mata: st_local("_fa_p", strofreal(strpos(_fa_keep[`_fi'], "(") > 0))
+            if `_fa_p' & inlist("`_fa_nm'", "bms", "bmsy", "bmsym", "bmsymb", "bmsymbo", "bmsymbol") continue
+            mata: _fa_w = _fa_w, _fa_keep[`_fi']
+        }
+        mata: _fa_keep = _fa_w, "bmsymbol(" + st_local("_fa_v_bsymbol") + ")"
+        capture mata: mata drop _fa_w
+    }
+    mata: st_global("s(_unknown)", cols(_fa_keep) ? invtokens(_fa_keep) : "")
+    capture mata: mata drop _fa_u _fa_keep
 end
 
 // ================================================================
@@ -7467,6 +7614,9 @@ program define _dash_process_segment, rclass
                 exit 198
             }
         }
+        // twoway's older spellings read as the options they stand for,
+        // first in the fold chain (WP-47 basic:PT-10).
+        _dash_fold_alias "`ptype'" `"`macval(opts_raw)'"'
         // mlabvposition() (WP-30 P1.24): checked and counted as twoway
         // counts it, before mlabel()'s own rule (_dash_fold_mlab).
         _dash_fold_mlabv "`ptype'" "`yvar1' `yvar2' `yvar' `xvar'"

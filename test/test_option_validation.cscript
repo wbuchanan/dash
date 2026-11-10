@@ -291,7 +291,7 @@
 *! (24sep2026):
 *!   OV-09m                           OV-09's refusal says "must be", which
 *!                                    no accepted case may print
-*!   OV-157 afcolor(red)              rc 0, and OV-157m: the log says
+*!   OV-157 bmcolor(red)              rc 0, and OV-157m: the log says
 *!                                    "unsupported option", which no
 *!                                    refusal may print ("not found" is
 *!                                    found at OV-134m)
@@ -448,6 +448,10 @@
 *! mlabel() on the immediate types (WP-47 MS-7):
 *!   Q4701-4  scatteri, pci, pcarrowi mlabel(nosuch) rc 0; mlabel(..),
 *!          mlabel(=) twoway's r(198) and line
+*! twoway's older spellings (WP-47 basic:PT-10):
+*!   Q4704-4  a bad value of symbol(), msymangle(), bcolor(), afcolor(),
+*!          bfintensity(), afintensity(), blwidth(), blpattern(), bmsize()
+*!          rc 0, unnamed; mlabels(nosuchvar) r(111), twoway's line
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -1323,9 +1327,12 @@ _ov_case OV-156 `"dash line mpg weight, mlabel(make) mlabangle(400) name(ov156)"
 // OV-09m and "not found" at OV-134m.  Flipped: WP-32 -- the option was
 // notarealoption(3), which twoway refuses and dash now refuses as twoway
 // does (U50); afcolor() twoway takes on every type
-// (test/fixtures/unknown_option_truth.json).
+// (test/fixtures/unknown_option_truth.json).  Flipped (WP-47
+// basic:PT-10): afcolor() is read as fcolor() now (alias_truth.json P1)
+// and not named; bmcolor(), the back marker's colour, which twoway takes
+// on every type and dash does not draw, is.
 // ----------------------------------------------------------------
-_ov_case OV-157 `"dash scatter mpg weight, afcolor(red) name(ov157)"' 0 ""
+_ov_case OV-157 `"dash scatter mpg weight, bmcolor(red) name(ov157)"' 0 ""
 _ov_said OV-157m "unsupported option"
 
 // ----------------------------------------------------------------
@@ -3369,10 +3376,14 @@ capture dash clear
 // command and the names the note must end with.
 // U51-1 .. U51-8, one case each; each prints its verdict, the first as
 // "U51-1 PASS".
+// Flipped (WP-47 basic:PT-10): U51-2 and U51-3 named afcolor() and
+// afintensity(), which dash now reads as fcolor() and fintensity(), as
+// twoway draws them (alias_truth.json P1); bmcolor() and bmlwidth(), back
+// marker options dash still names, take their place.
 local _u51n 0
 foreach _u51p in "scatter mpg weight, titling|titling)" ///
-    "scatter mpg weight, afcolor(red) below|afcolor() below)" ///
-    "scatter mpg weight, logging afintensity(50)|logging afintensity())" ///
+    "scatter mpg weight, bmcolor(red) below|bmcolor() below)" ///
+    "scatter mpg weight, logging bmlwidth(thin)|logging bmlwidth())" ///
     "scatter mpg weight, numkeys(2)|numkeys())" ///
     "(scatter mpg weight), titling below|titling below)" ///
     "scatter mpg weight, logging|logging)" ///
@@ -4802,6 +4813,25 @@ foreach q47c in "line mpg weight, lalign(bogus)" "scatter mpg weight, mlalign(bo
     _u46_rc Q4703-4 0 `"dash `q47c'"'
     _ov_said Q4703-4 "named style bogus not found in class alignstroke, default attributes used"
 }
+capture dash clear
+
+// ----------------------------------------------------------------
+// Q4704-4 (WP-47 basic:PT-10): a bad value given to one of twoway's
+// older spellings is what its target makes of it, as twoway answers it
+// (test/fixtures/alias_truth.json P5): symbol(bogus), bcolor(bogus),
+// afcolor(bogus), blwidth(bogus), blpattern(bogus), msymangle(abc),
+// bfintensity(abc), afintensity(abc) and bmsize(abc) on pcarrow are rc 0
+// (twoway's note, drawn as the default), mlabels(nosuchvar) is r(111)
+// "variable nosuchvar not found"; none is named in the note.
+// ----------------------------------------------------------------
+sysuse auto, clear
+foreach q44 in "scatter mpg weight, symbol(bogus)" "scatter mpg weight, msymbol(T) msymangle(abc)" "bar mpg weight, bcolor(bogus)" "bar mpg weight, afcolor(bogus)" "bar mpg weight, bfintensity(abc)" "bar mpg weight, afintensity(abc)" "bar mpg weight, blwidth(bogus)" "bar mpg weight, blpattern(bogus)" "pcarrow mpg weight trunk turn, bmsize(abc)" {
+    _u46_rc Q4704-4 0 `"dash `q44'"'
+    _ov_count "`c(tmpdir)'dash_ov.log" "unsupported option"
+    _ov_assert Q4704-4 "(r(n) == 0)" `"dash `q44': the note is printed `r(n)' times"'
+}
+_u46_rc Q4704-4 111 "dash scatter mpg weight, mlabels(nosuchvar)"
+_ov_said Q4704-4 "variable nosuchvar not found"
 capture dash clear
 
 // Summary

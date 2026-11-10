@@ -334,6 +334,7 @@ GENERATORS = {
     "by_text_truth.json": "scripts/extract_by_text_truth.do",
     "by_types_truth.json": "scripts/extract_by_types_truth.do",
     "bystyle_truth.json": "scripts/extract_bystyle_truth.do",
+    "alias_truth.json": "scripts/extract_alias_truth.do",
     "catchall_options_truth.json": "scripts/extract_catchall_options_truth.do",
     "chrome_truth.json": "scripts/extract_chrome_truth.do",
     "ci_band_style_truth.json": "scripts/extract_ci_band_style_truth.do",

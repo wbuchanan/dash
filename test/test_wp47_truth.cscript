@@ -770,6 +770,129 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w47_run' {
 }
 * ==== end S03 ====
 
+// Each case runs dash with the alias and with the option twoway
+// factors it onto, and compares the plot options dash writes (the
+// spec _dash_serve_spec builds); twoway draws the alias's SVG as the
+// target's (test/fixtures/alias_truth.json P1, P2, P3).  q4704_cmp
+// sets $q4704_same (1 when the two plots' options are equal) and
+// $q4704_opts (the first plot's options, as JSON).
+capture program drop _q4704_run
+program define _q4704_run
+    version 19
+    args tag cmd
+    capture dash clear
+    quietly log using "${q4704_dir}/q4704_`tag'.log", text replace name(q4704)
+    capture noisily dash `cmd' name(q4704)
+    local rc = _rc
+    quietly log close q4704
+    global q4704_rc_`tag' `rc'
+    if !`rc' quietly _dash_serve_spec, specpath("${q4704_dir}/q4704_`tag's.json") datapath("${q4704_dir}/q4704_`tag'd.json")
+    capture dash clear
+end
+python:
+import json as _q4704_json
+from sfi import Macro as _q4704_M
+def _q4704_opts(tag):
+    with open("%s/q4704_%ss.json" % (_q4704_M.getGlobal("q4704_dir"), tag), encoding="utf-8") as fh:
+        d = _q4704_json.load(fh)
+    return [p.get("options") for g in d.get("graphs", []) for p in g.get("plots", [])]
+
+def _q4704_cmp(a, b):
+    x, y = _q4704_opts(a), _q4704_opts(b)
+    _q4704_M.setGlobal("q4704_same", "1" if x == y else "0")
+    _q4704_M.setGlobal("q4704_opts", _q4704_json.dumps(x[0] if x else {}, sort_keys=True))
+
+end
+
+* ==== S04 basic:PT-10: older spellings ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S04") & `: list posof "S04" in w47_run' {
+    display as text "S04 start " c(current_date) " " c(current_time)
+    global q4704_dir "`w47_work'"
+
+    // ------------------------------------------------------------
+    // Q4704-1: scatter symbol(Oh) is msymbol(Oh) -- rc 0, no note, the
+    // marker hollow -- and drawn over msymbol() in either order, as twoway
+    // draws it (pairs msymbol_symbol); msymangle(45) is msangle(45), and
+    // msangle() is drawn over it (msymangle P2, P3); mlabels(make) and
+    // mlabels(t*) are mlabel()'s, the rightmost copy drawn.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local q1n 0
+    foreach q1 in "symbol(Oh)|msymbol(Oh)" "msymbol(T) symbol(Oh)|msymbol(Oh)" "symbol(Oh) msymbol(T)|msymbol(Oh)" "msymbol(T) msymangle(45)|msymbol(T) msangle(45)" "msymbol(T) msangle(10) msymangle(45)|msymbol(T) msangle(10)" "msymbol(T) msymangle(45) msangle(10)|msymbol(T) msangle(10)" "mlabels(make)|mlabel(make)" "mlabels(t*)|mlabel(t*)" "mlabel(make) mlabels(foreign)|mlabel(foreign)" "mlabels(foreign) mlabel(make)|mlabel(make)" {
+        local ++q1n
+        gettoken qa qb : q1, parse("|")
+        local qb = substr(`"`qb'"', 2, .)
+        _q4704_run a`q1n' `"scatter mpg weight in 1/10, `qa'"'
+        _q4704_run b`q1n' `"scatter mpg weight in 1/10, `qb'"'
+        _w47_expect Q4704-1 "(${q4704_rc_a`q1n'} == 0 & ${q4704_rc_b`q1n'} == 0)" `"`qa': rc ${q4704_rc_a`q1n'}, `qb': rc ${q4704_rc_b`q1n'}"'
+        cert_log_has "${q4704_dir}/q4704_a`q1n'.log", needle("unsupported option")
+        _w47_expect Q4704-1 "(r(found) == 0)" `"`qa': the note is printed"'
+        if ${q4704_rc_a`q1n'} == 0 & ${q4704_rc_b`q1n'} == 0 {
+            python: _q4704_cmp("a`q1n'", "b`q1n'")
+            _w47_expect Q4704-1 "(${q4704_same} == 1)" `"`qa' writes ${q4704_opts}, not `qb''s"'
+        }
+    }
+    _w47_done Q4704-1 "symbol(), msymangle() and mlabels() are read as msymbol(), msangle() and mlabel(), with twoway's precedence, and not named"
+
+    // ------------------------------------------------------------
+    // Q4704-2: bar bcolor(red) blwidth(thick) is acolor(red) alwidth(thick)
+    // -- rc 0, no note; bcolor() is drawn over acolor() and alcolor(),
+    // afcolor() gives way to fcolor() and bcolor(), fintensity() is drawn
+    // over bfintensity() over afintensity(), and the shortest spellings
+    // (bc, bfi, blw, blp, afc, afi) are read (alias_truth.json pairs, P4).
+    // ------------------------------------------------------------
+    local q2n 0
+    foreach q2 in "bcolor(red) blwidth(thick)|acolor(red) alwidth(thick)" "bc(red) blw(thick) blp(dash)|acolor(red) alwidth(thick) alpattern(dash)" "acolor(blue) bcolor(red)|acolor(red)" "bcolor(red) alcolor(blue)|acolor(red)" "afcolor(red)|fcolor(red)" "afc(red) fcolor(blue)|fcolor(blue)" "bcolor(blue) afcolor(red)|acolor(blue)" "bfi(30)|fintensity(30)" "afi(30) bfintensity(80)|fintensity(80)" "fintensity(30) afintensity(80) bfintensity(50)|fintensity(30)" "alwidth(thin) blwidth(thick) alpattern(dot) blpattern(dash)|alwidth(thick) alpattern(dash)" {
+        local ++q2n
+        gettoken qa qb : q2, parse("|")
+        local qb = substr(`"`qb'"', 2, .)
+        _q4704_run c`q2n' `"bar mpg weight in 1/10, `qa'"'
+        _q4704_run d`q2n' `"bar mpg weight in 1/10, `qb'"'
+        _w47_expect Q4704-2 "(${q4704_rc_c`q2n'} == 0 & ${q4704_rc_d`q2n'} == 0)" `"`qa': rc ${q4704_rc_c`q2n'}, `qb': rc ${q4704_rc_d`q2n'}"'
+        cert_log_has "${q4704_dir}/q4704_c`q2n'.log", needle("unsupported option")
+        _w47_expect Q4704-2 "(r(found) == 0)" `"`qa': the note is printed"'
+        if ${q4704_rc_c`q2n'} == 0 & ${q4704_rc_d`q2n'} == 0 {
+            python: _q4704_cmp("c`q2n'", "d`q2n'")
+            _w47_expect Q4704-2 "(${q4704_same} == 1)" `"`qa' writes ${q4704_opts}, not `qb''s"'
+        }
+    }
+    _w47_done Q4704-2 "bcolor(), blwidth(), blpattern(), afcolor(), afintensity() and bfintensity() are read as their targets, with twoway's precedence, and not named"
+
+    // ------------------------------------------------------------
+    // Q4704-3: pcarrow bmsize(3) is barbsize(3) (twoway: one SVG,
+    // alias_truth.json bmsize P1), drawn over barbsize() (pairs
+    // barbsize_bmsize), bmsi() read; off the arrows bmsize() stays named
+    // and bsymbol() is named as bmsymbol(), the back marker 47-05 draws.
+    // ------------------------------------------------------------
+    local q3n 0
+    foreach q3 in "bmsize(3)|barbsize(3)" "barbsize(1) bmsize(3)|barbsize(3)" "bmsi(3)|barbsize(3)" {
+        local ++q3n
+        gettoken qa qb : q3, parse("|")
+        local qb = substr(`"`qb'"', 2, .)
+        _q4704_run e`q3n' `"pcarrow mpg weight trunk turn in 1/10, `qa'"'
+        _q4704_run f`q3n' `"pcarrow mpg weight trunk turn in 1/10, `qb'"'
+        _w47_expect Q4704-3 "(${q4704_rc_e`q3n'} == 0 & ${q4704_rc_f`q3n'} == 0)" `"`qa': rc ${q4704_rc_e`q3n'}"'
+        cert_log_has "${q4704_dir}/q4704_e`q3n'.log", needle("unsupported option")
+        _w47_expect Q4704-3 "(r(found) == 0)" `"`qa': the note is printed"'
+        if ${q4704_rc_e`q3n'} == 0 & ${q4704_rc_f`q3n'} == 0 {
+            python: _q4704_cmp("e`q3n'", "f`q3n'")
+            _w47_expect Q4704-3 "(${q4704_same} == 1)" `"`qa' writes ${q4704_opts}, not `qb''s"'
+        }
+    }
+    _q4704_run g1 "scatter mpg weight in 1/10, bmsize(3)"
+    cert_log_has "${q4704_dir}/q4704_g1.log", needle("unsupported option(s): bmsize()")
+    _w47_expect Q4704-3 "(${q4704_rc_g1} == 0 & r(found) == 1)" "scatter bmsize(3): rc ${q4704_rc_g1}, bmsize() not named"
+    _q4704_run g2 "scatter mpg weight in 1/10, bmsymbol(T) bsymbol(O)"
+    cert_log_has "${q4704_dir}/q4704_g2.log", needle("unsupported option(s): bmsymbol()")
+    _w47_expect Q4704-3 "(${q4704_rc_g2} == 0 & r(found) == 1)" "scatter bsymbol(O): rc ${q4704_rc_g2}, not named as bmsymbol()"
+    _w47_done Q4704-3 "bmsize() on pcarrow is barbsize(); off the arrows bmsize() and bsymbol() (as bmsymbol()) stay named"
+
+    macro drop q4704_*
+    display as text "S04 end " c(current_date) " " c(current_time)
+}
+* ==== end S04 ====
+
 * ==== S06 PIC-2: twoway's marker shapes and msymbol(invisible) ====
 local only : env WP47_ONLY
 if inlist("`only'", "", "S06") & `: list posof "S06" in w47_run' {

@@ -459,12 +459,16 @@ if `tw_rc' != 198 | `drc' != 198 | `dnote' != 0 | r(found) != 1 {
     display as error "TP-02 FAIL: cl(red) is r(`tw_rc') in twoway; dash rc=`drc', note=`dnote', refused naming cl()=`r(found)'"
     local bad = 1
 }
-_ztp_run `"dash line mpg weight, afcolor(red) name(zqtp)"' "`logfile'"
+// Flipped (WP-47 basic:PT-10): afcolor() is read as fcolor() now, as
+// twoway draws it (alias_truth.json P1), and not named; bmcolor(), the
+// back marker's colour, which twoway takes on every type and dash names,
+// is the control.
+_ztp_run `"dash line mpg weight, bmcolor(red) name(zqtp)"' "`logfile'"
 local drc = r(rc)
 local dnote = r(note)
-_ztp_logged "`logfile'" "afcolor()"
+_ztp_logged "`logfile'" "bmcolor()"
 if `drc' != 0 | `dnote' != 1 | r(found) != 1 {
-    display as error "TP-02 FAIL: afcolor(red) -- dash rc=`drc', note=`dnote', named afcolor()=`r(found)'"
+    display as error "TP-02 FAIL: bmcolor(red) -- dash rc=`drc', note=`dnote', named bmcolor()=`r(found)'"
     local bad = 1
 }
 if `bad' {
@@ -2935,8 +2939,10 @@ capture log close _ztplog
 quietly log using "`logfile'", name(_ztplog) text replace
 // Flipped: WP-32 -- the value rode on zqbogus(), an option twoway refuses
 // and dash now refuses as twoway does; it rides on afcolor(), which twoway
-// takes on every type and dash names in its note.
-capture noisily dash lpoly mpg weight, afcolor(`"`macval(hv)'"') gau name(zq16)
+// takes on every type and dash names in its note.  Flipped (WP-47
+// basic:PT-10): afcolor() is read as fcolor() now; it rides on bmcolor(),
+// which twoway takes on every type and dash still names.
+capture noisily dash lpoly mpg weight, bmcolor(`"`macval(hv)'"') gau name(zq16)
 local rc = _rc
 quietly log close _ztplog
 _ztp_logged "`logfile'" "INJINJINJ"
