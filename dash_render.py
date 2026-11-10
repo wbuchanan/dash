@@ -19227,10 +19227,11 @@ class GlyphMapper:
             _kind = getattr(self, "date_vars", {}).get(mlabel_var)
             _numfmt = getattr(self, "numeric_formats", {}).get(mlabel_var,
                                                                "")
-            # A date variable's column holds datetimes in the saved
-            # renderer; its value labels are keyed by Stata's numbers, so
-            # they are read only for a column of numbers.
-            _vlabels = ({} if _kind else self._mlabel_value_labels(mlabel_var))
+            # A date variable's value labels are read too (WP-47
+            # basic:PT-15): twoway labels a labelled date with its label
+            # and any other date with its number (marker_fidelity_truth
+            # .json L01: first 14977 third 14979 14980).
+            _vlabels = self._mlabel_value_labels(mlabel_var)
             if _vlabels:
                 _gt = self._mlabel_markup(mlabel_var, list(_vlabels.values()),
                                           (mlabel_var, "vl"))
@@ -19240,7 +19241,18 @@ class GlyphMapper:
             if text_col not in source.data:
                 raw = list(source.data[values_col])
                 _st = getattr(self, "storage_types", {}).get(mlabel_var)
-                if _vlabels:
+                if _vlabels and _kind:
+                    # Back to Stata's numbers, which the labels are keyed
+                    # by, as _dash_stata_date_text reads the column: a
+                    # number is in the format's unit, a datetime is
+                    # converted.
+                    rendered = ["." if m else self._mlabel_value_text(
+                        float(v) if isinstance(v, (int, float, np.integer,
+                                                   np.floating))
+                        else _dash_stata_value_of(_dash_json_value(v),
+                                                  _kind), _vlabels)
+                        for v, m in zip(raw, _miss)]
+                elif _vlabels:
                     rendered = [self._mlabel_value_text(v, _vlabels)
                                 for v in raw]
                 elif _kind:
@@ -27404,7 +27416,7 @@ class GlyphMapper:
         _pc_sel = self._view_mask(view, len(clean))
         if _pc_sel is not None:
             clean = clean[_pc_sel]
-        clean = clean.dropna(subset=coords)
+        clean = clean.dropna(subset=[y1var, x1var])  # WP-47 basic:PT-15: twoway marks and labels a first point whose second is missing (H01)
 
         # Concatenate both endpoint sets into one scatter source
         x_all = np.concatenate([clean[x1var].values, clean[x2var].values])
@@ -27483,6 +27495,37 @@ class GlyphMapper:
                                           else None),
                                 layer_vars=((y1var,), x1var))
         return [r]
+
+    @staticmethod
+    def _pc_mlabangle_drop(options, ptype):
+        """*options* for a pcarrow or pcbarrow layer, without its marker
+        labels when ``mlabangle()`` is a number outside -360..360 (WP-47
+        basic:PT-15).  twoway prints "textangle must be between -360.000
+        and 360.000" and draws the arrows without their labels, rc 0
+        (marker_fidelity_truth.json A01), where the other labelled types
+        refuse the angle (dash.ado).  The line is printed once per layer,
+        as a note;
+        any other value -- an anglestyle, a name twoway notes -- leaves
+        *options* as they are."""
+        raw = str((options or {}).get("mlabangle", "") or "").strip()
+        if not raw or not _dash_mlabel_names(options)[0]:
+            return options
+        if len(raw) > 32 or not re.fullmatch(
+                r"[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?", raw):
+            return options
+        try:
+            deg = float(raw)
+        except (TypeError, ValueError, OverflowError):
+            return options
+        if math.isfinite(deg) and -360.0 <= deg <= 360.0:
+            return options
+        # twoway's line, after the note channel's mark.
+        _dash_warn_once(("pc_mlabangle", ptype, id(options)),
+                        "dash: textangle must be between -360.000 and "
+                        "360.000")
+        out = dict(options)
+        out.pop("mlabel", None)
+        return out
 
     def _pc_clean_with_label(self, source: ColumnDataSource, y1var: str,
                              x1var: str, y2var: str, x2var: str,
@@ -27791,6 +27834,7 @@ class GlyphMapper:
             List with the segment GlyphRenderer (the head glyph is drawn
             beside it, over its own source).
         """
+        options = self._pc_mlabangle_drop(options, "pcarrow")
         # Masked by the layer's own view BEFORE the rows are dropped.  The
         # view's BooleanFilter is sized to the CALLER's source; the source
         # built below is shorter once rows with missing values go, and Bokeh
@@ -27902,6 +27946,7 @@ class GlyphMapper:
             List with the segment GlyphRenderer (the head glyph is drawn
             beside it, over its own source).
         """
+        options = self._pc_mlabangle_drop(options, "pcbarrow")
         # Masked by the layer's own view BEFORE the rows are dropped.  The
         # view's BooleanFilter is sized to the CALLER's source; the source
         # built below is shorter once rows with missing values go, and Bokeh
@@ -28039,7 +28084,7 @@ class GlyphMapper:
         _pc_sel = self._view_mask(view, len(clean))
         if _pc_sel is not None:
             clean = clean[_pc_sel]
-        clean = clean.dropna(subset=coords)
+        clean = clean.dropna(subset=[y1var, x1var])  # WP-47 basic:PT-15: twoway marks and labels a first point whose second is missing (H02)
 
         # Arrays, not lists: tolist() turns a %td label column into
         # Timestamps and NaT, and Bokeh writes NaT as a bare NaN, which no
@@ -69470,8 +69515,8 @@ def _dash_pc_source(g_df, y1var, x1var, y2var, x2var, label_var="",
                     extra_cols=()):
     """Build the ColumnDataSource for one paired-coordinate layer.
 
-    All four variables are required; a pc plot with any of them missing draws
-    nothing, which is what each inline branch did.  De-duplicated, because
+    All four variables are required; a row missing its first point draws
+    nothing, and one missing only its second is left to the mapper.  De-duplicated, because
     ``pcspike y x y x`` is a legal command and ``g_df[[c, c, c, c]]`` is not
     a legal selection -- the branch that forgot this crashed the served app.
 
@@ -69494,7 +69539,13 @@ def _dash_pc_source(g_df, y1var, x1var, y2var, x2var, label_var="",
     keep = _dash_with_codes(dict.fromkeys(
         cols + [c for c in [label_var] + list(extra_cols)
                 if c and c in g_df.columns]), g_df.columns)
-    return ColumnDataSource(g_df[keep].dropna(subset=cols)), True
+    # WP-47 basic:PT-15: a row is dropped for a missing FIRST point only;
+    # each mapper drops what it cannot draw (pcspike and the arrows a row
+    # missing either point, as twoway does), and pcscatter and pccapsym
+    # keep the first point's marker and label (H01, H02), as on the saved
+    # page.
+    return ColumnDataSource(g_df[keep].dropna(
+        subset=list(dict.fromkeys([y1var, x1var])))), True
 
 
 #: The computed fit types: layers whose y series is computed, not a

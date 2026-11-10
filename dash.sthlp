@@ -753,7 +753,7 @@ it ({cmd:scatteri 2/2 1} draws at 1, 1), and {it:p} unequal to {it:q} is
 refused, as {cmd:twoway} refuses it.
 What {cmd:twoway} drops silently at the end of the list -- too little for
 another point, segment or arrow, or everything from a {cmd:""} where one's
-last number belongs -- {cmd:dash} drops with a note.  A label is drawn at
+last number belongs -- {cmd:dash} drops silently too.  A label is drawn at
 its point for {cmd:scatteri} and at its arrow's tail for {cmd:pcarrowi},
 or at its head under {cmd:headlabel}, placed by its clock position, else by {cmd:mlabposition()}, else at 3
 o'clock; a clock position that is not a whole number, such as 3.5, is drawn
@@ -4210,7 +4210,7 @@ the per-plot specification (not to {cmd:dash build} options).
     {cmd:rconnected}, {cmd:rscatter}, {cmd:pcscatter}, {cmd:pccapsym} and
     {cmd:scatteri}.  On {cmd:pcarrow} and {cmd:pcbarrow} {cmd:twoway}
     prints that the angle is out of range but draws the arrows, without
-    their labels; {cmd:dash} reports it and draws the labels horizontal.
+    their labels, and so does {cmd:dash}, in a note.
     A name that is not an anglestyle is reported and the label drawn
     horizontal, as {cmd:twoway} notes it{p_end}
 {synopt:{cmdab:mlabf:ormat(}{it:%fmt}{cmd:)}}display format of numeric
@@ -4240,10 +4240,10 @@ label the first point, ({it:y1var}, {it:x1var}) -- the tail of an arrow.
 {cmd:pcscatter}, {cmd:pccapsym}, {cmd:pcarrow}, {cmd:pcbarrow} and
 {cmd:pcarrowi}, as {cmd:twoway} does; on {cmd:pcspike}, {cmd:pci},
 {cmd:rpcap} and {cmd:rpspike}, which draw no labels, it changes nothing,
-and is taken in silence.  A paired-coordinate observation with a missing
-coordinate is not drawn at all, marker or label, where {cmd:twoway}, when
-only the second point is missing, still labels the first point (and marks
-it, on {cmd:pcscatter} and {cmd:pccapsym}).  {cmd:scatteri} and
+and is taken in silence.  A paired-coordinate observation missing only
+its second point still labels its first point, and marks it on
+{cmd:pcscatter} and {cmd:pccapsym}, as {cmd:twoway} draws it; its line,
+arrow and second marker are not drawn.  {cmd:scatteri} and
 {cmd:pcarrowi} take their labels from the command line; see
 {help dash##plottypes:Plot types}.
 
@@ -4281,8 +4281,9 @@ display format or {cmd:mlabformat()} says, and a value with no label with
 its number as {cmd:twoway} writes it ({cmd:2}, {cmd:.5}), not in the
 display format.  A date variable is labelled with its dates in its own
 display format ({cmd:02jan2001}, {cmd:2001m1}, a custom picture as
-written), in both render modes; a value label attached to one is not read, where {cmd:twoway} draws
-a labelled value's label and any other value's number.  Any other numeric
+written), in both render modes; one with a value label is labelled as
+{cmd:twoway} labels it, a labelled value with its label and any other value
+with its number ({cmd:14977}), not its date.  Any other numeric
 variable is labelled with its values in its display format, as Stata's
 {cmd:display} writes them (a {cmd:float} 0.1 is {cmd:.1}).  A missing value is drawn as {cmd:.};
 {cmd:twoway} draws an extended missing value, {cmd:.a} to {cmd:.z}, as its

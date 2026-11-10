@@ -360,3 +360,144 @@ class TestTheHelpDG12:
             text = " ".join(fh.read().split())
         assert ("a zero or missing weight's is drawn at size zero -- a dot "
                 "as wide as its outline, as {cmd:twoway} draws it") in text
+
+
+# ---------------------------------------------------------------------------
+# basic:PT-15: the documented plain-type differences (47-06-07)
+# ---------------------------------------------------------------------------
+def _pt15(mode, plots, df=None, bo=None):
+    """The drawing of *plots* over *df* (the parity frame by default)."""
+    old = tp._DF
+    if df is not None:
+        tp._DF = df
+    try:
+        return _draw(tp._spec(plots, bo or {}), mode)
+    finally:
+        tp._DF = old
+
+
+def _finite_xy(r):
+    import numpy as np
+    d = r.data_source.data
+    gx, gy = r.glyph.x, r.glyph.y
+    x = np.asarray([np.nan if v is None else v for v in d[gx]], dtype=float)
+    y = np.asarray([np.nan if v is None else v for v in d[gy]], dtype=float)
+    return int((np.isfinite(x) & np.isfinite(y)).sum())
+
+
+def _label_rows(fig):
+    """How many marker labels the LabelSets of *fig* draw (finite x and
+    y)."""
+    import numpy as np
+    n = 0
+    for a in list(fig.center) + list(fig.renderers):
+        if type(a).__name__ != "LabelSet":
+            continue
+        d = a.source.data
+        fx, fy = dr._dash_spec_field(a.x), dr._dash_spec_field(a.y)
+        if fx not in d or fy not in d:
+            continue
+        xs = np.asarray([np.nan if v is None else v for v in d[fx]],
+                        dtype=float)
+        ys = np.asarray([np.nan if v is None else v for v in d[fy]],
+                        dtype=float)
+        n += int((np.isfinite(xs) & np.isfinite(ys)).sum())
+    return n
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestPT15:
+    """twoway's behaviour on the basic:PT-15 cases, measured in
+    marker_fidelity_truth.json (scripts/extract_marker_fidelity_truth.do,
+    MF_ONLY=PT15): H01/H02 a pc row missing its second point keeps its
+    first point's marker and label; A01 mlabangle(400) on pcarrow prints
+    twoway's line and draws the arrows without labels; L01 a %td variable
+    with value labels labels a labelled value with its label and any
+    other value with its number; I01/I02 trailing immediate values are
+    dropped in silence."""
+
+    @pytest.mark.parametrize("ptype,probe", [("pcscatter", "H01"),
+                                             ("pccapsym", "H02")])
+    def test_pc_half_missing(self, mode, ptype, probe):
+        import numpy as np
+        rec = TRUTH[probe]
+        assert rec["rc"] == 0 and rec["lines"] == []
+        # five rows, the second missing its second point: 5 + 4 markers
+        # and five labels in twoway.
+        assert rec["markers"] == 9 and len(rec["labels"]) == 5
+        df = tp._DF.iloc[:5].copy()
+        df["x2"] = [1.0, np.nan, 3.0, 4.0, 5.0]
+        d = _pt15(mode, [plot_for(ptype, {"mlabel": "rep"}, x2var="x2")], df)
+        f = d.figures[0]
+        mk = [r for r in drawn_renderers(f)
+              if type(getattr(r, "glyph", None)).__name__ == "Scatter"
+              and not dr._dash_is_swatch(r)]
+        assert sum(_finite_xy(r) for r in mk) == rec["markers"]
+        assert _label_rows(f) == len(rec["labels"])
+        if ptype == "pccapsym":
+            segs = [r for r in drawn_renderers(f)
+                    if type(getattr(r, "glyph", None)).__name__ == "Segment"]
+            want = sum(1 for s in rec["segments"] if s["kind"] == "line")
+            got = 0
+            for r in segs:
+                dd = r.data_source.data
+                g = r.glyph
+                arr = [np.asarray([np.nan if v is None else v
+                                   for v in dd[getattr(g, k)]], dtype=float)
+                       for k in ("x0", "y0", "x1", "y1")]
+                got += int(np.all([np.isfinite(a) for a in arr], axis=0)
+                           .sum())
+            assert got == want
+
+    @pytest.mark.parametrize("ptype", ["pcarrow", "pcbarrow"])
+    def test_pcarrow_mlabangle_out_of_range(self, mode, ptype):
+        rec = TRUTH["A01"]
+        assert rec["rc"] == 0 and rec["labels"] == []
+        line = "textangle must be between -360.000 and 360.000"
+        assert rec["lines"] == [line]
+        d = _pt15(mode, [plot_for(ptype, {"mlabel": "rep",
+                                          "mlabangle": "400"})])
+        assert _label_rows(d.figures[0]) == 0
+        hits = [m for m in d.warnings if "textangle" in m or
+                "mlabangle" in m]
+        # twoway's line, through the note channel ("dash: ").
+        assert hits == ["dash: " + line], d.warnings
+        # The arrows are drawn: the same shafts as without labels.
+        ref = _pt15(mode, [plot_for(ptype)])
+        segs = lambda fig: sorted(type(r.glyph).__name__
+                                  for r in drawn_renderers(fig))
+        assert segs(d.figures[0]) == segs(ref.figures[0])
+
+    def test_date_mlabel_value_label(self, mode, monkeypatch):
+        rec = TRUTH["L01"]
+        assert rec["texts"][:5] == ["first", "14977", "third", "14979",
+                                    "14980"]
+        monkeypatch.setattr(tp, "_VALUE_LABELS", {
+            **tp._VALUE_LABELS, "wl": {"15340": "first", "15342": "third"}})
+        monkeypatch.setattr(tp, "_LABEL_NAMES",
+                            {**tp._LABEL_NAMES, "when": "wl"})
+        d = _pt15(mode, [plot_for("scatter", {"mlabel": "when"})],
+                  bo={"formats": {"when": "%td"}})
+        f = d.figures[0]
+        col = dr._DASH_MLABEL_PREFIX + "when"
+        texts = None
+        for r in f.renderers:
+            dd = getattr(getattr(r, "data_source", None), "data", {}) or {}
+            if col in dd:
+                texts = list(dd[col])
+        assert texts is not None
+        # twoway's rule on the frame's dates 15340.. (labels on two).
+        want = ["first", "15341", "third"] + [str(v) for v in
+                                              range(15343, 15350)]
+        assert texts == want
+
+
+class TestPT15Ado:
+    def test_no_trailing_note(self):
+        """I01/I02: twoway drops trailing immediate values in silence."""
+        for k in ("I01", "I02"):
+            assert TRUTH[k]["rc"] == 0 and TRUTH[k]["lines"] == []
+        with open(os.path.join(os.path.dirname(__file__), "..", "dash.ado"),
+                  encoding="utf-8") as fh:
+            ado = fh.read()
+        assert "ignored '\", st_local(\"_pci_left\")" not in ado

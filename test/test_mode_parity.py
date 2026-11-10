@@ -3399,6 +3399,12 @@ CORPUS = [
     # twoway's minimal dot through the size transform.
     _case("weighted zero weights (WP-47 DG-12)",
           [plot_for("scatter", {"weight": "aweight", "wexp": "foreign"})]),
+    # WP-47 basic:PT-15: mlabangle() out of range on pcarrow draws the
+    # arrows without labels, with twoway's line.
+    _case("pcarrow mlabangle out of range (WP-47 basic:PT-15)",
+          [plot_for("pcarrow", {"mlabel": "rep", "mlabangle": "400"})]),
+    _case("scatter mlabel date (WP-47 basic:PT-15)",
+          [plot_for("scatter", {"mlabel": "when"})], bo=_P123A_W),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

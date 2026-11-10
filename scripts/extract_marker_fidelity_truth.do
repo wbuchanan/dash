@@ -11,6 +11,24 @@
 *!   B02  histogram rep78, discrete: the same;
 *!   R01  dot close date in 1/45 (sp500, close missing in row 3): dots;
 *!   R02  the same with dotextend(no).
+*! WP-47 basic:PT-15 (47-06-07) adds, selected alone with the environment
+*! variable MF_ONLY=PT15 (the other probes' records are then kept from the
+*! committed fixture):
+*!   E01  rarea yl yh weight (sorted, in 1/10): the outline's paths;
+*!   E02  the same under cmissing(n) with yl missing in row 5;
+*!   H01  pcscatter mpg weight trunk turn in 1/5, mlabel(make), turn
+*!        missing in row 2: markers and label texts; H02 the same on
+*!        pccapsym;
+*!   A01  pcarrow ... mlabangle(400): rc, lines printed, labels;
+*!   L01  scatter mpg weight in 1/5, mlabel(d), d %td with a value label
+*!        on two of its values: the label texts;
+*!   I01  scatteri 1 1 2 2 3 and I02 pci 0 0 0 1 1 1 2: lines printed;
+*!   K01  a scheme file holding only "color p1 navy" (written to
+*!        c(tmpdir), on the ado-path for this session only, erased after):
+*!        scatter mpg weight, yline(20): the refline's stroke, lines;
+*!   X01  title("{stSymbol:a} {col 5:x}"): the title's text.
+*! The zero- and missing-weight dot (DG-12) is weighted_markers_truth.json
+*! W06_zero/W06_mis: no probe here.
 *! The trailing python: block writes test/fixtures/marker_fidelity_truth.json,
 *! never calls Stata and starts no subprocess.
 *!
@@ -86,6 +104,9 @@ program define _mf_probe
 end
 
 local M `""255 0 255""'
+local mf_only : environment MF_ONLY
+global MF_ONLY `"`mf_only'"'
+if `"`mf_only'"' == "" {
 sysuse auto, clear
 keep in 1/3
 _mf_probe S17 twoway scatter mpg weight, msymbol(invisible) mcolor(`M') legend(off)
@@ -100,6 +121,58 @@ keep in 1/45
 replace close = . in 3
 _mf_probe R01 twoway dot close date, mcolor(blue) dcolor(`M') ndots(75)
 _mf_probe R02 twoway dot close date, mcolor(blue) dcolor(`M') ndots(75) dotextend(no)
+}
+
+* ---- WP-47 basic:PT-15 (47-06-07) ----
+if inlist(`"`mf_only'"', "", "PT15") {
+sysuse auto, clear
+keep in 1/10
+sort weight
+generate yl = mpg - 5
+generate yh = mpg + 5
+_mf_probe E01 twoway rarea yl yh weight, fcolor(gs14) lcolor(`M') legend(off)
+replace yl = . in 5
+_mf_probe E02 twoway rarea yl yh weight, fcolor(gs14) lcolor(`M') cmissing(n) legend(off)
+
+sysuse auto, clear
+keep in 1/5
+replace turn = . in 2
+_mf_probe H01 twoway pcscatter mpg weight trunk turn, mcolor(`M') mlabel(make) legend(off)
+_mf_probe H02 twoway pccapsym mpg weight trunk turn, mcolor(`M') lcolor(blue) mlabel(make) legend(off)
+sysuse auto, clear
+keep in 1/5
+_mf_probe A01 twoway pcarrow mpg weight trunk turn, mlabel(make) mlabangle(400) lcolor(`M') mcolor(`M') legend(off)
+
+sysuse auto, clear
+keep in 1/5
+generate d = mdy(1, _n, 2001)
+format d %td
+label define q4706d 14976 "first" 14978 "third"
+label values d q4706d
+_mf_probe L01 twoway scatter mpg weight, mlabel(d) legend(off)
+
+clear
+_mf_probe I01 twoway scatteri 1 1 2 2 3, mcolor(`M')
+_mf_probe I02 twoway pci 0 0 0 1 1 1 2, lcolor(`M')
+
+* A scheme of one key, on the session's ado-path only (never set scheme).
+local sdir "`c(tmpdir)'dash_q4706_scheme"
+capture mkdir "`sdir'"
+tempname sch
+file open `sch' using "`sdir'/scheme-q4706.scheme", write text replace
+file write `sch' "color p1 navy" _n
+file close `sch'
+adopath ++ "`sdir'"
+sysuse auto, clear
+_mf_probe K01 twoway scatter mpg weight, yline(20) scheme(q4706)
+_mf_probe K01ref twoway scatter mpg weight, yline(20) scheme(s2color)
+adopath - "`sdir'"
+capture erase "`sdir'/scheme-q4706.scheme"
+capture rmdir "`sdir'"
+
+sysuse auto, clear
+_mf_probe X01 twoway scatter mpg weight, title("{stSymbol:a} {col 5:x}")
+}
 
 file close ${MF_REG}
 
@@ -141,13 +214,19 @@ out = {"_meta": {
 }}
 
 import re
-txt = log_text("S17")
-m = re.search(r"\(note:\s+(named style .*? not found in class \w+[^)]*)\)", txt)
+import html as _html
+mf_only = Macro.getGlobal("MF_ONLY")
+dest = os.path.join(repo, "test", "fixtures", "marker_fidelity_truth.json")
+if mf_only:
+    # One group re-run: the other probes' records stay as committed.
+    with open(dest, encoding="utf-8") as fh:
+        _old = json.load(fh)
+    _old["_meta"] = out["_meta"]
+    out = _old
+
 strip = lambda els: [(e["kind"], e["fill"], e["stroke"], e["extent"],
                       e["center"]) for e in els]
-out["S17"] = {"rc": rcs["S17"], "note": m.group(1).strip() if m else "",
-              "markers": len(svg_layer.markers(mag("S17"))),
-              "equals_default": strip(mag("S17")) == strip(mag("S17ref"))}
+
 
 def bars(key):
     """Bars of a histogram: magenta rects (or 4-point paths/polygons)."""
@@ -160,16 +239,98 @@ def bars(key):
     return {"rc": rcs[key], "elements": len(els), "bars": len(filled),
             "zero_height": sum(1 for h in hs if h <= 0.01)}
 
-out["B01"] = bars("B01")
-out["B02"] = bars("B02")
-for k in ("R01", "R02"):
-    # A dot is a magenta fill circle (its ring is a second, stroked one);
-    # dot y x draws each observation's row of dots up its x.
-    circ = [e for e in mag(k) if e["kind"] == "circle" and e["fill"] == MAG]
-    out[k] = {"rc": rcs[k], "dots": len(circ),
-              "rows": len({e["center"][0] for e in circ})}
 
-dest = os.path.join(repo, "test", "fixtures", "marker_fidelity_truth.json")
+if not mf_only:
+    txt = log_text("S17")
+    m = re.search(r"\(note:\s+(named style .*? not found in class \w+[^)]*)\)",
+                  txt)
+    out["S17"] = {"rc": rcs["S17"],
+                  "note": m.group(1).strip() if m else "",
+                  "markers": len(svg_layer.markers(mag("S17"))),
+                  "equals_default": strip(mag("S17")) == strip(mag("S17ref"))}
+    out["B01"] = bars("B01")
+    out["B02"] = bars("B02")
+    for k in ("R01", "R02"):
+        # A dot is a magenta fill circle (its ring is a second, stroked
+        # one); dot y x draws each observation's row of dots up its x.
+        circ = [e for e in mag(k)
+                if e["kind"] == "circle" and e["fill"] == MAG]
+        out[k] = {"rc": rcs[k], "dots": len(circ),
+                  "rows": len({e["center"][0] for e in circ})}
+
+
+def lines_printed(key):
+    """What the command printed: the log less its header, footer, echoed
+    commands and blank lines."""
+    p = os.path.join(pdir, key + ".log")
+    keep = []
+    with open(p, encoding="utf-8", errors="replace") as fh:
+        for ln in fh:
+            t = ln.strip()
+            if not t or t.startswith((".", ">", "name:", "log:",
+                                      "log type:", "opened on:",
+                                      "closed on:", "---")):
+                continue
+            keep.append(t)
+    return keep
+
+
+def texts(key):
+    """Every <text> element's text, tags stripped, in document order."""
+    p = os.path.join(pdir, key + ".svg")
+    if not os.path.exists(p):
+        return []
+    with open(p, encoding="utf-8") as fh:
+        svg = fh.read()
+    return [_html.unescape(re.sub(r"<[^>]+>", "", t)).strip()
+            for t in re.findall(r"<text\b[^>]*>(.*?)</text>", svg, re.S)]
+
+
+def strokes(key, colour=MAG):
+    """Every element stroked in *colour*: kind, points, width."""
+    p = os.path.join(pdir, key + ".svg")
+    if not os.path.exists(p):
+        return []
+    return [{"kind": e["kind"], "fill": e["fill"],
+             "stroke_width": e["stroke_width"], "points": e["points"]}
+            for e in svg_layer.svg_elements(p) if e["stroke"] == colour]
+
+
+if mf_only in ("", "PT15"):
+    makes = ["AMC Concord", "AMC Pacer", "AMC Spirit", "Buick Century",
+             "Buick Electra"]
+    for k in ("E01", "E02"):
+        p = os.path.join(pdir, k + ".svg")
+        fills = [{"kind": e["kind"], "points": e["points"]}
+                 for e in svg_layer.svg_elements(p)
+                 if e["fill"] not in (None, "none", MAG)
+                 and e["kind"] == "path"]
+        out[k] = {"rc": rcs[k], "outline": strokes(k), "fill": fills}
+    for k in ("H01", "H02", "A01"):
+        tx = texts(k)
+        out[k] = {"rc": rcs[k], "lines": lines_printed(k),
+                  "labels": [t for t in tx if t in makes],
+                  "markers": len(svg_layer.markers(
+                      [e for e in mag(k) if e["kind"] == "circle"])),
+                  "segments": strokes(k, "#0000ff") + strokes(k)}
+    out["L01"] = {"rc": rcs["L01"], "texts": texts("L01")}
+    for k in ("I01", "I02"):
+        out[k] = {"rc": rcs[k], "lines": lines_printed(k),
+                  "marked": len(mag(k))}
+    for k in ("K01", "K01ref"):
+        p = os.path.join(pdir, k + ".svg")
+        els = svg_layer.svg_elements(p) if os.path.exists(p) else []
+        # The refline: a horizontal two-point stroke across the plot.
+        flat = [{"stroke": e["stroke"], "stroke_width": e["stroke_width"],
+                 "points": e["points"]} for e in els
+                if e["kind"] in ("line", "path") and len(e["points"]) == 2
+                and e["points"][0][1] == e["points"][1][1]]
+        out[k] = {"rc": rcs[k], "lines": lines_printed(k), "flat": flat,
+                  "marker_fill": sorted({e["fill"] for e in els
+                                         if e["kind"] == "circle"})}
+    out["X01"] = {"rc": rcs["X01"], "texts": texts("X01"),
+                  "lines": lines_printed("X01")}
+
 with open(dest, "w", encoding="utf-8") as fh:
     json.dump(out, fh, indent=1, sort_keys=True)
     fh.write("\n")

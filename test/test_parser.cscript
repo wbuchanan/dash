@@ -465,13 +465,14 @@ display "P1A-54 PASS: pcarrowi refuses a non-number where a coordinate belongs, 
 dash clear
 _p1a_logrun "dash pcarrowi 0 0 0 1 0 0 1, name(p1a55)"
 assert r(rc) == 0
-cert_file_has "`r(log)'", needle("dash: pcarrowi ignored '0 0 1' at the end, too little for another arrow (#y1 #x1 #y2 #x2), as twoway does.")
-assert r(found) == 1
+cert_file_has "`r(log)'", needle("dash: pcarrowi ignored")
+// Flipped (WP-47 basic:PT-15): twoway drops trailing values in silence
+assert r(found) == 0
 assert strpos(`"${dash_json_p1a55}"', `""values":[[0,0,0,1]]"') > 0
 _dash_process_segment `"pcarrowi 0 0 0 1 "x" (3)"' _pt55 _json55
 assert strpos(`"`_json55'"', `""values":[[0,0,0,1,"x",null]]"') > 0
 dash clear
-display "P1A-55 PASS: an incomplete arrow at the end is dropped, as twoway drops it, with a note"
+display "P1A-55 PASS: an incomplete arrow at the end is dropped, as twoway drops it, in silence"
 
 // ================================================================
 // P1A-56 -- TR-22.4: every plot type is routed by list membership
@@ -1026,19 +1027,21 @@ display "U47-8 PASS: scatteri and pci take the hexadecimal literals twoway takes
 //
 // twoway's loop ends when a point's last coordinate is empty: at the end
 // of the list (`scatteri 1 2 3' draws one point, rc 0), or at a quoted ""
-// (`scatteri 1 2 3 "" 5 6' draws one point, rc 0).  It says nothing; dash
-// names what it dropped.
+// (`scatteri 1 2 3 "" 5 6' draws one point, rc 0).  It says nothing, and
+// neither does dash (WP-47 basic:PT-15).
 // ================================================================
 dash clear
 _p1a_logrun "dash scatteri 1 2 3, name(p1a62)"
 assert r(rc) == 0
-cert_file_has "`r(log)'", needle("dash: scatteri ignored '3' at the end, too little for another point (#y #x), as twoway does.")
-assert r(found) == 1
+cert_file_has "`r(log)'", needle("dash: scatteri ignored")
+// Flipped (WP-47 basic:PT-15): twoway drops trailing values in silence
+assert r(found) == 0
 assert strpos(`"${dash_json_p1a62}"', `""values":[[1,2]]"') > 0
 _p1a_logrun `"dash scatteri 1 2 3 "" 5 6, name(p1a62b)"'
 assert r(rc) == 0
-cert_file_has "`r(log)'", needle(`"dash: scatteri ignored '3 "" 5 6' at the end: "" where a point's last number belongs ends the list, as in twoway scatteri."')
-assert r(found) == 1
+cert_file_has "`r(log)'", needle("dash: scatteri ignored")
+// Flipped (WP-47 basic:PT-15): twoway drops trailing values in silence
+assert r(found) == 0
 assert strpos(`"${dash_json_p1a62b}"', `""values":[[1,2]]"') > 0
 // A needle holding "' -- the characters that close a compound quote --
 // cannot pass through cert_file_has's -syntax-; it is built from char()
@@ -1046,21 +1049,24 @@ assert strpos(`"${dash_json_p1a62b}"', `""values":[[1,2]]"') > 0
 _p1a_logrun `"dash scatteri 1 2 (3) "A" "B", name(p1a62c)"'
 assert r(rc) == 0
 local lg62 "`r(log)'"
-mata: st_local("f62", strofreal(_cert_file_has(st_local("lg62"), "dash: scatteri ignored " + char(39) + char(34) + "B" + char(34) + char(39) + " at the end, too little for another point (#y #x), as twoway does.", 0)))
-assert `f62' == 1
+mata: st_local("f62", strofreal(_cert_file_has(st_local("lg62"), "dash: scatteri ignored", 0)))
+// Flipped (WP-47 basic:PT-15): twoway drops trailing values in silence
+assert `f62' == 0
 assert strpos(`"${dash_json_p1a62c}"', `""values":[[1,2,"A",3]]"') > 0
 // A clock position after a label is not read: it is the next point's y.
 _p1a_logrun `"dash scatteri 1 2 "A" (9), name(p1a62d)"'
 assert r(rc) == 0
-cert_file_has "`r(log)'", needle("dash: scatteri ignored '(9)' at the end")
-assert r(found) == 1
+cert_file_has "`r(log)'", needle("dash: scatteri ignored")
+// Flipped (WP-47 basic:PT-15): twoway drops trailing values in silence
+assert r(found) == 0
 assert strpos(`"${dash_json_p1a62d}"', `""values":[[1,2,"A",null]]"') > 0
 // Quotes inside a word bind its blanks, as gettoken reads them.
 _p1a_logrun `"dash scatteri 1 2 2"A B", name(p1a62e)"'
 assert r(rc) == 0
 local lg62 "`r(log)'"
-mata: st_local("f62", strofreal(_cert_file_has(st_local("lg62"), "dash: scatteri ignored " + char(39) + "2" + char(34) + "A B" + char(34) + char(39) + " at the end", 0)))
-assert `f62' == 1
+mata: st_local("f62", strofreal(_cert_file_has(st_local("lg62"), "dash: scatteri ignored", 0)))
+// Flipped (WP-47 basic:PT-15): twoway drops trailing values in silence
+assert `f62' == 0
 assert strpos(`"${dash_json_p1a62e}"', `""values":[[1,2]]"') > 0
 _p1a_logrun "dash scatteri 1 2 3 4 5, name(p1a62f)"
 assert r(rc) == 0
@@ -1071,7 +1077,7 @@ assert r(rc) == 0
 cert_file_has "`r(log)'", needle("ignored")
 assert r(found) == 0
 dash clear
-display "P1A-62 PASS: what twoway drops at the end of scatteri's list is dropped too, with a note naming it"
+display "P1A-62 PASS: what twoway drops at the end of scatteri's list is dropped too, in silence"
 
 // ================================================================
 // P1A-63 -- pci: one record per segment, [y1,x1,y2,x2] or
@@ -1123,7 +1129,7 @@ assert "${dash_graph_registry}" == ""
 display "P1A-64 PASS: pci refuses a non-number where a coordinate belongs, a clock position outside 0..12, and a list with no whole segment"
 
 // ================================================================
-// P1A-65 -- pci: what twoway drops at the end is dropped and named, and
+// P1A-65 -- pci: what twoway drops at the end is dropped in silence, and
 // a label, which plain twoway pci never draws, is taken in silence
 //
 // twoway pci is an immediate pcspike: its serset carries the labels
@@ -1133,13 +1139,15 @@ display "P1A-64 PASS: pci refuses a non-number where a coordinate belongs, a clo
 dash clear
 _p1a_logrun "dash pci 0 0 0 1 0 0 1, name(p1a65)"
 assert r(rc) == 0
-cert_file_has "`r(log)'", needle("dash: pci ignored '0 0 1' at the end, too little for another segment (#y1 #x1 #y2 #x2), as twoway does.")
-assert r(found) == 1
+cert_file_has "`r(log)'", needle("dash: pci ignored")
+// Flipped (WP-47 basic:PT-15): twoway drops trailing values in silence
+assert r(found) == 0
 assert strpos(`"${dash_json_p1a65}"', `""values":[[0,0,0,1]]"') > 0
 _p1a_logrun `"dash pci 0 0 0 1 1 1 2 "" 3 3 4 4, name(p1a65b)"'
 assert r(rc) == 0
-cert_file_has "`r(log)'", needle(`"dash: pci ignored '1 1 2 "" 3 3 4 4' at the end: "" where a segment's last number belongs ends the list, as in twoway pci."')
-assert r(found) == 1
+cert_file_has "`r(log)'", needle("dash: pci ignored")
+// Flipped (WP-47 basic:PT-15): twoway drops trailing values in silence
+assert r(found) == 0
 assert strpos(`"${dash_json_p1a65b}"', `""values":[[0,0,0,1]]"') > 0
 _p1a_logrun `"dash pci 0 0 0 1 (3) "A" 0 0 1 0, name(p1a65c)"'
 assert r(rc) == 0
@@ -1156,11 +1164,12 @@ cert_file_has "`r(log)'", needle("draws no labels")
 assert r(found) == 0
 _p1a_logrun `"dash pci 0 0 0 1 "A" (3), name(p1a65e)"'
 assert r(rc) == 0
-cert_file_has "`r(log)'", needle("dash: pci ignored '(3)' at the end")
-assert r(found) == 1
+cert_file_has "`r(log)'", needle("dash: pci ignored")
+// Flipped (WP-47 basic:PT-15): twoway drops trailing values in silence
+assert r(found) == 0
 assert strpos(`"${dash_json_p1a65e}"', `""values":[[0,0,0,1,"A",null]]"') > 0
 dash clear
-display "P1A-65 PASS: pci drops what twoway drops at the end, with a note, and takes its labels in silence"
+display "P1A-65 PASS: pci drops what twoway drops at the end, in silence, and takes its labels in silence"
 
 // ================================================================
 // P1A-66 -- pcarrowi reads numbers as scatteri and pci now do

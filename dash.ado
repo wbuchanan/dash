@@ -6895,12 +6895,9 @@ program define _dash_process_segment, rclass
                 }
                 exit 198
             }
-            if "`_pci_stop'" == "empty" {
-                mata: _dash_note("dash: `ptype' ignored '", st_local("_pci_left"), "' at the end: " + st_local("_imm_empty"))
-            }
-            else if `_pci_hasleft' {
-                mata: _dash_note("dash: `ptype' ignored '", st_local("_pci_left"), "' at the end, too little for another `_imm_unit' (`_imm_xy'), as twoway does.")
-            }
+            // WP-47 basic:PT-15: twoway drops trailing values in silence
+            // (marker_fidelity_truth.json I01, I02; pci with a trailing
+            // "" or a lone (#) too, measured 10nov2026), and so does dash.
             // WP-47 MS-7: pci's labels are drawn under recast() to a
             // labelled pc type (map_pci_literal) and, like twoway pci,
             // not otherwise; nothing is printed.

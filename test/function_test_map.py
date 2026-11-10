@@ -239,6 +239,7 @@ FUNCTIONS = {
  'GlyphMapper._mlabformat_column': 'test/test_twoway_option_parity.py::TestAdversarialTwowayOptions::test_the_widest_format_stata_accepts_is_bounded_by_stata',
  'GlyphMapper._on_axis': 'test/test_date_units.py::TestTheUnitHelpers::test_on_axis_follows_the_figures_axis',
  'GlyphMapper._pc_clean_with_label': 'test/test_marker_label_parity.py::TestThePairedCoordinateRows::test_a_repeated_coordinate_is_one_column',
+ 'GlyphMapper._pc_mlabangle_drop': 'test/test_marker_fidelity.py::TestPT15::test_pcarrow_mlabangle_out_of_range',
  'GlyphMapper._pc_immediate_records': 'test/test_immediate_values.py::TestTheRecordReader::test_pcarrowis_reader_is_the_same_reader',
  'GlyphMapper._predict_fp2': 'test/test_statistical_helpers.py::TestFpFitAndPrediction::test_the_prediction_is_the_design_times_beta_on_raw_x',
  'GlyphMapper._render_ci_band': 'test/test_lpolyci_options.py::TestLpolyciUsesTheSameSmootherAsLpoly::test_an_absolute_bandwidth_is_not_clamped_to_one',

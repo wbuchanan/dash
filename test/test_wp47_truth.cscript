@@ -872,6 +872,66 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w47_run' {
 }
 * ==== end S06 ====
 
+* ==== S06 basic:PT-15: the documented plain-type differences ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S06") & `: list posof "S06" in w47_run' {
+    display as text "S06 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4706-6: twoway pci drops trailing values in silence (live); so does
+    // dash.  mlabangle(400) on pcarrow: twoway prints its line, rc 0, and
+    // draws the arrows without labels; dash prints the same line.
+    // ------------------------------------------------------------
+    local lf "`w47_work'/q4706_6tw.log"
+    capture erase "`lf'"
+    quietly log using "`lf'", text replace name(q47066t)
+    capture noisily twoway pci 0 0 0 1 1 1 2, name(q4706p, replace)
+    local q6trc = _rc
+    quietly log close q47066t
+    capture graph drop q4706p
+    cert_log_has "`lf'", needle("ignored")
+    _w47_expect Q4706-6 "(`q6trc' == 0 & r(count) == 0)" "twoway pci rc `q6trc', a note count `r(count)'"
+    local lf "`w47_work'/q4706_6.log"
+    capture erase "`lf'"
+    quietly log using "`lf'", text replace name(q47066)
+    dash clear
+    capture noisily dash pci 0 0 0 1 1 1 2, name(q4706q)
+    local q6rc = _rc
+    quietly log close q47066
+    cert_log_has "`lf'", needle("ignored")
+    _w47_expect Q4706-6 "(`q6rc' == 0 & r(count) == 0)" "dash pci rc `q6rc', a trailing-value note count `r(count)'"
+    sysuse auto, clear
+    local lf "`w47_work'/q4706_6a.log"
+    capture erase "`lf'"
+    quietly log using "`lf'", text replace name(q47066a)
+    capture noisily twoway pcarrow mpg weight trunk turn in 1/5, mlabel(make) mlabangle(400) name(q4706r, replace)
+    local q6arc = _rc
+    quietly log close q47066a
+    capture graph drop q4706r
+    cert_log_has "`lf'", needle("textangle must be between -360.000 and 360.000")
+    _w47_expect Q4706-6 "(`q6arc' == 0 & r(count) == 1)" "twoway pcarrow mlabangle(400) rc `q6arc', line count `r(count)'"
+    local q6f "`w47_work'/q4706_6.html"
+    capture erase "`q6f'"
+    local lf "`w47_work'/q4706_6b.log"
+    capture erase "`lf'"
+    quietly log using "`lf'", text replace name(q47066b)
+    dash clear
+    capture noisily dash pcarrow mpg weight trunk turn in 1/5, mlabel(make) mlabangle(400) name(q4706s)
+    local q6drc = _rc
+    capture noisily dash build, saving("`q6f'", replace) nobrowser
+    local q6brc = _rc
+    quietly log close q47066b
+    cert_log_has "`lf'", needle("textangle must be between -360.000 and 360.000")
+    _w47_expect Q4706-6 "(`q6drc' == 0 & `q6brc' == 0 & r(count) == 1)" "dash pcarrow mlabangle(400) rc `q6drc', build rc `q6brc', line count `r(count)'"
+    cert_log_has "`lf'", needle("not a recognised angle")
+    _w47_expect Q4706-6 "(r(count) == 0)" "dash still draws the labels horizontal"
+    capture erase "`q6f'"
+    dash clear
+    _w47_done Q4706-6 "pci's trailing values silent; pcarrow mlabangle(400) prints twoway's line, no labels"
+    display as text "S06 end " c(current_date) " " c(current_time)
+}
+* ==== end S06 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

@@ -1029,6 +1029,7 @@ and now matches Stata.
 - An lfit, qfit, lfitci or qfitci emptied by if or in is titled and keyed by its y variable's name, and an emptied histogram's x axis "x", as twoway titles them; lfit mpg weight if price<0 was titled and keyed "Fitted values", now "mpg" (WP-47, DG-7)
 - D, d, Dh and the other diamonds are drawn as a square on its point, as wide as it is tall, V and v as an open chevron, + as two crossed lines and arrow, a, arrowf and A as an arrowhead on a shaft, in the plot, the legend key and the SVG export, as twoway draws them; msymbol(invisible) prints twoway's note and draws the scheme's symbol where dash drew nothing (WP-47, PIC-2)
 - A marker whose weight is zero or missing is drawn as twoway's minimal dot, as wide as its outline; scatter mpg weight [aw=w] drew nothing for such a row (WP-47, DG-12)
+- A pcscatter or pccapsym observation missing only its second point is marked and labelled at its first point, mlabangle() out of range on pcarrow and pcbarrow draws the arrows without labels with twoway's line, a date variable with value labels is labelled with its labels and other values' numbers, and the trailing values of scatteri, pci and pcarrowi are dropped without a note, as twoway does (WP-47, basic:PT-15)
 
 ### Fixed in WP-46
 

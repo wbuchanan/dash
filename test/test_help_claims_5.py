@@ -1205,6 +1205,21 @@ class TestAPairedCoordinateObservationWithAMissingPoint:
         r, doc, _, _ = _both(_spec([("g1", [plot], {})]), _payload(df))
         for fig in _pair_figures(r, doc):
             drawn = _drawn_labels(fig)
+            if ptype in ("pcscatter", "pccapsym"):
+                # Flipped (WP-47 basic:PT-15): "not drawn at all" was wrong
+                # because twoway marks and labels the first point of a row
+                # missing only its second (marker_fidelity_truth.json H01,
+                # H02); its line and second marker are not drawn.
+                assert len(drawn) == len(df), (ptype, len(drawn))
+                assert "AMC Concord" in [d[2] for d in drawn], ptype
+                assert (2930.0, 22.0) in _marker_points(fig), ptype
+                ends = _drawn_ends(fig)
+                assert set(ends) == self._DRAWS[ptype], (ptype, sorted(ends))
+                for kind, pts in ends.items():
+                    want = 2 * len(df) - 1 if kind == "Scatter" \
+                        else 2 * (len(df) - 1)
+                    assert len(pts) == want, (ptype, kind, len(pts))
+                continue
             assert len(drawn) == len(df) - 1, (ptype, len(drawn))
             assert "AMC Concord" not in [d[2] for d in drawn], ptype
             assert (2930.0, 22.0) not in _marker_points(fig), ptype
@@ -1231,14 +1246,18 @@ class TestAPairedCoordinateObservationWithAMissingPoint:
 # 3. What a label says, for a date variable, in both modes
 # ===========================================================================
 
-def _dated(**options):
+def _dated(labelled=False, **options):
+    # Flipped (WP-47 basic:PT-15): the value label rode on every case and
+    # was not read; twoway reads it (marker_fidelity_truth.json L01), so
+    # only the value-label case attaches it now.
     df = _auto()
     df["d"] = [14612.0 + i for i in range(len(df))]
     opts = dict(options)
     r, doc, saved, served = _both(
         _spec([("g1", [_scatter(**opts)], {})],
               build={"formats": {"d": "%td"}}),
-        _payload(df, {"d": {"14612": "LABELLED"}}, {"d": "dl"}))
+        _payload(df, {"d": {"14612": "LABELLED"}} if labelled else {},
+                 {"d": "dl"} if labelled else {}))
     a, b = _pair_figures(r, doc)
     return _one_labelset(a), _one_labelset(b), saved, served
 
@@ -1250,9 +1269,13 @@ class TestADateVariablesLabels:
         # GAPS2 E3/G6, WP-28 S12: Stata's %td text (was "03 Jan 2000").
         assert _texts(a)[:3] == ["03jan2000", "04jan2000", "05jan2000"]
 
-    def test_a_value_label_on_it_is_not_read_in_either_mode(self):
-        a, b, _, _ = _dated(mlabel="d")
-        assert "LABELLED" not in _texts(a) + _texts(b)
+    def test_a_value_label_on_it_is_read_as_twoway_reads_it(self):
+        """Flipped (WP-47 basic:PT-15): "a value label on it is not read"
+        was wrong because twoway labels a labelled date with its label and
+        any other date with its number (marker_fidelity_truth.json L01)."""
+        a, b, _, _ = _dated(labelled=True, mlabel="d")
+        assert _texts(a) == _texts(b)
+        assert _texts(a)[:3] == ["LABELLED", "14613", "14614"]
 
     def test_mlabformat_is_named_and_the_dates_kept_in_both_modes(self):
         a, b, saved, served = _dated(mlabel="d", mlabformat="%9.2f")

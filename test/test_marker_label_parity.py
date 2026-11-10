@@ -491,18 +491,20 @@ def test_an_out_of_range_angle_on_an_arrow_is_reported_and_drawn_flat():
     """Measured: on pcarrow and pcbarrow twoway prints "textangle must be
     between -360.000 and 360.000" for mlabangle(400), returns rc 0 and
     draws the arrows without their labels.  dash.ado passes it (twoway's
-    rc is 0), and the renderer names it and draws the labels horizontal,
-    as dash.sthlp says."""
+    rc is 0).  Flipped (WP-47 basic:PT-15): "the renderer names it and
+    draws the labels horizontal" was wrong because twoway draws no label;
+    dash prints twoway's line as a note and draws none
+    (marker_fidelity_truth.json A01)."""
     for ptype in ("pcarrow", "pcbarrow"):
         std, srv, std_w, srv_w = _both([plot_for(ptype, {
             "mlabel": "make", "mlabangle": "400"})])
-        want = ["dash: mlabangle(400) is not a recognised angle; using "
-                "horizontal."]
-        assert [w for w in std_w if "mlabangle" in w] == want, std_w
-        assert [w for w in srv_w if "mlabangle" in w] == want, srv_w
+        want = ["dash: textangle must be between -360.000 and 360.000"]
+        pick = lambda ws: [w for w in ws if "mlabangle" in w
+                           or "textangle" in w]
+        assert pick(std_w) == want, std_w
+        assert pick(srv_w) == want, srv_w
         for fig in (std, srv):
-            assert _drawn_labels(fig) == _expected(ptype, "make")
-            assert all(float(ls.angle) == 0.0 for ls in _labelsets(fig))
+            assert _drawn_labels(fig) == []
 
 
 def test_a_per_plot_qualifier_labels_only_the_qualified_ends():
@@ -568,6 +570,13 @@ def test_a_paired_coordinate_label_goes_with_its_observation():
         std, srv, _, _ = _both([plot_for(ptype, {"mlabel": "make"})], df=df)
         for fig in (std, srv):
             drawn = _drawn_labels(fig)
+            if ptype == "pcscatter":
+                # Flipped (WP-47 basic:PT-15): dropping the row was wrong
+                # because twoway labels the first point of a row missing
+                # only its second (marker_fidelity_truth.json H01).
+                assert len(drawn) == len(df), (ptype, len(drawn))
+                assert "AMC Concord" in [d[2] for d in drawn], ptype
+                continue
             assert len(drawn) == len(df) - 1, (ptype, len(drawn))
             assert "AMC Concord" not in [d[2] for d in drawn], ptype
 

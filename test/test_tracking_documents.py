@@ -2929,7 +2929,6 @@ GAPS4_OPEN = {
     'PIC-16': 'Dot-plot dots floored to 1 px before the outline (0.46 vs 0.30 rs); dot patterns rounded to whole pixels',
     'PIC-17': 'rarea fills an interior gap where only one bound is missing by interpolating across it; twoway breaks the area there',
     'MS-15': 'dash clips marker labels at the plot region; twoway lets them extend over the axis area',
-    'basic:PT-15': 'Other documented drawing and text differences: rarea closing edges, half-missing pc rows, pcarrow mlabangle, date mlabel value labels, pci notes, side-clock titles, key marker size, fxsize, globals with =exp, browser date range, missing scheme keys',
     'LT-27': "The 'typo is reported as ignored ... titel(x) appears in the note' paragraph is stale; the paragraph before it (xreverse, xcommon, lockaspect ... reach the note) is stale too",
     'plot:PT-5': "'graph is a prefix before twoway' / 'unrecognised plot type graph' is stale",
     'basic:PT-16': "Stale passages: :332 and :3472-3475 headlabel/mangle 'named'; :3611 recast on dot; :3676 degree() >7 refused; :3977-3985 fpfit bwidth accepted; :4084 acolor named; :1239 mlabel(t*) refused; :240-246 shadowed x/y; :3635 merged keys; :3179 rescale note; :3290 subtitle box; :4782/:6573/:6597 lalign/dlalign/'every type'; TWOWAY_COVERAGE_AUDIT:71/81/84; _dot_style docstring; test_lpoly_degree.py:16",
