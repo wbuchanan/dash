@@ -541,7 +541,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **PIC-9 Tracked:** Closed in WP-47, BUGS.md "Empty histogram bins draw an outline segment along the base", commit pending.
 - **PIC-10 Tracked:** Closed in WP-47, BUGS.md "dot draws no row for an observation whose y is missing (dotextend yes); twoway draws the full row", commit pending.
 - **DG-12 Tracked:** Closed in WP-47, BUGS.md "Markers with missing or zero weight are invisible; twoway still draws a dot", commit 5f40b04.
-- **PIC-16 Tracked:** Open (WP-47 section 47-06).
+- **PIC-16 Tracked:** Closed in WP-47, BUGS.md "Dot-plot dots floored to 1 px before the outline (0.46 vs 0.30 rs); dot patterns rounded to whole pixels", commit pending.
 - **PIC-17 Tracked:** Open (WP-47 section 47-06).
 - **MS-15 Tracked:** Open (WP-47 section 47-06).
 - **DG-7 Tracked:** Closed in WP-47, BUGS.md "Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x')", commit f157037.

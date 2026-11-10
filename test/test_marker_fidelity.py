@@ -779,3 +779,68 @@ console.log(JSON.stringify(out));
         assert sorted(set(got["posno"])) == [0]
         assert got["fill"] == [1, 2] and got["fillno"] == [1]
 
+
+# ---------------------------------------------------------------------------
+# PIC-16: a dot plot's dot floored on its fill plus outline
+# ---------------------------------------------------------------------------
+
+with open(os.path.join(_FIX, "dot_truth.json"), encoding="utf-8") as _fh:
+    DOT = json.load(_fh)
+
+
+class TestDotFloor:
+    """dot_truth.json D01 (``dot mpg weight in 1/5``, the default dot):
+    twoway strokes a ring of radius 1.49 with a 5.76-wide outline (SVG
+    units on its 3960 x 2880 canvas), 8.74 across -- 0.30 rs, 1.52
+    outline widths.  dash floored the fill to 1 px before adding the
+    0.768 px outline: 1.77 px, 2.30 widths."""
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_outer_diameter(self, mode):
+        rec = DOT["D01"]
+        (w,) = rec["dot_stroke_width"]
+        outer = 2 * rec["dot_r"] + w
+        assert outer / (min(rec["canvas"]) / 100) == pytest.approx(
+            0.30, abs=0.01)
+        d = _draw(tp._spec([plot_for("dot")], {"scheme": "s2color"}), mode)
+        (r,) = [r for r in d.figures[0].renderers
+                if "dash_dots" in (r.tags or [])]
+        g = r.glyph
+        drawn = (float(g.size) + float(g.line_width)) / float(g.line_width)
+        assert drawn == pytest.approx(outer / w, abs=0.02)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_at_least_one_pixel(self, mode):
+        """With no outline the dot keeps the floor: 1 px across."""
+        d = _draw(tp._spec([plot_for("dot", {"dlwidth": "none"})],
+                           {"scheme": "s2color"}), mode)
+        (r,) = [r for r in d.figures[0].renderers
+                if "dash_dots" in (r.tags or [])]
+        assert float(r.glyph.size) + float(r.glyph.line_width) \
+            == pytest.approx(1.0)
+
+
+class TestTheHelp:
+    """The help's claims PIC-16 and PIC-17 make."""
+
+    _HELP = open(os.path.join(os.path.dirname(__file__), "..", "dash.sthlp"),
+                 encoding="utf-8").read()
+
+    @staticmethod
+    def _flat(text):
+        return " ".join(text.split())
+
+    def test_dot_floor_includes_the_outline(self):
+        assert ("a dot is drawn at least one pixel across, its outline "
+                "included") in self._flat(self._HELP)
+
+    def test_dot_patterns_whole_pixel(self):
+        """PIC-17: Bokeh's DashPattern takes whole pixels, so the
+        rounding stays, documented as a difference from twoway."""
+        flat = self._flat(self._HELP)
+        i = flat.index("{title:Differences from twoway}")
+        j = flat.index("{marker subcommands}", i)
+        assert ("A line pattern's dashes are drawn to the whole pixel (the "
+                "browser library takes whole pixels), so {cmd:dot} and "
+                "{cmd:tight_dot} are coarser than {cmd:twoway}'s"
+                ) in flat[i:j]

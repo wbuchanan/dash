@@ -1032,6 +1032,7 @@ and now matches Stata.
 - A pcscatter or pccapsym observation missing only its second point is marked and labelled at its first point, mlabangle() out of range on pcarrow and pcbarrow draws the arrows without labels with twoway's line, a date variable with value labels is labelled with its labels and other values' numbers, and the trailing values of scatteri, pci and pcarrowi are dropped without a note, as twoway does (WP-47, basic:PT-15)
 - An empty histogram bin draws nothing, as twoway draws nothing for it, in both modes and after a filter move; dash drew a zero-height bar stroked along the base (WP-47, PIC-9)
 - dot draws the row of an observation whose y is missing under dotextend(yes), its full row as twoway draws it, in both modes and after a filter move; dash drew no row for it (WP-47, PIC-10)
+- A dot plot's dot is drawn at twoway's size, 0.30 rs across with its outline, the 1 px floor on the dot as drawn, fill and outline; dash floored the fill to 1 px before adding the outline, 1.77 px (WP-47, PIC-16)
 
 ### Fixed in WP-46
 

@@ -289,7 +289,10 @@ class TestStyle:
         f, _ = _fig(mode, tmp_path)
         g = _dots(f).glyph
         assert g.marker == "circle"
-        assert g.size == 1.0          # vtiny, 0.384 px, drawn at 1 px
+        # Flipped (WP-47 PIC-16): vtiny, 0.384 px, plus its 0.768 px
+        # outline is 1.15 px across, twoway's 0.30 rs (dot_truth.json
+        # D01): 1 px was the fill floored before the outline was added.
+        assert g.size == pytest.approx(0.384)
         assert g.line_width == pytest.approx(
             dr.OptionTranslator.translate_lwidth("thin"))
         assert (str(g.fill_color).lower(), str(g.line_color).lower()) == (
@@ -348,7 +351,10 @@ class TestStyle:
         f, notes = _fig("saved", tmp_path, {"dsize": "bogus",
                                             "dcolor": "bogus"})
         g = _dots(f).glyph
-        assert g.size == 1.0 and str(g.fill_color).lower() == "#000000"
+        # Flipped (WP-47 PIC-16): the default vtiny, unfloored with its
+        # outline (see test_scheme_defaults).
+        assert g.size == pytest.approx(0.384) \
+            and str(g.fill_color).lower() == "#000000"
         assert any("dsize(bogus)" in n for n in notes), notes
         # Flipped: an unknown colour is noted in twoway's words, naming the
         # style, not the option (74050cb).

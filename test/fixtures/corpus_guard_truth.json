@@ -1,8 +1,8 @@
 {
   "_meta": {
     "born_date": "04 Nov 2026",
-    "dash_commit": "c8ece50cb3c57033392694ab11cb90ddd5d3e571",
-    "extracted": "10 Nov 2026 05:38:09",
+    "dash_commit": "f4f2375c64a174f697ece3849056b772246b44cd",
+    "extracted": "10 Nov 2026 05:51:57",
     "ledger": "test/fixtures/corpus_ledger.json",
     "rules": "test/fixtures/corpus_verdict_rules.json",
     "source": "scripts/extract_corpus_guard_truth.do",
@@ -487,14 +487,11 @@
     },
     "help-twoway_dot-11245001": {
       "checks": [
-        "margins",
-        "marker_size"
+        "margins"
       ],
       "first_dash": null,
       "first_twoway": null,
-      "ledger": [
-        "VF-4"
-      ],
+      "ledger": [],
       "rc_dash": 0,
       "rc_twoway": 0,
       "record": {
@@ -521,8 +518,8 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.3367,
-      "summary": "margins, marker size",
+      "ssim": 0.3617,
+      "summary": "margins",
       "verdict": "Close"
     },
     "help-twoway_dropline-bff26da0": {

@@ -168,13 +168,15 @@ class TestDots:
             w = float(d.glyph.line_width)
             assert w > 0
             # The size the dots were given (vtiny, 0.384 px), before the
-            # alignment and the 1 px floor (D-18c, which 47-06 owns).
+            # alignment and the 1 px floor (D-18c).  Flipped (WP-47
+            # PIC-16): the floor is on the dot as drawn, fill plus
+            # outline, at least 1 px.
             nom = d.glyph._dash_stroke_nominal[0]
             assert b.glyph._dash_stroke_nominal[0] == nom
             for k in ("st", "s2"):
                 want = nom + (_k("D%02d_%s" % (n, k)) - 1) * w
-                assert d.glyph.size == pytest.approx(max(want, 1.0),
-                                                     abs=0.01)
+                assert d.glyph.size == pytest.approx(
+                    want if want + w >= 1.0 else 1.0 - w, abs=0.01)
         assert not [m for m in notes if "dlalign" in m
                     or "alignstroke" in m]
 

@@ -1843,6 +1843,12 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {ul:A global's =exp outside the listed functions is drawn as written.}  A {cmd:`=}{it:exp}{cmd:'} in a global's value in a graph's text is evaluated as {cmd:twoway} evaluates it when {it:exp} uses only the operators and functions listed there; one that names a variable, a scalar, a result or another function, and a macro reference, is drawn as written with a note; see {help dash##added_text:Added text}.
 
+{phang2}24.  {ul:Line patterns are drawn to the whole pixel.}  A line
+    pattern's dashes are drawn to the whole pixel (the browser library
+    takes whole pixels), so {cmd:dot} and {cmd:tight_dot} are coarser
+    than {cmd:twoway}'s (the line pattern sentence under Validation
+    above).
+
 
 {marker subcommands}
 {title:Subcommands}
@@ -4634,7 +4640,8 @@ a graph of histograms alone are still drawn by {cmd:dash}.
 {synopt:{opt dfcolor(colorstyle)}}{cmd:dot}: the dots' fill colour, as
     {cmd:mfcolor()}{p_end}
 {synopt:{opt dsize(markersizestyle)}}{cmd:dot}: the dots' size, as
-    {cmd:msize()}; a dot is drawn at least one pixel across{p_end}
+    {cmd:msize()}; a dot is drawn at least one pixel across, its
+    outline included{p_end}
 {synopt:{opt dlstyle(linestyle)}}{cmd:dot}: the dots' outline style, as
     {cmd:mlstyle()}{p_end}
 {synopt:{opt dlcolor(colorstyle)}}{cmd:dot}: the dots' outline colour,

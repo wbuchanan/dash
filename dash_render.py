@@ -25793,8 +25793,8 @@ class GlyphMapper:
         so a value reads as the marker option's does.  A name dash does not
         know is noted under the d-option's own name and the dots keep the
         scheme's value (an unknown colour draws black, as twoway draws
-        it).  A size above zero is drawn at least 1 px across (D-18c):
-        vtiny is 0.384 px.  dlalign() sizes the dots' outline as twoway
+        it).  A dot above zero is drawn at least 1 px across, its outline
+        included (D-18c; WP-47 PIC-16).  dlalign() sizes the dots' outline as twoway
         aligns it (WP-47 basic:PT-5)."""
         opts = options or {}
         mo: dict = {}
@@ -25834,9 +25834,15 @@ class GlyphMapper:
                 "alignstroke, default attributes used")
         self._align_marker_size(dr, _dash_stroke_align(
             opts, "dlalign", self.scheme, "dotmark"))
+        # WP-47 PIC-16: the floor is on the dot as drawn, its fill plus its
+        # outline, at least 1 px across: twoway's default dot is 0.30 rs
+        # across, outline included (dot_truth.json D01), which the fill
+        # floored to 1 px before the outline drew 1.77 px.
         g = dr.glyph
-        if isinstance(g.size, (int, float)) and 0 < g.size < 1.0:
-            g.size = 1.0
+        lw = float(g.line_width) if isinstance(g.line_width, (int, float)) \
+            and not isinstance(g.line_width, bool) else 0.0
+        if isinstance(g.size, (int, float)) and 0 < g.size + lw < 1.0:
+            g.size = max(g.size, 1.0 - lw)
 
     @staticmethod
     def _dot_positions(lo, hi, vals, extend=True, ndots=75, limit=None):
