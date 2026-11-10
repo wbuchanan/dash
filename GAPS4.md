@@ -538,7 +538,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **basic:PT-10 Tracked:** Open (WP-47 section 47-04).
 - **basic:PT-11 Tracked:** Open (WP-47 section 47-05).
 - **PIC-2 Tracked:** Closed in WP-47, BUGS.md "Marker shapes: diamonds 2/3 as wide; V/v closed triangles (help says open chevron); + filled fat cross; arrow symbols without shaft; msymbol(invisible) draws nothing (twoway notes and draws the default)", commit 0ccbd3e.
-- **PIC-9 Tracked:** Open (WP-47 section 47-06).
+- **PIC-9 Tracked:** Closed in WP-47, BUGS.md "Empty histogram bins draw an outline segment along the base", commit pending.
 - **PIC-10 Tracked:** Open (WP-47 section 47-06).
 - **DG-12 Tracked:** Closed in WP-47, BUGS.md "Markers with missing or zero weight are invisible; twoway still draws a dot", commit 5f40b04.
 - **PIC-16 Tracked:** Open (WP-47 section 47-06).

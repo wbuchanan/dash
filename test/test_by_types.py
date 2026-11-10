@@ -224,6 +224,12 @@ def _field(r, attr):
     spec = getattr(r.glyph, attr, None)
     if isinstance(spec, dict):
         spec = spec.get("field")
+    # Flipped (WP-47 PIC-9): a histogram's count edge is a Field with the
+    # empty-bin transform (_DASH_EMPTY_BIN_JS), no longer a bare name; its
+    # column is read as before.
+    if not isinstance(spec, str) and isinstance(
+            getattr(spec, "field", None), str):
+        spec = spec.field
     if not isinstance(spec, str) or spec not in r.data_source.data:
         return None
     col = list(r.data_source.data[spec])

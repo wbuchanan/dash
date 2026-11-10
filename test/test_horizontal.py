@@ -108,9 +108,17 @@ def _norm(v):
         return {"field": v, "transform": None}
     if hasattr(v, "field") and isinstance(getattr(v, "field"), str):
         t = getattr(v, "transform", None)
+        # Flipped (WP-47 PIC-9): a transform is compared by its class and
+        # properties: repr(t) named its model id, so the upright and the
+        # turned bins' count edge -- each through its own empty-bin
+        # CustomJSTransform (_DASH_EMPTY_BIN_JS) -- never compared equal.
         return {"field": v.field,
                 "transform": None if t is None
-                or "Unspecified" in type(t).__name__ else repr(t)}
+                or "Unspecified" in type(t).__name__ else [
+                    type(t).__name__, {
+                        k: w for k, w in t.properties_with_values(
+                            include_defaults=False).items()
+                        if k != "id"}]}
     if hasattr(v, "value") and not isinstance(v, dict):
         return {"value": v.value}
     if isinstance(v, (int, float)) and not isinstance(v, bool):

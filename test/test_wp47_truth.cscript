@@ -932,6 +932,41 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w47_run' {
 }
 * ==== end S06 ====
 
+* ==== S06 PIC-9: an empty histogram bin draws nothing ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S06") & `: list posof "S06" in w47_run' {
+    display as text "S06 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4706-3: twoway's histogram mpg, bin(30) draws its 21 bars and no
+    // element of zero height for its 9 empty bins (live SVG, the bars in
+    // magenta); dash's page draws each bin's count edge through the
+    // empty-bin transform, so an empty bin draws no bar and no stroke.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    quietly twoway histogram mpg, bin(30) fcolor("255 0 255") lcolor("255 0 255") name(q4706h, replace)
+    cert_svg_export, name(q4706h) file("`w47_work'/q4706h.svg")
+    python: import os as _o4706, sys as _s4706; _s4706.path.insert(0, _o4706.path.abspath("../scripts")); import svg_layer as _sl4706; _e = [e for e in _sl4706.svg_elements(r"`w47_work'/q4706h.svg") if e["fill"] == "#ff00ff" or e["stroke"] == "#ff00ff"]; _h = [max(p[1] for p in e["points"]) - min(p[1] for p in e["points"]) for e in _e if e["kind"] in ("rect", "polygon", "path")]; from sfi import Macro as _M4706; _M4706.setLocal("q3bars", str(sum(1 for e in _e if e["fill"] == "#ff00ff"))); _M4706.setLocal("q3zero", str(sum(1 for h in _h if h <= 0.01)))
+    capture erase "`w47_work'/q4706h.svg"
+    capture graph drop q4706h
+    _w47_expect Q4706-3 "(`q3bars' == 21 & `q3zero' == 0)" "twoway draws `q3bars' bars and `q3zero' zero-height elements"
+    local q3f "`w47_work'/q4706_3.html"
+    capture erase "`q3f'"
+    dash clear
+    capture noisily dash histogram mpg, bin(30) name(q4706c)
+    local q3rc = _rc
+    capture noisily dash build, saving("`q3f'", replace) nobrowser
+    local q3brc = _rc
+    _w47_expect Q4706-3 "(`q3rc' == 0 & `q3brc' == 0)" "dash histogram rc `q3rc', build rc `q3brc'"
+    cert_file_has "`q3f'", needle("t === base ? NaN : t")
+    _w47_expect Q4706-3 "(r(count) >= 1)" "the page carries no empty-bin transform"
+    capture erase "`q3f'"
+    dash clear
+    _w47_done Q4706-3 "twoway draws no empty bin; dash's bins go through the empty-bin transform"
+    display as text "S06 end " c(current_date) " " c(current_time)
+}
+* ==== end S06 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

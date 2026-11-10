@@ -25,7 +25,7 @@ import re
 import sys
 
 import pytest
-from bokeh.models import CustomJS, GlyphRenderer
+from bokeh.models import CustomJS, GlyphRenderer, Plot
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.dirname(__file__))
@@ -501,3 +501,173 @@ class TestPT15Ado:
                   encoding="utf-8") as fh:
             ado = fh.read()
         assert "ignored '\", st_local(\"_pci_left\")" not in ado
+# PIC-9: an empty histogram bin draws nothing
+# ---------------------------------------------------------------------------
+
+#: The bar glyphs a histogram layer draws with: its fill and, under
+#: lalign(inside) or (outside), its outline-only ``dash_outline`` Quad.
+_BAR_GLYPHS = ("Quad", "VBar", "HBar")
+
+
+def _hist_bars(fig):
+    return [r for r in fig.renderers if isinstance(r, GlyphRenderer)
+            and type(r.glyph).__name__ in _BAR_GLYPHS
+            and not dr._dash_is_swatch(r)]
+
+
+def _count_edge(r):
+    """``(column, transform)`` of the bar edge a bin's count sets -- the
+    one whose partner edge is the base: ``top`` upright, ``right`` turned;
+    an outline reads its fill's specs (``sp``/``tf`` of its expressions)."""
+    g = r.glyph
+    for lo, hi in (("bottom", "top"), ("left", "right")):
+        v = getattr(g, hi, None)
+        e = getattr(v, "expr", None)
+        if e is not None and "sp" in (getattr(e, "args", None) or {}):
+            sp, tf = e.args["sp"], e.args["tf"]
+            if hi in sp and sp[hi][0] and not sp[lo][0]:
+                return sp[hi][0], tf.get(hi)
+            continue
+        if hasattr(g, lo) and isinstance(
+                dr._dash_spec_value(getattr(g, lo)), (int, float)) \
+                and dr._dash_spec_field(v):
+            t = getattr(v, "transform", None)
+            return dr._dash_spec_field(v), (
+                None if t is None or "Unspecified" in type(t).__name__
+                else t)
+    raise AssertionError("no count edge on %r" % (r.tags,))
+
+
+def _run_transform(tf, xs):
+    """*tf*'s ``v_func`` and ``func`` over *xs*, compiled as BokehJS's
+    CustomJSTransform compiles them (``new Function(...args, "xs", body)``)
+    -- each value ``None`` where the result is not finite."""
+    names = sorted(tf.args)
+    src = """
+const xs = %s.map((v) => v === null ? NaN : v);
+const vals = [%s];
+const v = new Function(%s, "xs", %s)(...vals, xs);
+const one = new Function(%s, "x", %s);
+const f = (a) => Array.from(a, (t) => Number.isFinite(t) ? t : null);
+console.log(JSON.stringify({v: f(v), s: f(xs.map((x) => one(...vals, x)))}));
+""" % (json.dumps([None if x != x else float(x) for x in xs]),
+       ", ".join(json.dumps(tf.args[k]) for k in names),
+       ", ".join(json.dumps(k) for k in names + ["xs"])[:-6],
+       json.dumps(tf.v_func),
+       ", ".join(json.dumps(k) for k in names + ["x"])[:-5],
+       json.dumps(tf.func))
+    out = run_js(src)
+    assert out["v"] == out["s"], out
+    return out["v"]
+
+
+def _bins_drawn(r):
+    """Per bin, does *r* draw it: its count edge after the edge's
+    transform is a number (BokehJS's quad draws no bar whose edge is not
+    finite)."""
+    col, tf = _count_edge(r)
+    top = [float(v) for v in r.data_source.data[col]]
+    vals = top if tf is None else _run_transform(tf, top)
+    return top, [v is not None and v == v for v in vals]
+
+
+def _strokes(r):
+    """Does *r* stroke its bars at all (a width and alpha above 0)?"""
+    g = r.glyph
+    lw = dr._dash_spec_value(g.line_width)
+    la = dr._dash_spec_value(g.line_alpha)
+    return bool(lw) and lw > 0 and isinstance(la, (int, float)) and la > 0
+
+
+class TestEmptyBins:
+    """B01 (marker_fidelity_truth.json): twoway's histogram mpg, bin(30)
+    draws 21 bars -- 42 elements, a fill and an outline each -- and not
+    one element of zero height: an empty bin draws nothing.  dash drew a
+    zero-height quad for each empty bin, stroked along the base."""
+
+    def test_twoway_draws_nothing_for_an_empty_bin(self):
+        rec = TRUTH["B01"]
+        assert rec["rc"] == 0 and rec["zero_height"] == 0
+        assert rec["elements"] == 2 * rec["bars"] and rec["bars"] < 30
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("opts", [
+        {}, {"lalign": "center"}, {"lalign": "outside"},
+        {"horizontal": "horizontal"}, {"discrete": "discrete",
+                                       "mwidth": "3"}],
+        ids=["inside", "center", "outside", "horizontal", "mwidth"])
+    def test_zero_bins_are_unstroked(self, mode, opts):
+        """Exactly one renderer of the layer strokes (the outline under
+        inside and outside, the fill under center), and it draws no bar
+        for an empty bin and every other bar."""
+        d = _draw(tp._spec([plot_for("histogram", dict(
+            {"bin": "30"} if "discrete" not in opts else {}, **opts))],
+            {"scheme": "s2color"}), mode)
+        rs = _hist_bars(d.figures[0])
+        live = [r for r in rs if _strokes(r)]
+        assert len(live) == 1, [r.tags for r in rs]
+        top, drawn = _bins_drawn(live[0])
+        assert 0.0 in top and any(t > 0 for t in top)
+        assert drawn == [t != 0 for t in top], list(zip(top, drawn))
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_the_key_keeps_its_stroke(self, mode):
+        """start(0) leaves bin 0 empty, and BokehJS draws a legend item
+        with its renderers' visuals at row 0 (GlyphRendererView.
+        draw_legend, get_reference_point() ?? 0): the stroke's alpha and
+        width stay one number, so the key keeps the bars' outline."""
+        from bokeh.models import Legend
+        d = _draw(tp._spec([plot_for("histogram", {"bin": "30",
+                                                   "start": "0"}),
+                            plot_for("scatter")],
+                           {"scheme": "s2color"}), mode)
+        fig = d.figures[0]
+        live = [r for r in _hist_bars(fig) if _strokes(r)]
+        assert len(live) == 1
+        top, drawn = _bins_drawn(live[0])
+        assert top[0] == 0 and not drawn[0]
+        items = [it for leg in fig.select(type=Legend) for it in leg.items
+                 if live[0] in list(it.renderers or ())]
+        assert len(items) == 1
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_after_a_move(self, mode):
+        """The saved page's recount (its own filter script, under node)
+        and the served recount rewrite the bins' counts: a bin emptied by
+        the move draws nothing, and one filled again draws its bar."""
+        import js_runner
+        spec = tp._spec([plot_for("histogram", {"bin": "6"})],
+                        {"scheme": "s2color",
+                         "filter": "foreign, type(dropdown)"})
+        if mode == "standalone":
+            r, _ = tp._standalone(spec)
+            fig = list(r.figures.values())[0]
+            (w, cb), = [(w, cb) for w, cb in zip(r.filter_widgets,
+                                                 r.filter_callbacks)
+                        if type(w).__name__ == "Select"]
+            session = js_runner.JsSession(r.filter_callbacks)
+
+            def move(label):
+                session.set(w, tp._move_widget_value(w, "Select", label))
+                session.run(cb)
+        else:
+            doc, _ = tp._served(spec)
+            fig = [p for p in doc.select(dict(type=Plot))
+                   if "dash_key_cell" not in (p.tags or [])][0]
+            w, = [w for w in tp._widgets_of(doc)
+                  if type(w).__name__ == "Select"]
+
+            def move(label):
+                tp._fire(w, [v for v, lab in w.options if lab == label][0])
+        live, = [r for r in _hist_bars(fig) if _strokes(r)]
+        seen = []
+        for label in ("Foreign", "Domestic", "All"):
+            move(label)
+            top, drawn = _bins_drawn(live)
+            assert drawn == [t != 0 for t in top], (label, top, drawn)
+            seen.append(top)
+        # A bin is empty under one move and filled under another.
+        assert any(a[i] == 0 and b[i] > 0 or a[i] > 0 and b[i] == 0
+                   for a, b in zip(seen, seen[1:])
+                   for i in range(min(len(a), len(b))))
+

@@ -676,7 +676,12 @@ class TestTurnedAndRecast:
             a = getattr(out.glyph, k).expr.args
             assert a["sp"] == {n: dr._dash_stroke_spec(getattr(g, n))[0]
                                for n in names}
-            assert all(v is None for v in a["tf"].values())
+            # Flipped (WP-47 PIC-9): a turned bin's count edge (right)
+            # keeps its empty-bin transform (_DASH_EMPTY_BIN_JS), which the
+            # outline reads through; every other edge has none.
+            assert all(v is None or (n == "right" and ptype == "histogram"
+                                     and v.v_func == dr._DASH_EMPTY_BIN_JS[1])
+                       for n, v in a["tf"].items()), a["tf"]
         assert type(g).__name__ in ("HBar", "Quad")
         Serializer().encode(out)
 

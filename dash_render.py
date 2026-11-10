@@ -24016,10 +24016,18 @@ class GlyphMapper:
             _n = len(source.data.get("top", []))
             source.data[_DASH_RP + "_mw"] = [float(mwidth_px)] * _n
             source.data["right"] = list(source.data.get("left", []))
-        _shape = (dict(x="left", top="top", bottom=0,
+        # WP-47 PIC-9: a bin's count edge through _DASH_EMPTY_BIN_JS, so an
+        # empty bin draws no bar and no stroke along the base, as twoway
+        # draws none; every copy of the glyph and its outline read it.
+        from bokeh.models import CustomJSTransform
+        from bokeh.transform import transform
+        _top = transform("top", CustomJSTransform(
+            args={"base": 0.0}, func=_DASH_EMPTY_BIN_JS[0],
+            v_func=_DASH_EMPTY_BIN_JS[1]))
+        _shape = (dict(x="left", top=_top, bottom=0,
                        width=_DASH_RP + "_mw", width_units="screen")
                   if mwidth_px is not None else
-                  dict(top="top", bottom=0, left="left", right="right"))
+                  dict(top=_top, bottom=0, left="left", right="right"))
         _glyph = fig.vbar if mwidth_px is not None else fig.quad
         r = _glyph(**_shape,
                      source=source,
@@ -29871,6 +29879,22 @@ def _dash_marker_defs(marker) -> dict:
         names = []
     return {n: CustomJS(code=_DASH_MARKER_DEFS[n], module=False)
             for n in names}
+
+
+#: WP-47 PIC-9 (D-47-06.c, as measured): an empty histogram bin draws
+#: nothing (marker_fidelity_truth.json B01: 21 bars of bin(30), 42
+#: elements, none of zero height).  ``(func, v_func)`` of the
+#: CustomJSTransform on a bin's count edge (``top``, ``right`` once turned):
+#: a count at the base becomes NaN, and BokehJS draws no quad -- neither
+#: the fill nor its stroke -- whose edge is not finite.  The outline
+#: renderer reads the fill's edge through the same transform
+#: (_DASH_STROKE_EXPR_JS's ``tf``), and the saved and served recounts
+#: rewrite the column it reads.  A per-bin stroke alpha would not do: a
+#: legend item draws with its renderers' visuals at row 0, so the key lost
+#: its outline whenever bin 0 was empty.
+_DASH_EMPTY_BIN_JS = (
+    "return x === base ? NaN : x;",
+    "return Array.from(xs, (t) => t === base ? NaN : t);")
 
 
 def _dash_style_note(option, value, what, using="the scheme's default",
@@ -81894,7 +81918,9 @@ class ServerAppBuilder:
                 "_DASH_ZERO_WEIGHT_PX = %r" % (_DASH_ZERO_WEIGHT_PX,), "",
                 # WP-47 PIC-2: twoway's marker shapes.
                 "_DASH_MARKER_PATHS = %r" % (_DASH_MARKER_PATHS,),
-                "_DASH_MARKER_DEFS = %r" % (_DASH_MARKER_DEFS,), "",
+                "_DASH_MARKER_DEFS = %r" % (_DASH_MARKER_DEFS,),
+                # WP-47 PIC-9: an empty histogram bin draws nothing.
+                "_DASH_EMPTY_BIN_JS = %r" % (_DASH_EMPTY_BIN_JS,), "",
                 # The contour surface's bounds (WP-31 B4a): before the
                 # helpers whose defaults read them.
                 "_DASH_CONTOUR_EXACT_MAX = %d" % _DASH_CONTOUR_EXACT_MAX,

@@ -1030,6 +1030,7 @@ and now matches Stata.
 - D, d, Dh and the other diamonds are drawn as a square on its point, as wide as it is tall, V and v as an open chevron, + as two crossed lines and arrow, a, arrowf and A as an arrowhead on a shaft, in the plot, the legend key and the SVG export, as twoway draws them; msymbol(invisible) prints twoway's note and draws the scheme's symbol where dash drew nothing (WP-47, PIC-2)
 - A marker whose weight is zero or missing is drawn as twoway's minimal dot, as wide as its outline; scatter mpg weight [aw=w] drew nothing for such a row (WP-47, DG-12)
 - A pcscatter or pccapsym observation missing only its second point is marked and labelled at its first point, mlabangle() out of range on pcarrow and pcbarrow draws the arrows without labels with twoway's line, a date variable with value labels is labelled with its labels and other values' numbers, and the trailing values of scatteri, pci and pcarrowi are dropped without a note, as twoway does (WP-47, basic:PT-15)
+- An empty histogram bin draws nothing, as twoway draws nothing for it, in both modes and after a filter move; dash drew a zero-height bar stroked along the base (WP-47, PIC-9)
 
 ### Fixed in WP-46
 

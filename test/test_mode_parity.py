@@ -3405,6 +3405,9 @@ CORPUS = [
           [plot_for("pcarrow", {"mlabel": "rep", "mlabangle": "400"})]),
     _case("scatter mlabel date (WP-47 basic:PT-15)",
           [plot_for("scatter", {"mlabel": "when"})], bo=_P123A_W),
+    # WP-47 PIC-9: an empty bin draws nothing (start(0) empties bin 0).
+    _case("histogram discrete empty bins (WP-47 PIC-9)",
+          [plot_for("histogram", {"bin": "30", "start": "0"})]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair
@@ -4853,6 +4856,10 @@ MOVE_CORPUS.append(_move_case(
     "tC ticks, dropdown", _MOVES[0],
     [plot_for("scatter", yvar="mpg", xvar="price")],
     bo={"formats": {"price": "%tC"}}))
+
+# WP-47 PIC-9: the bins a move empties draw nothing in both modes.
+MOVE_CORPUS.append(_move_case("histogram empty bins after a move", _MOVES[0],
+                              [plot_for("histogram", {"bin": "6"})]))
 
 _MOVE_CORPUS_NAMES = frozenset(p.values[0] for p in MOVE_CORPUS)
 

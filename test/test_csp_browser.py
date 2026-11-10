@@ -387,6 +387,21 @@ def _specs():
                    if_expr="foreign == 1")]),
             _frame().assign(wt=[0.0, np.nan] + [float(v) for v in
                                                  range(3, 21)])),
+        # WP-47 PIC-9: empty histogram bins (start(0) empties the first
+        # bins, the key beside a scatter reads row 0), under by() and in a
+        # layer whose rows a move empties, its count edge through the
+        # empty-bin CustomJSTransform (_DASH_EMPTY_BIN_JS).
+        "bins": (_spec([
+            _graph("g1", [{"type": "histogram", "var": "mpg",
+                           "options": {"bin": "30", "start": "0"}},
+                          _scatter()]),
+            _graph("g2", [{"type": "histogram", "var": "mpg",
+                           "options": {"bin": "12",
+                                       "lalign": "center"}}],
+                   by="foreign"),
+            _graph("g3", [{"type": "histogram", "var": "mpg",
+                           "options": {"bin": "8"},
+                           "if_expr": "foreign == 1"}])]), _frame()),
     }
 
 
@@ -603,6 +618,18 @@ class TestSavedPageInChrome:
             time.sleep(1.0)
             assert p.violations() == [], p.violations()
             assert p.js_errors() == [], p.js_errors()
+    def test_empty_bins_draw_nothing(self):
+        """WP-47 PIC-9: an empty bin draws no bar and no stroke -- its
+        stroked renderer's screen edge is not finite -- and every other
+        bin draws, before and after a move, with the key's outline."""
+        with _CspProbe(_url(_saved_page("bins"))) as p:
+            _check_empty_bins(p)
+            p.in_task(_MOVE_SELECT_JS)
+            time.sleep(1.0)
+            _check_empty_bins(p)
+            p.in_task(_MOVE_SELECT_JS)
+            time.sleep(1.0)
+            _check_empty_bins(p)
 
     def test_hover_and_brush_run(self):
         with _CspProbe(_url(_saved_page("brush"))) as p:
@@ -653,7 +680,8 @@ class TestServedPageInChrome:
                 "a same-origin script without the nonce loaded")
             assert "script-src-elem " + src in p.violations(), p.violations()
 
-    @pytest.mark.parametrize("name", ["rich", "big", "outlines", "markers"])
+    @pytest.mark.parametrize("name", ["rich", "big", "outlines", "markers",
+                                      "bins"])
     def test_it_renders_filters_and_round_trips(self, servers, kind, name):
         with _CspProbe(_served_url(servers(kind, name))) as p:
             assert p.violations() == [], p.violations()
@@ -737,6 +765,61 @@ def _check_zero_weights_paint(p):
     time.sleep(0.5)
     diff = [(rid, k, n, after.get((rid, k))) for rid, k, n in before]
     assert all(a is not None and n - a > 50 for _r, _k, n, a in diff), diff
+
+    def test_empty_bins_draw_nothing(self, servers, kind):
+        """WP-47 PIC-9: the served page's empty bins draw nothing, before
+        and after the server's recount."""
+        with _CspProbe(_served_url(servers(kind, "bins"))) as p:
+            for _ in range(2):
+                before = p.read(_BINS_JS)
+                p.in_task(_MOVE_SELECT_JS)
+                assert p.wait_change(_BINS_JS, before, timeout=20) != before
+                time.sleep(0.5)
+                _check_empty_bins(p)
+
+
+#: Per histogram bar renderer: [raw counts of its drawn rows, screen top,
+#: screen right, stroke alpha, stroke width, the legend items naming it].
+_BINS_JS = r"""(() => {
+  const out = [];
+  const num = (v) => (v !== null && typeof v === "object" ? v.value : v);
+  const walk = (pv) => {
+    if (pv.renderer_views) for (const rv of pv.renderer_views.values()) {
+      const gv = rv.glyph, nm = gv && gv.model.constructor.__name__;
+      if (nm !== "Quad" && nm !== "VBar" && nm !== "HBar") continue;
+      const top = rv.model.data_source.data.top;
+      if (!top) continue;
+      const ix = rv.model.view.indices;
+      const rows = ix && ix.ones ? Array.from(ix.ones())
+        : Array.from({length: top.length}, (_, i) => i);
+      const raw = rows.map((i) => Number(top[i]));
+      const fin = (a) => Array.from(a || [], (v) => Number.isFinite(v));
+      out.push([raw, fin(gv.stop), fin(gv.sright), num(gv.model.line_alpha),
+                num(gv.model.line_width), rv.model.visible]);
+    }
+    if (pv.child_views) for (const c of pv.child_views) walk(c);
+  };
+  for (const v of Object.values(Bokeh.index)) walk(v);
+  return JSON.stringify(out);
+})()"""
+
+
+def _check_empty_bins(p):
+    assert p.violations() == [], p.violations()
+    assert p.js_errors() == [], p.js_errors()
+    rows = p.read(_BINS_JS)
+    stroked = [r for r in rows if r[5] and isinstance(r[3], (int, float))
+               and r[3] > 0 and r[4] and r[4] > 0 and r[0]]
+    assert stroked, rows
+    empty = 0
+    for raw, top, right, *_ in stroked:
+        want = [t != 0 and t == t for t in raw]
+        empty += want.count(False)
+        # BokehJS draws a bar only when all its screen edges are finite.
+        drawn = [a and b for a, b in zip(top, right)]
+        assert drawn == want, (raw, top, right)
+    assert empty > 0, rows
+
 
 #: [marker, row, dark pixels round that row's marker, renderer id] for
 #: every visible Scatter drawn with a defs marker or the cross.
