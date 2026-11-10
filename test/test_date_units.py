@@ -173,7 +173,11 @@ def _layers(fig):
     return [r for r in fig.renderers
             if getattr(r, "glyph", None) is not None
             and type(r.glyph).__name__ != "Scatter"
-            and dr._ROW_ID_COLUMN not in r.data_source.data]
+            and dr._ROW_ID_COLUMN not in r.data_source.data
+            # Flipped (WP-47 basic:PT-4): a bin's stroke is drawn by an
+            # outline-only companion over the same source; the bins are
+            # the fill.
+            and "dash_outline" not in (r.tags or ())]
 
 
 def _field(glyph, attr):

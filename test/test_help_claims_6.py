@@ -880,6 +880,11 @@ class TestBaseOnTheBarPlots:
     def _bases(renderers, layer, key):
         vals = []
         for r in renderers:
+            # Flipped (WP-47 basic:PT-4): a bar's stroke is drawn by an
+            # outline-only companion whose edges are screen-space
+            # expressions over the fill's source; the base is the fill's.
+            if "dash_outline" in (getattr(r, "tags", None) or ()):
+                continue
             g = r.glyph
             if layer == "bar" and hasattr(g, "bottom"):
                 b = g.bottom
