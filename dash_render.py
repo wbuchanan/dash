@@ -27671,7 +27671,6 @@ class GlyphMapper:
             y2var: source.data[y2var],
             x2var: source.data[x2var],
         })
-        coords = list(clean.columns)
         # The marker-label values ride along, under a name of their own (a
         # variable called x or y must not become the points), and a missing
         # label never decides which observations are drawn.

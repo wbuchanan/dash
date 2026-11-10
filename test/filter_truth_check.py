@@ -66,7 +66,10 @@ def _write(tmp, spec, df, strings):
 
 def _src(fig):
     from bokeh.models import GlyphRenderer
-    [r] = [r for r in fig.renderers if isinstance(r, GlyphRenderer)]
+    # The outline-only quad over a bar fill (WP-47 basic:PT-4, tagged
+    # dash_outline) is the same layer's edge, not a layer of its own.
+    [r] = [r for r in fig.renderers if isinstance(r, GlyphRenderer)
+           and "dash_outline" not in (r.tags or [])]
     return r.data_source
 
 

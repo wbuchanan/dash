@@ -295,6 +295,10 @@ def _br01_fills(fig):
         # drawn with no fill: a line, not a fill.
         if "dash_ci_outline" in (getattr(r, "tags", None) or []):
             continue
+        # Flipped (WP-47 basic:PT-4): the outline-only quad over a bar or
+        # area fill (fill_alpha 0, tagged dash_outline) is a line, not a fill.
+        if "dash_outline" in (getattr(r, "tags", None) or []):
+            continue
         # Flipped (WP-34 PIC-1): an area's legend key is a swatch quad at
         # NaN (it draws nothing; its name starts with the swatch prefix).
         if str(getattr(r, "name", "") or "").startswith("_clegend_"):

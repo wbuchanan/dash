@@ -557,10 +557,12 @@ foreach tt in pcarrow pcbarrow {
     capture erase "`page'"
     _hc5_run `"dash `tt' mpg weight turn length, mlabel(zq) mlabangle(400) saving("`page'")"' "`logfile'"
     assert r(rc) == 0
-    cert_log_has "`logfile'", needle("mlabangle(400) is not a recognised angle; using horizontal.")
+    // Flipped (WP-47 basic:PT-15, 6d94b2a): dash prints twoway's own
+    // range line where it named the angle and drew it horizontal.
+    cert_log_has "`logfile'", needle("textangle must be between -360.000 and 360.000")
     assert r(found) == 1
 }
-display "HC5-10 PASS: twoway prints the range, returns rc 0 and draws the arrows without labels; dash builds and names the angle"
+display "HC5-10 PASS: twoway prints the range, returns rc 0 and draws the arrows without labels; dash builds and prints twoway's line"
 
 // ================================================================
 // HC5-11 -- twoway, a paired-coordinate observation missing its second
