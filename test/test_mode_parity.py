@@ -3386,6 +3386,9 @@ CORPUS = [
     _case("mlabel pattern t*",
           [plot_for("scatter", {"mlabel": "foreign"}),
            plot_for("scatter", {}, yvar="price")]),
+    # WP-47 DG-7: an emptied fit is titled and keyed by its y's name.
+    _case("lfit emptied by if",
+          [_sc(), plot_for("lfit", if_expr="price < 0")]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair
@@ -3920,13 +3923,29 @@ def _saved_with_qualifier(spec, if_expr):
     added to every graph and every KPI -- the rows the widget selects."""
     q = json.loads(json.dumps(spec))
     q["build_options"]["filter"] = ""
+    _build_if = {}
     for g in q["graphs"]:
         own = (g.get("if_expr") or "").strip()
+        _build_if[g.get("name")] = own
         g["if_expr"] = f"({own}) & ({if_expr})" if own else if_expr
     for k in q["kpis"]:
         own = (k.get("if_expr") or "").strip()
         k["if_expr"] = f"({own}) & ({if_expr})" if own else if_expr
-    r, _ = _standalone(q)
+    # WP-47 DG-7 (D-47-02.f): a move changes no title or key, so the
+    # oracle judges an emptied layer on the build's rows -- the graph's
+    # own qualifier, not the move's.
+    _real_mark = dr._dash_mark_empty_layers
+
+    def _mark_on_build_rows(plots, df, masks=None, graph=None):
+        if isinstance(graph, dict) and graph.get("name") in _build_if:
+            graph = dict(graph, if_expr=_build_if[graph.get("name")])
+        return _real_mark(plots, df, masks, graph)
+
+    dr._dash_mark_empty_layers = _mark_on_build_rows
+    try:
+        r, _ = _standalone(q)
+    finally:
+        dr._dash_mark_empty_layers = _real_mark
     figs = []
     _layout_tree(r._last_layout_root, figs)
     return figs, [_kpi_card(d.text) for d in r.kpi_divs.values()]
@@ -4774,6 +4793,11 @@ MOVE_CORPUS.append(_move_case("area outline after a range move", _MOVES[1],
 # WP-47 basic:PT-4: a bar's inset outline follows its fill's rows.
 MOVE_CORPUS.append(_move_case("bar outline after a move", _MOVES[0],
                               [plot_for("bar", {"lwidth": "vthick"})]))
+# WP-47 DG-7 (D-47-02.f): a move that leaves the fit no row changes no
+# title or key -- emptiness is judged on the build rows, in both modes.
+MOVE_CORPUS.append(_move_case(
+    "a move that empties lfit keeps its title", _MOVES[0],
+    [_sc(), plot_for("lfit", if_expr="foreign == 0")]))
 # WP-34 AX-1: the default ticks stay over the kept data after a move.
 MOVE_CORPUS.append(_move_case("yscale range 0 after a move", _MOVES[1],
                               [_sc()], go={"yscale": "range(0)"}))

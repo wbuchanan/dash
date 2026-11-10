@@ -6018,11 +6018,17 @@
   - Suggested fix: Floor fill plus outline; patterns limited by Bokeh
   - Resolution: Not fixed because WP-47 section 47-06 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
 
-- [ ] Title: Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x')
+- [x] Title: Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x')
   - File Names and Line Numbers: D03, E04, D05
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids DG-7; confirmed; tracked: untracked. Registered as GAPS4 DG-7 (WP-47, section 47-02, Fix).
   - Suggested fix: Use twoway's names in those cases
-  - Resolution: Not fixed because WP-47 section 47-02 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+  - Resolution: Fixed 10nov2026 (WP-47, DG-7). Measured (test/fixtures/varlabel_mlabel_truth.json empty.*; scripts/extract_varlabel_mlabel_truth.do): twoway titles and keys lfit mpg weight if price<0 and qfit "mpg", the y variable's name, over "Weight (lbs.)"; lfitci and qfitci key "95% CI", then "mpg" (nofit "95% CI" alone); a yvarlabel("Q") still names the fit "Q"; [aw=price] the same; (scatter mpg weight) (lfit mpg weight if price<0) keys "Mileage (mpg)", "mpg"; lfit y x on no observations is titled y over x; histogram mpg if price<0 is titled "Density" (frequency "Frequency") over "x", swapped under horizontal, xvarlabel("M") still naming x; kdensity, lowess and scatter keep their texts; fpfit is refused r(198) "observation numbers out of range", as dash.ado already refused it (with M9's line). _dash_empty_layers finds the lfit, qfit, lfitci, qfitci and histogram layers with no row of the build -- qualifiers applied, y and x finite, weight above zero -- and _dash_mark_empty_layers marks them, once per figure in both modes (_make_figure_body and its served twin), before the titles; _dash_layer_series titles and keys a marked fit by its y's name and a marked histogram's x "x" (or its xvarlabel()); an emptied ci fit under nofit hides its line, so it is keyed by its band alone. A filter move changes no title (test_mode_parity MOVE_CORPUS "a move that empties lfit keeps its title"). test/test_empty_layer_titles.py::TestEmptiedLayers; test_wp47_truth.cscript Q4702-5.
+
+- [ ] Title: A nofit ci fit draws no y title; twoway titles it by its band
+  - File Names and Line Numbers: dash_render.py _dash_layer_series (the ci branch returns the band and the line under nofit), _dash_axis_default_titles
+  - Description: Measured 10nov2026 (StataNow 19.5, auto data, the graph's yaxis1.title): twoway lfitci mpg weight, nofit and qfitci mpg weight, nofit are titled "95% CI" on y and keyed "95% CI" alone, and so is lfitci mpg weight if price<0, nofit (varlabel_mlabel_truth.json empty.lfitci_nofit); dash keys the band alone but draws no y title, because the title rule still compares the band's text with the hidden line's.
+  - Suggested fix: Under nofit, give _dash_layer_series the band's series alone, so the title rule sees one series.
+  - Resolution: Not fixed because it lies outside WP-47 DG-7 (47-02-06), which found it. Graded S3 (WP-47): a missing default title on one option of the ci types.
 
 - [ ] Title: Other documented drawing and text differences: rarea closing edges, half-missing pc rows, pcarrow mlabangle, date mlabel value labels, pci notes, side-clock titles, key marker size, fxsize, globals with =exp, browser date range, missing scheme keys
   - File Names and Line Numbers: dash.sthlp:449-455, 655-661, 3443-3517, 4305-4307, 6069-6225

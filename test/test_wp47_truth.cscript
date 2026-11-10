@@ -540,6 +540,41 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w47_run' {
 }
 * ==== end S02 ====
 
+* ==== S02 DG-7: titles and keys of emptied layers ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w47_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4702-5: a fit or histogram that if leaves no row is titled and
+    // keyed as twoway titles it -- the fit by its y's name, the
+    // histogram's x "x": dash's titles and keys (saved and served)
+    // equal twoway's, measured live from its graph.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local q5n 0
+    foreach c in "lfit mpg weight if price<0, legend(on)" ///
+                 "qfitci mpg weight if price<0, legend(on)" ///
+                 "(scatter mpg weight) (lfit mpg weight if price<0), legend(on)" ///
+                 "histogram mpg if price<0," {
+        local ++q5n
+        quietly twoway `c' name(q4702, replace)
+        _q4702_tw q4702
+        capture graph drop q4702
+        dash clear
+        capture noisily dash `c' name(q5)
+        local drc = _rc
+        _w47_expect Q4702-5 "(`drc' == 0)" `"dash `c': rc `drc'"'
+        _dash_serve_spec, specpath("`w47_work'/q4702_5s.json") datapath("`w47_work'/q4702_5d.json")
+        python: import __main__ as _m4702; _m4702._q4702("`w47_work'/q4702_5s.json", "`w47_work'/q4702_5d.json", "`w47_work'/q4702_5a.py")
+        _w47_expect Q4702-5 `"("${q4702}" == "1 1")"' `"`c': twoway [`q2ty'][`q2tx'][`q2tk'], dash ${q4702_seen}"'
+        dash clear
+    }
+    _w47_done Q4702-5 "`q5n' emptied layers are titled and keyed as twoway titles them, in both modes"
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 // ----------------------------------------------------------------
 // S03 basic:PT-4 helpers.  _q4703_1_tw reads twoway's first stroked
 // bar rect and its fill rect from an SVG; _q4703_1 builds the saved

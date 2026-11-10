@@ -4426,6 +4426,12 @@ by the name before its {cmd:=}, or {cmd:y}; {cmd:histogram}
 a {cmd:horizontal} {cmd:kdensity} or {cmd:function} with no {cmd:recast()}
 {cmd:x}.
 A {cmd:ci} fit has two keys, its band {it:#}{cmd:% CI} and then its line.
+An {cmd:lfit}, {cmd:qfit}, {cmd:lfitci} or {cmd:qfitci} with no
+observation in its sample, emptied by {cmd:if} or {cmd:in}, is titled
+and keyed by its {it:y} variable's name (a {cmd:yvarlabel()} still
+names it), and a {cmd:histogram} with none titles its {it:x} axis
+{cmd:x}, as {cmd:twoway} titles them; the rows are the qualifiers',
+so a filter move changes no title.
 Each axis is titled by default with the label of the first series
 drawn on it when the last series drawn on it has the same label, and
 is untitled otherwise, as {cmd:twoway} titles it; a {cmd:ci} fit is

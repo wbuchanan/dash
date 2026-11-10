@@ -63,9 +63,12 @@ def mata_text():
         return fh.read()
 
 
-def figs(mode, tmp_path, plots, df=DF, vl=VL, bo=None, go=None):
-    """(figures, notes) of one graph of *plots* over *df* in *mode*."""
-    spec = tp._spec(plots, bo, go)
+def figs(mode, tmp_path, plots, df=DF, vl=VL, bo=None, go=None, extra=None):
+    """(figures, notes) of one graph of *plots* over *df* in *mode*;
+    *extra* holds graph-level keys such as ``qual_col``."""
+    spec = (tp._spec(plots, bo, go) if extra is None
+            else tp._spec(build_options=bo,
+                          graphs=[("g1", plots, go, extra)]))
     _N[0] += 1
     sp = os.path.join(str(tmp_path), "spec_%d.json" % _N[0])
     dp = os.path.join(str(tmp_path), "data_%d.json" % _N[0])

@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "04 Nov 2026",
-  "dash_commit": "f9bf176b9de5103623d89556c3480800af0787af",
-  "extracted": "10 Nov 2026 04:13:25",
+  "dash_commit": "b6ae36c13090d8bee3a65332b05f67743c56686a",
+  "extracted": "10 Nov 2026 04:58:25",
   "source": "scripts/extract_varlabel_mlabel_truth.do",
   "stata_version": "19.5"
  },
@@ -1330,6 +1330,117 @@
     "Density"
    ]
   },
+  "hist_freq": {
+   "error": "",
+   "label_position": "12",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Frequency"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "df54943159cdbf51424a363b07f9b0aadf9ac7608f451e143e453b7df3676ba3",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "-1"
+    },
+    {
+     "fill": "#000000",
+     "text": "1"
+    },
+    {
+     "fill": "#000000",
+     "text": "Frequency"
+    },
+    {
+     "fill": "#000000",
+     "text": "x"
+    }
+   ],
+   "xtitle": "x",
+   "xtitle_lines": [
+    "x"
+   ],
+   "ytitle": "Frequency",
+   "ytitle_lines": [
+    "Frequency"
+   ]
+  },
+  "hist_h": {
+   "error": "",
+   "label_position": "12",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Density"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "4f7d9f0584703418c17d951c4c70edeb50ab70df5824ca96bdf8cce2cd20d4af",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "x"
+    },
+    {
+     "fill": "#000000",
+     "text": "-1"
+    },
+    {
+     "fill": "#000000",
+     "text": "1"
+    },
+    {
+     "fill": "#000000",
+     "text": "Density"
+    }
+   ],
+   "xtitle": "Density",
+   "xtitle_lines": [
+    "Density"
+   ],
+   "ytitle": "x",
+   "ytitle_lines": [
+    "x"
+   ]
+  },
+  "hist_xvl": {
+   "error": "",
+   "label_position": "12",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Density"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "2e1e1764025892e2afba63d63742206ee0de0014cfcb3ddd069dc3c0a937f2dd",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "-1"
+    },
+    {
+     "fill": "#000000",
+     "text": "1"
+    },
+    {
+     "fill": "#000000",
+     "text": "Density"
+    },
+    {
+     "fill": "#000000",
+     "text": "M"
+    }
+   ],
+   "xtitle": "M",
+   "xtitle_lines": [
+    "M"
+   ],
+   "ytitle": "Density",
+   "ytitle_lines": [
+    "Density"
+   ]
+  },
   "kdensity": {
    "error": "",
    "label_position": "3",
@@ -1360,6 +1471,41 @@
    ]
   },
   "lfit": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "mpg"
+   ],
+   "notes": [
+    "(note:  regress could not fit model)"
+   ],
+   "rc": 0,
+   "svg_sha": "fd7be1956067990a294414a1d1010b637c08729cc12c10053fa667ee95436bc8",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "mpg"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "mpg"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "mpg",
+   "ytitle_lines": [
+    "mpg"
+   ]
+  },
+  "lfit_aw": {
    "error": "",
    "label_position": "3",
    "legend_drawn": true,
@@ -1460,6 +1606,72 @@
    "ytitle": null,
    "ytitle_lines": []
   },
+  "lfit_first": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "mpg",
+    "Mileage (mpg)"
+   ],
+   "notes": [
+    "(note:  regress could not fit model)"
+   ],
+   "rc": 0,
+   "svg_sha": "2157af2d83c61740ced08c673dbe24b961f1a95d6e7301b1b5b76aa55d0a74bf",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "mpg"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
   "lfit_nodata": {
    "error": "",
    "label_position": "3",
@@ -1495,6 +1707,41 @@
     "y"
    ]
   },
+  "lfit_vl": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "Q"
+   ],
+   "notes": [
+    "(note:  regress could not fit model)"
+   ],
+   "rc": 0,
+   "svg_sha": "f7dd351926ae24e27f385330c1e62c179fcdd113f0b6f69900c1bf0b095484bd",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "Q"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Q"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Q",
+   "ytitle_lines": [
+    "Q"
+   ]
+  },
   "lfitci": {
    "error": "",
    "label_position": "12",
@@ -1528,6 +1775,74 @@
    ],
    "ytitle": null,
    "ytitle_lines": []
+  },
+  "lfitci_nofit": {
+   "error": "",
+   "label_position": "12",
+   "legend_drawn": true,
+   "legend_labels": [
+    "95% CI"
+   ],
+   "notes": [
+    "(note:  regress could not fit model)"
+   ],
+   "rc": 0,
+   "svg_sha": "4abcbac30d770b7113751e835dbcfbdee8baa6398bfec97268d6b902bdde61c5",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "95% CI"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "95% CI"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "95% CI",
+   "ytitle_lines": [
+    "95% CI"
+   ]
+  },
+  "lowess": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "lowess mpg weight"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "196c2e4d557702648d49eb38ffd6db4285f7a51708b6522273de4ae17e4c497a",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "lowess mpg weight"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "lowess mpg weight"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "lowess mpg weight",
+   "ytitle_lines": [
+    "lowess mpg weight"
+   ]
   },
   "qfit": {
    "error": "",
@@ -3786,7 +4101,7 @@
    ],
    "notes": [],
    "rc": 0,
-   "svg_sha": "011647f0090f7f236a030ae43f5420d6477209c12787bd1b48c7ed6f43b0ac81",
+   "svg_sha": "0e0a56d3d8f3a590d28e144633f76ca6f30ae5c9f763c39d8805fd1c6f23fd47",
    "texts": [
     {
      "fill": "#000000",

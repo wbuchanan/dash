@@ -85,6 +85,17 @@ def _served_layer(t, if_expr="", bo=None):
     return [_style(x) for x in rends], _legend_labels(fig, rends), rends
 
 
+def _emptied_keys(t, n, keys):
+    """The keys twoway gives the layer emptied to *n* rows: an lfit or
+    qfit with none is keyed by its y's name.  Flipped (WP-47 DG-7): the
+    unfiltered layer's "Fitted values" at 0 rows was wrong because twoway
+    leaves the fit's variable unlabelled (varlabel_mlabel_truth.json
+    empty.lfit, empty.lfit_beside key "mpg")."""
+    if n == 0 and t in ("lfit", "qfit", "lfitci", "qfitci"):
+        return ["mpg" if k == "Fitted values" else k for k in keys]
+    return keys
+
+
 class TestAnEmptiedLayerKeepsItsStyle:
 
     @pytest.mark.parametrize("n", [0, 1, 2])
@@ -93,7 +104,7 @@ class TestAnEmptiedLayerKeepsItsStyle:
         want = _saved_layer(t)
         got = _saved_layer(t, _QUAL[n])
         assert got[0] == want[0], (t, n)
-        assert got[1] == want[1], (t, n)
+        assert got[1] == _emptied_keys(t, n, want[1]), (t, n)
 
     @pytest.mark.parametrize("n", [0, 1, 2])
     @pytest.mark.parametrize("t", _EMPTIED_LAYERS)
@@ -101,7 +112,7 @@ class TestAnEmptiedLayerKeepsItsStyle:
         want = _served_layer(t)
         got = _served_layer(t, _QUAL[n])
         assert got[0] == want[0], (t, n)
-        assert got[1] == want[1], (t, n)
+        assert got[1] == _emptied_keys(t, n, want[1]), (t, n)
 
 
 def _key_cases():

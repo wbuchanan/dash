@@ -1026,6 +1026,7 @@ and now matches Stata.
 - yvarlabel() and xvarlabel() title and key scatteri, pci, pcarrowi, function, kdensity and histogram as twoway does; kdensity mpg, xvarlabel("M") yvarlabel("D") was titled "kdensity mpg" over x, now D over M, and histogram mpg, yvarlabel("D") "D/Density" (WP-47, MS-2)
 - xvarformat() and yvarformat() write the marker labels of the variable they format, unless mlabformat() is given, as twoway does: scatter mpg weight, mlabel(mpg) yvarformat(%9.2f) labelled 22, now 22.00 (WP-47, MS-5)
 - An mlabel() element that is a varlist pattern naming several variables, such as mlabel(t*), draws no labels for its y, as twoway draws none; scatter mpg price weight, mlabel(t*) labelled mpg by trunk and price by turn (WP-47, basic:PT-3)
+- An lfit, qfit, lfitci or qfitci emptied by if or in is titled and keyed by its y variable's name, and an emptied histogram's x axis "x", as twoway titles them; lfit mpg weight if price<0 was titled and keyed "Fitted values", now "mpg" (WP-47, DG-7)
 
 ### Fixed in WP-46
 

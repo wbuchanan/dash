@@ -2,8 +2,17 @@
 *! C15): measure what twoway does with yvarlabel()/xvarlabel(),
 *! mlabprefix()/mlabsuffix(), lalign()/mlalign(), mlabstyle(), msangle()
 *! names, the default marker-label clock of bar/rbar/scatter, and a range
-*! plot labelled by one of its own variables.  twoway only: the output is
-*! the same before and after dash changes.
+*! plot labelled by one of its own variables.  WP-47 47-02 adds
+*! yvarlabel()/xvarlabel() on every plot type and graph-wide (MS-2, MS-3),
+*! x/yvarformat() on marker labels (MS-5), mlabel() patterns (basic:PT-3)
+*! and the titles and keys of emptied layers (DG-7).  twoway only: the
+*! output is the same before and after dash changes.
+*!
+*! Each case records its rc, its note and error lines, its SVG's sha256
+*! and texts, the first line of each axis title (ytitle, xtitle; null for
+*! none), every line of each (ytitle_lines, xtitle_lines), the first
+*! plot's marker-label clock, the legend's labels (legend_labels) and
+*! whether the legend is drawn (legend_drawn).
 *!
 *! Output: test/fixtures/varlabel_mlabel_truth.json
 *!
@@ -205,6 +214,14 @@ _vl_run empty__hist : histogram mpg if price<0,
 _vl_run empty__kdensity : kdensity mpg if price<0,
 _vl_run empty__scatter : scatter mpg weight if price<0,
 _vl_run empty__lfit_beside : (scatter mpg weight) (lfit mpg weight if price<0), legend(on)
+_vl_run empty__lfit_first : (lfit mpg weight if foreign==1 & price<0) (scatter mpg weight), legend(on)
+_vl_run empty__lfit_vl : lfit mpg weight if price<0, yvarlabel("Q") legend(on)
+_vl_run empty__lfit_aw : lfit mpg weight [aw=price] if price<0, legend(on)
+_vl_run empty__lfitci_nofit : lfitci mpg weight if price<0, nofit legend(on)
+_vl_run empty__lowess : lowess mpg weight if price<0, legend(on)
+_vl_run empty__hist_freq : histogram mpg if price<0, frequency
+_vl_run empty__hist_h : histogram mpg if price<0, horizontal
+_vl_run empty__hist_xvl : histogram mpg if price<0, xvarlabel("M")
 preserve
 clear
 set obs 0

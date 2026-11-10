@@ -544,7 +544,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **PIC-16 Tracked:** Open (WP-47 section 47-06).
 - **PIC-17 Tracked:** Open (WP-47 section 47-06).
 - **MS-15 Tracked:** Open (WP-47 section 47-06).
-- **DG-7 Tracked:** Open (WP-47 section 47-02).
+- **DG-7 Tracked:** Closed in WP-47, BUGS.md "Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x')", commit pending.
 - **basic:PT-15 Tracked:** Open (WP-47 section 47-06).
 - **LT-27 Tracked:** Open (WP-48 section 48-01).
 - **plot:PT-5 Tracked:** Open (WP-48 section 48-01).

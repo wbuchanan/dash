@@ -22306,6 +22306,12 @@ class GlyphMapper:
                               line_color=_lfitci_color, line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                               legend_label=yvar)
             self._ci_line_restyle(line_r, options)
+            # WP-47 DG-7: under nofit the line is hidden and the band keyed
+            # alone, as on a layer with rows (varlabel_mlabel_truth.json
+            # empty.lfitci_nofit keys "95% CI").
+            if str(options.get("nofit", "") or "").strip():
+                line_r.visible = False
+                line_r._dash_nofit = True
             # twoway lfitci on no observations: nothing, and the note that
             # regress could not fit the model (one it refuses, r(2001); in
             # a by() panel of one, the note and "insufficient
@@ -22445,6 +22451,12 @@ class GlyphMapper:
                               line_color=_qfitci_color, line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                               legend_label=yvar)
             self._ci_line_restyle(line_r, options)
+            # WP-47 DG-7: under nofit the line is hidden and the band keyed
+            # alone, as on a layer with rows (varlabel_mlabel_truth.json
+            # empty.lfitci_nofit keys "95% CI").
+            if str(options.get("nofit", "") or "").strip():
+                line_r.visible = False
+                line_r._dash_nofit = True
             # twoway qfitci on none or one: nothing, and regress's note.
             self._mark_unfit([line_r, band_r], "regress")
             # The saved page's refit (WP-31 F1b).
@@ -69805,6 +69817,96 @@ def _dash_graph_varlabels(plots):
     return out
 
 
+def _dash_empty_layers(plots, df, masks=None, graph=None):
+    """The indices of *plots* twoway titles as emptied layers (WP-47 DG-7,
+    D-47-02.f): an lfit, qfit, lfitci, qfitci or histogram with no row --
+    the graph's and the plot's qualifiers applied (*graph*'s and the
+    plot's ``qual_col`` through *masks*, else their if/in text), its y and
+    x (a histogram's variable) finite and, where weighted, its weight above
+    zero.  twoway leaves the variable it makes for such a fit unlabelled
+    (varlabel_mlabel_truth.json empty.lfit keys "mpg"), titles a histogram
+    "x" (empty.hist), and keeps kdensity's and lowess's texts
+    (empty.kdensity, empty.lowess); fpfit, lpoly, mband and mspline it
+    refuses.  *df* is the build's frame, before any filter move, so both
+    modes judge the same rows.  Total: a frozenset; a plot that is not a
+    dict, a column or mask that is missing, or a qualifier that cannot be
+    read counts as rows; it never raises."""
+    out = set()
+    try:
+        cols = set(df.columns)
+    except Exception:
+        return frozenset()
+
+    def _rows(obj, frame):
+        # The rows *obj*'s qualifier keeps of *frame*; None when it cannot
+        # be read.
+        try:
+            q = _dash_qual_mask(obj, masks)
+            if not isinstance(obj, dict):
+                return frame
+            go = obj.get("graph_options")
+            go = go if isinstance(go, dict) else {}
+            _if = str(go.get("if_expr") or obj.get("if_expr") or "").strip()
+            _in = str(go.get("in_expr") or obj.get("in_expr") or "").strip()
+            if q is None and not _if and not _in:
+                return frame
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                return _dash_qualified_frame(frame, _if, _in, copy=False,
+                                             qual=q)
+        except Exception:
+            return None
+
+    base = _rows(graph, df)
+    if base is None:
+        return frozenset()
+    for i, plot in enumerate(plots or ()):
+        if not isinstance(plot, dict):
+            continue
+        ptype = str(plot.get("type", "") or "").strip().lower()
+        if ptype not in ("lfit", "qfit", "lfitci", "qfitci", "histogram"):
+            continue
+        opts = plot.get("options")
+        opts = opts if isinstance(opts, dict) else {}
+        need = ([plot.get("var") or plot.get("yvar")] if ptype == "histogram"
+                else [plot.get("yvar"), plot.get("xvar")])
+        _wt, wexp = _dash_weight_spec(opts)
+        if not all(isinstance(v, str) and v in cols for v in need) or (
+                wexp and wexp not in cols):
+            continue
+        rows = _rows(plot, base)
+        if rows is None:
+            continue
+        try:
+            keep = np.ones(len(rows), dtype=bool)
+            for v in need + ([wexp] if wexp else []):
+                x = pd.to_numeric(rows[v], errors="coerce").to_numpy(
+                    dtype=float, na_value=np.nan)
+                keep &= np.isfinite(x) & ((x > 0) if v == wexp else True)
+            if not keep.any():
+                out.add(i)
+        except Exception:
+            continue
+    return frozenset(out)
+
+
+def _dash_mark_empty_layers(plots, df, masks=None, graph=None):
+    """Mark each plot of *plots* that :func:`_dash_empty_layers` finds
+    empty with ``"_dash_empty": True``, which :func:`_dash_layer_series`
+    reads for its titles and keys (WP-47 DG-7), and take the mark off
+    every other plot, so none survives from an earlier figure.  Both
+    modes call it once per figure, before the titles are built.  Plots
+    that are not dicts are left alone; it never raises."""
+    empt = _dash_empty_layers(plots, df, masks, graph)
+    for i, plot in enumerate(plots or ()):
+        if not isinstance(plot, dict):
+            continue
+        if i in empt:
+            plot["_dash_empty"] = True
+        else:
+            plot.pop("_dash_empty", None)
+
+
 def _dash_layer_series(plot, var_labels=None, default_level=None,
                        graph_vl=None):
     """``[(y_label, x_label), ...]``: one pair per series twoway draws for
@@ -69918,7 +70020,11 @@ def _dash_layer_series(plot, var_labels=None, default_level=None,
             return [(Oy(("kdensity %s" % var) if var else "kdensity"),
                      Ox("x"))]
         _scale = _DASH_HIST_YTITLES[_dash_histogram_ymode(opts)]
-        return [((_yvl[0] + "/" + _scale) if _yvl else _scale, Lx(var))]
+        # WP-47 DG-7: an emptied histogram's x is "x" unless an
+        # xvarlabel() names it (varlabel_mlabel_truth.json empty.hist,
+        # empty.hist_xvl "M").
+        return [((_yvl[0] + "/" + _scale) if _yvl else _scale,
+                 Ox("x") if plot.get("_dash_empty") else Lx(var))]
     if ptype in _DASH_RANGE_TYPES:
         return [(pair("yvar1", "yvar2"), Lx(plot.get("xvar")))]
     if ptype in _DASH_RANGEPT_TYPES:
@@ -69950,6 +70056,13 @@ def _dash_layer_series(plot, var_labels=None, default_level=None,
             line = ("lpoly smooth: " + ly) if ly else "lpoly smooth:"
         else:
             line = _DASH_FIT_KEYS.get(ptype, "Fitted values")
+        if plot.get("_dash_empty") and ptype in ("lfit", "qfit", "lfitci",
+                                                 "qfitci"):
+            # WP-47 DG-7: twoway leaves the variable it makes for a fit
+            # with no row unlabelled, so the line is the y's name
+            # (varlabel_mlabel_truth.json empty.lfit "mpg"; a yvarlabel()
+            # still names it, empty.lfit_vl "Q").
+            line = yv
         x = ("lpoly smoothing grid" if ptype in ("lpoly", "lpolyci")
              else Lx(xv))
         band = None
@@ -76442,6 +76555,9 @@ class DashRenderer:
                                            "zmlabel", "zmtick")}
         self.mapper.z_context = (_seen, _gkey)
         self.mapper._set_graph_n_obs(graph_spec)
+        # WP-47 DG-7: the layers the build's rows leave empty are marked for
+        # their titles and keys (and only they: no mark survives a figure).
+        _dash_mark_empty_layers(plots, self.df, self.qual_masks, graph_spec)
         x_label, y_label = _dash_axis_labels(plots, graph_opts,
                                              self.variable_labels, _seen, _gkey)
 
@@ -81434,7 +81550,9 @@ class ServerAppBuilder:
                          "_dash_varlabel_words", "_dash_varlabel_group",
                          "_dash_graph_varlabels",
                          # and the marker labels' varformat (MS-5).
-                         "_dash_mlabel_varformat"):
+                         "_dash_mlabel_varformat",
+                         # and the emptied layers' titles (DG-7).
+                         "_dash_empty_layers", "_dash_mark_empty_layers"):
             if _fn_name in _emitted_names:
                 continue
             _fn = getattr(_mod, _fn_name, None)
@@ -83952,6 +84070,9 @@ class ServerAppBuilder:
             "        # this used to html.escape the user's title and to title a",
             "        # histogram's y axis with the variable, where the saved",
             "        # figure titled it nothing and Stata writes 'Density'.",
+            "        # WP-47 DG-7: the layers the build's rows leave empty, marked",
+            "        # for their titles and keys, as the saved renderer marks them.",
+            "        _dash_mark_empty_layers(plots, df, _qual_masks, g)",
             "        x_label, y_label = _dash_axis_labels(plots, go, var_labels,",
             "                                             _reported_subopts, gname)",
             "",
