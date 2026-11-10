@@ -102,8 +102,12 @@ class TestTranslateMsymbol:
 
     def test_all_stata_markers_map_to_bokeh(self):
         """P1A-83: every Stata marker name in _MARKER_MAP is a valid Bokeh marker."""
+        # Flipped (WP-47 PIC-2): a Bokeh shipped marker only was wrong
+        # because twoway's D, V and arrows are drawn by dash's own defs
+        # markers (_DASH_MARKER_DEFS), which a glyph names as @dash_*.
         for stata_sym, bokeh_sym in OptionTranslator._MARKER_MAP.items():
-            assert bokeh_sym in self.VALID_BOKEH_MARKERS, (
+            assert (bokeh_sym in self.VALID_BOKEH_MARKERS
+                    or bokeh_sym in __import__("dash_render")._DASH_MARKER_DEFS), (
                 f"Stata '{stata_sym}' → '{bokeh_sym}' is not a valid Bokeh marker"
             )
 
@@ -117,7 +121,10 @@ class TestTranslateMsymbol:
         assert OptionTranslator.translate_msymbol("triangle") == "triangle"
 
     def test_diamond_maps_correctly(self):
-        assert OptionTranslator.translate_msymbol("diamond") == "diamond"
+        # Flipped (WP-47 PIC-2): Bokeh's diamond was wrong because twoway's D is
+        # a square on its point, drawn by dash's @dash_diamond defs marker.
+        assert OptionTranslator.translate_msymbol("diamond") == \
+            "@dash_diamond"
 
     def test_x_maps_correctly(self):
         result = OptionTranslator.translate_msymbol("x")

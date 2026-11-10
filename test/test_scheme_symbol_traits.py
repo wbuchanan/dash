@@ -60,9 +60,11 @@ class TestSymbolTraits:
                  # Flipped (WP-31 E1): factors are against the circle's
                  # height now: smdiamond 1.0 (0.707 of D's sqrt(2)),
                  # smtriangle 0.75 of T's 2/sqrt(3).
-                 "smdiamond": ("diamond", False, 1.0),
+                 # Flipped (WP-47 PIC-2): diamond and plus were Bokeh's
+                 # shapes; twoway's are dash's defs diamond and the cross.
+                 "smdiamond": ("@dash_diamond", False, 1.0),
                  "smsquare": ("square", False, H),
-                 "smplus": ("plus", False, H),
+                 "smplus": ("cross", False, H),
                  "smtriangle": ("triangle", False, 0.75 * TRI),
                  "smx": ("x", False, H), "o": ("circle", False, H)}
         bad = [(n, T.symbol_traits(n)) for n, want in cases.items()
@@ -72,7 +74,9 @@ class TestSymbolTraits:
         # Flipped (WP-31 E1): smx and smv were 1.0 and o full size; smx is
         # 0.707 of X, smv 0.75 of V and o is smcircle
         # (test/fixtures/symbol_pattern_truth.json).
-        assert T.symbol_traits("smv")[2] == pytest.approx(0.75 * TRI)
+        # Flipped (WP-47 PIC-2): 0.75 * TRI was Bokeh's triangle's; the
+        # chevron is as tall as its size, so smv is 0.75 (sym.smv).
+        assert T.symbol_traits("smv")[2] == pytest.approx(0.75)
         with pytest.raises(ValueError):
             T.symbol_traits("bogus")
 
@@ -91,8 +95,9 @@ class TestTheSchemeCycle:
         assert sp.p_symbol_factor == pytest.approx(
             [1.0, R2, 1.0, TRI, 1.0, 1.0, 1.0, R2, 1.0, TRI,
              H, 1.0, H, 0.75 * TRI, H], abs=1e-4)
+        # Flipped (WP-47 PIC-2): "diamond" was Bokeh's 2/3-wide shape.
         assert sp.default_symbol_traits(16) == \
-            ("diamond", False, pytest.approx(R2))
+            ("@dash_diamond", False, pytest.approx(R2))
 
     def test_colour_schemes_are_plain(self):
         bad = []
@@ -145,9 +150,12 @@ class TestHollowStaysHollow:
 # ---------------------------------------------------------------------------
 
 #: twoway's drawn shape -> dash's Bokeh marker.
-_SHAPE = {"circle": "circle", "diamond": "diamond", "square": "square",
-          "triangle": "triangle", "x": "x", "plus": "plus",
-          "v": "inverted_triangle"}
+# Flipped (WP-47 PIC-2): diamond, plus and inverted_triangle were wrong
+# because twoway's diamond is as wide as it is tall, its + two lines and
+# its v an open path: dash's defs markers and Bokeh's cross.
+_SHAPE = {"circle": "circle", "diamond": "@dash_diamond", "square": "square",
+          "triangle": "triangle", "x": "x", "plus": "cross",
+          "v": "@dash_chevron"}
 _FILLABLE = {"circle", "diamond", "square", "triangle"}
 _CYCLE_PLOT = {"scatteri": "scatteri", "rscatter": "rscatter",
                "pcscatter": "pcscatter", "dropline": "dropline",

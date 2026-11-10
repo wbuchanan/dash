@@ -10217,16 +10217,21 @@ def _u40_verdict(case, fixture):
     from sfi import Macro
     with open(fixture, encoding="utf-8") as fh:
         t = json.load(fh)
+    # Flipped (WP-47 PIC-2): diamond, inverted_triangle and triangle for
+    # the arrows were wrong because twoway's D is a square on its point, V
+    # an open three-vertex path and the arrows a head on a shaft (dash's
+    # defs markers, each as tall as its size).
     shape = {"O": ("circle", "O"), "o": ("circle", "O"),
-             "oh": ("circle", "O"), "d": ("diamond", "D"),
-             "dh": ("diamond", "D"), "s": ("square", "S"),
+             "oh": ("circle", "O"), "d": ("@dash_diamond", "D"),
+             "dh": ("@dash_diamond", "D"), "s": ("square", "S"),
              "sh": ("square", "S"), "t": ("triangle", "T"),
              "th": ("triangle", "T"), "x": ("x", "X"), "smx": ("x", "X"),
-             "lgx": ("x", "X"), "V": ("inverted_triangle", "V"),
-             "v": ("inverted_triangle", "V"),
-             "smv": ("inverted_triangle", "V"),
-             "arrow": ("triangle", "T"), "a": ("triangle", "T"),
-             "arrowf": ("triangle", "T"), "A": ("triangle", "T"),
+             "lgx": ("x", "X"), "V": ("@dash_chevron", "V"),
+             "v": ("@dash_chevron", "V"),
+             "smv": ("@dash_chevron", "V"),
+             "arrow": ("@dash_arrow", "arrow"), "a": ("@dash_arrow", "arrow"),
+             "arrowf": ("@dash_arrowf", "arrowf"),
+             "A": ("@dash_arrowf", "arrowf"),
              "pipe": ("dash", "O"), "|": ("dash", "O")}
     seen = m._u40_seen
     o_size = seen["O"][0][0][2]
@@ -10243,7 +10248,6 @@ def _u40_verdict(case, fixture):
                 # Its height over O's, over the Bokeh shape's at size 1
                 # (WP-31 E1): a triangle is sqrt(3)/2 tall, an x sqrt(1/2).
                 bh = {"triangle": math.sqrt(3) / 2,
-                      "inverted_triangle": math.sqrt(3) / 2,
                       "x": math.sqrt(0.5)}.get(sh, 1.0)
                 f = t["sym." + key]["bbox_h"] / t["sym.O"]["bbox_h"] / bh
                 want = (sh, round(math.pi / 2, 4) if sh == "dash" else 0.0,

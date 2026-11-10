@@ -3389,6 +3389,12 @@ CORPUS = [
     # WP-47 DG-7: an emptied fit is titled and keyed by its y's name.
     _case("lfit emptied by if",
           [_sc(), plot_for("lfit", if_expr="price < 0")]),
+    # WP-47 PIC-2: twoway's marker shapes (Scatter defs and the cross).
+    _case("msymbol D V + arrow (WP-47 PIC-2)",
+          [plot_for("scatter", {"msymbol": "D"}),
+           plot_for("scatter", {"msymbol": "V"}),
+           plot_for("scatter", {"msymbol": "+"}),
+           plot_for("scatter", {"msymbol": "arrowf"})]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

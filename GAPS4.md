@@ -537,7 +537,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **basic:PT-5 Tracked:** Closed in WP-47, BUGS.md "dlalign(center|outside) changes dot size in twoway; dash drops it silently (tw_silent built from one default value)", commit 45602f2.
 - **basic:PT-10 Tracked:** Open (WP-47 section 47-04).
 - **basic:PT-11 Tracked:** Open (WP-47 section 47-05).
-- **PIC-2 Tracked:** Open (WP-47 section 47-06).
+- **PIC-2 Tracked:** Closed in WP-47, BUGS.md "Marker shapes: diamonds 2/3 as wide; V/v closed triangles (help says open chevron); + filled fat cross; arrow symbols without shaft; msymbol(invisible) draws nothing (twoway notes and draws the default)", commit pending.
 - **PIC-9 Tracked:** Open (WP-47 section 47-06).
 - **PIC-10 Tracked:** Open (WP-47 section 47-06).
 - **DG-12 Tracked:** Open (WP-47 section 47-06).

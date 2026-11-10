@@ -54,7 +54,9 @@ ROW_KEYS = ("id", "plottype", "source", "rc_twoway", "rc_dash", "rc_pair", "firs
             "checks", "ledger", "summary", "colours", "gallery", "skip")
 
 #: Bokeh's marker names read as svg_layer's (D-33-05.b).
-BOKEH_SHAPES = {"cross": "plus", "inverted_triangle": "v"}
+BOKEH_SHAPES = {"cross": "plus", "inverted_triangle": "v",
+                # WP-47 PIC-2: dash's own defs markers.
+                "@dash_diamond": "diamond", "@dash_chevron": "v"}
 
 SUMMARY_MAX = 200
 

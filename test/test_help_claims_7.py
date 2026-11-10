@@ -885,7 +885,9 @@ class TestMarkerIsMsymbol:
         fig, _ = _render(mode, [plot_for(ptype, {"marker": "D"})])
         marks = {str(r.glyph.marker) for r in _glyphs(fig)
                  if type(r.glyph).__name__ == "Scatter" and not _is_cap(r)}
-        assert marks == {"diamond"}, marks
+        # Flipped (WP-47 PIC-2): Bokeh's diamond was wrong because twoway's D is
+        # a square on its point, drawn by dash's @dash_diamond defs marker.
+        assert marks == {"@dash_diamond"}, marks
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_msymbol_wins_over_marker(self, mode):

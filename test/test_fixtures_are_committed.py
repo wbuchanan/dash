@@ -409,6 +409,7 @@ GENERATORS = {
     "lpoly_rot_truth.json": "scripts/extract_lpoly_rot_truth.do",
     "lpolyci_truth.json": "scripts/extract_lpolyci_truth.do",
     "margin_truth.json": "scripts/extract_margin_truth.do",
+    "marker_fidelity_truth.json": "scripts/extract_marker_fidelity_truth.do",
     "marker_linewidth_truth.json": "scripts/extract_marker_linewidth_truth.do",
     "mband_band_edges.json": "scripts/extract_mband_band_edges.do",
     "minor_tick_truth.json": "scripts/extract_minor_tick_truth.do",

@@ -1291,8 +1291,10 @@ class TestApplyMarkerOptsMsymbol:
         renderer = gm.map_scatter(fig, cds, "mpg", "weight", {})
         original_marker = getattr(renderer.glyph, "marker", "circle")
         gm._apply_marker_opts(renderer, {"msymbol": "diamond"})
-        assert getattr(renderer.glyph, "marker", None) == "diamond", (
-            f"_apply_marker_opts should set marker to 'diamond', "
+        # Flipped (WP-47 PIC-2): Bokeh's diamond was wrong because twoway's D is
+        # a square on its point, drawn by dash's @dash_diamond defs marker.
+        assert getattr(renderer.glyph, "marker", None) == "@dash_diamond", (
+            f"_apply_marker_opts should set marker to '@dash_diamond', "
             f"original was '{original_marker}'"
         )
 

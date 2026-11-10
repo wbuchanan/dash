@@ -367,6 +367,16 @@ def _specs():
                           {"type": "kdensity", "var": "mpg",
                            "options": {}}], by="foreign")]),
             _frame()),
+        # WP-47 PIC-2: twoway's marker shapes drawn by Scatter defs
+        # (function-form CustomJS, _DASH_MARKER_DEFS), in a legend key, a
+        # by() graph and beside a layer whose rows the filter can empty.
+        "markers": (_spec([
+            _graph("g1", [_scatter(msymbol="D"), _scatter(msymbol="V"),
+                          _scatter(msymbol="+")]),
+            _graph("g2", [_scatter(msymbol="arrowf"),
+                          _scatter(msymbol="Dh")], by="foreign"),
+            _graph("g3", [_scatter(msymbol="arrow")],
+                   if_expr="foreign == 1")]), _frame()),
     }
 
 
@@ -563,6 +573,17 @@ class TestSavedPageInChrome:
             assert check(p.read(js)) != pytest.approx(h0)
             assert p.js_errors() == [], p.js_errors()
 
+    def test_custom_markers_paint(self):
+        """WP-47 PIC-2: the defs markers compile under the page's CSP (no
+        violation, no error) and paint: hiding each layer clears pixels
+        at its first marker."""
+        with _CspProbe(_url(_saved_page("markers"))) as p:
+            _check_markers_paint(p)
+            p.in_task(_MOVE_SELECT_JS)
+            time.sleep(1.0)
+            assert p.violations() == [], p.violations()
+            assert p.js_errors() == [], p.js_errors()
+
     def test_hover_and_brush_run(self):
         with _CspProbe(_url(_saved_page("brush"))) as p:
             assert p.read(_TOOLTIP_JS) == []
@@ -612,7 +633,7 @@ class TestServedPageInChrome:
                 "a same-origin script without the nonce loaded")
             assert "script-src-elem " + src in p.violations(), p.violations()
 
-    @pytest.mark.parametrize("name", ["rich", "big", "outlines"])
+    @pytest.mark.parametrize("name", ["rich", "big", "outlines", "markers"])
     def test_it_renders_filters_and_round_trips(self, servers, kind, name):
         with _CspProbe(_served_url(servers(kind, name))) as p:
             assert p.violations() == [], p.violations()
@@ -625,6 +646,73 @@ class TestServedPageInChrome:
             p.inject()
             assert p.ran() == [False, False], p.ran()
             assert set(p.violations()) == _INJECTED, p.violations()
+
+
+    def test_custom_markers_paint(self, servers, kind):
+        """WP-47 PIC-2: the served page's defs markers paint too."""
+        with _CspProbe(_served_url(servers(kind, "markers"))) as p:
+            _check_markers_paint(p)
+            assert p.js_errors() == [], p.js_errors()
+
+
+#: [marker, row, dark pixels round that row's marker, renderer id] for
+#: every visible Scatter drawn with a defs marker or the cross.
+_MARKER_INK_JS = r"""(() => {
+  const out = [];
+  const walk = (pv) => {
+    if (pv.renderer_views && pv.canvas_view) {
+      let comp = null;
+      for (const rv of pv.renderer_views.values()) {
+        const gv = rv.glyph;
+        if (!gv || gv.model.constructor.__name__ !== "Scatter") continue;
+        const mk = gv.model.marker;
+        const m = (mk && typeof mk === "object") ? mk.value : mk;
+        if (!["@dash_diamond", "@dash_chevron", "@dash_arrow", "@dash_arrowf",
+              "cross"].includes(m)) continue;
+        if (!rv.model.visible) continue;
+        let k = -1;
+        for (let i = 0; i < gv.sx.length; i++)
+          if (Number.isFinite(gv.sx[i]) && Number.isFinite(gv.sy[i])) { k = i; break; }
+        if (k < 0) continue;
+        if (comp == null) comp = pv.canvas_view.compose();
+        const pr = comp.pixel_ratio || 1;
+        const h = Math.ceil(gv.size.get(k)) + 2;
+        const x0 = Math.round((gv.sx[k] - h) * pr), y0 = Math.round((gv.sy[k] - h) * pr);
+        const w = Math.max(1, Math.round(2 * h * pr));
+        const d = comp.ctx.getImageData(x0, y0, w, w).data;
+        let n = 0;
+        for (let j = 0; j < d.length; j += 4)
+          if (d[j] < 200 || d[j + 1] < 200 || d[j + 2] < 200) n++;
+        out.push([m, k, n, rv.model.id]);
+      }
+    }
+    if (pv.child_views) for (const c of pv.child_views) walk(c);
+  };
+  for (const v of Object.values(Bokeh.index)) walk(v);
+  return JSON.stringify(out);
+})()"""
+
+
+def _check_markers_paint(p):
+    assert p.violations() == [], p.violations()
+    assert p.js_errors() == [], p.js_errors()
+    before = p.read(_MARKER_INK_JS)
+    kinds = {m for m, *_ in before}
+    assert {"@dash_diamond", "@dash_chevron", "cross", "@dash_arrowf",
+            "@dash_arrow"} <= kinds, before
+    ids = json.dumps([r[3] for r in before])
+    p.in_task("const ids = new Set(%s); for (const r of __dash_models("
+              "'GlyphRenderer')) if (ids.has(r.id)) r.visible = false;" % ids)
+    time.sleep(1.0)
+    after = {}
+    for m, k, n, rid in before:
+        after[rid] = n
+    # Hidden, each layer's box holds only what the others drew there.
+    hidden = p.read(_MARKER_INK_JS.replace(
+        "!rv.model.visible || ", ""))
+    left = {r[3]: r[2] for r in hidden}
+    drawn = [(m, after[rid] - left.get(rid, 0)) for m, k, n, rid in before]
+    assert all(d > 0 for _m, d in drawn), drawn
 
 
 # ---------------------------------------------------------------------------

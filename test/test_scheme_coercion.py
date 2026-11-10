@@ -266,14 +266,16 @@ class TestSymbol:
         _set(sp, **{"symbol p1": "diamond"})
         # Flipped (WP-31 E1): the factor was 1.0; twoway draws a diamond
         # sqrt(2) of the circle's height (symbol_pattern_truth.json sym.D).
+        # Flipped (WP-47 PIC-2): Bokeh's diamond was wrong because twoway's D is
+        # a square on its point, drawn by dash's @dash_diamond defs marker.
         assert sp._symbol_traits("symbol p1") == \
-            ("diamond", False, pytest.approx(2 ** 0.5))
+            ("@dash_diamond", False, pytest.approx(2 ** 0.5))
 
     def test_a_stata_abbreviation_is_translated(self, sp):
         _set(sp, **{"symbol p1": "Dh"})
         # Flipped (WP-31 E1): 1.0 -> sqrt(2), as above (sym.Dh).
         assert sp._symbol_traits("symbol p1") == \
-            ("diamond", True, pytest.approx(2 ** 0.5))
+            ("@dash_diamond", True, pytest.approx(2 ** 0.5))
 
     def test_an_unknown_symbol_returns_the_default(self, sp):
         _set(sp, **{"symbol p1": "octagon"})

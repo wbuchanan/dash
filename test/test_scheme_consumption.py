@@ -399,7 +399,9 @@ class TestPerSeriesStyleCycle:
         _, dr = _render(plots, scheme="s1mono")
         g = _scatter_glyphs(dr)[0]
         if key == "marker":
-            assert str(g.marker) == "diamond"
+            # Flipped (WP-47 PIC-2): Bokeh's diamond was wrong because twoway's D is
+            # a square on its point, drawn by dash's @dash_diamond defs marker.
+            assert str(g.marker) == "@dash_diamond"
         else:
             # WP-30 P1.12a: msize(12) is 12 Stata units, 3.84px each
             # (twoway's relative unit; was read as 12 px).

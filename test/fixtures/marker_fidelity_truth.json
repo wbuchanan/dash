@@ -1,0 +1,37 @@
+{
+ "B01": {
+  "bars": 21,
+  "elements": 42,
+  "rc": 0,
+  "zero_height": 0
+ },
+ "B02": {
+  "bars": 5,
+  "elements": 10,
+  "rc": 0,
+  "zero_height": 0
+ },
+ "R01": {
+  "dots": 3375,
+  "rc": 0,
+  "rows": 45
+ },
+ "R02": {
+  "dots": 1854,
+  "rc": 0,
+  "rows": 44
+ },
+ "S17": {
+  "equals_default": true,
+  "markers": 3,
+  "note": "named style invisible not found in class symbol, default attributes used",
+  "rc": 0
+ },
+ "_meta": {
+  "born_date": "04 Nov 2026",
+  "dash_commit": "f9bf176b9de5103623d89556c3480800af0787af",
+  "extracted": "10 Nov 2026 04:16:09",
+  "source": "scripts/extract_marker_fidelity_truth.do",
+  "stata_version": "19.5"
+ }
+}

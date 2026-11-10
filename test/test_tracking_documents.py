@@ -2924,7 +2924,6 @@ class TestTheCountsAreTrue:
 GAPS4_OPEN = {
     'basic:PT-10': 'Spellings twoway draws as other options are only noted: symbol(), msymangle(), mlabels(), bcolor(), bfintensity(), blwidth(), blpattern(), afcolor(), afintensity(), bsymbol(), bmsize() on arrows (= barbsize)',
     'basic:PT-11': 'Noted options twoway draws: back markers (bm*), alalign/blalign, mlabalignment, mlabjustification, bartype(spanning), dropto(), numkeys(), omitanymiss on multi-y, dlpattern(), xtransform, onepanel etc.',
-    'PIC-2': 'Marker shapes: diamonds 2/3 as wide; V/v closed triangles (help says open chevron); + filled fat cross; arrow symbols without shaft; msymbol(invisible) draws nothing (twoway notes and draws the default)',
     'PIC-9': 'Empty histogram bins draw an outline segment along the base',
     'PIC-10': 'dot draws no row for an observation whose y is missing (dotextend yes); twoway draws the full row',
     'DG-12': 'Markers with missing or zero weight are invisible; twoway still draws a dot',

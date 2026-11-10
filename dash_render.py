@@ -8623,8 +8623,10 @@ class OptionTranslator:
         "smtriangle_hollow", "v", "V", "smv", "arrow", "a",
     })
     # Stata marker names that mean "draw nothing".  msymbol(i) silently drew
-    # a visible marker.
-    _INVISIBLE_SYMBOLS: frozenset = frozenset({"i", "none", "invisible"})
+    # a visible marker.  invisible is not a Stata symbol: twoway notes it
+    # and draws the default symbol (WP-47 PIC-2,
+    # marker_fidelity_truth.json S17), so it takes the unknown-name path.
+    _INVISIBLE_SYMBOLS: frozenset = frozenset({"i", "none"})
     # The size factor of every Stata symbol (WP-31 E1, measured from
     # twoway's SVG, test/fixtures/symbol_pattern_truth.json): its height
     # over O's, over its Bokeh shape's height at size 1 (BokehJS draws a
@@ -8633,7 +8635,9 @@ class OptionTranslator:
     # the diamonds are sqrt(2) of O (a square on its point), the triangles,
     # V and the arrows as tall as O, the small symbols 0.707 of their full
     # one (0.75 for the triangles and v), lgx 1.414 of X.  A name not here
-    # is 1.0.  (WP-30 P1.4a measured the small symbols against their full
+    # is 1.0.  The WP-47 PIC-2 shapes (_DASH_MARKER_PATHS: the diamond,
+    # chevron and arrows, and Bokeh's cross for +) are 2r tall at size 2r,
+    # so V and the arrows are 1.0 and smv 0.75.  (WP-30 P1.4a measured the small symbols against their full
     # ones; those ratios hold.)  In msymbol() x and v are smx and smv
     # (_OPTION_SYMBOL_SYNONYMS); a scheme's x and v are the full symbols.
     _SMALL_SYMBOL_FACTOR: dict = {
@@ -8644,10 +8648,11 @@ class OptionTranslator:
         **dict.fromkeys(("diamond", "diamond_hollow", "D", "Dh"),
                         math.sqrt(2.0)),
         **dict.fromkeys(("smdiamond", "smdiamond_hollow", "d", "dh"), 1.0),
-        **dict.fromkeys(("triangle", "triangle_hollow", "T", "Th", "V", "v",
-                         "arrow", "a", "arrowf", "A"), 2.0 / math.sqrt(3.0)),
-        **dict.fromkeys(("smtriangle", "smtriangle_hollow", "t", "th",
-                         "smv"), 1.5 / math.sqrt(3.0)),
+        **dict.fromkeys(("triangle", "triangle_hollow", "T", "Th"),
+                        2.0 / math.sqrt(3.0)),
+        **dict.fromkeys(("smtriangle", "smtriangle_hollow", "t", "th"),
+                        1.5 / math.sqrt(3.0)),
+        "smv": 0.75,
         "lgx": math.sqrt(2.0),
     }
     _OPTION_SYMBOL_SYNONYMS: dict = {"x": "smx", "v": "smv"}
@@ -8667,7 +8672,6 @@ class OptionTranslator:
     _MARKER_MAP: dict[str, str] = {
         "i":               "circle",
         "none":            "circle",
-        "invisible":       "circle",
         "circle":          "circle",
         "O":               "circle",
         "o":               "circle",
@@ -8685,20 +8689,20 @@ class OptionTranslator:
         "square_hollow":   "square",
         "Sh":              "square",
         "sh":              "square",
-        "diamond":         "diamond",
-        "D":               "diamond",
-        "d":               "diamond",
-        "diamond_hollow":  "diamond",
-        "Dh":              "diamond",
-        "dh":              "diamond",
+        "diamond":         "@dash_diamond",
+        "D":               "@dash_diamond",
+        "d":               "@dash_diamond",
+        "diamond_hollow":  "@dash_diamond",
+        "Dh":              "@dash_diamond",
+        "dh":              "@dash_diamond",
         "triangle":        "triangle",
         "T":               "triangle",
         "t":               "triangle",
         "triangle_hollow": "triangle",
         "Th":              "triangle",
         "th":              "triangle",
-        "plus":            "plus",
-        "+":               "plus",
+        "plus":            "cross",
+        "+":               "cross",
         "x":               "x",
         "X":               "x",
         "smcircle":        "circle",
@@ -8710,25 +8714,27 @@ class OptionTranslator:
         "pipe":            "dash",
         "|":               "dash",
         # arrow/a: an open head on a shaft; arrowf/A: a filled head on a
-        # shaft, as tall as O (measured).  Bokeh has no arrow marker: the
-        # head is drawn as a triangle of that height, without the shaft.
-        "arrow":           "triangle",
-        "a":               "triangle",
-        "arrowf":          "triangle",
-        "A":               "triangle",
+        # shaft, as tall as O (measured), drawn by _DASH_MARKER_DEFS
+        # (WP-47 PIC-2; the head alone was a triangle).
+        "arrow":           "@dash_arrow",
+        "a":               "@dash_arrow",
+        "arrowf":          "@dash_arrowf",
+        "A":               "@dash_arrowf",
         # Remaining symbol-<name>.style entries from Stata's style library.
         # The mono schemes (s1mono, s2mono, sj, stmono1/2, stsj) cycle through
         # smdiamond and smtriangle, which previously raised out of SchemeParser
         # and made a faithful translation of those schemes unparseable.
-        "smdiamond":          "diamond",
-        "smdiamond_hollow":   "diamond",
+        "smdiamond":          "@dash_diamond",
+        "smdiamond_hollow":   "@dash_diamond",
         "smtriangle":         "triangle",
         "smtriangle_hollow":  "triangle",
         "smsquare_hollow":    "square",
-        "smplus":             "plus",
-        "v":                  "inverted_triangle",
-        "V":                  "inverted_triangle",
-        "smv":                "inverted_triangle",
+        "smplus":             "cross",
+        # V/v/smv: twoway's open chevron (WP-47 PIC-2; Bokeh's
+        # inverted_triangle is closed and centred otherwise).
+        "v":                  "@dash_chevron",
+        "V":                  "@dash_chevron",
+        "smv":                "@dash_chevron",
         "lgx":                "x",
     }
 
@@ -17190,6 +17196,10 @@ class GlyphMapper:
         # and the outline's width are final.
         self._align_marker_size(renderer, _dash_stroke_align(
             options, "mlalign", self.scheme, "p"))
+        # twoway's shapes Bokeh does not ship (WP-47 PIC-2): the glyph
+        # carries the defs its marker names.
+        if hasattr(glyph, "defs"):
+            glyph.defs = _dash_marker_defs(glyph.marker)
 
     # Bokeh markers drawn as lines only: twoway's alignment does not move
     # a line (D-47-03.e), so these keep their size.
@@ -17386,7 +17396,9 @@ class GlyphMapper:
             renderers = list(getattr(fig, "renderers", None) or [])
         except Exception:  # pragma: no cover - a figure always has these
             return
-        skip = set(Model.properties()) | {"decorations", "defs"}
+        # defs is copied (WP-47 PIC-2): a copy drawing a custom marker
+        # without its defs draws nothing.
+        skip = set(Model.properties()) | {"decorations"}
         before = before or ()
         for r in renderers:
             if id(r) in before or not isinstance(r, _GR):
@@ -29744,6 +29756,59 @@ def _dash_stroke_align(options, key, scheme=None, role="p") -> str:
         if v in _DASH_STROKE_ALIGNS:
             return v
     return "inside"
+
+
+# WP-47 PIC-2: twoway's marker shapes Bokeh does not ship, as canvas path
+# statements on the marker's centre (y down) for a marker of half size r,
+# and whether the shape is filled (symbol_pattern_truth.json sym.*): D a
+# square on its point, as wide as it is tall; V an open chevron whose wide
+# side is 2/3 of its height above the centre and its point 1/3 below; arrow
+# an open head on a shaft; arrowf a filled head on a shaft.  + is Bokeh's
+# own cross (two lines).
+_DASH_MARKER_PATHS = {
+    "@dash_diamond": ("ctx.moveTo(0, -r); ctx.lineTo(r, 0); "
+                      "ctx.lineTo(0, r); ctx.lineTo(-r, 0); ctx.closePath();",
+                      True),
+    "@dash_chevron": ("const w = 2 * r / Math.sqrt(3); "
+                      "ctx.moveTo(-w, -4 * r / 3); ctx.lineTo(0, 2 * r / 3); "
+                      "ctx.lineTo(w, -4 * r / 3);", False),
+    "@dash_arrow": ("ctx.moveTo(-2 * r / 3, 0); ctx.lineTo(0, -r); "
+                    "ctx.lineTo(2 * r / 3, 0); ctx.moveTo(0, -r); "
+                    "ctx.lineTo(0, r);", False),
+    "@dash_arrowf": ("ctx.moveTo(-r / 2, 0); ctx.lineTo(0, -r); "
+                     "ctx.lineTo(r / 2, 0); ctx.closePath(); "
+                     "ctx.moveTo(0, 0); ctx.lineTo(0, r);", True),
+}
+#: Each shape as the body of a Scatter ``defs`` function (D-47-06.a):
+#: BokehJS compiles a function-form CustomJS with ``new Function`` (the
+#: pages' ``'unsafe-eval'``) and calls it with ``cb_data = {ctx, i, r,
+#: visuals}``; the body paints and returns nothing.  Never the ES-module
+#: form, which BokehJS loads from a ``blob:`` URL the CSP refuses.
+_DASH_MARKER_DEFS = {
+    _k: ("const {ctx, i, r, visuals} = cb_data;\n" + _p + "\n"
+         + ("visuals.fill.apply(ctx, i);\nvisuals.hatch.apply(ctx, i);\n"
+            if _f else "")
+         + "visuals.line.apply(ctx, i);\n")
+    for _k, (_p, _f) in _DASH_MARKER_PATHS.items()}
+
+
+def _dash_marker_defs(marker) -> dict:
+    """The ``Scatter.defs`` a glyph drawn with *marker* needs (WP-47
+    PIC-2): ``{marker: CustomJS(<its body>, module=False)}`` for one of
+    :data:`_DASH_MARKER_DEFS`'s names, every one of them for a marker read
+    from a column (a field), else ``{}``.  A fresh ``CustomJS`` per call:
+    a model belongs to one document."""
+    from bokeh.models import CustomJS
+    if isinstance(marker, str):
+        names = [marker] if marker in _DASH_MARKER_DEFS else []
+    elif marker is not None and (
+            isinstance(marker, dict) and "field" in marker
+            or getattr(marker, "field", None) is not None):
+        names = list(_DASH_MARKER_DEFS)
+    else:
+        names = []
+    return {n: CustomJS(code=_DASH_MARKER_DEFS[n], module=False)
+            for n in names}
 
 
 def _dash_style_note(option, value, what, using="the scheme's default",
@@ -70344,7 +70409,10 @@ const marker = (cx) => {
     const ys = [r, a, a, -a, -a, -r, -r, -a, -a, a, a, r];
     for (let j = 0; j < 12; j++) ctx.lineTo(xs[j], ys[j]);
     ctx.closePath(); paint(true);
-  } else if (mk === "x") {
+  } else if (mk === "cross") {
+    ctx.moveTo(0, r); ctx.lineTo(0, -r);
+    ctx.moveTo(-r, 0); ctx.lineTo(r, 0); paint(false);
+@@DASH_MARKER_PATH_BRANCHES@@  } else if (mk === "x") {
     const d = r * Math.SQRT1_2;
     ctx.moveTo(-d, -d); ctx.lineTo(d, d);
     ctx.moveTo(-d, d); ctx.lineTo(d, -d); paint(false);
@@ -70406,11 +70474,18 @@ if (SH === "marker") {
 }
 ctx.restore();
 """
+# WP-47 PIC-2: twoway's diamond, chevron and arrows, the plot's own paths.
+_DASH_KEY_PAINT_JS = _DASH_KEY_PAINT_JS.replace(
+    "@@DASH_MARKER_PATH_BRANCHES@@", "".join(
+        '  } else if (mk === "%s") {\n    %s paint(%s);\n'
+        % (_k, _p, "true" if _f else "false")
+        for _k, (_p, _f) in _DASH_MARKER_PATHS.items()))
 
 #: The markers the key painter draws (dash's Bokeh marker names, the
 #: shapes of ``OptionTranslator._MARKER_MAP``).
 _DASH_KEY_PAINT_MARKERS = frozenset({
-    "circle", "square", "triangle", "diamond", "plus", "x", "dash"})
+    "circle", "square", "triangle", "diamond", "plus", "x", "dash",
+    "cross", *_DASH_MARKER_PATHS})
 
 
 def _dash_spec_value(v):
@@ -81747,6 +81822,9 @@ class ServerAppBuilder:
                 # WP-47 basic:PT-6: the marker size floor and the words.
                 "_DASH_MIN_MARKER_PX = %r" % (_DASH_MIN_MARKER_PX,),
                 "_DASH_STROKE_ALIGNS = %r" % (_DASH_STROKE_ALIGNS,), "",
+                # WP-47 PIC-2: twoway's marker shapes.
+                "_DASH_MARKER_PATHS = %r" % (_DASH_MARKER_PATHS,),
+                "_DASH_MARKER_DEFS = %r" % (_DASH_MARKER_DEFS,), "",
                 # The contour surface's bounds (WP-31 B4a): before the
                 # helpers whose defaults read them.
                 "_DASH_CONTOUR_EXACT_MAX = %d" % _DASH_CONTOUR_EXACT_MAX,
@@ -81765,6 +81843,8 @@ class ServerAppBuilder:
                     _dash_style_note, _dash_warn_once, _dash_reset_notes,
                     # WP-47 basic:PT-6: the outline alignment's rule.
                     _dash_stroke_grow, _dash_stroke_align,
+                    # WP-47 PIC-2: the marker shapes' defs.
+                    _dash_marker_defs,
                     _dash_graph_color, _dash_ref_in, _dash_scheme_at_ref,
                     _dash_figure_aspect, _dash_scale_factor,
                     _dash_scale_columns, _dash_apply_scale, _dash_frame_aspect,

@@ -49,30 +49,35 @@ T = dr.OptionTranslator
 #: The Bokeh shape dash draws each Stata name with, and the full-size
 #: Stata symbol dash draws that shape for at factor 1 (the factor of a
 #: name is its measured height over that symbol's).
+# Flipped (WP-47 PIC-2): diamond, plus, inverted_triangle and triangle for
+# the arrows were wrong because twoway's D is a square on its point, V an
+# open three-vertex path, + two lines and the arrows a head on a shaft
+# (dash's @dash_* defs markers and Bokeh's cross draw them).
 SHAPE = {
     "O": ("circle", "O"), "circle": ("circle", "O"), "Oh": ("circle", "O"),
     "o": ("circle", "O"), "oh": ("circle", "O"),
     "smcircle": ("circle", "O"), "smcircle_hollow": ("circle", "O"),
-    "D": ("diamond", "D"), "Dh": ("diamond", "D"), "d": ("diamond", "D"),
-    "dh": ("diamond", "D"), "smdiamond": ("diamond", "D"),
-    "smdiamond_hollow": ("diamond", "D"),
+    "D": ("@dash_diamond", "D"), "Dh": ("@dash_diamond", "D"),
+    "d": ("@dash_diamond", "D"), "dh": ("@dash_diamond", "D"),
+    "smdiamond": ("@dash_diamond", "D"),
+    "smdiamond_hollow": ("@dash_diamond", "D"),
     "S": ("square", "S"), "Sh": ("square", "S"), "s": ("square", "S"),
     "sh": ("square", "S"), "smsquare": ("square", "S"),
     "smsquare_hollow": ("square", "S"),
     "T": ("triangle", "T"), "Th": ("triangle", "T"), "t": ("triangle", "T"),
     "th": ("triangle", "T"), "smtriangle": ("triangle", "T"),
     "smtriangle_hollow": ("triangle", "T"),
-    "+": ("plus", "plus"), "plus": ("plus", "plus"),
-    "smplus": ("plus", "plus"),
+    "+": ("cross", "plus"), "plus": ("cross", "plus"),
+    "smplus": ("cross", "plus"),
     "X": ("x", "X"), "x": ("x", "X"), "smx": ("x", "X"), "lgx": ("x", "X"),
-    "V": ("inverted_triangle", "V"), "v": ("inverted_triangle", "V"),
-    "smv": ("inverted_triangle", "V"),
-    "arrow": ("triangle", "T"), "a": ("triangle", "T"),
-    "arrowf": ("triangle", "T"), "A": ("triangle", "T"),
+    "V": ("@dash_chevron", "V"), "v": ("@dash_chevron", "V"),
+    "smv": ("@dash_chevron", "V"),
+    "arrow": ("@dash_arrow", "arrow"), "a": ("@dash_arrow", "arrow"),
+    "arrowf": ("@dash_arrowf", "arrowf"), "A": ("@dash_arrowf", "arrowf"),
     "pipe": ("dash", "O"), "|": ("dash", "O"),
 }
 #: Shapes with an inside, whose hollow form is the outline only.
-_FILLABLE = {"circle", "diamond", "square", "triangle", "inverted_triangle"}
+_FILLABLE = {"circle", "@dash_diamond", "square", "triangle"}
 NOT_STATA = ("star", "asterisk", "hexagon", "hexagon_hollow", "dot",
              "CIRCLE", "Circle")
 SMALL = ("o", "oh", "d", "dh", "s", "sh", "t", "th", "x", "v", "smx", "smv")
@@ -85,9 +90,15 @@ def _rec(name):
 #: The height of each Bokeh marker drawn at size 1 (BokehJS: a circle's
 #: diameter, a square's and a diamond's height, a triangle's sqrt(3)/2, an
 #: x's arms at 45 degrees sqrt(1/2), a dash's length).
-BOKEH_H = {"circle": 1.0, "square": 1.0, "diamond": 1.0, "plus": 1.0,
-           "triangle": math.sqrt(3) / 2, "inverted_triangle": math.sqrt(3) / 2,
+BOKEH_H = {"circle": 1.0, "square": 1.0, "@dash_diamond": 1.0, "cross": 1.0,
+           "triangle": math.sqrt(3) / 2, "@dash_chevron": 1.0,
+           "@dash_arrow": 1.0, "@dash_arrowf": 1.0,
            "x": math.sqrt(0.5), "dash": 1.0}
+#: Each shape's width at size 1 (WP-47 PIC-2): the chevron's sides at 60
+#: degrees, the arrows' heads 2/3 and 1/2 of their height across.
+BOKEH_W = {"circle": 1.0, "square": 1.0, "@dash_diamond": 1.0, "cross": 1.0,
+           "triangle": 1.0, "@dash_chevron": 2 / math.sqrt(3),
+           "@dash_arrow": 2 / 3, "@dash_arrowf": 0.5, "x": math.sqrt(0.5)}
 
 
 def _factor(name):
@@ -212,7 +223,10 @@ class TestSymbols:
         assert _rec("V")["filled"] is _rec("v")["filled"] is False
         (big,), _ = _drawn(mode, [_sc(msymbol="V")])
         (small,), _ = _drawn(mode, [_sc(msymbol="v")])
-        assert big.marker == small.marker == "inverted_triangle"
+        # Flipped (WP-47 PIC-2): inverted_triangle was wrong because
+        # twoway's V is an open three-vertex path.
+        assert _rec("V")["closed"] is False and _rec("V")["vertices"] == 3
+        assert big.marker == small.marker == "@dash_chevron"
         assert big.fill_alpha == small.fill_alpha == 0.0
         assert small.size / big.size == pytest.approx(0.75, abs=0.01)
 
@@ -250,6 +264,15 @@ class TestSymbols:
             if abs(g.size / o.size - _factor(name)) > 0.01:
                 bad.append((name, round(g.size / o.size, 4),
                             round(_factor(name), 4)))
+            # And as wide (WP-47 PIC-2: Bokeh's diamond was 2/3 as wide);
+            # the vertical bar's width is its line's.
+            sh = SHAPE[name][0]
+            if sh in BOKEH_W:
+                want = _rec(name)["bbox_w"] / _rec("O")["bbox_w"]
+                got = g.size * BOKEH_W[sh] / o.size
+                if abs(got - want) > 0.05 * want:
+                    bad.append((name, "width", round(got, 4),
+                                round(want, 4)))
         assert not bad, bad
 
     @pytest.mark.parametrize("mode", MODES)

@@ -725,7 +725,10 @@ _SAVED_DIGEST = (
     # 0a7ba62d... -> 11a6ea31..., the same under Bokeh 3.8 and 3.9.
     # 11a6ea31 -> 85a686cf: WP-45 ST-21 residual: a lone graph's plot-region margin over the plot region's estimated side moves every padded range, the same under both Pythons.
     # 85a686cf -> a6e3fc6a: WP-45 GW-6 residual: no border of Bokeh's own, min_border the plot region outline's width, the same under both Pythons.
-    "a6e3fc6a561f2de02da5d1b8f785a003ebaddc5a2b077305cb84d146aa6eb658")
+    # a6e3fc6a -> 095981d0: WP-47 PIC-2, the key painter's code gains the
+    # cross, diamond, chevron and arrow branches (key painter JS text only:
+    # with the old _DASH_KEY_PAINT_JS spliced in the old digest is given).
+    "095981d068c86d473e7c39971bd4fcb2d148baef602bbcdbbf28708b5ff25030")
 
 
 # ===========================================================================

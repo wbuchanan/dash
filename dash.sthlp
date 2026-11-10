@@ -7189,9 +7189,12 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     {cmd:|} are a vertical bar, turned further by {cmd:msangle()};
     {cmd:point} and {cmd:p} a one-pixel dot whatever {cmd:msize()} says,
     in {cmd:msymbol()} and in a scheme's symbol cycle alike;
-    {cmd:V} and {cmd:v} an open chevron; {cmd:arrow} and {cmd:a} draw an
-    open triangle and {cmd:arrowf} and {cmd:A} a filled one, as tall as
-    the circle (twoway draws an arrowhead on a shaft).
+    a diamond is a square on its point, as wide as it is tall;
+    {cmd:V} and {cmd:v} an open chevron; {cmd:+} two crossed lines;
+    {cmd:arrow} and {cmd:a} an open arrowhead on a shaft, {cmd:arrowf} and
+    {cmd:A} a filled one, as {cmd:twoway} draws them, in the plot, the
+    legend key and the SVG export; {cmd:invisible} is not a symbol name,
+    and is noted and drawn as the scheme's symbol, as {cmd:twoway} does.
     The cycle reaches every marker: {cmd:scatter}, {cmd:connected},
     {cmd:dot}, {cmd:rconnected}, {cmd:scatteri}, {cmd:rscatter},
     {cmd:pcscatter}, {cmd:pccapsym} and the markers of {cmd:dropline} and
