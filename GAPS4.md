@@ -531,7 +531,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **MS-2 Tracked:** Closed in WP-47, BUGS.md "yvarlabel()/xvarlabel() are ignored on scatteri, pci, pcarrowi, function, kdensity and histogram", commit pending.
 - **MS-3 Tracked:** Closed in WP-47, BUGS.md "yvarlabel() with an empty string gives the key 'scatter' and no title (twoway uses the variable name); yvarlabel relabels a variable in every plot in twoway, per layer in dash", commit pending.
 - **MS-5 Tracked:** Closed in WP-47, BUGS.md "xvarformat()/yvarformat() do not reach marker labels of the plotted variable", commit pending.
-- **basic:PT-3 Tracked:** Open (WP-47 section 47-02).
+- **basic:PT-3 Tracked:** Closed in WP-47, BUGS.md "mlabel(t*) naming several variables draws labels; twoway draws none", commit pending.
 - **basic:PT-4 Tracked:** Closed in WP-47, BUGS.md "Outline alignment: twoway strokes bars, histogram bins, areas and rbar inside and honours lalign(); dash centres every stroke and calls lalign() 'the same picture'; rcap caps butt-ended, not round", commit 4ef9650.
 - **basic:PT-6 Tracked:** Closed in WP-47, BUGS.md "mlalign(center) and inside draw one picture; the default marker is probably twoway's center picture", commit 6578f68.
 - **basic:PT-5 Tracked:** Closed in WP-47, BUGS.md "dlalign(center|outside) changes dot size in twoway; dash drops it silently (tw_silent built from one default value)", commit 45602f2.

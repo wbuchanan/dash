@@ -3381,6 +3381,11 @@ CORPUS = [
     # WP-47 MS-5: marker labels of the y variable in its yvarformat().
     _case("mlabel yvarformat",
           [plot_for("scatter", {"mlabel": "mpg", "yvarformat": "%9.2f"})]),
+    # WP-47 basic:PT-3: mlabel(make t*) on two y's -- the pattern leaves
+    # the second y unlabelled.
+    _case("mlabel pattern t*",
+          [plot_for("scatter", {"mlabel": "foreign"}),
+           plot_for("scatter", {}, yvar="price")]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

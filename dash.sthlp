@@ -1504,10 +1504,6 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:dash}'s own.  {cmd:bands()} 1 to 200 is {cmd:twoway}'s own bound
     ({cmd:bands must be between 1 and 200}).
 
-{phang2}    {cmd:dash} also refuses some forms {cmd:twoway} reads:
-    an element of {cmd:mlabel()} that names several variables, such as
-    {cmd:t*} ({cmd:twoway} draws no labels for that y).
-
 {phang2}    These values are refused as {cmd:twoway} refuses them:
     {cmd:kernel(GAUSSIAN)}, {cmd:invalid kernel function}, r(198), the
     next line naming {cmd:kernel(gaussian)}; {cmd:xsize(())} and
@@ -4154,10 +4150,11 @@ the per-plot specification (not to {cmd:dash build} options).
 {synoptset 28}{...}
 {synopt:{cmdab:ml:abel(}{it:varname}{cmd:)}}label each observation with
     the value of {it:varname}, on the plot types listed below.  With
-    several y variables, each takes the next name; an element may be a
-    varlist pattern ({cmd:t*}, {cmd:make-foreign}): its variables label
-    the following y's, and names past the last y are dropped, as in
-    {cmd:twoway}{p_end}
+    several y variables, each takes the next name, and names past the
+    last y are dropped; an element may be a varlist pattern: one that
+    names one variable ({cmd:tr*}) labels its y, and one that names
+    several ({cmd:t*}, {cmd:make-foreign}) draws no labels for that y, as
+    {cmd:twoway} draws none{p_end}
 {synopt:{cmdab:mlabc:olor(}{it:color}{cmd:)}}color of the label text;
     by default the scheme's marker-label colour -- {cmd:color p}{it:#}{cmd:label},
     else {cmd:color plabel}, else the plot's own colour, with its opacity,

@@ -283,7 +283,12 @@ class TestTheHelpSaysWhatWasMeasured:
         # the help no longer names it here.
         assert ("{cmd:scatter mpg weight, lwidth(-1)}, which {cmd:twoway} "
                 "draws, is refused") not in v
-        assert "an element of {cmd:mlabel()} that names several variables" in v
+        # Flipped (WP-47 basic:PT-3): dash does not refuse such an element;
+        # it draws no labels for that y, as twoway draws none
+        # (varlabel_mlabel_truth.json mlabel_pattern.*), so the help no
+        # longer names it here.
+        assert ("an element of {cmd:mlabel()} that names several "
+                "variables") not in v
 
     def test_the_values_dash_accepts_are_all_named(self):
         """HC2-16, and TestAStyleOptionGivenEmptyParenthesesIsReported,

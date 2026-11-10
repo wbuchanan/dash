@@ -5316,13 +5316,17 @@ program define _dash_mlabel_list, rclass
     mata: _dash_stylelist_locals(st_local("value"), "_ml")
     // WP-31 C10b: an unquoted element that is a varlist pattern -- Stata
     // name characters holding *, ?, ~ or - (t*, make-foreign) -- is
-    // expanded by unab, as twoway's MLabels() is, and its names take its
-    // place, labelling the following y's; names past the last y are
-    // dropped below, as twoway drops them (measured,
+    // expanded by unab, as twoway's MLabels() is (measured,
     // test/fixtures/parsed_values_truth.json mlabel.*).  unab sees the
     // element only after the pattern regex; a pattern that matches nothing
     // keeps its place and is refused there, in unab's (twoway's) words.
+    // WP-47 basic:PT-3: twoway draws no labels for an mlabel() element that names several variables (varlabel_mlabel_truth.json mlabel_pattern.*)
+    // -- such a pattern is ONE element, leaving the y it falls on
+    // unlabelled (mlabel(make t*) labels mpg by make and price by
+    // nothing), and counts as naming a variable; one naming a single
+    // variable (tr*) labels its y.
     local _mlm 0
+    local _mlsev 0
     forvalues j = 1/`_mln' {
         local _mle : copy local _mlt`j'
         local _mlp 0
@@ -5332,11 +5336,13 @@ program define _dash_mlabel_list, rclass
         if `_mlp' {
             capture unab _mlx : `_mle'
             if !_rc {
-                foreach _mlv of local _mlx {
-                    local ++_mlm
-                    local _mlT`_mlm' `_mlv'
-                    local _mlQ`_mlm' 0
-                    local _mlP`_mlm' 0
+                local ++_mlm
+                local _mlT`_mlm' : word 1 of `_mlx'
+                local _mlQ`_mlm' 0
+                local _mlP`_mlm' 0
+                if `: word count `_mlx'' > 1 {
+                    local _mlT`_mlm' "."
+                    local _mlsev 1
                 }
                 continue
             }
@@ -5354,7 +5360,7 @@ program define _dash_mlabel_list, rclass
     local seen ""
     local seenres ""
     local dots ""
-    local named 0
+    local named `_mlsev'
     forvalues j = 1/`_mln' {
         local _mlr`j' "."
         if `_mlP`j'' {

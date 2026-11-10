@@ -989,18 +989,21 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w31_run' {
 
     // ------------------------------------------------------------
     // U06-02: scatter mpg price weight, mlabel(t*) -- the element is
-    // unab'd: mpg is labelled by trunk, price by turn, as twoway's serset
-    // carries them; both modes draw two LabelSets of those columns.
+    // unab'd and names several variables, so no y is labelled.
+    // Flipped (WP-47 basic:PT-3): mpg labelled by trunk and price by
+    // turn was the serset, not the picture: twoway draws no labels
+    // (varlabel_mlabel_truth.json mlabel_pattern.two_y), so the spec
+    // carries no mlabel and neither mode draws a LabelSet.
     // ------------------------------------------------------------
     capture noisily twoway scatter mpg price weight, mlabel(t*) nodraw
     _w31_expect U06-02 "(_rc == 0)" "twoway mlabel(t*) rc `=_rc'"
     _u06_reg "`u6d'" 5 scatter mpg price weight, mlabel(t*) name(zu65)
-    _w31_expect U06-02 `"("${u06_ml}" == "trunk turn")"' "spec mlabel ${u06_ml}"
-    _w31_expect U06-02 `"("${u06_labs}" == "trunk turn" & "${u06_labv}" == "trunk turn")"' "label sets ${u06_labs} / ${u06_labv}"
+    _w31_expect U06-02 `"(strtrim("${u06_ml}") == "")"' "spec mlabel ${u06_ml}"
+    _w31_expect U06-02 `"(strtrim("${u06_labs}${u06_labv}") == "")"' "label sets ${u06_labs} / ${u06_labv}"
     dash clear
     capture noisily dash scatter mpg weight, mlabel(zz*) name(zu6z)
     _w31_expect U06-02 "(_rc == 111)" "mlabel(zz*) rc `=_rc'"
-    _w31_done U06-02 "mlabel(t*) labels mpg with trunk and price with turn, saved and served; mlabel(zz*) is r(111)"
+    _w31_done U06-02 "mlabel(t*) draws no labels, as twoway draws none, saved and served; mlabel(zz*) is r(111)"
 
     // ------------------------------------------------------------
     // U06-03: line mpg weight, yaxis(1 2) -- twoway draws the layer once

@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'basic:PT-3': 'mlabel(t*) naming several variables draws labels; twoway draws none',
     'basic:PT-10': 'Spellings twoway draws as other options are only noted: symbol(), msymangle(), mlabels(), bcolor(), bfintensity(), blwidth(), blpattern(), afcolor(), afintensity(), bsymbol(), bmsize() on arrows (= barbsize)',
     'basic:PT-11': 'Noted options twoway draws: back markers (bm*), alalign/blalign, mlabalignment, mlabjustification, bartype(spanning), dropto(), numkeys(), omitanymiss on multi-y, dlpattern(), xtransform, onepanel etc.',
     'PIC-2': 'Marker shapes: diamonds 2/3 as wide; V/v closed triangles (help says open chevron); + filled fat cross; arrow symbols without shaft; msymbol(invisible) draws nothing (twoway notes and draws the default)',

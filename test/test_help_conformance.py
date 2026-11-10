@@ -1016,8 +1016,10 @@ class TestTheParsersFoundSomething:
         # outside the listed functions (WP-43 LT-20).
         # old -> new: 471 -> 472, the Differences sub-point The window
         # font face (WP-45 GW-10).
-        assert len(defs) == 472, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 472 "
+        # old -> new: 472 -> 471, basic:PT-3 the sub-point naming mlabel(t*)
+        # among the forms dash refuses (it draws no labels, as twoway).
+        assert len(defs) == 471, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 471 "
             f"measured 08nov2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).

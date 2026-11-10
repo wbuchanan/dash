@@ -496,6 +496,50 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w47_run' {
 }
 * ==== end S02 ====
 
+* ==== S02 basic:PT-3: no labels for an mlabel() pattern naming several variables ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w47_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4702-4: twoway draws as many marker-label texts for mlabel(t*)
+    // as for no mlabel() (measured live: SVG text counts), and the
+    // y's a pattern naming one variable labels; dash draws a label set
+    // for each y twoway labels: none for t*, one for (make t*).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local q4n 0
+    foreach m in "" "t*" "make t*" "tr*" {
+        local ++q4n
+        local ys = cond("`m'" == "tr*", "mpg", "mpg price")
+        local mo = cond("`m'" == "", "", "mlabel(`m')")
+        quietly twoway scatter `ys' weight in 1/5, `mo' name(q4702, replace)
+        cert_svg_export, name(q4702) file("`w47_work'/q4702_4.svg")
+        capture graph drop q4702
+        cert_svg_texts, file("`r(file)'")
+        local q4n`q4n' = r(n)
+        capture erase "`r(list)'"
+        capture erase "`w47_work'/q4702_4.svg"
+        if "`m'" == "" continue
+        dash clear
+        capture noisily dash scatter `ys' weight in 1/5, `mo' name(q4)
+        _w47_expect Q4702-4 "(_rc == 0)" "dash mlabel(`m') rc `=_rc'"
+        _dash_serve_spec, specpath("`w47_work'/q4702_4s.json") datapath("`w47_work'/q4702_4d.json")
+        local q2ty ""
+        local q2tx ""
+        local q2tk ""
+        python: import __main__ as _m4702; _m4702._q4702("`w47_work'/q4702_4s.json", "`w47_work'/q4702_4d.json", "`w47_work'/q4702_4a.py")
+        local want = cond("`m'" == "t*", 0, 1)
+        _w47_expect Q4702-4 "(${q4702_nlab} == `want')" "mlabel(`m'): dash draws ${q4702_nlab} label sets, want `want'"
+        dash clear
+    }
+    _w47_expect Q4702-4 "(`q4n2' == `q4n1')" "twoway mlabel(t*) draws `q4n2' texts, none `q4n1'"
+    _w47_expect Q4702-4 "(`q4n3' == `q4n1' + 5)" "twoway mlabel(make t*) draws `q4n3' texts, none `q4n1'"
+    _w47_done Q4702-4 "an mlabel() pattern naming several variables draws no labels for its y, as twoway draws none"
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 // ----------------------------------------------------------------
 // S03 basic:PT-4 helpers.  _q4703_1_tw reads twoway's first stroked
 // bar rect and its fill rect from an SVG; _q4703_1 builds the saved
