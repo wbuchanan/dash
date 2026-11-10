@@ -1019,6 +1019,7 @@ and now matches Stata.
 ### Fixed in WP-47
 
 - headlabel moves the marker labels of pcscatter and pccapsym and the labels of pcarrowi (plain or recast()) to the second point, as twoway does, and is never named in the note; pcscatter mpg weight trunk turn, mlabel(make) headlabel drew AMC Concord at (2930, 22), now at (40, 11) (WP-47, basic:PT-1)
+- mlalign(center) and mlalign(outside) draw the marker larger by one and two outline widths, as twoway draws them; both drew the default (inside) marker, and outside was named in a note (WP-47, basic:PT-6)
 
 ### Fixed in WP-46
 

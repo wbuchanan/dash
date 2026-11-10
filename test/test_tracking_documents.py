@@ -2927,7 +2927,6 @@ GAPS4_OPEN = {
     'MS-5': 'xvarformat()/yvarformat() do not reach marker labels of the plotted variable',
     'basic:PT-3': 'mlabel(t*) naming several variables draws labels; twoway draws none',
     'basic:PT-4': "Outline alignment: twoway strokes bars, histogram bins, areas and rbar inside and honours lalign(); dash centres every stroke and calls lalign() 'the same picture'; rcap caps butt-ended, not round",
-    'basic:PT-6': "mlalign(center) and inside draw one picture; the default marker is probably twoway's center picture",
     'basic:PT-5': 'dlalign(center|outside) changes dot size in twoway; dash drops it silently (tw_silent built from one default value)',
     'basic:PT-10': 'Spellings twoway draws as other options are only noted: symbol(), msymangle(), mlabels(), bcolor(), bfintensity(), blwidth(), blpattern(), afcolor(), afintensity(), bsymbol(), bmsize() on arrows (= barbsize)',
     'basic:PT-11': 'Noted options twoway draws: back markers (bm*), alalign/blalign, mlabalignment, mlabjustification, bartype(spanning), dropto(), numkeys(), omitanymiss on multi-y, dlpattern(), xtransform, onepanel etc.',

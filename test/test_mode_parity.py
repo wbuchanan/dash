@@ -3347,6 +3347,10 @@ CORPUS = [
           [plot_for("scatteri", {"recast": "connected"},
                     values=[[20.0, 3000.0, "A", None],
                             [25.0, 4000.0, "B", 3]])]),
+    # WP-47 basic:PT-6: a marker sized by its outline's alignment.
+    _case("scatter mlalign(outside)",
+          [plot_for("scatter", {"mlalign": "outside",
+                                "mlwidth": "vthick"})]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

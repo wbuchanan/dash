@@ -133,10 +133,9 @@ class TestMlalign:
 
     @pytest.mark.parametrize("mode", MODES)
     def test_notes(self, mode, tmp_path):
-        for v, want in (("center", []), ("inside", []),
-                        ("outside", ["dash: mlalign(outside) is drawn "
-                                     "centred: the page cannot align a "
-                                     "stroke to a side."]),
+        # Flipped (WP-47 basic:PT-6): outside named "drawn centred" was
+        # wrong once the renderer draws it (test_stroke_align.py).
+        for v, want in (("center", []), ("inside", []), ("outside", []),
                         ("bogus", ["dash: named style bogus not found in "
                                    "class alignstroke, default attributes "
                                    "used"])):

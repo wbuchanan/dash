@@ -11960,6 +11960,20 @@ class SchemeParser:
                                            raw)
                 else "(a value that is no Stata style name)")
 
+    def alignstroke(self, role: str = "p") -> str:
+        """The scheme's stroke alignment for *role* (WP-47 D-47-03.b):
+        ``alignstroke <role>``, else ``alignstroke p``, else inside -- the
+        value of every entry of s2color, which stcolor includes
+        (stroke_align_truth.json ``schemes``).  A value other than inside,
+        center or outside is not read."""
+        props = getattr(self, "_props", None) or {}
+        for key in ("alignstroke " + str(role or "p").strip(),
+                    "alignstroke p"):
+            v = str(props.get(key, "") or "").strip()
+            if v in ("inside", "center", "outside"):
+                return v
+        return "inside"
+
     def _choice(self, key: str, allowed: "tuple[str, ...]", default: str,
                 what: str) -> str:
         """The scheme's value of *key* when it is one of *allowed*; else
@@ -17073,17 +17087,12 @@ class GlyphMapper:
                 glyph.angle = float(_a0) + math.radians(angle_deg)
                 if hasattr(glyph, "angle_units"):
                     glyph.angle_units = "rad"
-        # mlalign() (WP-31 E3): Bokeh strokes a marker's outline on its
-        # path, as twoway's center draws it; twoway's inside is the
-        # picture without the option (malign.inside), so both are silent.
-        # outside is named; another word in twoway's words (alignstroke).
+        # mlalign() (WP-47 basic:PT-6): inside, center and outside are drawn
+        # (_align_marker_size, last of all below), so they are silent; another
+        # word is noted in twoway's words (alignstroke) and drawn as the
+        # scheme's default, as twoway draws it (stroke_align_truth.json U02).
         _mla = str(options.get("mlalign", "") or "").strip()
-        if _mla == "outside":
-            _dash_warn_once(
-                ("mlalign", "outside"),
-                "dash: mlalign(outside) is drawn centred: the page cannot "
-                "align a stroke to a side.")
-        elif _mla and _mla not in ("center", "inside"):
+        if _mla and _mla not in _DASH_STROKE_ALIGNS:
             _dash_warn_once(
                 ("mlalign", _dash_display(_mla)),
                 f"dash: named style {_dash_display(_mla)} not found in class "
@@ -17133,6 +17142,82 @@ class GlyphMapper:
                     glyph.line_width = 0.0
             except (ValueError, AttributeError):
                 pass
+        # Last: the outline's alignment (WP-47 basic:PT-6), once the size
+        # and the outline's width are final.
+        self._align_marker_size(renderer, _dash_stroke_align(
+            options, "mlalign", self.scheme, "p"))
+
+    # Bokeh markers drawn as lines only: twoway's alignment does not move
+    # a line (D-47-03.e), so these keep their size.
+    _LINE_ONLY_MARKERS = frozenset(("x", "cross", "dash", "y", "asterisk"))
+
+    def _align_marker_size(self, renderer, align) -> None:
+        """Draw *renderer*'s markers so their outline lies where twoway's
+        *align* puts it (WP-47 basic:PT-6).
+
+        twoway draws a marker of size ``S`` with an outline ``w`` wide as a
+        fill circle of diameter ``S + w`` whose ring is stroked on the
+        circle of diameter ``S`` (inside, the default: the ring's outer edge
+        is the fill's), on the fill's edge (center) or half a width beyond
+        it (outside), so its outer diameter is ``S + w``, ``S + 2w`` or
+        ``S + 3w`` (stroke_align_truth.json M01-M03 and D01-D03, both
+        schemes: the ring's radius is the nominal one, the fill's, or the
+        fill's plus half a width; legend_keys_truth.json's key markers
+        too).  Bokeh strokes a marker's outline centred on its edge, so the
+        marker is drawn at ``S`` (inside), ``S + w`` (center) or ``S + 2w``
+        (outside): ``S + 2 * _dash_stroke_grow(align, w) + w``.  The size
+        it moved from is kept on the glyph (``_dash_stroke_nominal``), so a
+        second call -- the dots' dlalign(), the weighted sizes -- moves from
+        the nominal size, never twice.  A size that is a field (weighted
+        markers) is drawn through a ``CustomJSTransform`` adding the same
+        amount per value, so the saved page's and the served refit's
+        rescaled columns are moved too.  Nothing moves when the outline is
+        not drawn (no width, no colour, alpha 0), for a line-only marker
+        (x, plus, rcap's caps) or a cap renderer."""
+        glyph = getattr(renderer, "glyph", None)
+        if glyph is None or not hasattr(glyph, "size"):
+            return
+        if "dash_cap" in (getattr(renderer, "tags", None) or ()):
+            return
+        mk = _dash_spec_value(getattr(glyph, "marker", None))
+        if isinstance(mk, str) and mk in self._LINE_ONLY_MARKERS:
+            return
+        lw = _dash_spec_value(getattr(glyph, "line_width", None))
+        la = _dash_spec_value(getattr(glyph, "line_alpha", 1.0))
+        lc = _dash_spec_value(getattr(glyph, "line_color", None))
+        drawn = (isinstance(lw, (int, float)) and not isinstance(lw, bool)
+                 and math.isfinite(lw) and lw > 0
+                 and lc is not None
+                 and not (isinstance(la, (int, float)) and la <= 0))
+        g2 = (2.0 * _dash_stroke_grow(align, lw) + float(lw)) \
+            if drawn else 0.0
+        size = glyph.size
+        prev = getattr(glyph, "_dash_stroke_nominal", None)
+        if isinstance(size, (int, float)) and not isinstance(size, bool):
+            if not math.isfinite(size):
+                return
+            if prev is not None and prev[1] == size:
+                size = prev[0]
+            out = max(float(size) + g2, _DASH_MIN_MARKER_PX) \
+                if size > 0 else float(size)
+            glyph.size = out
+            glyph._dash_stroke_nominal = (float(size), out)
+            return
+        field = size if isinstance(size, str) else _dash_spec_field(size)
+        if not field or g2 == 0.0:
+            return
+        from bokeh.models import CustomJSTransform
+        from bokeh.transform import transform
+        tf = CustomJSTransform(
+            args={"g": g2, "lo": _DASH_MIN_MARKER_PX},
+            func="return x > 0 ? Math.max(x + g, lo) : x",
+            v_func="const out = new Float64Array(xs.length);\n"
+                   "for (let i = 0; i < xs.length; i++) {\n"
+                   "  const v = xs[i];\n"
+                   "  out[i] = v > 0 ? Math.max(v + g, lo) : v;\n"
+                   "}\nreturn out")
+        glyph.size = transform(field, tf)
+        glyph._dash_stroke_nominal = (field, g2)
 
     def _apply_fill_opts(self, renderer: Any, options: dict[str, str],
                          base: Any = None, intensity: float = 1.0) -> None:
@@ -21013,6 +21098,12 @@ class GlyphMapper:
         glyph = getattr(renderer, "glyph", None)
         src = getattr(renderer, "data_source", None)
         base = getattr(glyph, "size", None)
+        # The size twoway's weights multiply is the nominal one, before the
+        # outline's alignment moved it (WP-47 basic:PT-6); the alignment is
+        # applied again to the weighted column below.
+        _nom = getattr(glyph, "_dash_stroke_nominal", None)
+        if _nom is not None and _nom[1] == base:
+            base = _nom[0]
         if (src is None or wexp not in src.data
                 or not isinstance(base, (int, float))
                 or isinstance(base, bool)):
@@ -21043,6 +21134,10 @@ class GlyphMapper:
             col = f"{_DASH_RP}_wsize{k}"
         src.data[col] = sizes
         glyph.size = col
+        # Drawn with the outline's alignment, per value (WP-47 basic:PT-6).
+        glyph._dash_stroke_nominal = None
+        self._align_marker_size(renderer, _dash_stroke_align(
+            options, "mlalign", self.scheme, "p"))
         # The layer's own size, which twoway draws its legend key at
         # (WP-43 LT-21, legend_keys_truth.json wt_*: _dash_key_painter).
         renderer._dash_wsize_base = float(base)
@@ -29526,6 +29621,54 @@ def _dash_warn_once(key, message, stacklevel=4):
         return
     _DASH_NOTED.add(key)
     warnings.warn(message, UserWarning, stacklevel=stacklevel)
+
+
+# WP-47 (basic:PT-6, basic:PT-5): the smallest size a marker is drawn at
+# once its outline alignment has moved it, so a marker with a zero inner
+# size still draws its stroke.
+_DASH_MIN_MARKER_PX = 0.01
+_DASH_STROKE_ALIGNS = ("inside", "center", "outside")
+
+
+def _dash_stroke_grow(align, w) -> float:
+    """How far, in px, a centred stroke of width *w* must move outward on
+    each side to lie where twoway's *align* puts it (WP-47 D-47-03.a):
+    ``-w/2`` for inside (and any other word), 0 for center, ``+w/2`` for
+    outside.  A width that is not a finite positive number moves nothing.
+    Measured on bars: twoway's inside outline lies half a width inside the
+    fill's edge, a centred one on it and an outside one half a width beyond
+    it (stroke_align_truth.json A01-A03).  A marker's fill is itself half a
+    width larger than its size, so a marker adds *w* to twice this
+    (``GlyphMapper._align_marker_size``)."""
+    try:
+        w = float(w)
+    except (TypeError, ValueError):
+        return 0.0
+    if not math.isfinite(w) or w <= 0.0:
+        return 0.0
+    a = str(align or "").strip()
+    if a == "center":
+        return 0.0
+    if a == "outside":
+        return w / 2.0
+    return -w / 2.0
+
+
+def _dash_stroke_align(options, key, scheme=None, role="p") -> str:
+    """The stroke alignment a layer's *key* (``lalign``, ``mlalign`` or
+    ``dlalign``) asks for: its word when it is inside, center or outside;
+    else (absent, or a word twoway notes and ignores) the scheme's
+    ``alignstroke`` entry for *role* (``SchemeParser.alignstroke``), and
+    inside when the scheme has none, as s2color's every entry reads
+    (stroke_align_truth.json ``schemes``)."""
+    raw = str((options or {}).get(key, "") or "").strip()
+    if raw in _DASH_STROKE_ALIGNS:
+        return raw
+    if scheme is not None and hasattr(scheme, "alignstroke"):
+        v = scheme.alignstroke(role)
+        if v in _DASH_STROKE_ALIGNS:
+            return v
+    return "inside"
 
 
 def _dash_style_note(option, value, what, using="the scheme's default",
@@ -80704,6 +80847,9 @@ class ServerAppBuilder:
                 "# (option, value, what); _dash_reset_notes clears it at the",
                 "# top of make_document, as DashRenderer.render() does.",
                 "_DASH_NOTED = set()", "",
+                # WP-47 basic:PT-6: the marker size floor and the words.
+                "_DASH_MIN_MARKER_PX = %r" % (_DASH_MIN_MARKER_PX,),
+                "_DASH_STROKE_ALIGNS = %r" % (_DASH_STROKE_ALIGNS,), "",
                 # The contour surface's bounds (WP-31 B4a): before the
                 # helpers whose defaults read them.
                 "_DASH_CONTOUR_EXACT_MAX = %d" % _DASH_CONTOUR_EXACT_MAX,
@@ -80720,6 +80866,8 @@ class ServerAppBuilder:
                     # once-per-render set's helpers, and the graph-level
                     # colour and proportion readers the figure block calls.
                     _dash_style_note, _dash_warn_once, _dash_reset_notes,
+                    # WP-47 basic:PT-6: the outline alignment's rule.
+                    _dash_stroke_grow, _dash_stroke_align,
                     _dash_graph_color, _dash_ref_in, _dash_scheme_at_ref,
                     _dash_figure_aspect, _dash_scale_factor,
                     _dash_scale_columns, _dash_apply_scale, _dash_frame_aspect,

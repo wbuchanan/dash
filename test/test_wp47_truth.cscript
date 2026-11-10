@@ -292,6 +292,47 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w47_run' {
     display as text "S01 end " c(current_date) " " c(current_time)
 }
 * ==== end S01 ====
+* ==== S03 basic:PT-6: markers sized by their outline alignment ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w47_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4703-2: twoway draws inside, center and outside as three pictures
+    // (the ring's radius moves, measured live from its SVG), and dash
+    // takes mlalign(outside) in silence: no "drawn centred" note.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local q2r ""
+    foreach a in inside center outside {
+        quietly twoway scatter mpg weight in 1/5, mlwidth(vthick) mlalign(`a') name(q4703m, replace)
+        cert_svg_export, name(q4703m) file("`w47_work'/q4703m_`a'.svg")
+        python: import re as _re4703; _t = open(r"`w47_work'/q4703m_`a'.svg").read(); _rr = [float(v) for v in _re4703.findall(r'<circle[^>]* r="([0-9.]+)"', _t)][:2]; from sfi import Macro as _M4703; _M4703.setLocal("q2v", "%.2f" % _rr[-1])
+        local q2r "`q2r' `q2v'"
+        capture erase "`w47_work'/q4703m_`a'.svg"
+    }
+    capture graph drop q4703m
+    local q2a : word 1 of `q2r'
+    local q2b : word 2 of `q2r'
+    local q2c : word 3 of `q2r'
+    _w47_expect Q4703-2 "(`q2a' < `q2b' & `q2b' < `q2c')" "twoway's ring radii `q2r' do not grow inside < center < outside"
+    local lf "`w47_work'/q4703_2.log"
+    capture erase "`lf'"
+    quietly log using "`lf'", text replace name(q47032)
+    dash clear
+    capture noisily dash scatter mpg weight in 1/5, mlalign(outside) name(q4703b)
+    local drc = _rc
+    quietly log close q47032
+    _w47_expect Q4703-2 "(`drc' == 0)" "dash mlalign(outside) rc `drc'"
+    cert_log_has "`lf'", needle("drawn centred")
+    _w47_expect Q4703-2 "(r(count) == 0)" "dash still says mlalign(outside) is drawn centred"
+    cert_log_has "`lf'", needle("mlalign()")
+    _w47_expect Q4703-2 "(r(count) == 0)" "dash names mlalign() `r(count)' times"
+    dash clear
+    _w47_done Q4703-2 "twoway's ring radii `q2r'; dash takes mlalign(outside) in silence"
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
 
 * ==== append new blocks above this line ====
 

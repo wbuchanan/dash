@@ -5946,11 +5946,11 @@
   - Suggested fix: Inset or outset closed shapes by half the width; round cap ends (M12: resolved by drawing).
   - Resolution: Not fixed because WP-47 section 47-03 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
 
-- [ ] Title: mlalign(center) and inside draw one picture; the default marker is probably twoway's center picture
+- [x] Title: mlalign(center) and inside draw one picture; the default marker is probably twoway's center picture
   - File Names and Line Numbers: varlabel_mlabel_truth malign hashes; dash_render.py:15937-15951; dash.sthlp:4769-4772
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids basic:PT-6; confirmed (default size inferred, not measured); tracked: partly documented. Registered as GAPS4 basic:PT-6 (WP-47, section 47-03, Fix).
   - Suggested fix: Measure diameters; compensate size (M12: resolved by drawing).
-  - Resolution: Not fixed because WP-47 section 47-03 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+  - Resolution: Fixed 10nov2026 (WP-47, basic:PT-6). Measured (test/fixtures/stroke_align_truth.json M01-M04, stcolor and s2color): twoway draws a marker of size S with an outline w wide as a fill circle S + w across whose ring lies on the circle S across under inside (the default), on the fill's edge under center and half a width beyond it under outside, so its outer diameter is S + w, S + 2w or S + 3w. dash's default, drawn at S with Bokeh's centred stroke, was already twoway's inside picture (the audit's inferred centre picture was not what twoway draws); center and outside drew it too. GlyphMapper._align_marker_size now draws center at S + w and outside at S + 2w, weighted sizes through a CustomJSTransform, in both modes, and mlalign(outside) is no longer named. Pinned by test/test_stroke_align.py::TestMarkers::test_outer_diameter.
 
 - [ ] Title: dlalign(center|outside) changes dot size in twoway; dash drops it silently (tw_silent built from one default value)
   - File Names and Line Numbers: P43, Q24; dot_truth D30; extract_noted_option_truth.do:125

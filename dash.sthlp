@@ -5767,10 +5767,10 @@ boundaries take the first two, a ci fit's band and line the first, as
 {cmd:twoway} writes {cmd:Q/95% CI} and {cmd:Q} -- and {cmd:xvarlabel("")}
 draws no x title.
 
-{phang}{opt mlalign(alignmentstyle)} is taken as {cmd:twoway} takes it:
-a marker's outline is drawn centred on its edge, which is {cmd:twoway}'s
-{cmd:center}; {cmd:inside}, {cmd:twoway}'s default, is silent too,
-{cmd:outside} is named in a note, and another word is named in
+{phang}{opt mlalign(alignmentstyle)} is drawn as {cmd:twoway} draws it: a
+marker's outline lies inside its edge by default ({cmd:inside}), centred
+on it under {cmd:center} and outside it under {cmd:outside}, so the
+marker's outer size is {cmd:twoway}'s; another word is named in
 {cmd:twoway}'s words.  {opt mlabstyle(labelstyle)} styles the marker
 labels as the scheme's labelstyle does: {cmd:mlabstyle(p2)} draws them in
 p2's label colour at 3 o'clock, {cmd:p2bar} at 12; {cmd:mlabcolor()},
