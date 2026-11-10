@@ -146,6 +146,31 @@ class TestMarkers:
         assert dr._dash_spec_field(p.glyph.size) == "__dash_wsize"
         assert p.glyph.size.transform.args["g"] == 0.0
 
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("n, msize", [(5, "0"), (6, "0.001")])
+    @pytest.mark.parametrize("align", ALIGNS)
+    def test_below_the_smallest_ring_paints(self, mode, n, msize, align,
+                                            tmp_path):
+        """twoway draws a marker smaller than its smallest ring at that ring
+        and strokes its outline round it (M05, M06: msize(0) and 0.001
+        draw one picture).  dash draws it at least _DASH_MIN_MARKER_PX
+        across, the smallest stroked circle Chrome paints, so the dot shows;
+        a size of 0 is drawn too.  Bug: the floor was 0.01 px, which
+        Chrome paints nothing for, and msize(0) drew size 0."""
+        assert dr._DASH_MIN_MARKER_PX >= 0.2
+        base = _scatters(figs(mode, tmp_path, [sc(mlwidth="vthick")])[0])
+        (r,) = _scatters(figs(mode, tmp_path, [sc(
+            msize=msize, mlwidth="vthick", mlalign=align)])[0])
+        g = r.glyph
+        w = float(g.line_width)
+        for k in ("st", "s2"):
+            ring = base[0].glyph.size * T["M%02d_%s" % (n, k)]["ring_r"] \
+                / T["M01_%s" % k]["ring_r"]
+            want = max(ring + 2 * dr._dash_stroke_grow(align, w) + w,
+                       dr._DASH_MIN_MARKER_PX)
+            assert g.size == pytest.approx(want, abs=0.2), (k, g.size)
+        assert g.size >= dr._DASH_MIN_MARKER_PX
+
     def test_no_outline_no_move(self, tmp_path):
         (r,) = _scatters(figs("saved", tmp_path, [sc(
             mlalign="outside", mlcolor="none")])[0])

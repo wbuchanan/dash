@@ -1035,6 +1035,7 @@ and now matches Stata.
 - A dot plot's dot is drawn at twoway's size, 0.30 rs across with its outline, the 1 px floor on the dot as drawn, fill and outline; dash floored the fill to 1 px before adding the outline, 1.77 px (WP-47, PIC-16)
 - Under bokeh serve, every session after the first is built, keeps no slot once closed and recomputes on a move; the first session's end left later sessions an empty page, never freed its slot and logged the key unredacted.
 - A saved histogram given bin(), width(), start() or discrete is binned again over the kept rows after a move, as twoway and the served page bin them; it kept the full data's bins and was marked (bins unfiltered).
+- A marker smaller than twoway's smallest ring, msize(0) included, is drawn 0.2 px across, its outline round it, as twoway draws it; it painted nothing.
 
 ### Fixed in WP-46
 

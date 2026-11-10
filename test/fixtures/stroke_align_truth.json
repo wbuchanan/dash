@@ -631,6 +631,26 @@
   "ring_r": 16.87,
   "stroke_width": 45.36
  },
+ "M05_s2": {
+  "fill_r": 20.41,
+  "ring_r": 0.25,
+  "stroke_width": 40.32
+ },
+ "M05_st": {
+  "fill_r": 23.02,
+  "ring_r": 0.34,
+  "stroke_width": 45.36
+ },
+ "M06_s2": {
+  "fill_r": 20.41,
+  "ring_r": 0.25,
+  "stroke_width": 40.32
+ },
+ "M06_st": {
+  "fill_r": 23.02,
+  "ring_r": 0.34,
+  "stroke_width": 45.36
+ },
  "U01": {
   "lines": [
    "(note:  named style bogus not found in class alignstroke, default attributes used)",
@@ -658,8 +678,8 @@
    "default"
   ],
   "born_date": "04 Nov 2026",
-  "dash_commit": "521467f30ed83f91016d87b0d031009e3f3927c4",
-  "extracted": "10 Nov 2026 01:10:05",
+  "dash_commit": "8d5aaf74bdd2299a4b8b77555af9aa8760d297a7",
+  "extracted": "10 Nov 2026 08:06:51",
   "source": "scripts/extract_stroke_align_truth.do",
   "stata_version": "19.5",
   "svg_px_per_pt": "SVG units: 5400 per 7.5in graph, 10 per pt"

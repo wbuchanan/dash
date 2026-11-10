@@ -17254,8 +17254,16 @@ class GlyphMapper:
                 return
             if prev is not None and prev[1] == size:
                 size = prev[0]
+            # A size of 0 is floored too while the marker paints (its
+            # outline or its fill): twoway draws it at its smallest ring.
+            paints = drawn or (
+                _dash_spec_value(getattr(glyph, "fill_color", None))
+                is not None
+                and not (isinstance(fa := _dash_spec_value(
+                    getattr(glyph, "fill_alpha", 1.0)), (int, float))
+                    and fa <= 0))
             out = max(float(size) + g2, _DASH_MIN_MARKER_PX) \
-                if size > 0 else float(size)
+                if size > 0 or (size == 0 and paints) else float(size)
             glyph.size = out
             glyph._dash_stroke_nominal = (float(size), out)
             return
@@ -29809,10 +29817,14 @@ def _dash_warn_once(key, message, stacklevel=4):
     warnings.warn(message, UserWarning, stacklevel=stacklevel)
 
 
-# WP-47 (basic:PT-6, basic:PT-5): the smallest size a marker is drawn at
-# once its outline alignment has moved it, so a marker with a zero inner
-# size still draws its stroke.
-_DASH_MIN_MARKER_PX = 0.01
+# WP-47 (basic:PT-6, basic:PT-5): the smallest size a marker that paints
+# is drawn at, msize(0) included.  twoway draws a marker smaller than its
+# smallest ring at that ring, its outline stroked round it
+# (stroke_align_truth.json M05, M06: msize(0) and 0.001 draw one picture,
+# a ring of 0.34 units against the default marker's 16.87 under stcolor,
+# about 0.15 px).  Chrome paints no pixel for a stroked circle 0.05 px
+# across or less (see _DASH_ZERO_WEIGHT_PX), so the floor is 0.2 px.
+_DASH_MIN_MARKER_PX = 0.2
 _DASH_STROKE_ALIGNS = ("inside", "center", "outside")
 # WP-47 DG-12: the size a weighted marker of size zero (a zero or missing
 # weight) is drawn at, so its outline paints twoway's minimal dot.  twoway

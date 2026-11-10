@@ -6030,6 +6030,12 @@
   - Suggested fix: Run _histogram_grid's whole rule on the page.
   - Resolution: Fixed 10nov2026. The recount config carries width(), start() and bin() as _histogram_grid parsed them, and the page derives the grid from the kept rows by the same rule (discrete: width() or the smallest spacing, from min - width/2; else start() or the minimum, width() bars to the maximum or bin() bars over it, the default count otherwise; 1000 at most); the layer is no longer marked. A histogram of a date keeps its bins and the mark. Covered by test/test_histogram_bin_axis.py::TestTheGridAfterAMove (saved equals served for eight option sets under a dropdown and a range move); test/test_saved_stale_cue.py's frozen histogram is now a %td date's.
 
+- [x] Title: A marker below 0.05 px (PT-6's 0.01 px floor) painted nothing in Chrome; msize(0) drew nothing
+  - File Names and Line Numbers: dash_render.py _DASH_MIN_MARKER_PX, GlyphMapper._align_marker_size
+  - Description: Found 10nov2026 by the WP-47 DG-12 measurement (unfiled until then): Chrome paints no pixel for a stroked circle 0.05 px across or less, and PT-6 floored a marker at 0.01 px. Measured (test/fixtures/stroke_align_truth.json M05, M06, scripts/extract_stroke_align_truth.do): twoway draws msize(0) and msize(0.001) as one picture, a ring of 0.34 units against the default marker's 16.87 (stcolor; 0.25 under s2color) with the outline stroked round it. dash drew msize(0) at size 0 and msize(0.001) at 0.01 px: nothing on the page.
+  - Suggested fix: Floor at a size Chrome paints, size 0 included.
+  - Resolution: Fixed 10nov2026. _DASH_MIN_MARKER_PX is 0.2 px (DG-12's measured size, within 0.05 px of twoway's ring at the default size), and a marker of size 0 is floored too while it paints (its outline or its fill); dash's own zero-size helper markers paint nothing and keep size 0. Covered by test/test_stroke_align.py::TestMarkers::test_below_the_smallest_ring_paints (M05, M06, each alignment, both modes).
+
 - [x] Title: Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x')
   - File Names and Line Numbers: D03, E04, D05
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids DG-7; confirmed; tracked: untracked. Registered as GAPS4 DG-7 (WP-47, section 47-02, Fix).

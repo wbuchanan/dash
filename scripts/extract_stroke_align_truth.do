@@ -7,7 +7,8 @@
 *!
 *! Each probe is exported as SVG and read back: for a rectangle the fill
 *! rect and the outline rect (x, y, w, h, stroke width); for a marker or a
-*! dot the fill circle's r, the outline circle's r and its stroke width;
+*! dot the fill circle's r, the outline circle's r and its stroke width
+*! (M05-M06: a marker below twoway's smallest ring, msize(0) and 0.001);
 *! for an area or rarea the stroked path's width and its clip (the shape,
 *! the shape's outside by evenodd, or none); for rcap every line's
 *! stroke-linecap.  Probes are run under scheme(stcolor) (keys _st) and
@@ -115,6 +116,10 @@ foreach sch of local schemes {
     _zs_probe A23_`k' `sch' twoway bar mpg weight in 1/5, horizontal lwidth(vthick) barwidth(100) base(1) xscale(log)
     _zs_probe A24_`k' `sch' twoway bar mpg weight in 1/5, lwidth(vthick) barwidth(1)
     _zs_probe C01_`k' `sch' twoway rcap yl yh weight in 1/5, lwidth(vthick)
+    * A marker smaller than twoway's smallest ring: drawn at that ring,
+    * its outline stroked round it (the minimal dot).
+    _zs_probe M05_`k' `sch' twoway scatter mpg weight in 1/5, msize(0) mlwidth(vthick)
+    _zs_probe M06_`k' `sch' twoway scatter mpg weight in 1/5, msize(0.001) mlwidth(vthick)
     sysuse uslifeexp, clear
     _zs_probe A21_`k' `sch' twoway area le_wm year, lwidth(vthick)
 }
@@ -279,6 +284,8 @@ for k in ("st", "s2"):
     for n in range(1, 5):
         d["M%02d_%s" % (n, k)] = _circle_probe(_read("M%02d_%s" % (n, k)))
         d["D%02d_%s" % (n, k)] = _circle_probe(_read("D%02d_%s" % (n, k)))
+    for n in (5, 6):
+        d["M%02d_%s" % (n, k)] = _circle_probe(_read("M%02d_%s" % (n, k)))
     d["C01_" + k] = {"linecaps": _caps(_read("C01_" + k))}
 for u in (1, 2, 3):
     with open(W + "/U%02d.rc" % u) as fh:
