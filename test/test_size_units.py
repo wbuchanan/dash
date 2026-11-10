@@ -460,10 +460,14 @@ class TestExplicitMarkerSizes:
         fig = _figure(mode, tmp_path, [_sc(msize="*2")], "stcolor")
         assert _marker(fig) == pytest.approx(8.0, abs=1e-3)
 
-    def test_negative_or_zero_draws_nothing_silently(self, mode, tmp_path):
+    def test_negative_or_zero_draws_the_smallest_ring_silently(self, mode, tmp_path):
+        # Flipped: twoway strokes its smallest ring for a size of zero or
+        # less (size_units_truth.json marker_r_units > 0 on those probes;
+        # stroke_align_truth.json M05), so dash floors it at
+        # _DASH_MIN_MARKER_PX, the smallest ring Chrome paints (10387b9).
         for raw in ("-1", "*-1", "-1pt", "0"):
             fig, notes = _figure_notes(mode, tmp_path, [_sc(msize=raw)])
-            assert _marker(fig) == 0, raw
+            assert _marker(fig) == pytest.approx(dr._DASH_MIN_MARKER_PX), raw
             assert not [n for n in notes if "msize(" in n], (raw, notes)
 
 
@@ -1120,6 +1124,11 @@ class TestStataRatios:
         got = _dash_size(mode, tmp_path, site, scheme, v)
         tw = _tw_size(rec)
         unit = _PX_PER_RS if site == "marker" else _PT_PER_RS
+        if tw <= 0 and site == "marker" and (rec.get("marker_r_units") or 0) > 0:
+            # twoway strokes its smallest ring round a marker of size zero
+            # or less; dash draws its floor (10387b9).
+            _expect(got == pytest.approx(dr._DASH_MIN_MARKER_PX, abs=1e-9), "%s: twoway draws its smallest ring, dash draws %r" % (pid, got))
+            return
         if tw <= 0:
             _expect(got == pytest.approx(0, abs=1e-9), "%s: twoway draws nothing, dash draws %r" % (pid, got))
             return

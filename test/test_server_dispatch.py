@@ -53,6 +53,9 @@ _APP_OWN_TYPE_TESTS = {
     ("_dash_draw_layer", ("function",)): 1,
     # mband and mspline join in x order (their curve is a smooth over x).
     ("_dash_draw_layer", ("mband", "mspline")): 1,
+    # WP-47 PIC-10 (ac1b780): a dot plot's source keeps the rows missing
+    # y, which draw a dot row (_dash_dot_extends), beside mband/mspline's.
+    ("_dash_draw_layer", ("dot",)): 1,
     # The launcher's start line names the slow estimators it warms up.
     ("<module>", ("fpfit", "fpfitci", "kdensity", "lowess", "lpoly",
                   "lpolyci")): 1,
