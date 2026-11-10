@@ -1815,7 +1815,13 @@ there, is an invalid point.  The literal is read as data and never run.
     ends at the frame on a side without an axis, so it centres the line
     on the edge, half of it inside the plot region.
 
-{phang2}23.  {ul:Resource limits.}  {cmd:twoway} draws any amount of data
+{phang2}23.  {ul:Line patterns are drawn to the whole pixel.}  A line
+    pattern's dashes are drawn to the whole pixel (the browser library
+    takes whole pixels), so {cmd:dot} and {cmd:tight_dot} are coarser
+    than {cmd:twoway}'s (the line pattern sentence under Validation
+    above).
+
+{phang2}24.  {ul:Resource limits.}  {cmd:twoway} draws any amount of data
     and any number of plots, panels, lines and texts; {cmd:dash} also takes
     data of any size; it refuses, trims or rebins only beyond the limits in
     {help dash##limits:Resource limits} -- its count limits and its fixed
@@ -1842,12 +1848,6 @@ there, is an invalid point.  The literal is read as data and never run.
 {phang2}    {ul:Long text.}  A {cmd:text()} or text option whose globals expand past 4,000 characters is refused, {cmd:r(198)}, where {cmd:twoway} draws it; see {help dash##limits:Resource limits}.
 
 {phang2}    {ul:A global's =exp outside the listed functions is drawn as written.}  A {cmd:`=}{it:exp}{cmd:'} in a global's value in a graph's text is evaluated as {cmd:twoway} evaluates it when {it:exp} uses only the operators and functions listed there; one that names a variable, a scalar, a result or another function, and a macro reference, is drawn as written with a note; see {help dash##added_text:Added text}.
-
-{phang2}24.  {ul:Line patterns are drawn to the whole pixel.}  A line
-    pattern's dashes are drawn to the whole pixel (the browser library
-    takes whole pixels), so {cmd:dot} and {cmd:tight_dot} are coarser
-    than {cmd:twoway}'s (the line pattern sentence under Validation
-    above).
 
 
 {marker subcommands}
