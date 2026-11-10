@@ -527,7 +527,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **RH-9 Tracked:** Closed in WP-46, BUGS.md "Orientation flags judged differently: dot with a non-bar recast takes h/v (twoway refuses); scatteri recast to bar-like refuses h/v (twoway turns it); recast(b)/(ba) takes h/v and draws p1bar (twoway refuses and draws p1)", commit 4aa663f.
 - **RH-11 Tracked:** Closed in WP-46, BUGS.md "Abbreviated yx names on y2xtype sources (sc, li, co, b) are read as full names; twoway notes them and draws rspike", commit 492ce02.
 - **basic:PT-1 Tracked:** Closed in WP-47, BUGS.md "headlabel is ignored on pcscatter/pccapsym with mlabel() and on pcarrowi labels: labels stay at the first point", commit pending.
-- **MS-7 Tracked:** Open (WP-47 section 47-01).
+- **MS-7 Tracked:** Closed in WP-47, BUGS.md "Immediate-type labels: pci labels dropped under recast() with a false note; scatteri labels vanish under recast(); mlabel(nosuch) on scatteri is refused r(111)", commit pending.
 - **MS-2 Tracked:** Open (WP-47 section 47-02).
 - **MS-3 Tracked:** Open (WP-47 section 47-02).
 - **MS-5 Tracked:** Open (WP-47 section 47-02).

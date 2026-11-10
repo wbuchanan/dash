@@ -2465,7 +2465,8 @@ end
 // specified", r(103) -- whatever the variable, string or numeric; a
 // variable that does not exist it refuses with r(111) on every type but
 // histogram and function, which never read the option at all
-// (mlabel(nosuchvar) is rc 0 there, and draws nothing).
+// (mlabel(nosuchvar) is rc 0 there, and draws nothing), and the
+// immediate types scatteri, pci and pcarrowi (WP-47 MS-7, the same).
 //
 // So mlabel() is refused on mspline and mband, naming it, when its
 // variable exists -- one that does not is refused r(111) by the value
@@ -2497,7 +2498,15 @@ program define _dash_fold_mlab, sclass
     if !`: length local v' exit
     local mlab_unread  "histogram function"
     local mlab_refused "mspline mband"
-    if `: list ptype in mlab_unread' {
+    // WP-47 MS-7: twoway's immediate types label from their own lists and
+    // never look mlabel() up in the data: scatteri, pci and pcarrowi take
+    // mlabel(nosuch), rc 0, and draw no label from it; .. and = are
+    // refused there as on histogram, r(198) ".. not allowed in option
+    // mlabel()" and "invalid syntax" (measured 10nov2026,
+    // test/fixtures/immediate_label_truth.json M01-M07).  dash refused
+    // mlabel(nosuch) r(111).
+    local mlab_imm     "scatteri pci pcarrowi"
+    if `: list ptype in mlab_unread' | `: list ptype in mlab_imm' {
         mata: _dash_stylelist_locals(st_local("v"), "_fm")
         forvalues j = 1/`_fmn' {
             if "`_fmq`j''" == "1" continue
@@ -2506,7 +2515,7 @@ program define _dash_fold_mlab, sclass
                 display as error "`_c' not allowed in option mlabel()"
                 exit 198
             }
-            if "`_c'" == "=" & "`ptype'" == "histogram" {
+            if "`_c'" == "=" & ("`ptype'" == "histogram" | `: list ptype in mlab_imm') {
                 display as error "invalid syntax"
                 exit 198
             }
@@ -6887,13 +6896,9 @@ program define _dash_process_segment, rclass
             else if `_pci_hasleft' {
                 mata: _dash_note("dash: `ptype' ignored '", st_local("_pci_left"), "' at the end, too little for another `_imm_unit' (`_imm_xy'), as twoway does.")
             }
-            // twoway pci is an immediate pcspike: its serset carries the
-            // labels and it draws none of them (measured from its SVG
-            // export, with mlabcolor() and mlabposition() or without).
-            // Neither does dash -- and it says so, where twoway is silent.
-            if "`ptype'" == "pci" & `_pci_nlab' > 0 {
-                mata: _dash_note("dash: pci draws no labels, as twoway pci draws none; a scatteri layer can label a point.", "", "")
-            }
+            // WP-47 MS-7: pci's labels are drawn under recast() to a
+            // labelled pc type (map_pci_literal) and, like twoway pci,
+            // not otherwise; nothing is printed.
         }
     }
     else {

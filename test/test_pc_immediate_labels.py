@@ -248,3 +248,101 @@ class TestTheHelp:
         assert ("{cmd:headlabel} moves those labels to the second point, the "
                 "head, on {cmd:pcscatter}, {cmd:pccapsym}, {cmd:pcarrow}, "
                 "{cmd:pcbarrow} and {cmd:pcarrowi}, as {cmd:twoway} does") in s
+
+
+# ===========================================================================
+# MS-7 -- the immediate types' labels under recast(), and mlabel()
+# ===========================================================================
+
+#: pci's recast targets with marker labels (immediate_label_truth.json
+#: R01-R04: twoway draws A and B at the first points under each).
+_PCI_TARGETS = {"R01": "pccapsym", "R02": "pcarrow", "R03": "pcbarrow",
+                "R04": "pcscatter"}
+#: scatteri's recast targets, S01-S08.
+_SI_TARGETS = {"S01": "scatter", "S02": "line", "S03": "connected",
+               "S04": "area", "S05": "bar", "S06": "spike",
+               "S07": "dropline", "S08": "dot"}
+_SI_VALUES = [[20.0, 3000.0, "A", None], [25.0, 4000.0, "B", None]]
+
+
+def _twoway_labelled(case):
+    return {lab["text"] for lab in _truth()[case]["labels"]} == {"A", "B"}
+
+
+class TestImmediateRecast:
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("case", sorted(_PCI_TARGETS))
+    def test_pci_labels_under_recast(self, mode, case, tmp_path):
+        assert _twoway_labelled(case), case
+        plot = plot_for("pci", {"recast": _PCI_TARGETS[case]},
+                        values=_PC_VALUES)
+        got = _label_points(_figs(mode, tmp_path, plot))
+        assert got == {("A", 2000.0, 20.0), ("B", 3000.0, 25.0)}
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_pci_recast_headlabel_labels_the_head(self, mode, tmp_path):
+        """R05: recast(pccapsym) headlabel draws them at the second points."""
+        fx = _truth()["R05"]
+        assert {lab["text"] for lab in fx["labels"]} == {"A", "B"}
+        assert all(lab["x"] > 3900 for lab in fx["labels"])
+        plot = plot_for("pci", {"recast": "pccapsym",
+                                "headlabel": "headlabel"},
+                        values=_PC_VALUES)
+        got = _label_points(_figs(mode, tmp_path, plot))
+        assert got == {("A", 4000.0, 30.0), ("B", 4000.0, 35.0)}
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_pci_plain_draws_none(self, mode, tmp_path):
+        assert not _truth()["R06"]["labels"]
+        plot = plot_for("pci", {}, values=_PC_VALUES)
+        assert _label_points(_figs(mode, tmp_path, plot)) == set()
+
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("case", sorted(_SI_TARGETS))
+    def test_scatteri_labels_under_recast(self, mode, case, tmp_path):
+        plot = plot_for("scatteri", {"recast": _SI_TARGETS[case]},
+                        values=_SI_VALUES)
+        got = {t for t, _x, _y in _label_points(_figs(mode, tmp_path, plot))}
+        assert got == ({"A", "B"} if _twoway_labelled(case) else set()), case
+
+    def test_no_pci_note(self):
+        with open(os.path.join(_ROOT, "dash.ado"), encoding="utf-8") as fh:
+            assert "pci draws no labels" not in fh.read()
+
+    def test_the_constant(self):
+        want = {t for c, t in _SI_TARGETS.items() if _twoway_labelled(c)}
+        assert dr._DASH_SCATTERI_LABEL_RECASTS == frozenset(want)
+        with open(os.path.join(_ROOT, "dash_render.py"),
+                  encoding="utf-8") as fh:
+            src = fh.read()
+        assert src.count('"_DASH_SCATTERI_LABEL_RECASTS"') == 1
+
+    def test_mlabel_on_an_immediate_type_is_twoways(self):
+        """M01-M07: twoway takes mlabel() of a name that is no variable on
+        scatteri, pci and pcarrowi (rc 0) and draws no label from it; it
+        refuses .. and = as on histogram."""
+        fx = _truth()
+        for c in ("M01", "M02", "M03", "M04", "M07"):
+            assert fx[c]["twoway_rc"] == 0, c
+        assert {lab["text"] for lab in fx["M02"]["labels"]} == {"A", "B"}
+        assert not fx["M01"]["labels"] and not fx["M07"]["labels"]
+        assert (fx["M05"]["twoway_rc"], fx["M05"]["twoway_message"]) == \
+            (198, ".. not allowed in option mlabel()")
+        assert (fx["M06"]["twoway_rc"], fx["M06"]["twoway_message"]) == \
+            (198, "invalid syntax")
+        with open(os.path.join(_ROOT, "dash.ado"), encoding="utf-8") as fh:
+            ado = fh.read()
+        assert re.search(r'local mlab_imm\s+"scatteri pci pcarrowi"', ado)
+
+
+class TestTheImmediateHelp:
+    def test_the_immediate_labels_paragraph(self):
+        from test_help_claims_1 import _between, _help
+        s = " ".join(_between(_help(), "A label is drawn at\nits point",
+                              "A list with no values at all").split())
+        assert "draws no labels, as {cmd:twoway pci} draws none" not in s
+        assert ("{cmd:pci} draws its labels only under {cmd:recast()} to "
+                "{cmd:pccapsym}, {cmd:pcarrow}, {cmd:pcbarrow} or "
+                "{cmd:pcscatter}") in s
+        assert ("{cmd:mlabel()} on {cmd:scatteri}, {cmd:pci} and "
+                "{cmd:pcarrowi} is not looked up in the data") in s

@@ -26935,9 +26935,21 @@ class GlyphMapper:
         # row id and no saved-page rebuild (the points are literals).
         # recast(): the points drawn as the target (WP-30 P1.8b).
         if options.get("recast"):
-            return [self._dash_draw_xy_as(fig, si_source, "x", "y",
-                                          options["recast"], options,
-                                          color_idx)]
+            rr = self._dash_draw_xy_as(fig, si_source, "x", "y",
+                                       options["recast"], options,
+                                       color_idx)
+            # The labels, where the target draws marker labels, at the
+            # literal points (not the renderer's own source) -- twoway
+            # draws A and B under recast(connected), none under
+            # recast(line) (WP-47 MS-7).
+            if any(_labels) and options["recast"] in \
+                    _DASH_SCATTERI_LABEL_RECASTS:
+                self._immediate_labels(
+                    fig, x_vals.tolist(), y_vals.tolist(), _labels, _clocks,
+                    options, "scatteri",
+                    radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)),
+                    color_idx=color_idx)
+            return [rr]
         _si_line = None
         if str(options.get("connect", "") or "").strip():
             _si_line = _dash_join_glyph(self, fig, options, dict(
@@ -27069,9 +27081,13 @@ class GlyphMapper:
         :meth:`map_pcspike`, from a source built out of the records, as
         pcarrowi's arrows are by :meth:`map_pcarrow`, so every option
         pcspike honours is honoured the same way.  A segment with a missing
-        coordinate is not drawn.  No label is drawn: twoway pci's serset
-        carries the labels and its SVG export shows none (measured
-        23sep2026) -- dash.ado says so when a label is given.
+        coordinate is not drawn.  Plain pci draws no label: twoway pci's
+        serset carries the labels and its SVG export shows none (measured
+        23sep2026).  Under recast() to a pc type with marker labels --
+        pccapsym, pcarrow, pcbarrow, pcscatter -- twoway draws them, at the
+        first points, at the second under headlabel (measured 10nov2026,
+        immediate_label_truth.json R01-R06; WP-47 MS-7), and so does this
+        method, through :meth:`_immediate_labels`.
 
         Args:
             fig:       Bokeh Figure object.
@@ -27087,6 +27103,8 @@ class GlyphMapper:
         (y1, x1, y2, x2), _keep = self._literal_pairs_on_axis(
             fig, "pci", "segment(s)", options, y1, x1, y2, x2)
         _labels = [_labels[i] for i in _keep] if len(_labels) else _labels
+        # The clocks with the labels: filtered alike, or they shift.
+        _clocks = [_clocks[i] for i in _keep] if len(_clocks) else _clocks
         # The columns are named as the Segment's own fields, x0..y1, so a
         # source read by name reads what it read when this method drew the
         # segments itself.
@@ -27094,8 +27112,25 @@ class GlyphMapper:
         # recast() (WP-31 C7): the segments drawn as the pc type named,
         # checked by membership (area_cmissing_truth.json P01, P05).
         _draw, _opts = self._pc_recast(options, self.map_pcspike)
-        return _draw(fig, src, "y0", "x0", "y1", "x1", _opts,
-                     color_idx=color_idx)
+        out = _draw(fig, src, "y0", "x0", "y1", "x1", _opts,
+                    color_idx=color_idx)
+        if any(_labels) and (options or {}).get("recast") in \
+                _DASH_PCI_LABEL_RECASTS:
+            # At the tail -- the head under headlabel -- and only on a
+            # segment drawn (WP-47 MS-7).
+            nan = float("nan")
+            drawn = [all(math.isfinite(v) for v in (y1[i], x1[i], y2[i], x2[i]))
+                     for i in range(len(_labels))]
+            _at_head = bool(str(options.get("headlabel", "") or "").strip())
+            _lx, _ly = (x2, y2) if _at_head else (x1, y1)
+            self._immediate_labels(
+                fig, [_lx[i] if drawn[i] else nan for i in range(len(_labels))],
+                [_ly[i] if drawn[i] else nan for i in range(len(_labels))],
+                _labels, _clocks, options, "pci",
+                *(("x2", "y2") if _at_head else ("x1", "y1")),
+                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)),
+                color_idx=color_idx)
+        return out
 
     def _pc_recast(self, options, default):
         """``(mapper, options)`` a pci or pcarrowi layer is drawn by: the pc
@@ -39137,6 +39172,16 @@ _DASH_CONTOUR_TYPES = frozenset({"contour", "contourline"})
 #: guard derives the full set of plot types from it and the tables.
 #: pcarrowi (WP-22) is pcarrow's immediate form: one record per arrow.
 _DASH_LITERAL_TYPES = frozenset({"scatteri", "pci", "pcarrowi", "function"})
+#: The recast() targets a scatteri layer keeps its labels under: the yxview
+#: types twoway draws marker labels on (WP-47 MS-7; measured 10nov2026,
+#: test/fixtures/immediate_label_truth.json S01-S08 -- line, area and spike
+#: draw none).
+_DASH_SCATTERI_LABEL_RECASTS = frozenset({"scatter", "connected", "bar",
+                                          "dropline", "dot"})
+#: pci's recast() targets that draw its labels: the pc types with marker
+#: labels (R01-R04; plain pci, an immediate pcspike, draws none, R06).
+_DASH_PCI_LABEL_RECASTS = frozenset({"pccapsym", "pcarrow", "pcbarrow",
+                                     "pcscatter"})
 
 
 #: Injection patterns a by() VARIABLE LIST may not carry.  One copy: the
@@ -79360,6 +79405,9 @@ class ServerAppBuilder:
                       # two modes came to disagree about which types exist.
                       "_DASH_RANGE_TYPES", "_DASH_UNIVARIATE_TYPES",
                       "_DASH_PC_TYPES", "_DASH_LITERAL_TYPES",
+                      # WP-47 MS-7: the immediate labels under recast().
+                      "_DASH_SCATTERI_LABEL_RECASTS",
+                      "_DASH_PCI_LABEL_RECASTS",
                       # WP-31 B1: rpcap and rpspike.
                       "_DASH_RANGEPT_TYPES",
                       # WP-31 B4b: contour and contourline.

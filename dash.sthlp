@@ -757,9 +757,17 @@ last number belongs -- {cmd:dash} drops with a note.  A label is drawn at
 its point for {cmd:scatteri} and at its arrow's tail for {cmd:pcarrowi},
 or at its head under {cmd:headlabel}, placed by its clock position, else by {cmd:mlabposition()}, else at 3
 o'clock; a clock position that is not a whole number, such as 3.5, is drawn
-at 12 o'clock, where {cmd:twoway} draws it, with a note.  {cmd:pci} draws
-no labels, as {cmd:twoway pci} draws none, and says so; otherwise it is
-drawn as the immediate {cmd:pcspike} that {cmd:twoway pci} is: in
+at 12 o'clock, where {cmd:twoway} draws it, with a note.  Under
+{cmd:recast()} the labels of {cmd:scatteri} are drawn when the type named
+draws marker labels ({cmd:scatter}, {cmd:connected}, {cmd:bar},
+{cmd:dropline} and {cmd:dot}; not {cmd:line}, {cmd:area} or {cmd:spike}),
+as {cmd:twoway} draws them; {cmd:mlabel()} on {cmd:scatteri}, {cmd:pci} and
+{cmd:pcarrowi} is not looked up in the data, as {cmd:twoway} does not look
+it up.  {cmd:pci} draws its labels only under {cmd:recast()} to
+{cmd:pccapsym}, {cmd:pcarrow}, {cmd:pcbarrow} or {cmd:pcscatter}, at the
+first point (the second under {cmd:headlabel}), as {cmd:twoway} does;
+otherwise it is drawn as the immediate {cmd:pcspike} that {cmd:twoway pci}
+is: in
 {cmd:pcspike}'s colour and width, with a legend key as {cmd:pcspike} has.
 A list with no values at all -- the type alone, or with only an {cmd:if},
 an {cmd:in} or a weight -- is refused with {cmd:r(198)}, as {cmd:twoway}

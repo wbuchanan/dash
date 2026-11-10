@@ -3338,6 +3338,15 @@ CORPUS = [
           [plot_for("pcscatter", {"mlabel": "rep", "headlabel": "headlabel"})]),
     _case("pccapsym mlabel headlabel (WP-47 basic:PT-1)",
           [plot_for("pccapsym", {"mlabel": "rep", "headlabel": "headlabel"})]),
+    # WP-47 MS-7: the immediate labels under recast().
+    _case("pci labels recast(pccapsym) (WP-47 MS-7)",
+          [plot_for("pci", {"recast": "pccapsym"},
+                    values=[[20.0, 2000.0, 30.0, 4000.0, "A", None],
+                            [25.0, 3000.0, 35.0, 4000.0, "B", 9]])]),
+    _case("scatteri labels recast(connected) (WP-47 MS-7)",
+          [plot_for("scatteri", {"recast": "connected"},
+                    values=[[20.0, 3000.0, "A", None],
+                            [25.0, 4000.0, "B", 3]])]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

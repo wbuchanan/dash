@@ -445,6 +445,9 @@
 *!   Q4205-4g a colorvar() layer with no observation (E_*): twoway's rc
 *!          and lines, then the line naming the plot
 *!   Q4205-4h colordiscrete and all-missing layers are drawn
+*! mlabel() on the immediate types (WP-47 MS-7):
+*!   Q4701-4  scatteri, pci, pcarrowi mlabel(nosuch) rc 0; mlabel(..),
+*!          mlabel(=) twoway's r(198) and line
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -1034,6 +1037,40 @@ _q4205 OV-98 R_var_nosuch
 _q4205 OV-99 R_var_two
 _ov_case OV-100 `"dash scatter mpg weight, mlabel(mak) name(ov100)"' 0 "" `""mlabel":"make""'
 _ov_case OV-101 `"dash scatter mpg weight, mlabel(nosuchvar) name(ov101)"' 111 mlabel
+
+// Q4701-4 (WP-47 MS-7): mlabel() on scatteri, pci and pcarrowi is not
+// looked up in the data, as twoway does not look it up (rc 0; measured
+// 10nov2026, test/fixtures/immediate_label_truth.json M01-M04, M07);
+// .. and = are refused as twoway refuses them there, r(198) ".. not
+// allowed in option mlabel()" and "invalid syntax" (M05, M06).  Each line
+// is checked against twoway, run live beside it.
+capture program drop _q4701_imm
+program define _q4701_imm
+    version 19
+    args want msg cmd
+    capture noisily twoway `macval(cmd)' nodraw
+    local trc = _rc
+    capture graph drop _all
+    capture log close _ovlog
+    quietly log using "`c(tmpdir)'dash_q4701.log", name(_ovlog) text replace
+    capture noisily dash `macval(cmd)' name(q4701)
+    local drc = _rc
+    quietly log close _ovlog
+    capture dash clear
+    _ov_assert Q4701-4 "(`trc' == `want' & `drc' == `want')" `"`macval(cmd)': twoway rc `trc', dash rc `drc' (expected `want')"'
+    if `"`msg'"' != "" {
+        _ov_count "`c(tmpdir)'dash_q4701.log" `"`msg'"'
+        _ov_assert Q4701-4 "(r(n) >= 1)" `"`macval(cmd)': dash's first line is twoway's `msg'"'
+    }
+    capture erase "`c(tmpdir)'dash_q4701.log"
+end
+_q4701_imm 0 "" "scatteri 20 3000, mlabel(nosuch)"
+_q4701_imm 0 "" `"scatteri 20 3000 "A" 25 4000 "B", mlabel(nosuch)"'
+_q4701_imm 0 "" "pci 20 2000 30 4000, mlabel(nosuch)"
+_q4701_imm 0 "" "pcarrowi 20 2000 30 4000, mlabel(nosuch)"
+_q4701_imm 198 ".. not allowed in option mlabel()" "scatteri 20 3000, mlabel(..)"
+_q4701_imm 198 "invalid syntax" "scatteri 20 3000, mlabel(=)"
+_q4701_imm 0 "" "scatteri 20 3000, mlabel(make)"
 
 // ----------------------------------------------------------------
 // OV-102 .. OV-114: graph rules

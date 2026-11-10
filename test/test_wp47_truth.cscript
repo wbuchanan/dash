@@ -259,6 +259,40 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w47_run' {
 }
 * ==== end S01 ====
 
+* ==== S01 MS-7: immediate labels under recast() ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w47_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4701-3: pci with a label under recast(pccapsym) is taken, rc 0, as
+    // twoway takes it, and no note says pci draws no labels (twoway draws
+    // them under the recast: immediate_label_truth.json R01; dash draws
+    // them too, test_pc_immediate_labels.py TestImmediateRecast).  Plain
+    // pci with a label is silent too, as twoway is.
+    // ------------------------------------------------------------
+    foreach r in "recast(pccapsym)" "" {
+        capture noisily twoway pci 20 2000 30 4000 "A", `r' name(q4701, replace)
+        local q3t = _rc
+        capture graph drop q4701
+        local q3lg "`w47_work'/q4701_3.log"
+        capture erase "`q3lg'"
+        quietly log using "`q3lg'", text replace name(q4701)
+        capture noisily dash pci 20 2000 30 4000 "A", `r' name(q4701c)
+        local q3d = _rc
+        quietly log close q4701
+        capture dash clear
+        _w47_expect Q4701-3 "(`q3t' == 0 & `q3d' == 0)" "pci `r': twoway rc `q3t', dash rc `q3d'"
+        cert_log_has "`q3lg'", needle("draws no labels")
+        _w47_expect Q4701-3 "(r(found) == 0)" "pci `r': a note says pci draws no labels"
+        capture erase "`q3lg'"
+    }
+    _w47_done Q4701-3 "pci with a label, under recast(pccapsym) or plain, rc 0 and no false note"
+
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

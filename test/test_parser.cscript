@@ -1124,7 +1124,7 @@ display "P1A-64 PASS: pci refuses a non-number where a coordinate belongs, a clo
 
 // ================================================================
 // P1A-65 -- pci: what twoway drops at the end is dropped and named, and
-// a label, which twoway pci never draws, is named as not drawn
+// a label, which plain twoway pci never draws, is taken in silence
 //
 // twoway pci is an immediate pcspike: its serset carries the labels
 // (measured), and no label reaches its SVG export, with mlabcolor() or
@@ -1144,8 +1144,10 @@ assert strpos(`"${dash_json_p1a65b}"', `""values":[[0,0,0,1]]"') > 0
 _p1a_logrun `"dash pci 0 0 0 1 (3) "A" 0 0 1 0, name(p1a65c)"'
 assert r(rc) == 0
 local lg65 "`r(log)'"
-cert_file_has "`lg65'", needle("dash: pci draws no labels, as twoway pci draws none; a scatteri layer can label a point.")
-assert r(found) == 1
+// Flipped (WP-47 MS-7): the note was false under recast() and twoway is
+// silent: nothing names the labels, which pci draws only under recast().
+cert_file_has "`lg65'", needle("draws no labels")
+assert r(found) == 0
 assert strpos(`"${dash_json_p1a65c}"', `""values":[[0,0,0,1,"A",3],[0,0,1,0]]"') > 0
 // A clock position alone, or an empty label, is no label to name.
 _p1a_logrun `"dash pci 0 0 0 1 (9) 1 1 2 2 "", name(p1a65d)"'
@@ -1158,7 +1160,7 @@ cert_file_has "`r(log)'", needle("dash: pci ignored '(3)' at the end")
 assert r(found) == 1
 assert strpos(`"${dash_json_p1a65e}"', `""values":[[0,0,0,1,"A",null]]"') > 0
 dash clear
-display "P1A-65 PASS: pci drops what twoway drops at the end, with a note, and names the labels it does not draw"
+display "P1A-65 PASS: pci drops what twoway drops at the end, with a note, and takes its labels in silence"
 
 // ================================================================
 // P1A-66 -- pcarrowi reads numbers as scatteri and pci now do

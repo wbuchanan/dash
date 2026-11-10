@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'MS-7': 'Immediate-type labels: pci labels dropped under recast() with a false note; scatteri labels vanish under recast(); mlabel(nosuch) on scatteri is refused r(111)',
     'MS-2': 'yvarlabel()/xvarlabel() are ignored on scatteri, pci, pcarrowi, function, kdensity and histogram',
     'MS-3': "yvarlabel() with an empty string gives the key 'scatter' and no title (twoway uses the variable name); yvarlabel relabels a variable in every plot in twoway, per layer in dash",
     'MS-5': 'xvarformat()/yvarformat() do not reach marker labels of the plotted variable',
