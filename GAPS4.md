@@ -528,10 +528,10 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **RH-11 Tracked:** Closed in WP-46, BUGS.md "Abbreviated yx names on y2xtype sources (sc, li, co, b) are read as full names; twoway notes them and draws rspike", commit 492ce02.
 - **basic:PT-1 Tracked:** Closed in WP-47, BUGS.md "headlabel is ignored on pcscatter/pccapsym with mlabel() and on pcarrowi labels: labels stay at the first point", commit f2d63fc.
 - **MS-7 Tracked:** Closed in WP-47, BUGS.md "Immediate-type labels: pci labels dropped under recast() with a false note; scatteri labels vanish under recast(); mlabel(nosuch) on scatteri is refused r(111)", commit dfa66fd.
-- **MS-2 Tracked:** Closed in WP-47, BUGS.md "yvarlabel()/xvarlabel() are ignored on scatteri, pci, pcarrowi, function, kdensity and histogram", commit pending.
-- **MS-3 Tracked:** Closed in WP-47, BUGS.md "yvarlabel() with an empty string gives the key 'scatter' and no title (twoway uses the variable name); yvarlabel relabels a variable in every plot in twoway, per layer in dash", commit pending.
-- **MS-5 Tracked:** Closed in WP-47, BUGS.md "xvarformat()/yvarformat() do not reach marker labels of the plotted variable", commit pending.
-- **basic:PT-3 Tracked:** Closed in WP-47, BUGS.md "mlabel(t*) naming several variables draws labels; twoway draws none", commit pending.
+- **MS-2 Tracked:** Closed in WP-47, BUGS.md "yvarlabel()/xvarlabel() are ignored on scatteri, pci, pcarrowi, function, kdensity and histogram", commit 669a502.
+- **MS-3 Tracked:** Closed in WP-47, BUGS.md "yvarlabel() with an empty string gives the key 'scatter' and no title (twoway uses the variable name); yvarlabel relabels a variable in every plot in twoway, per layer in dash", commit 92ac512.
+- **MS-5 Tracked:** Closed in WP-47, BUGS.md "xvarformat()/yvarformat() do not reach marker labels of the plotted variable", commit 1e0fe24.
+- **basic:PT-3 Tracked:** Closed in WP-47, BUGS.md "mlabel(t*) naming several variables draws labels; twoway draws none", commit b6ae36c.
 - **basic:PT-4 Tracked:** Closed in WP-47, BUGS.md "Outline alignment: twoway strokes bars, histogram bins, areas and rbar inside and honours lalign(); dash centres every stroke and calls lalign() 'the same picture'; rcap caps butt-ended, not round", commit 4ef9650.
 - **basic:PT-6 Tracked:** Closed in WP-47, BUGS.md "mlalign(center) and inside draw one picture; the default marker is probably twoway's center picture", commit 6578f68.
 - **basic:PT-5 Tracked:** Closed in WP-47, BUGS.md "dlalign(center|outside) changes dot size in twoway; dash drops it silently (tw_silent built from one default value)", commit 45602f2.
@@ -544,7 +544,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **PIC-16 Tracked:** Open (WP-47 section 47-06).
 - **PIC-17 Tracked:** Open (WP-47 section 47-06).
 - **MS-15 Tracked:** Open (WP-47 section 47-06).
-- **DG-7 Tracked:** Closed in WP-47, BUGS.md "Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x')", commit pending.
+- **DG-7 Tracked:** Closed in WP-47, BUGS.md "Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x')", commit f157037.
 - **basic:PT-15 Tracked:** Open (WP-47 section 47-06).
 - **LT-27 Tracked:** Open (WP-48 section 48-01).
 - **plot:PT-5 Tracked:** Open (WP-48 section 48-01).
