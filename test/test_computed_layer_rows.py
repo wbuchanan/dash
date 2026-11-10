@@ -292,6 +292,10 @@ def _render_by_panels(tmp_path, linked):
     panels = []
     for fig in renderer.figures.values():
         for rend in fig.renderers:
+            # Flipped (WP-47 basic:PT-4): a bin's stroke is an outline-only
+            # companion over the same source; the panel's bins are the fill.
+            if "dash_outline" in (getattr(rend, "tags", None) or ()):
+                continue
             src = getattr(rend, "data_source", None)
             if src is not None and "top" in src.data:
                 panels.append([round(float(t), 6) for t in src.data["top"]])

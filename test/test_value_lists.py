@@ -189,7 +189,11 @@ def _figs(mode, spec):
 
 
 def _glyphs(fig):
-    return [r for r in fig.renderers if isinstance(r, GlyphRenderer)]
+    # Flipped (WP-47 basic:PT-4): a bar's stroke is an outline-only
+    # companion whose edges are screen-space expressions; the bars are
+    # the fills.
+    return [r for r in fig.renderers if isinstance(r, GlyphRenderer)
+            and "dash_outline" not in (r.tags or ())]
 
 
 def _resolved(r, prop):
