@@ -636,7 +636,8 @@ observed cells only; cuts from {opt ccuts()}, {opt levels(#)} with
 the first and last dropped; colours from {opt crule()} between
 {opt scolor()} and {opt ecolor()}, the scheme's rule and ends by default,
 or from {opt ccolors()}; the colour key ticked as {cmd:twoway}'s z axis
-and placed by {opt clegend()}.  A {cmd:contour} over too few points to
+and placed by {opt clegend()}, titled by {cmd:zvarlabel()} where given
+(an unquoted title's first word, as {cmd:twoway} reads it).  A {cmd:contour} over too few points to
 make a surface -- two observations, or points on one line -- draws its
 colour key from its levels, as {cmd:twoway} does.  {cmd:contourline} draws black lines at the
 cuts, or the levels' colours under {opt colorlines} or {opt ccolors()}
@@ -5797,7 +5798,29 @@ shows the variable's name, and {cmd:xvarlabel("")} draws no x title.
 marker's outline lies inside its edge by default ({cmd:inside}), centred
 on it under {cmd:center} and outside it under {cmd:outside}, so the
 marker's outer size is {cmd:twoway}'s; another word is named in
-{cmd:twoway}'s words.  {opt mlabstyle(labelstyle)} styles the marker
+{cmd:twoway}'s words.  {cmd:bmsymbol()} (or {cmd:bsymbol()}) draws a back
+marker under each marker, as {cmd:twoway} draws it: white, outlined in the
+background's colour and at {cmd:twoway}'s smallest size unless
+{cmd:bmcolor()} (its fill), {cmd:bmsize()}, {cmd:bmlcolor()},
+{cmd:bmlwidth()} and {cmd:bmlalign()} say otherwise; as in {cmd:twoway},
+labelled, weighted and {cmd:colorvar()} markers have none but on the
+{cmd:pc} types.  {cmd:mlabalignment(top}|{cmd:middle}|{cmd:bottom}|{cmd:baseline)}
+and {cmd:mlabjustification(left}|{cmd:center}|{cmd:right)} place the label's
+text against its anchor as {cmd:twoway} places it.  {cmd:alalign()} and
+{cmd:blalign()} align an area's or bar's outline as {cmd:lalign()} does,
+{cmd:blalign()} over {cmd:alalign()} over {cmd:lalign()}, as {cmd:twoway}
+reads them.  On a {cmd:bar}, {cmd:bartype(spanning)} draws each bar from
+its x to the next observation's x, in the data's order, and
+{cmd:bartype(obs)} draws bars the range of x over the observations
+less one wide; {cmd:dropto(y)} draws {cmd:bar}, {cmd:area}, {cmd:spike},
+{cmd:dropline} and {cmd:dot} turned, as {cmd:horizontal} does, and
+{cmd:dropto(x)} upright.  {cmd:numkeys(#)} gives the legend # keys for
+the plot, numbered on as {cmd:twoway} numbers them.  {cmd:omitanymiss}
+leaves out each observation any of a plot's y variables is missing on,
+and draws {cmd:kdensity}'s curve at its grid's first {cmd:_N} points, as
+{cmd:twoway} draws them.  {cmd:noback} titles {cmd:mspline} and
+{cmd:mband} with the y variable's label, and {cmd:below} draws a ci
+fit's line under its band.  {opt mlabstyle(labelstyle)} styles the marker
 labels as the scheme's labelstyle does: {cmd:mlabstyle(p2)} draws them in
 p2's label colour at 3 o'clock, {cmd:p2bar} at 12; {cmd:mlabcolor()},
 {cmd:mlabsize()} and {cmd:mlabposition()} still win.  A name that is no
@@ -7667,53 +7690,48 @@ in either direction.
     {cmd:twoway} draws, it names.
 
 {phang2}{ul:Area, bar and line edge styles.}
-    {opt alalign(linealignmentstyle)} -- the rest of {cmd:twoway}'s
-    area-style options; {opt blalign(linealignmentstyle)} -- its bar-style
-    option; and {opt clalign(linealignmentstyle)}, a connecting line's
-    alignment.  {cmd:twoway} takes them on every plot type; {cmd:dash}
-    draws a fill and an outline from {cmd:color()}, {cmd:fcolor()},
-    {cmd:lcolor()}, {cmd:lwidth()} and {cmd:lpattern()}, and names these.
+    {opt clalign(linealignmentstyle)}, a connecting line's alignment.
+    {cmd:twoway} takes it on every plot type and draws nothing different
+    with it; {cmd:dash} names it.
 
 {phang2}{ul:Back markers.}
     {opt bmcolor(color)}, {opt bmlalign(linealignmentstyle)},
     {opt bmlcolor(color)}, {opt bmlpattern(linepattern)},
-    {opt bmlwidth(linewidth)}, {opt bmsize(markersizestyle)},
-    {opt bmsymbol(symbolstyle)} -- {cmd:twoway}'s back-marker style, taken
-    on every plot type; {cmd:dash} draws no back marker, and names them.
-    {cmd:bsymbol()} is {cmd:twoway}'s other spelling of {opt bmsymbol()},
-    and {opt bmsize()} on {cmd:pcarrow}, {cmd:pcbarrow} and
+    {opt bmlwidth(linewidth)}, {opt bmsize(markersizestyle)} without a
+    {cmd:bmsymbol()} -- {cmd:twoway}'s back symbol is none by default, so it
+    draws nothing different with them; {cmd:dash} names them.  With
+    {cmd:bmsymbol()} (or {cmd:bsymbol()}) {cmd:dash} draws the back marker
+    and they style it.  {opt bmsize()} on {cmd:pcarrow}, {cmd:pcbarrow} and
     {cmd:pcarrowi} is {cmd:barbsize()}, which dash draws.
-
-{phang2}{ul:Marker-label text layout.}
-    {opt mlabalignment(alignmentstyle)},
-    {opt mlabjustification(justificationstyle)} -- the vertical alignment
-    and the justification of a marker label's text box; {cmd:dash} draws
-    the label at its position, and names them.
 
 {phang2}{ul:Missing values and legend keys.}
     {opt omitallmiss}, {opt omitanymiss}, {opt omitdupmiss},
     {opt omitnothing} -- {cmd:twoway}'s rules for which observations with
     missing values a plot omits; {cmd:dash} omits as its plot types say,
     and names them.  Two of them in one command, in one plot or in two,
-    are refused, r(198), as {cmd:twoway} refuses them.  {opt numkeys(#)} -- the number of legend keys a plot
-    contributes; {cmd:dash} draws one key per series, and names it.
+    are refused, r(198), as {cmd:twoway} refuses them.  {cmd:dash} draws
+    {cmd:omitanymiss} on a plot of several y variables and on
+    {cmd:kdensity}; elsewhere {cmd:twoway} draws nothing different with
+    them, and {cmd:dash} names them.
 
 {phang2}{ul:Bar-family settings.}
-    {opt bartype(spanning)}, {opt bargap(#)}, {opt dropto(#)} on
-    {cmd:bar} and the other bar-derived types.  {cmd:bargap()} is an option of {cmd:graph bar}:
-    {cmd:twoway bar} accepts it and draws nothing different.  {cmd:dash}
-    names all three.
+    {opt bargap(#)} on {cmd:bar} and the other bar-derived types, an option
+    of {cmd:graph bar}: {cmd:twoway bar} accepts it and draws nothing
+    different, and {cmd:dash} names it; so is {cmd:bartype()} named off
+    {cmd:bar}, where {cmd:twoway} draws nothing different with it.
 
 {phang2}{ul:A dot plot's line pattern.}
     {opt dlpattern(linepattern)} -- the pattern of the dots' outline on a
     {cmd:dot} plot; {cmd:dash} draws it solid, and names it.
 
 {phang2}{ul:Type-specific options.}
-    {opt back} and {opt noback} on {cmd:mspline} and {cmd:mband};
+    {opt back} on {cmd:mspline} and {cmd:mband};
     {opt onepanel} on {cmd:tsline} and {cmd:tsrline}; and
-    {opt heatlabel}, {opt zvarlabel(string)}, {opt zvarformat(fmt)} on
-    {cmd:contour} and {cmd:contourline}.  {cmd:dash} draws each plot as it
-    draws it without them, and names them.
+    {opt heatlabel} and {opt zvarformat(fmt)} on {cmd:contour} and
+    {cmd:contourline}; {cmd:zvarlabel()} on any type but {cmd:contour}, and
+    {cmd:mlabalignment()} and {cmd:mlabjustification()} on a plot without
+    marker labels, where {cmd:twoway} draws nothing different with them.
+    {cmd:dash} draws each plot as it draws it without them, and names them.
 
 {phang2}{ul:Graph-wide settings.}
     {opt below}, {opt copyscheme}, {opt logging},

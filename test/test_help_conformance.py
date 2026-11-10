@@ -679,8 +679,11 @@ class TestTheParsersFoundSomething:
         # (WP-47 47-04): afcolor(), afintensity(), bcolor(), bfintensity(),
         # blpattern(), blwidth() and mlabels() leave the Unsupported list,
         # and the marker options' line naming them defines symbol().
-        assert len(found) == 232, (
-            f"{len(found)} options parsed out of dash.sthlp, 232 measured "
+        # old -> new: 232 -> 231: basic:PT-11 bartype(), dropto() and
+        # numkeys() leave the Unsupported list, the Type-specific entry's
+        # noback with them, and the prose names them as {cmd:} (WP-47 47-05).
+        assert len(found) == 231, (
+            f"{len(found)} options parsed out of dash.sthlp, 231 measured "
             f"10nov2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -862,7 +865,12 @@ class TestTheParsersFoundSomething:
         # (WP-47 47-04): afcolor(), afintensity(), bcolor(), bfintensity(),
         # blpattern(), blwidth(), bsymbol(), mlabels() and msymangle()
         # leave the list.
-        assert len(_unsupported_section()) == 43
+        # old -> new: 43 -> 37: basic:PT-11 alalign(), blalign(),
+        # bmsymbol(), mlabalignment(), mlabjustification() and zvarlabel()
+        # drawn (WP-47 47-05; catchall_options_truth.json re-extracted).
+        # old -> new: 37 -> 33: basic:PT-11 bartype(), dropto(), numkeys()
+        # and noback drawn (WP-47 47-05).
+        assert len(_unsupported_section()) == 33
 
     def test_the_undeclared_table_was_found(self):
         # WP-31 J1: 29 spellings of _dash_rep_und_tab's 52 rows are declared
@@ -1026,8 +1034,10 @@ class TestTheParsersFoundSomething:
         # font face (WP-45 GW-10).
         # old -> new: 472 -> 471, basic:PT-3 the sub-point naming mlabel(t*)
         # among the forms dash refuses (it draws no labels, as twoway).
-        assert len(defs) == 471, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 471 "
+        # old -> new: 471 -> 470, basic:PT-11 the Unsupported entry
+        # Marker-label text layout goes: both options drawn (WP-47 47-05).
+        assert len(defs) == 470, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 470 "
             f"measured 08nov2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
@@ -1122,6 +1132,12 @@ class TestEveryDocumentedOptionIsAccepted:
         subopts |= {"symbol", "msymangle", "mlabels", "bcolor",
                     "bfintensity", "blwidth", "blpattern", "afcolor",
                     "afintensity", "bsymbol", "bmsize"}
+        # WP-47 basic:PT-11: the catch-all options dash draws are read out
+        # of it by value (_dash_fold_drawn), undeclared for the same reason.
+        subopts |= {"alalign", "blalign", "bmsymbol", "bmcolor", "bmlcolor",
+                    "bmlwidth", "bmlalign", "bmlpattern", "mlabalignment",
+                    "mlabjustification", "zvarlabel", "bartype", "dropto",
+                    "numkeys", "omitanymiss", "noback", "below"}
         missing = sorted(set(documented) - set(declared) - subopts)
         assert not missing, (
             f"{len(missing)} options the help documents are not declared by "

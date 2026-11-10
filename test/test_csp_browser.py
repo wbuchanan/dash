@@ -413,6 +413,17 @@ def _specs():
                            "options": {"ndots": "20"},
                            "if_expr": "foreign == 1"}])]),
             _frame().assign(mpg=lambda f: f["mpg"].where(f.index != 3))),
+        # WP-47 basic:PT-11: back markers (a diamond's Scatter defs among
+        # them) under hover and a brushed KPI, and spanning bars whose
+        # widths the saved page's dash_bar_span rebuilds after a move.
+        "s05": (_spec([
+            _graph("g1", [_scatter(bmsymbol="D", bmsize="large",
+                                   bmcolor="red"),
+                          _scatter(bmsymbol="O", bmsize="vlarge")],
+                   hover="mpg weight"),
+            _graph("g2", [{"type": "bar", "yvar": "mpg", "xvar": "weight",
+                           "options": {"bartype": "spanning"}}])],
+            kpis=[dict(_KPI, update="brush")]), _frame()),
     }
 
 
@@ -653,6 +664,22 @@ class TestSavedPageInChrome:
                 time.sleep(1.0)
                 _check_dot_rows(p, False)
 
+    def test_back_markers_and_spanning_bars(self):
+        """WP-47 basic:PT-11: back markers paint under their markers, are
+        in no hover tool and no legend item, keep their markers' rows
+        through a move and dim with them under a brush; spanning bars'
+        widths follow the kept rows."""
+        with _CspProbe(_url(_saved_page("s05"))) as p:
+            _check_s05(p)
+            for _ in range(2):
+                p.in_task(_MOVE_SELECT_JS)
+                time.sleep(1.0)
+                _check_s05(p)
+            p.in_task("for (const s of __dash_models('ColumnDataSource')) "
+                      "if (s.get_length() > 3) s.selected.indices = [0, 1];")
+            time.sleep(1.0)
+            _check_s05(p, brushed=True)
+
     def test_hover_and_brush_run(self):
         with _CspProbe(_url(_saved_page("brush"))) as p:
             assert p.read(_TOOLTIP_JS) == []
@@ -722,6 +749,18 @@ class TestServedPageInChrome:
         with _CspProbe(_served_url(servers(kind, "markers"))) as p:
             _check_markers_paint(p)
             assert p.js_errors() == [], p.js_errors()
+
+    def test_back_markers_and_spanning_bars(self, servers, kind):
+        """WP-47 basic:PT-11: the served page's back markers and spanning
+        bars, before and after the server's redraw of a move."""
+        with _CspProbe(_served_url(servers(kind, "s05"))) as p:
+            p.wait_change(_S05_JS, None, timeout=20)
+            _check_s05(p)
+            before = p.read(_S05_JS)
+            p.in_task(_MOVE_SELECT_JS)
+            p.wait_change(_S05_JS, before, timeout=40)
+            time.sleep(0.5)
+            _check_s05(p)
 
     def test_zero_weights_paint(self, servers, kind):
         """WP-47 DG-12: the served page's zero-weight dots paint too."""
@@ -877,6 +916,84 @@ def _check_empty_bins(p):
         drawn = [a and b for a, b in zip(top, right)]
         assert drawn == want, (raw, top, right)
     assert empty > 0, rows
+
+
+#: WP-47 basic:PT-11: each back marker's [id, its marker's id, both
+#: renderers' drawn rows, whether a hover tool or legend item names it,
+#: its marker, whether it is drawn before its marker, its nonselection
+#: glyph's and its own fill alpha]; and each spanning bar source's
+#: [x, width] columns.
+_S05_JS = r"""(() => {
+  const backs = [], spans = [];
+  const hov = new Set(), leg = new Set();
+  for (const t of __dash_models('HoverTool'))
+    for (const r of (Array.isArray(t.renderers) ? t.renderers : [])) hov.add(r.id);
+  for (const it of __dash_models('LegendItem'))
+    for (const r of it.renderers) leg.add(r.id);
+  const walk = (pv) => {
+    if (pv.renderer_views) {
+      const order = Array.from(pv.model.renderers || []).map((r) => r.id);
+      for (const rv of pv.renderer_views.values()) {
+        const m = rv.model;
+        if (!(m.tags || []).includes('dash_backmarker')) continue;
+        // Its marker: the next Scatter after it over the same rows that
+        // is no back marker.
+        let front = null;
+        const rs = Array.from(pv.model.renderers || []);
+        for (let i = rs.indexOf(m) + 1; i < rs.length && !front; i++) {
+          const o = rs[i], g = o.glyph;
+          if (o.data_source === m.data_source && g
+              && g.constructor.__name__ === 'Scatter'
+              && !(o.tags || []).includes('dash_backmarker'))
+            front = pv.renderer_views.get(o);
+        }
+        const ns = rv.nonselection_glyph ? rv.nonselection_glyph.model : null;
+        const mk = m.glyph.marker;
+        backs.push([m.id, front ? front.model.id : null,
+                    rv.glyph.sx ? rv.glyph.sx.length : -1,
+                    front && front.glyph.sx ? front.glyph.sx.length : -1,
+                    hov.has(m.id) || leg.has(m.id),
+                    (mk && typeof mk === 'object') ? mk.value : mk,
+                    front ? order.indexOf(m.id) < order.indexOf(front.model.id) : false,
+                    ns ? ns.fill_alpha.value : null,
+                    m.glyph.fill_alpha.value]);
+      }
+    }
+    if (pv.child_views) for (const c of pv.child_views) walk(c);
+  };
+  for (const v of Object.values(Bokeh.index)) walk(v);
+  for (const s of __dash_models('ColumnDataSource')) {
+    const d = s.data;
+    if ('__dash_bar_w' in d) spans.push([Array.from(d.weight || []),
+                                         Array.from(d['__dash_bar_w'])]);
+  }
+  return JSON.stringify([backs, spans]);
+})()"""
+
+
+def _check_s05(p, brushed=False):
+    assert p.violations() == [], p.violations()
+    assert p.js_errors() == [], p.js_errors()
+    backs, spans = p.read(_S05_JS)
+    assert len(backs) == 2, backs
+    marks = {b[5] for b in backs}
+    assert marks == {"@dash_diamond", "circle"}, backs
+    for bid, fid, nb, nf, named, _mk, before, ns_a, a in backs:
+        assert fid is not None and before and not named, backs
+        assert nb == nf, backs
+        if brushed:
+            assert ns_a is not None and ns_a < a, backs
+    assert spans, spans
+    for xs, ws in spans:
+        good = [x is not None for x in xs]
+        c, w = dr._dash_bar_span([np.nan if x is None else x for x in xs],
+                                 [1.0] * len(xs), "spanning")
+        for got, want in zip(ws, w):
+            if np.isfinite(want):
+                assert got == pytest.approx(want), (ws, list(w))
+            else:
+                assert got is None or not np.isfinite(got), (ws, list(w))
+        assert any(good)
 
 
 #: [marker, row, dark pixels round that row's marker, renderer id] for

@@ -182,13 +182,14 @@ class TestTheFold:
     @pytest.mark.parametrize("alias", ("symbol",) + _ALIASES)
     def test_not_named(self, alias):
         """dash's note (catchall_options_truth.json, re-measured) no
-        longer names a folded alias: bsymbol() is named as bmsymbol(), and
-        bmsize() off the arrows stays named -- back markers are drawn by
-        47-05."""
+        longer names a folded alias, and bmsize() off the arrows without a
+        back symbol stays named (twoway draws nothing different with it).
+        Flipped (WP-47 basic:PT-11): bsymbol() was named as bmsymbol(),
+        which was wrong once 47-05 draws the back marker it asks for."""
         with open(_CATCH, encoding="utf-8") as fh:
             c = json.load(fh)
         noted = c["probes"][alias]["noted"]
-        want = {"bsymbol": ["bmsymbol"], "bmsize": ["bmsize"]}.get(alias, [])
+        want = {"bmsize": ["bmsize"]}.get(alias, [])
         assert noted == want, (alias, noted)
         if not want:
             assert alias not in c["options"]

@@ -3421,6 +3421,22 @@ CORPUS = [
                             "lcolor": "red", "alwidth": "thick",
                             "lwidth": "thick"}),
            plot_for("bar", {"fcolor": "navy"}, yvar="price")]),
+    # WP-47 basic:PT-11: the noted options twoway draws, drawn.
+    _case("back markers (WP-47 basic:PT-11)",
+          [plot_for("scatter", {"bmsymbol": "T", "bmsize": "large",
+                                "bmcolor": "red", "bmlwidth": "thick"}),
+           plot_for("dot", {"bmsymbol": "O"}, yvar="price")]),
+    _case("label layout (WP-47 basic:PT-11)",
+          [plot_for("scatter", {"mlabel": "foreign", "mlabalignment": "top",
+                                "mlabjustification": "right"})]),
+    _case("bartype numkeys below noback zvarlabel (WP-47 basic:PT-11)",
+          [plot_for("bar", {"bartype": "spanning", "numkeys": "2"}),
+           plot_for("lfitci", {"below": "below"}),
+           plot_for("mspline", {"noback": "noback"})]),
+    _case("contour zvarlabel (WP-47 basic:PT-11)",
+          [plot_for("contour", {"zvarlabel": "Z"})]),
+    _case("kdensity omitanymiss (WP-47 basic:PT-11)",
+          [plot_for("kdensity", {"omit": "omitanymiss", "omit_n": "10"})]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair
@@ -4878,6 +4894,20 @@ MOVE_CORPUS.append(_move_case("dot rows after a move with a missing y",
 MOVE_CORPUS.append(_move_case("histogram empty bins after a move", _MOVES[0],
                               [plot_for("histogram", {"bin": "6"})]))
 
+# WP-47 basic:PT-11: back markers share their markers' rows; spanning and
+# obs bars are rebuilt from the kept rows (dash_bar_span); omitanymiss's
+# kdensity keeps its grid's first points (keep_first).
+MOVE_CORPUS.append(_move_case("back markers after a move", _MOVES[0],
+                              [plot_for("scatter", {"bmsymbol": "O",
+                                                    "bmsize": "large"})]))
+MOVE_CORPUS.append(_move_case("bartype spanning after a move", _MOVES[0],
+                              [plot_for("bar", {"bartype": "spanning"})]))
+MOVE_CORPUS.append(_move_case("bartype obs after a move", _MOVES[1],
+                              [plot_for("bar", {"bartype": "obs"})]))
+MOVE_CORPUS.append(_move_case("omitanymiss kdensity after a move", _MOVES[0],
+                              [plot_for("kdensity", {"omit": "omitanymiss",
+                                                     "omit_n": "10"})]))
+
 _MOVE_CORPUS_NAMES = frozenset(p.values[0] for p in MOVE_CORPUS)
 
 #: The entries whose saved page's own filter script is run under node and
@@ -4894,7 +4924,10 @@ _JS_ORACLE_CASES = frozenset(
        "multi to 3 and 4 (WP-31 H2f)", "line yaxis(2), slider to 4500"]
     + [p.values[0] for p in _CVAR_MOVES]
     # WP-37 DG-5: rarea's outline sources rebuilt by the saved page.
-    + ["DG-5: rarea cmissing(n) outline, dropdown move"])
+    + ["DG-5: rarea cmissing(n) outline, dropdown move"]
+    # WP-47 basic:PT-11: the saved page's dash_bar_span and keep_first.
+    + ["bartype spanning after a move", "bartype obs after a move",
+       "omitanymiss kdensity after a move", "back markers after a move"])
 assert _JS_ORACLE_CASES <= _MOVE_CORPUS_NAMES, sorted(
     _JS_ORACLE_CASES - _MOVE_CORPUS_NAMES)
 

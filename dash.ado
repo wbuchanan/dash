@@ -2558,6 +2558,166 @@ program define _dash_fold_alias, sclass
 end
 
 // ================================================================
+// _dash_fold_drawn ptype  -- the catch-all options twoway draws, taken out
+//                           of the note and drawn (WP-47 basic:PT-11).
+//
+// Section 47-05.  dash named each of these in its note and drew the
+// default; twoway draws them (test/fixtures/noted_option_truth.json,
+// noted_drawn_truth.json):
+//   alalign(), blalign()  the closed shape's outline alignment
+//                         (twoway_yxview_parse.class factors both onto
+//                         area(linestyle(align())) after lalign(): measured
+//                         AL00-AL05, blalign() over alalign() over lalign()
+//                         whatever the typed order), written as s(lalign);
+//   bmsymbol() .. bmlalign()  the back marker (GlyphMapper._back_markers);
+//   mlabalignment(), mlabjustification()  the label's vertical alignment
+//                         and justification (_apply_mlabel_opts);
+//   zvarlabel()           contour's key title (map_contour).
+// The plot parser's syntax holds as many options as -syntax- takes, so
+// these stay undeclared: the catch-all's per-type rows (_dash_tw_takes_tab)
+// refuse each where twoway refuses it (_dash_refuse_unknown runs before
+// this), and here each is read out of s(_unknown) from twoway's minimum
+// spelling (the class's capitals; bmsize()'s bmsi, as _dash_fold_alias
+// reads it: bms() is bmsymbol()), the rightmost copy, and written to its
+// s() for the JSON.  bmsize() on the arrows is barbsize(), taken by
+// _dash_fold_alias first.  The values are the user's, read and written by
+// value; the renderer judges them in twoway's words.
+//
+// Called by _dash_process_segment directly after _dash_fold_alias.
+// ================================================================
+program define _dash_fold_drawn, sclass
+    version 19
+    args ptype ny
+    if "`ny'" == "" local ny 1
+    // word:minimum:1 for a word that takes a value, 0 for a flag; the
+    // minimums measured (noted_drawn_truth.json AB_<word>_<length>: the
+    // shortest spelling from which every longer one draws the full
+    // name's picture).
+    local _fd_rows "alalign:ala:1 blalign:bla:1 bmsymbol:bms:1 bmcolor:bmc:1 bmsize:bmsi:1 bmlcolor:bmlc:1 bmlwidth:bmlw:1 bmlalign:bmla:1 bmlpattern:bmlp:1 mlabalignment:mlabalign:1 mlabjustification:mlabjust:1 zvarlabel:zvarl:1 bartype:bart:1 dropto:drop:1 numkeys:numkey:1 omitanymiss:omitanym:0 noback:noback:0 below:below:0"
+    mata: _fd_u = _dash_opt_tokens(st_global("s(_unknown)"))
+    mata: st_local("_fd_k", strofreal(cols(_fd_u)))
+    local _fd_any 0
+    forvalues _fi = 1/`_fd_k' {
+        mata: st_local("_fd_nm", _dash_rep_optname(_fd_u[`_fi']))
+        mata: st_local("_fd_p", strofreal(strpos(_fd_u[`_fi'], "(") > 0))
+        local _fd_a ""
+        local _fd_L = strlen("`_fd_nm'")
+        foreach _fd_r of local _fd_rows {
+            tokenize "`_fd_r'", parse(":")
+            if `_fd_L' >= strlen("`3'") & `_fd_L' <= strlen("`1'") & "`_fd_nm'" == substr("`1'", 1, `_fd_L') & `_fd_p' == `5' local _fd_a "`1'"
+        }
+        local _fd_w_`_fi' "`_fd_a'"
+        if "`_fd_a'" != "" {
+            // The rightmost copy (twoway's combop rightmost).
+            if `_fd_p' mata: st_local("_fd_v_`_fd_a'", substr(_fd_u[`_fi'], strpos(_fd_u[`_fi'], "(") + 1, strlen(_fd_u[`_fi']) - strpos(_fd_u[`_fi'], "(") - 1))
+            local _fd_on_`_fd_a' 1
+            local _fd_any 1
+        }
+    }
+    if !`_fd_any' {
+        capture mata: mata drop _fd_u
+        exit
+    }
+    // Where twoway draws the same picture with a word it stays in the
+    // catch-all, named, for basic:PT-12 (section 49-02) to silence
+    // (measured, noted_option_truth.json): the back-marker options without
+    // a back symbol (twoway's default back symbol is none), the label
+    // layout without labels, zvarlabel() off contour, bartype() off bar,
+    // numkeys() on contourline, omitanymiss on a plot of one y but
+    // kdensity's, and below off the four ci fits.
+    local _fd_put ""
+    if "`_fd_on_bmsymbol'" != "1" local _fd_put "`_fd_put' bmcolor bmsize bmlcolor bmlwidth bmlalign bmlpattern"
+    mata: st_local("_fd_ml", strofreal(strtrim(st_global("s(mlabel)")) != ""))
+    if !`_fd_ml' local _fd_put "`_fd_put' mlabalignment mlabjustification"
+    if "`ptype'" != "contour" local _fd_put "`_fd_put' zvarlabel"
+    if "`ptype'" != "bar" local _fd_put "`_fd_put' bartype"
+    if "`ptype'" == "contourline" local _fd_put "`_fd_put' numkeys"
+    if `ny' < 2 & "`ptype'" != "kdensity" local _fd_put "`_fd_put' omitanymiss"
+    local _fd_ci lfitci qfitci lpolyci fpfitci
+    if !`: list ptype in _fd_ci' local _fd_put "`_fd_put' below"
+    mata: _fd_keep = J(1, 0, "")
+    forvalues _fi = 1/`_fd_k' {
+        local _fd_a "`_fd_w_`_fi''"
+        if "`_fd_a'" == "" | `: list _fd_a in _fd_put' mata: _fd_keep = _fd_keep, _fd_u[`_fi']
+    }
+    foreach _fd_a of local _fd_put {
+        local _fd_on_`_fd_a' ""
+    }
+    // blalign() over alalign() over lalign(), whatever the typed order.
+    foreach _fd_a in alalign blalign {
+        if "`_fd_on_`_fd_a''" == "1" mata: st_global("s(lalign)", strtrim(st_local("_fd_v_`_fd_a'")))
+    }
+    foreach _fd_a in bmsymbol bmcolor bmsize bmlcolor bmlwidth bmlalign bmlpattern mlabalignment mlabjustification zvarlabel {
+        if "`_fd_on_`_fd_a''" == "1" mata: st_global("s(`_fd_a')", strtrim(st_local("_fd_v_`_fd_a'")))
+    }
+    // bartype(spanning) and bartype(obs) are drawn (map_bar); fixed is the
+    // default; any other word twoway notes in its two lines and draws the
+    // default (BT07, BT15: the style names are lower case).
+    if "`_fd_on_bartype'" == "1" {
+        mata: st_local("_fd_x", strtrim(st_local("_fd_v_bartype")))
+        if inlist(`"`macval(_fd_x)'"', "spanning", "obs") sreturn local bartype "`_fd_x'"
+        else if `"`macval(_fd_x)'"' != "fixed" {
+            mata: _dash_say("txt", "(note:  named style ", st_local("_fd_x"), " not found in class yxbartype_g, default attributes used)")
+            display as text "(note:  yxbartype_g not found in scheme, default attributes used)"
+        }
+    }
+    // dropto(y) draws the plot turned, as horizontal does, and dropto(x)
+    // upright, over horizontal or vertical whatever their order (DT00 =
+    // DT10, DT11, DT12; DT14-DT17 on dot, spike, dropline and area); any
+    // other word twoway notes in its two ordstyle lines (DT02, DT09, DT13).
+    if "`_fd_on_dropto'" == "1" {
+        mata: st_local("_fd_x", strtrim(st_local("_fd_v_dropto")))
+        if `"`macval(_fd_x)'"' == "y" {
+            sreturn local horizontal "horizontal"
+            sreturn local vertical ""
+        }
+        else if `"`macval(_fd_x)'"' == "x" {
+            sreturn local horizontal ""
+            sreturn local vertical ""
+        }
+        else {
+            mata: _dash_say("txt", "(note:  named style ", st_local("_fd_x"), " not found in class ordstyle, default attributes used)")
+            display as text "(note:  ordstyle not found in scheme, default attributes used)"
+        }
+    }
+    // numkeys(#): the keys the plot gives the legend (_dash_legend_keys).
+    // twoway assigns the value to the view: a number is read as its whole
+    // part (NK10: 1.5 draws one key); a word is "<word> not found" and
+    // "rvalue invalid", r(4026) (NK08); a negative one "invalid syntax",
+    // r(198) (NK09).
+    if "`_fd_on_numkeys'" == "1" {
+        mata: st_local("_fd_x", strtrim(st_local("_fd_v_numkeys")))
+        capture confirm number `macval(_fd_x)'
+        local _fd_bad = _rc
+        mata: st_local("_fd_nw", strofreal(cols(tokens(st_local("_fd_x")))))
+        if `_fd_bad' | `_fd_nw' != 1 {
+            if substr(`"`macval(_fd_x)'"', 1, 1) == "-" {
+                display as error "invalid syntax"
+                exit 198
+            }
+            mata: _dash_say("err", "", st_local("_fd_x"), " not found")
+            display as error "rvalue invalid"
+            exit 4026
+        }
+        if `_fd_x' < 0 {
+            display as error "invalid syntax"
+            exit 198
+        }
+        sreturn local numkeys = floor(`_fd_x')
+    }
+    if "`_fd_on_omitanymiss'" == "1" {
+        sreturn local omit "omitanymiss"
+        // kdensity's grid is cut at the data's observations, _N, whatever
+        // the plot's if or a filter keeps (noted_drawn_truth.json KD03).
+        if "`ptype'" == "kdensity" sreturn local omit_n = c(N)
+    }
+    if "`_fd_on_noback'" == "1" sreturn local noback "noback"
+    if "`_fd_on_below'" == "1" sreturn local below "below"
+    mata: st_global("s(_unknown)", cols(_fd_keep) ? invtokens(_fd_keep) : "")
+    capture mata: mata drop _fd_u _fd_keep
+end
+
+// ================================================================
 // _dash_fold_cl  -- keep clcolor(), clpattern() and clwidth() on the plot
 //                   types whose CONNECTING line twoway styles with them.
 //
@@ -6289,12 +6449,18 @@ program define _dash_plot_opts_to_json, rclass
                    ccuts levels minmax crule scolor ecolor ccolors clabels ///
                    format interp clwidths clpatterns reversekey colorlines ///
                    outlines ///
+                   bmsymbol bmcolor bmsize bmlcolor bmlwidth bmlalign bmlpattern ///
+                   mlabalignment mlabjustification zvarlabel ///
+                   bartype numkeys omit omit_n noback below ///
                    weight wexp {
         // Read by value and measured, never copied or compared in quotes: a
         // copy through them expanded a macro in the value again --
         // mcolor("\$G") was stored as $G's value (measured 24sep2026;
         // test_json_escaping.cscript JSE-69).
         if `_p_on' & `: list key in _dash_p_drops' continue
+        // numkeys() keys the first y of several alone (WP-47 basic:PT-11;
+        // noted_drawn_truth.json NK11).
+        if "`key'" == "numkeys" & 0`series' > 1 continue
         if `: list key in _sl_keys' {
             mata: st_local("val", _dash_stylelist_pick(st_global("s(" + st_local("key") + ")"), `series'))
         }
@@ -7617,6 +7783,29 @@ program define _dash_process_segment, rclass
         // twoway's older spellings read as the options they stand for,
         // first in the fold chain (WP-47 basic:PT-10).
         _dash_fold_alias "`ptype'" `"`macval(opts_raw)'"'
+        // drop() is dropto() on the types that take dropto(), where the
+        // plot parser's DROPlines() read it (noted_drawn_truth.json
+        // AB_dropto_4: twoway draws bar drop(y) as dropto(y)); dropl() ..
+        // droplines() stay droplines().
+        local _dt_types area bar spike dropline dot
+        mata: st_local("_dt_dl", strofreal(strtrim(st_global("s(droplines)")) != ""))
+        if `: list ptype in _dt_types' & `_dt_dl' {
+            mata: _dt_t = _dash_opt_tokens(st_local("opts_raw"))
+            mata: st_local("_dt_n", strofreal(cols(_dt_t)))
+            local _dt_hit 0
+            forvalues _dti = 1/`_dt_n' {
+                mata: st_local("_dt_nm", _dash_rep_optname(_dt_t[`_dti']))
+                mata: st_local("_dt_p", strofreal(strpos(_dt_t[`_dti'], "(") > 0))
+                if "`_dt_nm'" == "drop" & `_dt_p' local _dt_hit 1
+            }
+            capture mata: mata drop _dt_t
+            if `_dt_hit' {
+                mata: st_global("s(_unknown)", strtrim(st_global("s(_unknown)") + " dropto(" + st_global("s(droplines)") + ")"))
+                mata: st_global("s(droplines)", "")
+            }
+        }
+        // The catch-all options twoway draws (WP-47 basic:PT-11).
+        _dash_fold_drawn "`ptype'" `_cn_n'
         // mlabvposition() (WP-30 P1.24): checked and counted as twoway
         // counts it, before mlabel()'s own rule (_dash_fold_mlab).
         _dash_fold_mlabv "`ptype'" "`yvar1' `yvar2' `yvar' `xvar'"
@@ -8089,6 +8278,20 @@ program define _dash_process_segment, rclass
     // stored "if_expr":"" -- the qualifier gone, every row drawn, no word
     // (measured 23sep2026 at ad13a0f) -- and  make != "<b>"  stopped with
     // "_< invalid name".
+    // omitanymiss on several y (WP-47 basic:PT-11): twoway's serset
+    // leaves out each row where any of the plot's variables is missing,
+    // so every y's line joins across the rows another y is missing on
+    // (noted_drawn_truth.json OM00, OM01; OM12 with an if).  Written as
+    // the plot's own qualifier, which dash.ado evaluates in Stata
+    // (_dash_qual_gen), so both modes and a filter move keep those rows
+    // out.
+    mata: st_local("_om_any", strofreal(st_global("s(omit)") == "omitanymiss"))
+    if `_om_any' & `: word count `yvarlist'' > 1 {
+        local _om_v : subinstr local yvarlist " " ",", all
+        if "`xvar'" != "" local _om_v "`_om_v',`xvar'"
+        if `: length local if_expr' local if_expr `"(`macval(if_expr)') & !missing(`_om_v')"'
+        else local if_expr "!missing(`_om_v')"
+    }
     _dash_json_str `"`macval(if_expr)'"' _jif
     _dash_json_str `"`macval(in_expr)'"' _jin
 

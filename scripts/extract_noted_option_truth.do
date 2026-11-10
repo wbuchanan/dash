@@ -123,6 +123,20 @@ local probes at(mpg) blabel(total) ciopts(lcolor(red)) fitopts(lcolor(red)) ///
     outlines lstyle(p3) alstyle(p3) blstyle(p3) mstyle(p3) mlstyle(p3) ///
     mangle(30) barbsize(2) headlabel mwidth baroffset(1) msize(small) ///
     recast(line) filter(foreign) link(g1) play(zn_no_such_recording) replace
+* WP-47 basic:PT-11 (section 47-05): the catch-all list
+* (catchall_options_truth.json's options), two non-default values each
+* where the option takes one, on every type: the plain picture compared.
+local probes `"`probes' alalign(outside) alalign(center) blalign(outside) blalign(center)"'
+local probes `"`probes' bmsymbol(T) "bmsymbol(O) bmcolor(red) bmsize(large)" bmcolor(red) bmsize(large)"'
+local probes `"`probes' "bmlcolor(red) bmlwidth(thick)" bmlwidth(thick) bmlpattern(dash) bmlalign(outside)"'
+local probes `"`probes' mlabalignment(top) mlabjustification(right)"'
+local probes `"`probes' bartype(spanning) bartype(fixed) dropto(y) dropto(10) numkeys(3) numkeys(1)"'
+local probes `"`probes' omitanymiss omitallmiss omitdupmiss omitnothing"'
+local probes `"`probes' dlpattern(dot) "dlpattern(dash) dlwidth(thick)" xtransform(ln(X)) xlog"'
+local probes `"`probes' zvarlabel(Z) zvarformat(%9.1f) heatlabel dropbase nodropbase"'
+local probes `"`probes' back noback bargap(50) below clalign(outside) copyscheme"'
+local probes `"`probes' logging nologging refscheme norefscheme rescaling norescaling"'
+local probes `"`probes' titling notitling onepanel"'
 local k 0
 foreach one of local probes {
     local ++k
@@ -189,6 +203,85 @@ foreach t of local labtypes {
 }
 global ZN_LTR "`tr'"
 global ZN_LDR "`dr'"
+
+* WP-47 basic:PT-11 (section 47-05): probes that need another base
+* command, each keyed "<option>+<context>" (gen_twoway_takes_table.py
+* folds a context key into its option's row).  mlabel: the label types
+* with marker labels, mlabel(make) on rows 1-10.  multiy: two y
+* variables with missing values (y1 missing in 3/5 and 10, y2 in 4 and
+* 10) and three rows doubled, where the omit rules decide which rows a
+* line joins.  Base pictures x<c><j>/y<c><j>.
+local ctx_mlabel_types scatter line connected rline rconnected rcapsym rscatter dropline spike rspike rcap pcscatter pccapsym lfit
+local ctx_mlabel_probes mlabalignment(top) mlabalignment(bottom) mlabjustification(right) mlabjustification(left) "bmsymbol(O) bmcolor(red)"
+local ctx_multiy_types scatter line connected area bar spike dropline dot tsline
+local ctx_multiy_probes omitanymiss omitallmiss omitdupmiss omitnothing numkeys(1) numkeys(3)
+global ZN_CTX "mlabel multiy"
+foreach c in mlabel multiy {
+    if "`c'" == "multiy" {
+        preserve
+        gen y1 = mpg
+        gen y2 = price / 1000
+        replace y1 = . in 3/5
+        replace y2 = . in 4
+        replace y1 = . in 10
+        replace y2 = . in 10
+        expand 2 in 1/3
+        sort weight, stable
+        replace t = _n
+        tsset t
+    }
+    global ZN_CT_`c' "`ctx_`c'_types'"
+    local j 0
+    foreach t of local ctx_`c'_types {
+        local ++j
+        if "`c'" == "mlabel" {
+            if inlist("`t'", "rline", "rconnected", "rcapsym", "rscatter", "rspike", "rcap") local a "`t' yl yh weight in 1/10, mlabel(make)"
+            else if inlist("`t'", "pcscatter", "pccapsym") local a "`t' mpg weight trunk turn in 1/10, mlabel(make)"
+            else local a "`t' mpg weight in 1/10, mlabel(make)"
+        }
+        else {
+            if "`t'" == "tsline" local a "tsline y1 y2,"
+            else if inlist("`t'", "line", "connected") local a "`t' y1 y2 weight, sort"
+            else local a "`t' y1 y2 weight,"
+        }
+        local cb_`c'_`j' "`a'"
+        foreach v in x y {
+            capture graph drop _all
+            set seed 12345
+            capture twoway `a' name(zo, replace)
+            if !_rc capture graph export "${ZN_WORK}/`v'`c'`j'.svg", name(zo) replace as(svg)
+        }
+        capture graph drop _all
+    }
+    local k 0
+    foreach one of local ctx_`c'_probes {
+        local ++k
+        global ZN_CO_`c'_`k' `"`one'"'
+        local tr ""
+        local dr ""
+        local j 0
+        foreach t of local ctx_`c'_types {
+            local ++j
+            quietly log using "${ZN_WORK}/tc`c'`k'_`j'.log", replace text name(zn)
+            set seed 12345
+            capture noisily twoway `cb_`c'_`j'' `one' name(zo, replace)
+            local rc = _rc
+            quietly log close zn
+            local tr "`tr' `rc'"
+            if !`rc' capture graph export "${ZN_WORK}/oc`c'`k'_`j'.svg", name(zo) replace as(svg)
+            capture graph drop _all
+            quietly log using "${ZN_WORK}/dc`c'`k'_`j'.log", replace text name(zn)
+            capture noisily dash `cb_`c'_`j'' `one' name(zq)
+            local dr "`dr' `=_rc'"
+            quietly log close zn
+            capture dash clear
+        }
+        global ZN_CTR_`c'_`k' "`tr'"
+        global ZN_CDR_`c'_`k' "`dr'"
+    }
+    global ZN_CK_`c' "`k'"
+    if "`c'" == "multiy" restore
+}
 
 * Graph level, and bare replace in each position.
 local gl `" "(scatter mpg weight), filter(foreign)" "(scatter mpg weight), link(g1)" "(scatter mpg weight), play(zn_no_such_recording)" "(scatter mpg weight), replace" "scatter mpg weight, replace" "scatter mpg weight, saving(zn_f1) replace" "(scatter mpg weight), saving(zn_f2) replace" "scatter mpg weight, name(zq) replace" "(scatter mpg weight), name(zq) replace" "scatter mpg weight, name(zq) saving(zn_f3) replace" "scatter mpg weight, saving(zn_f4, replace)" "scatter mpg weight || line mpg weight, replace" "'
@@ -346,6 +439,34 @@ for j, t in enumerate(ltypes, 1):
         except OSError:
             pass
 probes["headlabel+mlabel"] = rows
+# WP-47 basic:PT-11: the context probes, "<option>+<context>".
+ctx_files = []
+for c in G("ZN_CTX").split():
+    ctypes = G("ZN_CT_%s" % c).split()
+    for k in range(1, int(G("ZN_CK_%s" % c)) + 1):
+        opt = G("ZN_CO_%s_%d" % (c, k))
+        tr = [int(v) for v in G("ZN_CTR_%s_%d" % (c, k)).split()]
+        dr = [int(v) for v in G("ZN_CDR_%s_%d" % (c, k)).split()]
+        rows = {}
+        for j, t in enumerate(ctypes, 1):
+            tl = os.path.join(work, "tc%s%d_%d.log" % (c, k, j))
+            dl = os.path.join(work, "dc%s%d_%d.log" % (c, k, j))
+            tt, dt = read(tl), read(dl)
+            op = os.path.join(work, "oc%s%d_%d.svg" % (c, k, j))
+            ctx_files.append(op)
+            rows[t] = {"twoway_rc": tr[j - 1],
+                       "twoway_message": first_error(tt) if tr[j - 1] else "",
+                       "twoway_draws": draws(j, op, ("x" + c, "y" + c)) if tr[j - 1] == 0 else None,
+                       "dash_rc": dr[j - 1],
+                       "dash_message": first_error(dt) if dr[j - 1] else "",
+                       "dash_note": note(dt)}
+            for f in (tl, dl):
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
+        probes["%s+%s" % (opt, c)] = rows
+    ctx_files += [os.path.join(work, "%s%s%d.svg" % (v, c, j)) for v in "xy" for j in range(1, len(ctypes) + 1)]
 graph = []
 for j in range(1, int(G("ZN_J")) + 1):
     tl = os.path.join(work, "gt%d.log" % j)
@@ -375,7 +496,7 @@ with open(G("ZN_OUT"), "w", encoding="utf-8") as fh:
     fh.write("\n")
 # ZN_KEEP=1 in the environment keeps the SVGs in c(tmpdir)dash_noted_probe
 # for reading what twoway draws.
-for f in ["git_head.txt"] + ([] if os.environ.get("ZN_KEEP") else ["%s%d.svg" % (c, i) for c in "bc" for i in range(1, len(types) + 1)] + ["o%d_%d.svg" % (k, j) for k in range(1, int(G("ZN_K")) + 1) for j in range(1, len(types) + 1)] + ["%s%d.svg" % (c, i) for c in ("bl", "cl", "ol_") for i in range(1, len(ltypes) + 1)]):
+for f in ["git_head.txt"] + ([] if os.environ.get("ZN_KEEP") else ctx_files + ["%s%d.svg" % (c, i) for c in "bc" for i in range(1, len(types) + 1)] + ["o%d_%d.svg" % (k, j) for k in range(1, int(G("ZN_K")) + 1) for j in range(1, len(types) + 1)] + ["%s%d.svg" % (c, i) for c in ("bl", "cl", "ol_") for i in range(1, len(ltypes) + 1)]):
     try:
         os.remove(os.path.join(work, f))
     except OSError:

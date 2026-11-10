@@ -862,8 +862,9 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w47_run' {
     // ------------------------------------------------------------
     // Q4704-3: pcarrow bmsize(3) is barbsize(3) (twoway: one SVG,
     // alias_truth.json bmsize P1), drawn over barbsize() (pairs
-    // barbsize_bmsize), bmsi() read; off the arrows bmsize() stays named
-    // and bsymbol() is named as bmsymbol(), the back marker 47-05 draws.
+    // barbsize_bmsize), bmsi() read; off the arrows bmsize() stays named.
+    // Flipped (WP-47 basic:PT-11): bsymbol() named as bmsymbol() was
+    // wrong once 47-05 draws the back marker: it is drawn over bmsymbol().
     // ------------------------------------------------------------
     local q3n 0
     foreach q3 in "bmsize(3)|barbsize(3)" "barbsize(1) bmsize(3)|barbsize(3)" "bmsi(3)|barbsize(3)" {
@@ -884,14 +885,193 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w47_run' {
     cert_log_has "${q4704_dir}/q4704_g1.log", needle("unsupported option(s): bmsize()")
     _w47_expect Q4704-3 "(${q4704_rc_g1} == 0 & r(found) == 1)" "scatter bmsize(3): rc ${q4704_rc_g1}, bmsize() not named"
     _q4704_run g2 "scatter mpg weight in 1/10, bmsymbol(T) bsymbol(O)"
-    cert_log_has "${q4704_dir}/q4704_g2.log", needle("unsupported option(s): bmsymbol()")
-    _w47_expect Q4704-3 "(${q4704_rc_g2} == 0 & r(found) == 1)" "scatter bsymbol(O): rc ${q4704_rc_g2}, not named as bmsymbol()"
-    _w47_done Q4704-3 "bmsize() on pcarrow is barbsize(); off the arrows bmsize() and bsymbol() (as bmsymbol()) stay named"
+    cert_log_has "${q4704_dir}/q4704_g2.log", needle("unsupported option")
+    _w47_expect Q4704-3 "(${q4704_rc_g2} == 0 & r(found) == 0)" "scatter bsymbol(O): rc ${q4704_rc_g2}, or named"
+    if ${q4704_rc_g2} == 0 {
+        python: _q4704_cmp("g2", "g2")
+        _w47_expect Q4704-3 `"(strpos(`"${q4704_opts}"', `""bmsymbol": "O""') > 0)"' `"bsymbol(O) writes ${q4704_opts}"'
+    }
+    _w47_done Q4704-3 "bmsize() on pcarrow is barbsize(); off the arrows bmsize() stays named; bsymbol() is bmsymbol(), drawn"
 
     macro drop q4704_*
     display as text "S04 end " c(current_date) " " c(current_time)
 }
 * ==== end S04 ====
+
+* ==== S05 basic:PT-11: noted options drawn ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w47_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+    global q4704_dir "`w47_work'"
+    sysuse auto, clear
+    local q5n 0
+    local q6n 0
+
+    // ------------------------------------------------------------
+    // Q4705-1: back markers.  twoway draws bmsymbol(T) under scatter's
+    // markers (noted_option_truth.json bmsymbol(T); noted_drawn_truth.json
+    // BM02); dash draws it (a dash_backmarker renderer, the pytest side)
+    // and names none of bmsymbol() .. bmlalign(); bms() is bmsymbol()'s
+    // minimum.  Without a back symbol twoway draws nothing different, and
+    // bmcolor() stays named (basic:PT-12).
+    // ------------------------------------------------------------
+    local q1n 0
+    foreach q1 in "bmsymbol(T)|bmsymbol" "bms(T)|bmsymbol" "bmsymbol(O) bmcolor(red) bmsize(large) bmlcolor(blue) bmlwidth(thick) bmlalign(outside) bmlpattern(dash)|bmlalign" "bsymbol(O) bmc(red) bmsi(large) bmlc(blue) bmlw(thick) bmla(outside)|bmlwidth" {
+        local ++q1n
+        gettoken qa qb : q1, parse("|")
+        local qb = substr(`"`qb'"', 2, .)
+        _q4704_run p`q1n' `"scatter mpg weight in 1/10, `qa'"'
+        _w47_expect Q4705-1 "(${q4704_rc_p`q1n'} == 0)" `"`qa': rc ${q4704_rc_p`q1n'}"'
+        cert_log_has "${q4704_dir}/q4704_p`q1n'.log", needle("unsupported option")
+        _w47_expect Q4705-1 "(r(found) == 0)" `"`qa': the note is printed"'
+        if ${q4704_rc_p`q1n'} == 0 {
+            python: _q4704_cmp("p`q1n'", "p`q1n'")
+            _w47_expect Q4705-1 `"(strpos(`"${q4704_opts}"', `""`qb'""') > 0)"' `"`qa' writes ${q4704_opts}"'
+        }
+    }
+    _q4704_run p9 "scatter mpg weight in 1/10, bmcolor(red)"
+    cert_log_has "${q4704_dir}/q4704_p9.log", needle("unsupported option(s): bmcolor()")
+    _w47_expect Q4705-1 "(${q4704_rc_p9} == 0 & r(found) == 1)" "scatter bmcolor(red) without a back symbol: rc ${q4704_rc_p9}, not named"
+    _w47_done Q4705-1 "bmsymbol() .. bmlalign() drawn as a back marker, not named; without a back symbol still named"
+
+    // ------------------------------------------------------------
+    // Q4705-2: alalign() and blalign() are the outline's alignment, read
+    // as lalign() with twoway's precedence -- blalign() over alalign()
+    // over lalign(), whatever the typed order (noted_drawn_truth.json
+    // AL00-AL05) -- and not named.
+    // ------------------------------------------------------------
+    local q2n 0
+    foreach q2 in "alalign(outside)|lalign(outside)" "alalign(outside) lalign(inside)|lalign(outside)" "lalign(inside) alalign(outside)|lalign(outside)" "blalign(inside) alalign(outside)|lalign(inside)" "alalign(outside) blalign(center)|lalign(center)" "ala(center)|lalign(center)" "bla(outside)|lalign(outside)" {
+        local ++q2n
+        gettoken qa qb : q2, parse("|")
+        local qb = substr(`"`qb'"', 2, .)
+        _q4704_run r`q2n' `"bar mpg weight in 1/10, `qa'"'
+        _q4704_run s`q2n' `"bar mpg weight in 1/10, `qb'"'
+        _w47_expect Q4705-2 "(${q4704_rc_r`q2n'} == 0 & ${q4704_rc_s`q2n'} == 0)" `"`qa': rc ${q4704_rc_r`q2n'}"'
+        cert_log_has "${q4704_dir}/q4704_r`q2n'.log", needle("unsupported option")
+        _w47_expect Q4705-2 "(r(found) == 0)" `"`qa': the note is printed"'
+        if ${q4704_rc_r`q2n'} == 0 & ${q4704_rc_s`q2n'} == 0 {
+            python: _q4704_cmp("r`q2n'", "s`q2n'")
+            _w47_expect Q4705-2 "(${q4704_same} == 1)" `"`qa' writes ${q4704_opts}, not `qb''s"'
+        }
+    }
+    _w47_done Q4705-2 "alalign() and blalign() drawn as the outline's alignment, blalign() over alalign() over lalign(), not named"
+
+    // ------------------------------------------------------------
+    // Q4705-3: mlabalignment() and mlabjustification() with marker labels
+    // (twoway draws the label box moved: noted_option_truth.json
+    // mlabalignment(top)+mlabel) are written and not named; without
+    // labels twoway draws nothing different and dash still names them.
+    // ------------------------------------------------------------
+    _q4704_run t1 "scatter mpg weight in 1/10, mlabel(make) mlabalignment(top) mlabjustification(right)"
+    cert_log_has "${q4704_dir}/q4704_t1.log", needle("unsupported option")
+    _w47_expect Q4705-3 "(${q4704_rc_t1} == 0 & r(found) == 0)" "mlabalignment(top) mlabjustification(right): rc ${q4704_rc_t1}, or named"
+    if ${q4704_rc_t1} == 0 {
+        python: _q4704_cmp("t1", "t1")
+        _w47_expect Q4705-3 `"(strpos(`"${q4704_opts}"', `""mlabalignment": "top""') > 0 & strpos(`"${q4704_opts}"', `""mlabjustification": "right""') > 0)"' `"writes ${q4704_opts}"'
+    }
+    _q4704_run t2 "scatter mpg weight in 1/10, mlabalignment(top)"
+    cert_log_has "${q4704_dir}/q4704_t2.log", needle("unsupported option(s): mlabalignment()")
+    _w47_expect Q4705-3 "(${q4704_rc_t2} == 0 & r(found) == 1)" "mlabalignment(top) without labels: rc ${q4704_rc_t2}, not named"
+    _w47_done Q4705-3 "mlabalignment() and mlabjustification() drawn with marker labels, named without"
+
+    // ------------------------------------------------------------
+    // Q4705-4: contour's zvarlabel() titles its key (twoway: ZV01, the
+    // title Z where gz was); dash writes it and names it on contour no
+    // longer; on scatter twoway draws nothing different, and it is named.
+    // ------------------------------------------------------------
+    _q4704_run u1 "contour mpg weight length, zvarlabel(Z)"
+    cert_log_has "${q4704_dir}/q4704_u1.log", needle("unsupported option")
+    _w47_expect Q4705-4 "(${q4704_rc_u1} == 0 & r(found) == 0)" "contour zvarlabel(Z): rc ${q4704_rc_u1}, or named"
+    if ${q4704_rc_u1} == 0 {
+        python: _q4704_cmp("u1", "u1")
+        _w47_expect Q4705-4 `"(strpos(`"${q4704_opts}"', `""zvarlabel": "Z""') > 0)"' `"writes ${q4704_opts}"'
+    }
+    _q4704_run u2 "scatter mpg weight in 1/10, zvarlabel(Z)"
+    cert_log_has "${q4704_dir}/q4704_u2.log", needle("unsupported option(s): zvarlabel()")
+    _w47_expect Q4705-4 "(${q4704_rc_u2} == 0 & r(found) == 1)" "scatter zvarlabel(Z): rc ${q4704_rc_u2}, not named"
+    _w47_done Q4705-4 "contour's zvarlabel() drawn as its key title; named off contour"
+
+    python:
+from sfi import Macro as _q4705_M
+def _q4705_has(tag, key, value):
+    o = (_q4704_opts(tag) or [{}])[0] or {}
+    _q4705_M.setGlobal("q4705_ok", "1" if str(o.get(key, "")) == value else "0")
+    _q4705_M.setGlobal("q4704_opts", _q4704_json.dumps(o, sort_keys=True))
+end
+    // ------------------------------------------------------------
+    // Q4705-5: bar bartype(spanning) and bartype(obs) are written and not
+    // named (twoway: BT01, BT13); bartype(nosuch) prints twoway's two
+    // lines, measured here, and draws the default; dropto(y) is the plot
+    // turned, written as horizontal (DT00 = DT10), and dropto(x) over
+    // horizontal upright (DT11); drop(y) is dropto(y) on bar.
+    // ------------------------------------------------------------
+    foreach q5 in "bartype(spanning)|bartype|spanning" "bartype(obs)|bartype|obs" "bart(spanning)|bartype|spanning" "dropto(y)|horizontal|horizontal" "drop(y)|horizontal|horizontal" {
+        tokenize `"`q5'"', parse("|")
+        local qa `"`1'"'
+        local qb "`3'"
+        local qc "`5'"
+        local ++q5n
+        _q4704_run v`q5n' `"bar mpg weight in 1/10, `qa'"'
+        cert_log_has "${q4704_dir}/q4704_v`q5n'.log", needle("unsupported option")
+        _w47_expect Q4705-5 "(${q4704_rc_v`q5n'} == 0 & r(found) == 0)" `"`qa': rc ${q4704_rc_v`q5n'}, or named"'
+        if ${q4704_rc_v`q5n'} == 0 {
+            python: _q4705_has("v`q5n'", "`qb'", "`qc'")
+            _w47_expect Q4705-5 "(${q4705_ok} == 1)" `"`qa' writes ${q4704_opts}, not `qb' `qc'"'
+        }
+    }
+    _q4704_run v9 "bar mpg weight in 1/10, horizontal dropto(x)"
+    if ${q4704_rc_v9} == 0 {
+        python: _q4705_has("v9", "horizontal", "")
+        _w47_expect Q4705-5 "(${q4705_ok} == 1)" `"horizontal dropto(x) writes ${q4704_opts}"'
+    }
+    foreach q5 in "bartype(nosuch)|yxbartype_g" "dropto(10)|ordstyle" {
+        gettoken qa qb : q5, parse("|")
+        local qb = substr(`"`qb'"', 2, .)
+        local ++q5n
+        quietly log using "${q4704_dir}/q4705_tw`q5n'.log", text replace name(q4705)
+        capture noisily twoway bar mpg weight in 1/10, `qa' nodraw
+        quietly log close q4705
+        cert_log_has "${q4704_dir}/q4705_tw`q5n'.log", needle("`qb' not found in scheme")
+        local q5tw = r(found)
+        _q4704_run v`q5n' `"bar mpg weight in 1/10, `qa'"'
+        cert_log_has "${q4704_dir}/q4704_v`q5n'.log", needle("`qb' not found in scheme")
+        _w47_expect Q4705-5 "(`q5tw' == 1 & r(found) == 1 & ${q4704_rc_v`q5n'} == 0)" `"`qa': twoway's note `q5tw', dash's `r(found)'"'
+        cert_log_has "${q4704_dir}/q4704_v`q5n'.log", needle("named style nosuch not found in class yxbartype_g")
+        local q5a = r(found)
+        cert_log_has "${q4704_dir}/q4704_v`q5n'.log", needle("named style 10 not found in class ordstyle")
+        _w47_expect Q4705-5 "(`q5a' + r(found) == 1)" `"`qa': the first note line is not twoway's"'
+    }
+    _w47_done Q4705-5 "bartype() and dropto() drawn on bar as twoway draws them; unknown words get twoway's two notes"
+
+    // ------------------------------------------------------------
+    // Q4705-6: numkeys(3) is written for the first y alone (NK11); on
+    // several y omitanymiss writes the plot's qualifier (OM01); noback on
+    // mspline and below on lfitci are written; none is named.
+    // ------------------------------------------------------------
+    gen y1 = mpg
+    gen y2 = price / 1000
+    quietly replace y1 = . in 3/5
+    foreach q6 in "scatter mpg weight in 1/10, numkeys(3)|numkeys" "line y1 y2 weight, sort omitanymiss|__dashq" "mspline mpg weight, noback|noback" "lfitci mpg weight, below|below" "kdensity mpg, omitanymiss|omit_n" {
+        gettoken qa qb : q6, parse("|")
+        local qb = substr(`"`qb'"', 2, .)
+        local ++q6n
+        _q4704_run w`q6n' `"`qa'"'
+        cert_log_has "${q4704_dir}/q4704_w`q6n'.log", needle("unsupported option")
+        _w47_expect Q4705-6 "(${q4704_rc_w`q6n'} == 0 & r(found) == 0)" `"`qa': rc ${q4704_rc_w`q6n'}, or named"'
+        cert_file_has "${q4704_dir}/q4704_w`q6n's.json", needle(`"`qb'"')
+        _w47_expect Q4705-6 "(r(found) == 1)" `"`qa': the spec does not hold `qb'"'
+    }
+    _q4704_run w9 "scatter mpg turn weight in 1/10, numkeys(3)"
+    python: _q4704_n = _q4704_opts("w9"); _q4704_M.setGlobal("q4705_nk", " ".join(str((o or {}).get("numkeys", "-")) for o in _q4704_n))
+    _w47_expect Q4705-6 `"("${q4705_nk}" == "3 -")"' "numkeys(3) on two y writes ${q4705_nk}"
+    drop y1 y2
+    _w47_done Q4705-6 "numkeys(), omitanymiss, noback and below written, not named"
+
+    macro drop q4704_* q4705_*
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
 
 * ==== S06 PIC-2: twoway's marker shapes and msymbol(invisible) ====
 local only : env WP47_ONLY

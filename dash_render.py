@@ -13411,6 +13411,23 @@ class SchemeParser:
                     "linewidth dotmark",
                     OptionTranslator.translate_lwidth("thin"))}
 
+    def back_marker_style(self) -> "dict[str, Any]":
+        """The look of a back marker (WP-47 basic:PT-11): markerstyle p#
+        sets ``backcolor scheme p#markbkfill`` and ``backline scheme
+        p#markback`` (style/markerstyle-p#.style), s2color's ``color
+        pmarkbkfill white`` and ``linestyle pmarkback background`` --
+        ``color background`` and ``linewidth background`` (thin).  Measured
+        (test/fixtures/noted_drawn_truth.json BM01, BM16): a white fill and
+        an outline in the background's colour, stcolor's white and
+        s2color's #eaf2f3, the width two thirds of the marker's own.
+        Returns ``{"fill", "line", "line_width"}``, the width in pixels; a
+        new dict each call."""
+        return {"fill": self._color("color pmarkbkfill", "#ffffff"),
+                "line": self._color("color background", "#ffffff"),
+                "line_width": self._lwidth(
+                    "linewidth background",
+                    OptionTranslator.translate_lwidth("thin"))}
+
     #: The chains a plot's line width follows, by the style file that sets
     #: it (StataNow 19.5, ado/base/style): "lineplot" is linestyle-p#line
     #: (`set width scheme p#lineplot') -- line, lfit, qfit, lowess, lpoly,
@@ -16267,6 +16284,31 @@ class GlyphMapper:
                          using="full intensity")
         return 1.0
 
+    @staticmethod
+    def _ci_below(fig, rs, options):
+        """A ci fit's ``[line, band]`` with ``below`` drawn line first
+        (WP-47 basic:PT-11): twoway draws lfitci's, qfitci's, lpolyci's and
+        fpfitci's fit line under the band then (noted_drawn_truth.json
+        BL00, BL01: the line's path before the band's).  The line moves to
+        just before the band's first renderer in *fig*; the list is
+        returned unchanged.  Without ``below`` nothing moves."""
+        if not str((options or {}).get("below", "") or "").strip():
+            return rs
+        line_r, band_r = rs[0], rs[1]
+        try:
+            rends = list(fig.renderers)
+            if line_r not in rends or band_r not in rends:
+                return rs
+            rends.remove(line_r)
+            band_out = getattr(band_r, "_dash_outline", None)
+            first = min(rends.index(r) for r in (band_r, band_out)
+                        if r is not None and r in rends)
+            rends.insert(first, line_r)
+            fig.renderers = rends
+        except (ValueError, TypeError):
+            pass
+        return rs
+
     def _ci_band_style(self, options: "dict[str, str]") -> dict:
         """The band's resolved look: the scheme's ci style (or the one
         ``pstyle()`` names), then the options, merged as twoway merges
@@ -17202,6 +17244,70 @@ class GlyphMapper:
         # carries the defs its marker names.
         if hasattr(glyph, "defs"):
             glyph.defs = _dash_marker_defs(glyph.marker)
+
+    #: The back-marker options and the marker options each one is read as
+    #: (twoway_yxview_parse.class: marker(backsymbol()), backcolor() -- the
+    #: fill alone, measured BM03 --, backsize(), backline(color(), width(),
+    #: pattern(), align())).
+    _BACK_MARKER_OPTS = (("bmsymbol", "msymbol"), ("bmcolor", "mfcolor"),
+                         ("bmsize", "msize"), ("bmlcolor", "mlcolor"),
+                         ("bmlwidth", "mlwidth"), ("bmlpattern", "mlpattern"),
+                         ("bmlalign", "mlalign"))
+
+    def _back_markers(self, fig, marker_r, options, labelled=False):
+        """Draw *marker_r*'s back markers, as twoway draws them under its
+        markers when ``bmsymbol()`` names a symbol (WP-47 basic:PT-11;
+        yxview.class draws ``backing`` points first when the back symbol is
+        not none).
+
+        A second ``Scatter`` over the marker renderer's source and view,
+        drawn just before it: ``bmsymbol()`` its symbol, ``bmcolor()`` its
+        fill, ``bmsize()`` its size, ``bmlcolor()``, ``bmlwidth()``,
+        ``bmlpattern()`` and ``bmlalign()`` its outline, each read through
+        ``_apply_marker_opts`` as the marker option it stands for, so a
+        name twoway does not know is noted as twoway notes it.  Without
+        them it is the scheme's (``SchemeParser.back_marker_style``) at
+        size zero, which twoway draws as its smallest ring (measured,
+        noted_drawn_truth.json BM01-BM10, BM16-BM21).  twoway draws none
+        for labelled points but the paired-coordinate ones (BM11;
+        *labelled* is True for pcscatter and pccapsym), for weighted
+        markers (BM12) or under colorvar() (BM13).  Tagged
+        ``dash_backmarker``: no hover (the mappers' hover tools name their
+        own renderers), no legend item and no part of the brush.  Returns
+        the renderer, or None."""
+        sym = str(options.get("bmsymbol", "") or "").strip()
+        if not sym or sym == "none" or marker_r is None:
+            return None
+        if not labelled and _dash_mlabel_names(options)[0]:
+            return None
+        if str(options.get("colorvar", "") or "").strip():
+            return None
+        g = getattr(marker_r, "glyph", None)
+        if g is None or not isinstance(_dash_spec_value(g.size), (int, float)):
+            return None
+        from bokeh.models import Scatter
+        st = self.scheme.back_marker_style()
+        glyph = Scatter(x=g.x, y=g.y, marker="circle", size=0.0,
+                        fill_color=st["fill"], line_color=st["line"],
+                        line_width=st["line_width"], fill_alpha=1.0,
+                        line_alpha=1.0)
+        kw = {"view": marker_r.view} \
+            if getattr(marker_r, "view", None) is not None else {}
+        b = fig.add_glyph(marker_r.data_source, glyph, **kw)
+        b.x_range_name = marker_r.x_range_name
+        b.y_range_name = marker_r.y_range_name
+        b.level = marker_r.level
+        b.tags = list(b.tags or []) + ["dash_backmarker"]
+        b._dash_backmarker_of = marker_r
+        bo = {m: options[k] for k, m in self._BACK_MARKER_OPTS
+              if str(options.get(k, "") or "").strip()}
+        self._apply_marker_opts(b, bo, traits=(False, 1.0))
+        rs = list(fig.renderers)
+        rs.remove(b)
+        rs.insert(rs.index(marker_r), b)
+        fig.renderers = rs
+        marker_r._dash_backmarker = b
+        return b
 
     # Bokeh markers drawn as lines only: twoway's alignment does not move
     # a line (D-47-03.e), so these keep their size.
@@ -19465,12 +19571,16 @@ class GlyphMapper:
         kwargs["text_baseline"] = baseline
         # mlabvposition() (WP-30 P1.24): each row at its own clock, the
         # scalar position above as its fallback.
+        self._mlabel_layout(kwargs, options)
         _vp = self._mlabel_vpos_columns(source, options, p, _d, vpos_col)
         if _vp is not None:
             from bokeh.core.properties import field as _bk_field
             for _k, _c in zip(("x_offset", "y_offset", "text_align",
                                "text_baseline"), _vp):
                 kwargs[_k] = _bk_field(_c)
+            # twoway lays each row's label out at its own clock as at a
+            # scalar one (noted_drawn_truth.json MV01, MV02).
+            self._mlabel_layout(kwargs, options, source, _vp[1])
 
         # mlabwidth: Stata label width in character units.  Bokeh's LabelSet
         # does not support text wrapping, so this option is accepted but has
@@ -19480,6 +19590,65 @@ class GlyphMapper:
 
         ls = LabelSet(**kwargs)
         fig.add_layout(ls)
+
+    #: mlabalignment()'s baseline below the label's anchor, in ems of its
+    #: size (WP-47 basic:PT-11; noted_drawn_truth.json ML00-ML04: twoway
+    #: puts the text's cap-top at the anchor under top, its descent under
+    #: bottom and its baseline under baseline; middle is its default).
+    _MLABEL_ALIGN_EM = {"top": 0.697, "bottom": -0.303, "baseline": 0.0}
+    #: mlabjustification()'s side of the anchor (ML05-ML07: right ends the
+    #: text there, center centres it, left starts it there).
+    _MLABEL_JUSTIFY = {"left": "left", "right": "right", "center": "center"}
+
+    def _mlabel_layout(self, kwargs, options, source=None,
+                       yoff_col=None) -> None:
+        """mlabalignment() and mlabjustification() on a LabelSet's keywords
+        *kwargs* (WP-47 basic:PT-11): twoway factors them onto the label's
+        vertical and horizontal edits (twoway_yxview_parse.class
+        MLABALIGNment, MLABJUSTification).  Justification sets
+        ``text_align``; alignment top, bottom or baseline draws the text on
+        its alphabetic baseline ``_MLABEL_ALIGN_EM`` ems of its size below
+        the anchor, and middle on its middle, as dash draws the default.  A
+        word twoway does not know is noted in twoway's words (class
+        horizontal, vertical_text; ML10, ML11) and the default drawn.
+        Under mlabvposition() (*source* and *yoff_col*, its per-row y
+        offsets) the baseline's move is written into a column of its own
+        beside them, named by both, and read from there."""
+        T = OptionTranslator
+        _mj = str(options.get("mlabjustification", "") or "").strip()
+        if _mj:
+            _w = _mj
+            if _w in self._MLABEL_JUSTIFY:
+                kwargs["text_align"] = self._MLABEL_JUSTIFY[_w]
+            else:
+                _dash_warn_once(
+                    ("mlabjustification", _dash_display(_mj)),
+                    f"dash: named style {_dash_display(_mj)} not found in "
+                    "class horizontal, default attributes used")
+        _ma = str(options.get("mlabalignment", "") or "").strip()
+        if _ma:
+            if _ma == "middle":
+                kwargs["text_baseline"] = "middle"
+            elif _ma in self._MLABEL_ALIGN_EM:
+                _pt = T.css_to_pt(kwargs.get("text_font_size")) \
+                    or T.size_medium_pt("text")
+                kwargs["text_baseline"] = "alphabetic"
+                _mv = self._MLABEL_ALIGN_EM[_ma] * float(_pt) * T.PX_PER_PT
+                if source is not None and yoff_col in getattr(
+                        source, "data", {}):
+                    from bokeh.core.properties import field as _bk_field
+                    col = "%s_al_%s" % (yoff_col, _ma)
+                    source.data[col] = np.asarray(
+                        source.data[yoff_col], dtype=float) - _mv
+                    kwargs["y_offset"] = _bk_field(col)
+                else:
+                    kwargs["y_offset"] = float(
+                        kwargs.get("y_offset", 0) or 0) - _mv
+            else:
+                _dash_warn_once(
+                    ("mlabalignment", _dash_display(_ma)),
+                    f"dash: named style {_dash_display(_ma)} not found in "
+                    "class vertical_text, default attributes used")
 
     @staticmethod
     def _mlabel_affix(raw: Any) -> str:
@@ -20086,6 +20255,8 @@ class GlyphMapper:
         # colorvar: map a variable's values to fill/line color via a color mapper
         self._apply_colorvar(fig, r, plot_source, options,
                              add_key=colorvar_key, stepped=colorvar_stepped)
+        # bmsymbol() (WP-47 basic:PT-11): the back markers under these.
+        self._back_markers(fig, r, options)
         # mlabel uses original column names (not jittered) for readable labels
         # A LabelSet takes no view, so under one -- a layer's own if/in, a
         # linked by() panel -- the labels are drawn from a copy of the rows
@@ -20625,6 +20796,30 @@ class GlyphMapper:
         _bar_sel = self._view_mask(view, len(df))
         if _bar_sel is not None:
             df = df[_bar_sel]
+        # bartype(spanning) and bartype(obs) (WP-47 basic:PT-11): each
+        # bar's centre and width from the rows in their order, before the
+        # rows missing a value go (a missing x ends the bar before it).
+        _span_mode = str(options.get("bartype", "") or "").strip()
+        _span = None
+        if _span_mode in ("spanning", "obs") and len(df) \
+                and getattr(df[xvar], "dtype", None) is not None \
+                and df[xvar].dtype.kind in "fiu" \
+                and not str(options.get("baroffset", "") or "").strip():
+            _sx = _dash_float_values(df[xvar])
+            _sy = _dash_float_values(df[yvar], coerce=True)
+            _sids = (list(df[_ROW_ID_COLUMN]) if _ROW_ID_COLUMN in df
+                     else list(range(len(df))))
+            _sc, _sw = _dash_bar_span(_sx, _sy, _span_mode)
+            df = df.assign(**{self._BAR_XC: _sc, self._BAR_W: _sw})
+            _ok = ~(np.isnan(_sx) & np.isnan(_sy))
+            _span = {"kind": "span", "mode": _span_mode,
+                     "c": self._BAR_XC, "w": self._BAR_W,
+                     "ids": [v.item() if hasattr(v, "item") else v
+                             for v, k in zip(_sids, _ok) if k],
+                     "xs": [None if not math.isfinite(v) else float(v)
+                            for v, k in zip(_sx, _ok) if k],
+                     "ys": [None if not math.isfinite(v) else float(v)
+                            for v, k in zip(_sy, _ok) if k]}
         df = df.dropna(subset=[xvar, yvar])
 
         # One x unit, as twoway draws it whatever the spacing of x
@@ -20657,6 +20852,9 @@ class GlyphMapper:
         x_field, width_spec, _bar_ext = self._bar_extent(
             xvar, df[xvar], bar_width, fig=fig, options=options,
             offset=_bar_off or 0.0)
+        if _span is not None:
+            # twoway draws spanning bars whatever barwidth() says (BT14).
+            x_field, width_spec, _bar_ext = self._BAR_XC, self._BAR_W, {}
         # WP-44 AX-20: an offset bar's scale, twoway's (yxview.class).
         _bar_ext = dict(_bar_ext, **self._bar_offset_span(
             xvar, df[xvar], bar_width, fig=fig, options=options,
@@ -20672,6 +20870,10 @@ class GlyphMapper:
         if _base is None:
             df = df.assign(**{self._BASE_COL: _zero})
         clean_source = ColumnDataSource(df)
+        if _span is not None:
+            # The saved page's move rebuilds the widths from the kept rows
+            # (_FILTER_JS's dash_bar_span, the twin of _dash_bar_span).
+            clean_source._dash_join = _span
 
         _bar_default_color = self.scheme.default_color(color_idx, "bar")
         # The fill is the resolved colour at the p#bar intensity, opaque,
@@ -22368,7 +22570,7 @@ class GlyphMapper:
             # The saved page's refit (WP-31 F1b).
             self._tag_fitci(line_r, "lfitci", source, view, xvar, yvar,
                             wtype, w, fig, options)
-            return [line_r, band_r]
+            return self._ci_below(fig, [line_r, band_r], options)
 
         # `regress y x [weight]' then `predict, stdp|stdf|stdr' on Stata's
         # grid (twoway__lfit_serset.ado:32, 71-95).  The design is centred
@@ -22416,7 +22618,7 @@ class GlyphMapper:
         # The saved page's refit (WP-31 F1b): line and band from ci_source.
         self._tag_fitci(line_r, "lfitci", source, view, xvar, yvar, wtype,
                         w, fig, options)
-        return [line_r, band_r]
+        return self._ci_below(fig, [line_r, band_r], options)
 
     @staticmethod
     def _fitci_std_for(options, wtype, layer: str) -> str:
@@ -22508,7 +22710,7 @@ class GlyphMapper:
             # The saved page's refit (WP-31 F1b).
             self._tag_fitci(line_r, "qfitci", source, view, xvar, yvar,
                             wtype, w, fig, options)
-            return [line_r, band_r]
+            return self._ci_below(fig, [line_r, band_r], options)
 
         x_fit = _fit_grid(x, options, "qfitci")
 
@@ -22566,7 +22768,7 @@ class GlyphMapper:
         # analytic band.
         self._tag_fitci(line_r, "qfitci", source, view, xvar, yvar, wtype,
                         w, fig, options)
-        return [line_r, band_r]
+        return self._ci_below(fig, [line_r, band_r], options)
 
     def map_lowess(
         self,
@@ -23381,7 +23583,7 @@ class GlyphMapper:
             _xd, _yd = self._drop_off_dates("lpolyci", "point(s)", _ox | _oy,
                                             _xd, _yd)
             line_r, band_r = _draw(_xd.tolist(), _yd.tolist(), [], [], [], [])
-            return [line_r, band_r]
+            return self._ci_below(fig, [line_r, band_r], options)
 
         x_grid, y_fit = self._compute_lpoly_fit(x, y, bwidth=h, degree=degree,
                                                 kernel=kernel, n_grid=n_grid,
@@ -23415,7 +23617,7 @@ class GlyphMapper:
         # Missing at every grid point: drawn in silence, as lpoly's is.
         if not _any_valid:
             self._mark_silent([line_r, band_r])
-        return [line_r, band_r]
+        return self._ci_below(fig, [line_r, band_r], options)
 
     # ------------------------------------------------------------------
     # Fractional polynomial fit (fpfit / fpfitci)
@@ -23894,7 +24096,7 @@ class GlyphMapper:
             if len(x) < 2:
                 self._mark_unfit([line_r, band_r], "fracpoly")
             self._fp_tag(line_r, band_r, source, view, _cfg)
-            return [line_r, band_r]
+            return self._ci_below(fig, [line_r, band_r], options)
 
         x_grid = _fp_grid(x)
         if w is not None:
@@ -23955,7 +24157,7 @@ class GlyphMapper:
             color_idx=color_idx,
         )
         self._fp_tag(line_r, band_r, source, view, _cfg)
-        return [line_r, band_r]
+        return self._ci_below(fig, [line_r, band_r], options)
 
     @staticmethod
     def _hist_bar_edges(left, right, gap=0.0, offset=0.0):
@@ -24819,6 +25021,15 @@ class GlyphMapper:
             _karea = 1.0
         x_range = np.linspace(_lo, _hi,
                               int(n_pts))
+        # omitanymiss (WP-47 basic:PT-11): twoway's serset holds the grid
+        # beside the data's own variables, and leaves out the rows past the
+        # data's last, so the curve is drawn at the grid's first min(n(),
+        # _N) points (noted_drawn_truth.json KD01: 74 of 300 on auto; KD02
+        # n(50) all 50; KD03 in 1/30 still 74).
+        _kkeep = _dash_kde_omit_keep(options, int(n_pts), options.get(
+            "omit_n", len(source.data.get(yvar, ()))))
+        if _kkeep is not None:
+            x_range = x_range[:_kkeep]
         # WP-31 H6: the page redraws a grid the user did not give.
         _kgrid_n = int(n_pts) if _rng is None else None
         density = (np.zeros(len(x_range)) if _bw_none
@@ -24907,6 +25118,10 @@ class GlyphMapper:
                 not in _STATA_DATE_KINDS:
             cfg["regrid"] = True
             cfg["n"] = int(grid_n)
+            # omitanymiss (WP-47 basic:PT-11): the first points alone.
+            _kk = _dash_kde_omit_keep(options, int(grid_n), len(x_draw))
+            if _kk is not None:
+                cfg["keep_first"] = int(len(x_draw))
         # WP-29 P0.8: a date variable is re-estimated in its Stata units at
         # x_eval, the unit grid of the points drawn at x_grid; see
         # map_histogram.
@@ -25745,6 +25960,16 @@ class GlyphMapper:
         dots_r._dash_dots_vars = {"along": yvar, "across": xvar}
         if _b is not None and math.isfinite(_b):
             dots_r._dash_axis_include = {"y": float(_b)}
+        # WP-47 basic:PT-11: twoway draws the rows of dots first, then the
+        # back markers, then the markers (yxview.class), so the back
+        # marker goes between the dots and its marker.
+        _bm = getattr(marker_r, "_dash_backmarker", None)
+        if _bm is not None:
+            _rs = list(fig.renderers)
+            if _bm in _rs and marker_r in _rs:
+                _rs.remove(_bm)
+                _rs.insert(_rs.index(marker_r), _bm)
+                fig.renderers = _rs
         return [dots_r, marker_r]
 
     #: The d-options and the m-option each styles the dots as (WP-31 B5b;
@@ -26242,6 +26467,7 @@ class GlyphMapper:
         self._apply_marker_opts(dot, options, traits=(_dl_h, _dl_f,
                                      self._marker_symbol_name(color_idx, options)))
         self._weight_markers(dot, options, "dropline")  # WP-31 C9
+        self._back_markers(fig, dot, options)  # WP-47 basic:PT-11
         # colorvar() (WP-31 C8a): the dot (which carries the series key)
         # and its drop, one key.
         self._colorvar_layer(fig, [(dot, dl_source), (seg, dl_source)],
@@ -26379,6 +26605,7 @@ class GlyphMapper:
             self._apply_marker_opts(dot, options, traits=(_rcs_h, _rcs_f,
                                      self._marker_symbol_name(color_idx, options)))
             self._weight_markers(dot, options, "rcapsym")  # WP-31 C9
+            self._back_markers(fig, dot, options)  # WP-47 basic:PT-11
         # colorvar() (WP-31 C8a): the spine and both markers, one key.
         self._colorvar_layer(fig, [(spine, cap_source), (bot_dot, cap_source),
                                    (top_dot, cap_source)], options)
@@ -26734,9 +26961,11 @@ class GlyphMapper:
                 and math.isfinite(zmax)):
             self._contour_key(fig, cr, ticks, lo, hi, zvar, zc_min, zc_max,
                               outlined=_dash_contour_parts(options)[
-                                  "outlines"])
+                                  "outlines"],
+                              title=_dash_zvarlabel(options))
         elif not lines_only and _no_rows:
-            self._contour_key_empty(fig, cr, zvar)
+            self._contour_key_empty(fig, cr, zvar,
+                                    title=_dash_zvarlabel(options))
         return [cr] + _extra + [hull]
 
     def _contour_parts(self, fig, cr, options, parts, colours, cuts, grid,
@@ -26889,7 +27118,7 @@ class GlyphMapper:
                                      getattr(self, "dp", "period"))}
 
     def _contour_key(self, fig, cr, ticks, lo, hi, zvar, zmin, zmax,
-                     outlined=False) -> None:
+                     outlined=False, title=None) -> None:
         """contour's colour key (WP-31 B4b): see :meth:`map_contour`.
 
         *outlined* (``outlines``, WP-37 TR-13a): twoway strokes each of the
@@ -26904,7 +27133,8 @@ class GlyphMapper:
         line per level, as BokehJS requires."""
         from bokeh.models import FixedTicker
         cb = cr.construct_color_bar(
-            title=_dash_var_label(self.variable_labels, zvar, zvar))
+            title=_dash_var_label(self.variable_labels, zvar, zvar)
+            if title is None else title)
         # The saved page's refit moves the key with the bands (WP-31 B4d).
         cr._dash_contour_bar = cb
         # The key spans twoway's z axis, not the bands' outer bounds.
@@ -27029,14 +27259,15 @@ class GlyphMapper:
                                  "plegend")
         return rec
 
-    def _contour_key_empty(self, fig, cr, zvar) -> None:
+    def _contour_key_empty(self, fig, cr, zvar, title=None) -> None:
         """contour's key over no observations (WP-37 DG-1): twoway draws
         the key's title and no level, so the bar is titled with z's label,
         holds no tick or label, and its strip is not drawn.  Placed by
         clegend() as :meth:`_contour_key` places the drawn key."""
         from bokeh.models import FixedTicker
         cb = cr.construct_color_bar(
-            title=_dash_var_label(self.variable_labels, zvar, zvar))
+            title=_dash_var_label(self.variable_labels, zvar, zvar)
+            if title is None else title)
         cr._dash_contour_bar = cb
         for k, v in (self.scheme.colorbar_chrome() or {}).items():
             try:
@@ -27231,6 +27462,7 @@ class GlyphMapper:
         self._apply_marker_opts(r, options, traits=(_hollow, _factor,
                                      self._marker_symbol_name(color_idx, options)))
         GlyphMapper._sync_brushed_copies(fig, _si_before)
+        self._back_markers(fig, r, options)  # WP-47 basic:PT-11
         # The labels, each at its own (jittered) point.
         if any(_labels):
             self._immediate_labels(fig, x_vals.tolist(), y_vals.tolist(),
@@ -27539,6 +27771,8 @@ class GlyphMapper:
         self._apply_marker_opts(r, options, traits=(_pcsc_h, _pcsc_f,
                                      self._marker_symbol_name(color_idx, options)))
         self._weight_markers(r, options, "pcscatter")  # WP-31 C9
+        # Labelled pc points keep their back markers (BM: pcscatter+mlabel).
+        self._back_markers(fig, r, options, labelled=True)  # WP-47 basic:PT-11
         # colorvar() (WP-31 C8a): both markers of each observation.
         self._colorvar_layer(fig, [(r, pc_source)], options)
         self._apply_mlabel_opts(fig, pc_source, options, _DASH_MLABEL_X,
@@ -28189,6 +28423,7 @@ class GlyphMapper:
         self._apply_marker_opts(dots, options, traits=(_pcc_h, _pcc_f,
                                      self._marker_symbol_name(color_idx, options)))
         self._weight_markers(dots, options, "pccapsym")  # WP-31 C9
+        self._back_markers(fig, dots, options, labelled=True)  # WP-47 basic:PT-11
         # colorvar() (WP-31 C8a): the spike and both markers, one key.
         self._colorvar_layer(fig, [(seg, seg_src), (dots, dot_src)], options)
 
@@ -28578,6 +28813,7 @@ class GlyphMapper:
         self._apply_marker_opts(r, options, traits=(_rs_h, _rs_f,
                                      self._marker_symbol_name(color_idx, options)))
         self._weight_markers(r, options, "rscatter")  # WP-31 C9
+        self._back_markers(fig, r, options)  # WP-47 basic:PT-11
         # colorvar() (WP-31 C8a): both ends of each observation.
         self._colorvar_layer(fig, [(r, rs_source)], options)
         self._apply_mlabel_opts(fig, rs_source, options, "x", "y",
@@ -29928,6 +30164,23 @@ def _dash_marker_defs(marker) -> dict:
         names = []
     return {n: CustomJS(code=_DASH_MARKER_DEFS[n], module=False)
             for n in names}
+
+
+def _dash_zvarlabel(options):
+    """contour's key title from ``zvarlabel()``, or None for z's own label
+    (WP-47 basic:PT-11).  twoway's plot settings read the value with
+    ``local zvarlabel `zvarlabel'`` (twoway_yxview_parse.class, "sic") and
+    title the key with it: a quoted value is its text, an unquoted one its
+    first word (noted_drawn_truth.json ZV01 ``zvarlabel(Z)``, ZV04
+    ``zvarlabel(A b)`` titled "A").  Read by value."""
+    raw = str((options or {}).get("zvarlabel", "") or "").strip()
+    if not raw:
+        return None
+    if len(raw) >= 4 and raw.startswith('`"') and raw.endswith('"\''):
+        return raw[2:-2]
+    if len(raw) >= 2 and raw[0] == '"' and raw[-1] == '"':
+        return raw[1:-1]
+    return raw.split()[0]
 
 
 #: WP-47 PIC-9 (D-47-06.c, as measured): an empty histogram bin draws
@@ -35297,6 +35550,43 @@ function dash_own_col(o, col) {
 // stair's corner, an ascending break), so a synthetic vertex never
 // enters a keep set, a brush or a KPI.  Column names are read as keys
 // only.  Hoisted, so a test can run it alone.
+// The twin of _dash_bar_span (WP-47 basic:PT-11): nd's centre and width
+// columns (spec.c, spec.w) from the rows spec.ids lists in their order
+// (spec.xs, spec.ys their values, null for missing) that keep (a Set of
+// row identities) holds.  spanning: a kept row's bar runs from its x to
+// the next kept row's x; none for the last, a missing x or y, or a next
+// x missing.  obs: centred on its x, (max - min) / (n - 1) wide over the
+// kept rows with both.  NaN draws no bar.
+function dash_bar_span(nd, spec, rowId, keep) {
+    const ids = spec.ids || [], xs = spec.xs || [], ys = spec.ys || [];
+    const fin = (v) => v !== null && v !== undefined && isFinite(v);
+    const seq = [];
+    for (let i = 0; i < ids.length; i++) if (keep.has(ids[i])) seq.push(i);
+    const C = new Map(), W = new Map();
+    if (spec.mode === "obs") {
+        let lo = Infinity, hi = -Infinity, k = 0;
+        for (const i of seq) {
+            if (fin(xs[i]) && fin(ys[i])) {
+                k++; if (xs[i] < lo) lo = xs[i]; if (xs[i] > hi) hi = xs[i];
+            }
+        }
+        if (k >= 2) for (const i of seq) {
+            if (fin(xs[i]) && fin(ys[i])) { C.set(ids[i], xs[i]); W.set(ids[i], (hi - lo) / (k - 1)); }
+        }
+    } else {
+        for (let j = 0; j + 1 < seq.length; j++) {
+            const a = seq[j], b = seq[j + 1];
+            if (fin(xs[a]) && fin(xs[b]) && fin(ys[a])) {
+                C.set(ids[a], (xs[a] + xs[b]) / 2);
+                W.set(ids[a], Math.abs(xs[b] - xs[a]));
+            }
+        }
+    }
+    const rid = nd[rowId] || [];
+    nd[spec.c] = rid.map((r) => C.has(r) ? C.get(r) : NaN);
+    nd[spec.w] = rid.map((r) => W.has(r) ? W.get(r) : NaN);
+    return nd;
+}
 function dash_join_rebuild(nd, spec, rowId) {
     const xc = spec.x, yc = spec.y;
     const st = ["direct", "ascending", "stairstep", "stepstair", "none"]
@@ -35600,7 +35890,12 @@ if (_primary_ids) {
         // A line drawn by connect() or cmissing(n): its breaks and stairs
         // rebuilt from the kept rows (WP-30 P1.8a).
         const _jn = _djoin[_di];
-        if (_jn && _jn.kind === "area") {
+        if (_jn && _jn.kind === "span") {
+            // bartype(spanning)/bartype(obs) (WP-47 basic:PT-11): the
+            // widths from the kept rows (dash_bar_span).
+            dash_bar_span(_nd, _jn, ROW_ID, _dkeep_ids);
+            _dsrcs[_di].data = _nd;
+        } else if (_jn && _jn.kind === "area") {
             // A filled layer split under cmissing(n) (WP-31 H1).
             _dsrcs[_di].data = dash_fill_rebuild_kept(_od, _jn, ROW_ID, _dkeep_ids);
         } else if (_jn && (_jn.x in _nd) && (_jn.y in _nd)) {
@@ -38253,6 +38548,9 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
                 for (let i = 0; i < gn; i++) xs.push(i * step + glo);
                 xs[gn - 1] = ghi;
             }
+            // WP-47 basic:PT-11: omitanymiss draws the grid's first
+            // points (_dash_kde_omit_keep).
+            if (typeof ac.keep_first === 'number') xs = xs.slice(0, ac.keep_first);
         }
         // WP-29 P0.8: evaluated at the unit grid, drawn at x_grid.
         const xe = ac.x_eval || xs;
@@ -44497,15 +44795,26 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                     _sidx_of[_pn + 1] = _sidx[_i]
                     _band_of[_pn + 1] = False
                     _pn += 2
-                else:
+                elif _band_of[_pn]:
                     _pn += 1
+                else:
+                    # numkeys(#) (WP-47 basic:PT-11): the plot's # numbers.
+                    _nk = _dash_numkeys(_pl)
+                    for _j in range(1, _nk):
+                        _plot_of[_pn + _j] = _pl
+                        _sidx_of[_pn + _j] = _sidx[_i]
+                        _band_of[_pn + _j] = False
+                    _pn += _nk
             _first, _kept, _ktexts = {}, [], {}
             for _n, _t, _rends in keys:
                 _pl = _plot_of.get(_n) or {}
                 _o = _pl.get("options") if isinstance(_pl.get("options"),
                                                       dict) else {}
-                if any(str(_k).lower() in _DASH_KEY_STYLE_OPTS
-                       and str(_v).strip() for _k, _v in _o.items()):
+                # A plot's numkeys() keys are its own, never merged
+                # (noted_drawn_truth.json NK01: three keys and the next).
+                if _dash_numkeys(_pl) != 1 or any(
+                        str(_k).lower() in _DASH_KEY_STYLE_OPTS
+                        and str(_v).strip() for _k, _v in _o.items()):
                     _kept.append((_n, _t, list(_rends)))
                     continue
                 _sig = _dash_key_style_id(_pl, _band_of.get(_n, False),
@@ -70342,6 +70651,12 @@ def _dash_layer_series(plot, var_labels=None, default_level=None,
         elif ptype in ("lpoly", "lpolyci"):
             ly = L(yv)
             line = ("lpoly smooth: " + ly) if ly else "lpoly smooth:"
+        elif ptype in ("mband", "mspline") and str(
+                opts.get("noback", "") or "").strip():
+            # WP-47 basic:PT-11: noback keeps the y's own label, as twoway
+            # titles mspline and mband under it (noted_drawn_truth.json
+            # NB01, NB02: "Mileage (mpg)" for "Median spline").
+            line = L(yv) or yv
         else:
             line = _DASH_FIT_KEYS.get(ptype, "Fitted values")
         if plot.get("_dash_empty") and ptype in ("lfit", "qfit", "lfitci",
@@ -70542,11 +70857,82 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
             # colour key is the clegend) and contourline's level keys are
             # named, not drawn; either consumes its number.
             rends = []
+        # numkeys(#) (WP-47 basic:PT-11): the plot gives the legend # keys,
+        # each its key, numbered on from n, so later plots' numbers move
+        # (noted_drawn_truth.json NK01-NK14: numkeys(3) keys a scatter
+        # three times, order(1 2 3 4) names those three and the next plot,
+        # numkeys(0) gives none).
+        k = _dash_numkeys(plot)
         if rends:
-            out.append((n, _dash_legend_key(plot, var_labels, gvl),
-                        rends))
-        n += 1
+            for j in range(k):
+                out.append((n + j, _dash_legend_key(plot, var_labels, gvl),
+                            rends))
+        n += k
     return out
+
+
+def _dash_bar_span(xs, ys, mode):
+    """``(centres, widths)`` of bartype(spanning) or bartype(obs) bars over
+    rows *xs*, *ys* in their order (WP-47 basic:PT-11).
+
+    spanning (noted_drawn_truth.json BT01, BT03-BT05, BT12): each row's bar
+    runs from its x to the next row's x, in the rows' order, unsorted; the
+    last row, a row whose x or y is missing, and one whose next row's x is
+    missing draw none (NaN).  A row missing both x and y is no row
+    (twoway's serset leaves it out).  obs (BT13): every bar is centred on
+    its x and (max - min) / (n - 1) wide over the n rows with x and y; one
+    row draws none.  The saved page's twin is ``dash_bar_span``."""
+    xs = np.asarray(xs, dtype=float)
+    ys = np.asarray(ys, dtype=float)
+    n = len(xs)
+    c = np.full(n, np.nan)
+    w = np.full(n, np.nan)
+    if mode == "obs":
+        ok = np.isfinite(xs) & np.isfinite(ys)
+        k = int(ok.sum())
+        if k >= 2:
+            wd = (float(xs[ok].max()) - float(xs[ok].min())) / (k - 1)
+            c[ok] = xs[ok]
+            w[ok] = wd
+        return c, w
+    seq = [i for i in range(n) if not (np.isnan(xs[i]) and np.isnan(ys[i]))]
+    for a, b in zip(seq, seq[1:]):
+        if np.isfinite(xs[a]) and np.isfinite(xs[b]) and np.isfinite(ys[a]):
+            c[a] = (xs[a] + xs[b]) / 2.0
+            w[a] = abs(xs[b] - xs[a])
+    return c, w
+
+
+def _dash_kde_omit_keep(options, n, rows):
+    """How many of kdensity's *n* grid points omitanymiss draws: the first
+    min(*n*, *rows*), *rows* the data's observations; None without
+    omitanymiss or when it keeps them all (WP-47 basic:PT-11;
+    noted_drawn_truth.json KD01-KD04)."""
+    if str((options or {}).get("omit", "") or "").strip() != "omitanymiss":
+        return None
+    try:
+        n, rows = int(n), int(rows)
+    except (TypeError, ValueError):
+        return None
+    if rows < 1 or rows >= n:
+        return None
+    return rows
+
+
+def _dash_numkeys(plot):
+    """How many legend keys *plot* gives: its ``numkeys()`` (dash.ado
+    writes a whole number at or above 0), else 1 (WP-47 basic:PT-11).
+    Anything else reads as 1."""
+    o = plot.get("options") if isinstance(plot, dict) else None
+    raw = str((o or {}).get("numkeys", "") or "").strip() \
+        if isinstance(o, dict) else ""
+    if not raw:
+        return 1
+    try:
+        k = int(float(raw))
+    except (TypeError, ValueError, OverflowError):
+        return 1
+    return k if 0 <= k <= 1000 else 1
 
 
 #: The key painter (WP-43 LT-21, D-43-04.c, ruling D69): the custom
@@ -71573,6 +71959,8 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
               and "dash_join_none" not in (getattr(r, "tags", None) or [])
               # WP-31 B5b: dot's rows answer for nothing; the marker does.
               and "dash_dots" not in (getattr(r, "tags", None) or [])
+              # WP-47 basic:PT-11: nor a back marker; its marker does.
+              and "dash_backmarker" not in (getattr(r, "tags", None) or [])
               # WP-42 CV-7: a colorvar key's proxy draws nothing.
               and "dash_key_proxy" not in (getattr(r, "tags", None) or [])]
     if not _rends:
@@ -82091,6 +82479,9 @@ class ServerAppBuilder:
                     _dash_stroke_grow, _dash_stroke_align,
                     # WP-47 PIC-2: the marker shapes' defs.
                     _dash_marker_defs,
+                    # WP-47 basic:PT-11: contour's zvarlabel() key title.
+                    _dash_zvarlabel,
+                    _dash_numkeys, _dash_kde_omit_keep, _dash_bar_span,
                     _dash_graph_color, _dash_ref_in, _dash_scheme_at_ref,
                     _dash_figure_aspect, _dash_scale_factor,
                     _dash_scale_columns, _dash_apply_scale, _dash_frame_aspect,

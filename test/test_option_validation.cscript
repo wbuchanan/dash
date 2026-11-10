@@ -3384,7 +3384,7 @@ local _u51n 0
 foreach _u51p in "scatter mpg weight, titling|titling)" ///
     "scatter mpg weight, bmcolor(red) below|bmcolor() below)" ///
     "scatter mpg weight, logging bmlwidth(thin)|logging bmlwidth())" ///
-    "scatter mpg weight, numkeys(2)|numkeys())" ///
+    "scatter mpg weight, clalign(outside)|clalign())" ///
     "(scatter mpg weight), titling below|titling below)" ///
     "scatter mpg weight, logging|logging)" ///
     "bar mpg weight, omitallmiss|omitallmiss)" ///
@@ -3410,6 +3410,9 @@ foreach _u51p in "scatter mpg weight, titling|titling)" ///
 // dash names, carries the case.
 // Flipped (WP-42 AX-12): zmtick() is drawn on the colour key and taken in
 // silence; numkeys(), which twoway takes and dash names, carries it.
+// Flipped (WP-47 basic:PT-11): numkeys(2) is drawn now (two keys, as
+// twoway keys the plot: noted_drawn_truth.json NK01); clalign(), which
+// twoway takes and draws nothing different with, carries U51-4.
 // Flipped (WP-32): U51-8's bare headlabel on pcspike is taken in silence,
 // as twoway draws nothing of it there (U55-6); a bare nologging carries
 // U51-8.
@@ -3701,6 +3704,34 @@ quietly dash scatter mpg weight, sort(price) name(ovu55s)
 _ov_has "ovu55s" `""sortvars":"price""'
 _ov_assert U55-0s "(r(found) == 1)" "scatter sort(price): the spec names its sort list"
 capture dash clear
+
+// Q4705-7 (WP-47 basic:PT-11): the noted options dash now draws are still
+// refused where twoway refuses them, with twoway's return code and words,
+// each measured here beside dash (noted_option_truth.json: bartype(),
+// dropto() off the bar family, noback off mspline and mband; numkeys()'s
+// values, noted_drawn_truth.json NK08, NK09).
+local _q57n 0
+foreach _q57 in "scatter mpg weight, bartype(spanning)#option bartype() not allowed" "scatter mpg weight, dropto(y)#option dropto() not allowed" "scatter mpg weight, noback#option noback not allowed" "scatter mpg weight, numkeys(abc) || scatter turn weight ||,#abc not found" "scatter mpg weight, numkeys(-1) || scatter turn weight ||,#invalid syntax" "lfit mpg weight, bart(spanning)#option bart() not allowed" {
+    local ++_q57n
+    gettoken _q57c _q57w : _q57, parse("#")
+    local _q57w = substr(`"`_q57w'"', 2, .)
+    capture dash clear
+    capture log close _ovlog
+    log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture noisily twoway `_q57c' nodraw
+    local _q57t = _rc
+    log close _ovlog
+    _ov_count "`c(tmpdir)'dash_ov.log" `"`_q57w'"'
+    local _q57tn = r(n)
+    log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture noisily dash `_q57c' name(ovq57)
+    local _q57d = _rc
+    log close _ovlog
+    _ov_count "`c(tmpdir)'dash_ov.log" `"`_q57w'"'
+    _ov_assert Q4705-7 "(`_q57t' != 0 & `_q57d' == `_q57t' & `_q57tn' >= 1 & r(n) >= 1)" `"`_q57c': dash rc `_q57d', twoway rc `_q57t', the words `_q57w'"'
+    capture dash clear
+}
+_ov_assert Q4705-7 "(`_q57n' == 6)" "the six Q4705-7 refusals ran"
 
 // Q3707-1 (WP-37 D65): contour and contourline do not take heatmap; dash
 // refuses it, r(198), as it refuses any option contour does not take.
