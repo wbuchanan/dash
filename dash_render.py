@@ -17256,12 +17256,11 @@ class GlyphMapper:
                 size = prev[0]
             # A size of 0 is floored too while the marker paints (its
             # outline or its fill): twoway draws it at its smallest ring.
+            fa = _dash_spec_value(getattr(glyph, "fill_alpha", 1.0))
             paints = drawn or (
                 _dash_spec_value(getattr(glyph, "fill_color", None))
                 is not None
-                and not (isinstance(fa := _dash_spec_value(
-                    getattr(glyph, "fill_alpha", 1.0)), (int, float))
-                    and fa <= 0))
+                and not (isinstance(fa, (int, float)) and fa <= 0))
             out = max(float(size) + g2, _DASH_MIN_MARKER_PX) \
                 if size > 0 or (size == 0 and paints) else float(size)
             glyph.size = out
