@@ -143,3 +143,34 @@ class TestAfterAMove:
         assert tda._ticks(served[0], "x") == tda._ticks(saved[0], "x") \
             == [15.0, 20.0, 25.0, 30.0, 35.0, 40.0]
         assert "__dash_mid" in _quads(served)[0].data_source.data
+
+
+class TestTheGridAfterAMove:
+    """twoway draws the histogram of the kept rows on the grid its options
+    give over those rows (GlyphMapper._histogram_grid): bin() a count over
+    the kept range, width() from the kept minimum, start() over to the kept
+    maximum, discrete from the kept values.  The saved page re-bins as the
+    served refit does.  Bug (10nov2026): the saved page kept the full
+    data's grid for any of these options and marked the layer (bins
+    unfiltered); bin(6) moved to Foreign drew its first bar from 12, the
+    served page from 14."""
+
+    @staticmethod
+    def _bars(figs):
+        (q,) = [r for r in _quads(figs)
+                if "dash_outline" not in (r.tags or [])]
+        d = q.data_source.data
+        return [[round(float(v), 9) for v in d[c]]
+                for c in ("left", "right", "top")]
+
+    @pytest.mark.parametrize("opts", [
+        {"bin": "6"}, {"width": "5"}, {"start": "10"},
+        {"start": "10", "width": "5"}, {"bin": "6", "start": "10"},
+        {"discrete": "discrete"}, {"discrete": "discrete", "width": "2"},
+        {"bin": "6", "fraction": "fraction"}])
+    @pytest.mark.parametrize("move", [tda._DROP, tda._RANGE])
+    def test_saved_is_served(self, opts, move):
+        spec = tda._spec([P("histogram", "mpg", **opts)], filt=move[0])
+        saved = self._bars(tda._after("saved", spec, *move[1:]))
+        served = self._bars(tda._after("served", spec, *move[1:]))
+        assert saved == served

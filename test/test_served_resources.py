@@ -732,7 +732,10 @@ _SAVED_DIGEST = (
     # dash_dot_positions and dash_fill_dots keep a missing y's row under
     # dotextend(yes) (finish JS text only: the old statements spliced in
     # give the old digest), the same under both Pythons.
-    "56751f6e5badd966d241c5c2e5a0a24b5cb4e22dc7bd433298f6c7f1e35e3d4a")
+    # 56751f6e -> 4224042: the histogram recount's grid rule (bin(),
+    # width(), start(), discrete) in the filter code (filter JS text only:
+    # with the old _FILTER_JS spliced in the old digest is given).
+    "4224042336df01b738cd2e0bd00527ce30cff42afec8838872d9e4ed6e9f407a")
 
 
 # ===========================================================================

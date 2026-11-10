@@ -3128,8 +3128,8 @@ pass the filter, each from its own rows among them, a line still in its join ord
 recounts a histogram's
 bars, and re-estimates a density on its grid, from the rows that pass the
 filter -- for a {cmd:by()} panel, or a graph or plot with its own {cmd:if}
-or {cmd:in}, from its own rows among them -- and keeps the bin edges and the
-grid chosen when the dashboard was built, so neither moves as you filter
+or {cmd:in}, from its own rows among them -- on the bins and the grid
+{cmd:twoway} draws for those rows, as below
 (a histogram or density drawn by {cmd:recast()} as {cmd:scatter},
 {cmd:line}, {cmd:connected}, {cmd:area}, {cmd:bar}, {cmd:spike} or
 {cmd:dropline} is recounted after a move the same way); it
@@ -3169,9 +3169,9 @@ filters says the same in text a screen reader reads.  A density drawn over
 {cmd:range()} keeps the grid you gave and is not marked; one without it
 is drawn on the kept rows' grid, as {cmd:twoway} draws it, and is not
 marked unless its variable is a date or it is drawn as {cmd:dot}.  A
-{cmd:histogram} on {cmd:twoway}'s default grid is binned again over the
-kept rows, as {cmd:twoway} bins them; one given {cmd:bin()},
-{cmd:width()}, {cmd:start()} or {cmd:discrete}, or of a date, keeps its
+{cmd:histogram} is binned again over the kept rows, as {cmd:twoway} bins
+them, on {cmd:twoway}'s default grid or by its {cmd:bin()},
+{cmd:width()}, {cmd:start()} or {cmd:discrete}; one of a date keeps its
 bins and is marked.  A
 {cmd:contour} or {cmd:contourline} is recomputed up to 1,000 distinct
 points; above that it is kept as built and marked "(grid unfiltered)",

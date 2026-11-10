@@ -4,9 +4,9 @@ A saved page's filter callback (``dash_render._FILTER_JS``) redraws every
 row layer from the kept rows, but a fitted or smoothed line keeps the fit
 it had at build (until WP-31 F1a-F1g refitted every one of the eleven
 estimators; a fit drawn from Stata's own points, estopts(), predopts() or
-estcmd(), and a recast fit still keep theirs), a histogram keeps its bins
-and a density its grid -- the two layers a saved page still computes at
-build and marks.  Measured on ``test_mode_parity._DF`` with the dropdown moved to
+estcmd(), and a recast fit still keep theirs), a histogram of a date keeps
+its bins and a density drawn as dot its grid -- the two layers a saved page
+still computes at build and marks.  Measured on ``test_mode_parity._DF`` with the dropdown moved to
 Foreign: the lfit still starts at 29.1052, Stata's all-rows ``regress mpg
 weight`` value at weight 1800 (29.105207), where ``regress mpg weight if
 foreign==1`` gives 29.91739 -- and nothing on the page said so.
@@ -73,8 +73,22 @@ _FROZEN = ["histogram", "kdensity"]
 #: which the page does not recount) keeps the build's grid and the cue.
 #: Flipped (WP-31 H6): a histogram on twoway's default grid is binned
 #: again over the kept rows; one given bin() keeps the build's start and
-#: width, and the cue.
-_FROZEN_OPTS = {"histogram": {"bin": "3"}, "kdensity": {"recast": "dot"}}
+#: width, and the cue.  Flipped (10nov2026): every histogram grid but a
+#: date's is binned again over the kept rows (bin(), width(), start() and
+#: discrete as well), so the histogram kept and marked is of the %td date
+#: when (_FROZEN_VAR, _FROZEN_BO).
+_FROZEN_OPTS = {"histogram": {}, "kdensity": {"recast": "dot"}}
+_FROZEN_VAR = {"histogram": "when"}
+_FROZEN_BO = {"histogram": {"formats": {"when": "%td"}}}
+
+
+def _frozen(t):
+    """A frozen layer of type *t*: _FROZEN_OPTS, on _FROZEN_VAR's
+    variable."""
+    p = plot_for(t, _FROZEN_OPTS[t])
+    if t in _FROZEN_VAR:
+        p["var"] = _FROZEN_VAR[t]
+    return p
 # DECISIONS A20 (WP-31 B4c): contour and contourline are no computed-only
 # type (their rows are embedded) and are refitted within the cap; a capped
 # one is marked (TestTheCueAppearsOnAMove::test_a_capped_contour_is_marked).
@@ -244,8 +258,8 @@ class TestTheCueAppearsOnAMove:
     @pytest.mark.parametrize("t", _FROZEN)
     def test_a_layer_the_move_took_rows_from_is_marked(self, t, move):
         _, filt, action, _oracle = move
-        r = _render(_spec([plot_for("scatter"), plot_for(t, _FROZEN_OPTS[t])],
-                          {"filter": filt}))
+        r = _render(_spec([plot_for("scatter"), _frozen(t)],
+                          dict({"filter": filt}, **_FROZEN_BO.get(t, {}))))
         cue = _one_cue(r)
         built = _cue(r)["labels"]["g1"]
         assert cue.visible is False
@@ -881,7 +895,9 @@ class TestTheFrozenTag:
         r = _render(_spec([plot_for("scatter"), _stand_in(),
                            # Flipped (WP-31 H6): bin(3), as a default
                            # grid is binned again and not tagged.
-                           plot_for("histogram", {"bin": "3"}),
+                           # Flipped (10nov2026): a date's, as bin(3) is
+                           # binned again too.
+                           _frozen("histogram"),
                            _stand_in(if_expr="price > 20000"),
                            # fpfitci [aw]: a weighted frozen layer
                            # ("positive"); lfitci is refitted since WP-31
@@ -894,7 +910,8 @@ class TestTheFrozenTag:
                            # lpolyci [pw].  Flipped (WP-31 H6): drawn as
                            # dot, which the page does not recount.
                            plot_for("kdensity", dict(_PW, recast="dot"))],
-                          {"filter": "foreign, type(dropdown)"}), _wdf())
+                          dict({"filter": "foreign, type(dropdown)"},
+                               **_FROZEN_BO["histogram"])), _wdf())
         tags = []
         for x in r.figures["g1"].renderers:
             t = getattr(x, "_dash_frozen", None)
@@ -904,7 +921,8 @@ class TestTheFrozenTag:
                                              _STAND_IN, "fpfitci", "kdensity"]
         lf, hi, empty, wl, lw = tags
         assert lf["vars"] == ["mpg", "weight"] and lf["kind"] == "fit"
-        assert hi["vars"] == ["mpg"] and hi["kind"] == "bins"
+        # old -> new: ["mpg"] -> ["when"] (the date histogram, 10nov2026)
+        assert hi["vars"] == ["when"] and hi["kind"] == "bins"
         assert "member_ids" not in lf and "member_ids" not in hi
         assert empty["member_ids"] == []
         assert (lf["wvar"], lf["wrule"]) == (None, None)
@@ -1123,9 +1141,10 @@ class TestTheCueAgainstHostileInput:
     def test_a_hostile_label_is_data_not_markup(self):
         # The legend key's text is the user's: legend(label(2 "...")).
         # Flipped (WP-31 H6): bin(3), a grid the page keeps and marks.
-        spec = _spec([plot_for("scatter"), plot_for("histogram",
-                                                    {"bin": "3"})],
-                     {"filter": "foreign, type(dropdown)"},
+        # Flipped (10nov2026): a date's, as bin(3) is binned again too.
+        spec = _spec([plot_for("scatter"), _frozen("histogram")],
+                     dict({"filter": "foreign, type(dropdown)"},
+                          **_FROZEN_BO["histogram"]),
                      {"legend": 'label(2 "%s")' % _HOSTILE})
         r = _render(spec)
         _one_cue(r)

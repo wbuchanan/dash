@@ -24352,14 +24352,29 @@ class GlyphMapper:
             cfg["datekind"] = _hk
             cfg["unit_edges"] = edges[i0:i1 + 1].tolist()
             cfg["bin_first"] = int(i0)
-        elif not discrete and not any(
-                str(options.get(k, "") or "").strip()
-                for k in ("width", "start", "bin")):
-            # WP-31 H6: a grid twoway derives from the data
-            # (_histogram_grid's default rule) is derived again from the
-            # kept rows on the page, as twoway and the served refit do; the
-            # layer is then not marked.
+        else:
+            # WP-31 H6: the grid twoway derives from the data is derived
+            # again from the kept rows on the page, as twoway and the
+            # served refit do, under every option _histogram_grid reads
+            # (bin(), width(), start(), discrete; 10nov2026: the page kept
+            # the full data's grid for these); the layer is then not
+            # marked.  The options as _histogram_grid parsed them (its
+            # notes were said at the build).
             cfg["rebin"] = True
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                _gw = _stat_option_float(options, "width", None,
+                                         "histogram", lo=0.0)
+                _gs = _stat_option_float(options, "start", None,
+                                         "histogram")
+                _gb = _stat_option_float(options, "bin", None,
+                                         "histogram", lo=1.0)
+            if _gw is not None and math.isfinite(_gw) and _gw > 0.0:
+                cfg["grid_width"] = float(_gw)
+            if _gs is not None and math.isfinite(_gs) and not discrete:
+                cfg["grid_start"] = float(_gs)
+            if _gb is not None and math.isfinite(_gb) and not discrete:
+                cfg["grid_bin"] = int(_gb)
         _wk = (self.date_vars or {}).get(
             str(options.get("wexp", "")).strip()) if wtype is not None \
             else None
@@ -37976,24 +37991,51 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
     // WP-31 C16: a recast layer's source as it stood (its base columns).
     const _prev = ac.recast_cols ? src.data : null;
     if (ac.type === 'histogram' && ac.rebin === true && vals.length) {
-        // WP-31 H6: twoway's default grid over the kept rows
-        // (_histogram_grid, _stata_bin_count of the frequency-weight sum):
-        // from the minimum, int(min(sqrt N, 10 log10 N)) bins, or one bar
-        // of width 1 when every value is equal.  Written into this run's
-        // parsed config, which the branch below reads.
+        // WP-31 H6: twoway's grid over the kept rows, GlyphMapper.
+        // _histogram_grid's rule: discrete, each distinct value a bar of
+        // width() or the smallest spacing, from min - width/2; else from
+        // start() or the minimum, width() bars to the maximum, or bin()
+        // (else _stata_bin_count of the frequency-weight sum,
+        // int(min(sqrt N, 10 log10 N))) bars over it; one bar of width 1
+        // when every value is equal and no width() is given; at most 1000
+        // bars.  Written into this run's parsed config, which the branch
+        // below reads.
         let glo = Infinity, ghi = -Infinity;
         for (const v of vals) { if (v < glo) glo = v; if (v > ghi) ghi = v; }
         let nw = vals.length;
         if (wts) { let t = 0; for (const x of wts) t += x; nw = Math.round(t); }
-        let nb = 1, gw = 1;
-        if (ghi !== glo) {
-            nb = nw < 1 ? 1 : Math.max(1, Math.trunc(Math.min(Math.sqrt(nw), 10 * Math.log(nw) / Math.log(10))));
-            nb = Math.min(nb, 1000);
-            gw = (ghi - glo) / nb;
+        const _cnt = () => nw < 1 ? 1 : Math.max(1, Math.trunc(Math.min(Math.sqrt(nw), 10 * Math.log(nw) / Math.log(10))));
+        let gw = (typeof ac.grid_width === 'number') ? ac.grid_width : null;
+        let gs, nb;
+        if (ac.discrete) {
+            if (gw === null) {
+                const u = Array.from(new Set(vals)).sort((a, b) => a - b);
+                let m = Infinity;
+                for (let k = 1; k < u.length; k++) { const d = u[k] - u[k - 1]; if (d > 0 && d < m) m = d; }
+                gw = isFinite(m) ? m : 1;
+            }
+            gs = glo - gw / 2;
+            nb = Math.max(1, Math.trunc((ghi - gs) / gw + 0.5));
+            if (nb > 1000) { nb = 1000; gw = (ghi - gs) / nb; }
+        } else {
+            gs = (typeof ac.grid_start === 'number') ? ac.grid_start : glo;
+            if (ghi === glo && gw === null) gw = 1;
+            let span = ghi - gs;
+            if (span <= 0) span = gw !== null ? 0 : (Math.abs(ghi) || 1);
+            if (gw !== null) {
+                const r = gw ? span / gw : Infinity;
+                if (!isFinite(r) || r > 1000) { gw = null; nb = _cnt(); }
+                else nb = Math.ceil(r);
+            } else {
+                nb = (typeof ac.grid_bin === 'number') ? Math.trunc(ac.grid_bin) : _cnt();
+            }
+            nb = Math.max(1, nb);
+            if (nb > 1000) { nb = 1000; gw = null; }
+            if (gw === null) gw = span / nb;
         }
         const ge = [];
-        for (let k = 0; k <= nb; k++) ge.push(glo + gw * k);
-        ac.start = glo; ac.width = gw; ac.bin = nb; ac.bin_edges = ge;
+        for (let k = 0; k <= nb; k++) ge.push(gs + gw * k);
+        ac.start = gs; ac.width = gw; ac.bin = nb; ac.bin_edges = ge;
     }
     if (ac.type === 'histogram') {
         const edges = ac.bin_edges;

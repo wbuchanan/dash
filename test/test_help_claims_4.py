@@ -1207,9 +1207,10 @@ def _ROW_ID_NOT_IN(data):
 
 
 class TestTheSavedPageRecountsALayersOwnRows:
-    """Standalone "rescales the bars from the rows that pass the filter but
-    keeps the bin edges" (dash.sthlp, Server Mode).  A by() panel's, or a
-    qualified graph's or layer's, bars and curve were recounted from EVERY
+    """Standalone "recounts a histogram's bars ... from the rows that pass
+    the filter ... on the grid twoway draws for those rows" (dash.sthlp,
+    Server Mode; it said "keeps the bin edges" until 10nov2026).  A by()
+    panel's, or a qualified graph's or layer's, bars and curve were recounted from EVERY
     row that passed the filter: measured, the foreign==0 panel read
     [0.005, 0.098, 0.093, 0.021, 0.010] where its own 30 rows give
     [0, 0.114, 0.076, 0.030, 0.008], and `if foreign==1' read the numbers
@@ -1241,11 +1242,18 @@ class TestTheSavedPageRecountsALayersOwnRows:
                 "source" % title
             v = _agg_rows(df, case, title)
             if "top" in src.data:
-                left = [float(x) for x in src.data["left"]]
-                right = [float(x) for x in src.data["right"]]
+                # Flipped (10nov2026): bin(5) is twoway's grid over the
+                # layer's own kept rows, five bins from their minimum to
+                # their maximum, as twoway and the served refit draw it; it
+                # was the build's.
+                nb = len(src.data["left"])
+                w = (float(v.max()) - float(v.min())) / nb
+                grid = [float(v.min()) + w * k for k in range(nb + 1)]
+                left, right = grid[:-1], grid[1:]
                 for col, edges in (("left", left), ("right", right)):
-                    assert [float(x) for x in after.get(col, edges)] \
-                        == edges, "%s: the saved page moved its bins" % title
+                    assert [float(x) for x in after[col]] == pytest.approx(
+                        edges, abs=1e-9), \
+                        "%s: the saved page kept the build's bins" % title
                 want = []
                 for j, (a, b) in enumerate(zip(left, right)):
                     last = j == len(left) - 1

@@ -1034,6 +1034,7 @@ and now matches Stata.
 - dot draws the row of an observation whose y is missing under dotextend(yes), its full row as twoway draws it, in both modes and after a filter move; dash drew no row for it (WP-47, PIC-10)
 - A dot plot's dot is drawn at twoway's size, 0.30 rs across with its outline, the 1 px floor on the dot as drawn, fill and outline; dash floored the fill to 1 px before adding the outline, 1.77 px (WP-47, PIC-16)
 - Under bokeh serve, every session after the first is built, keeps no slot once closed and recomputes on a move; the first session's end left later sessions an empty page, never freed its slot and logged the key unredacted.
+- A saved histogram given bin(), width(), start() or discrete is binned again over the kept rows after a move, as twoway and the served page bin them; it kept the full data's bins and was marked (bins unfiltered).
 
 ### Fixed in WP-46
 
