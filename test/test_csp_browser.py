@@ -790,11 +790,9 @@ def _check_zero_weights_paint(p):
     def test_empty_bins_and_dot_rows(self, servers, kind):
         """WP-47 PIC-9 and PIC-10: the served page's empty bins draw
         nothing and a missing y's dot row is drawn, before and after the
-        server's recounts.  One session: under bokeh serve a second
-        session's move on a computed layer fails (its worker reads the
-        first session's module, which bokeh serve has cleared: NameError
-        _DASH_WARN_LOCK), a served defect of its own, so the round trip
-        is this test's own moves."""
+        server's recounts, in one session with its own moves.  (A later
+        session under bokeh serve is test_server_serves.py's
+        TestALaterSession.)"""
         both = "JSON.stringify([%s, %s])" % (_BINS_JS, _DOTS_JS)
         with _CspProbe(_served_url(servers(kind, "s06"))) as p:
             p.wait_change(both, [[], []], timeout=20)

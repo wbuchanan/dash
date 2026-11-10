@@ -501,3 +501,87 @@ class TestTheGeneratedSourceBindsAtModuleScope:
         assert "/health" in before, (
             "/health is registered only under the __main__ guard"
         )
+
+
+@pytest.mark.serve
+class TestALaterSession:
+    """bokeh serve clears a session's module once the session ends (Bokeh's
+    ``DocumentModuleManager.destroy``: ``module.__dict__.clear()``), and
+    runs the session's ``on_session_destroyed`` callbacks after that.  What
+    a session's module puts in the process -- the recompute worker, the
+    library's locked ``catch_warnings``, the note hook, the access-log
+    filter -- and its destroyed callbacks must work without that module.
+
+    Bug (10nov2026): after the first session ended, every later session got
+    an empty page (pandas' catch_warnings ran the first module's locked
+    class: ``NameError: _DASH_WARN_LOCK``), its slot was never released
+    (``_dash_session_release`` was gone) and a move on a computed layer
+    failed.  With one slot, each of three sessions in turn must get the
+    dashboard and redraw its histogram on a filter move."""
+
+    def test_three_sessions_one_after_another(self, tmp_path, monkeypatch):
+        from bokeh.client import pull_session
+        import logging
+        from bokeh.models import Select
+        monkeypatch.setenv("DASH_MAX_SESSIONS", "1")
+        app = _build_app(
+            str(tmp_path),
+            filters=[{"varname": "foreign", "type": "dropdown",
+                      "exclude": [], "label": ""}],
+            plots=[{"type": "histogram", "var": "mpg", "options": {}}])
+        args = ["--check-unused-sessions", "100",
+                "--unused-session-lifetime", "100"]
+        srv = _Served(app, extra_args=args)
+        try:
+            with srv:
+                for k in range(3):
+                    sel, session = None, None
+                    t0 = time.time()
+                    # The slot frees once Bokeh discards the last session.
+                    while sel is None and time.time() - t0 < 20:
+                        session = pull_session(
+                            url=srv.url("/app", token=False),
+                            arguments={"token": srv.token})
+                        sels = list(session.document.select({"type": Select}))
+                        if sels:
+                            sel = sels[0]
+                        else:
+                            session.close()
+                            time.sleep(0.3)
+                    assert sel is not None, (k, "no dashboard")
+                    try:
+                        # The move's redraw, as the server sends it: the
+                        # histogram's new bins in a patch (Bokeh's client
+                        # logs each message; it does not apply them to its
+                        # own copy of the document).
+                        got = []
+                        hd = logging.Handler(logging.DEBUG)
+                        hd.emit = lambda rec: got.append(rec.getMessage())
+                        lg = logging.getLogger("bokeh.client.connection")
+                        old = lg.level
+                        lg.setLevel(logging.DEBUG)
+                        lg.addHandler(hd)
+
+                        def _redrawn():
+                            return any("PATCH-DOC" in m and "__dash_bin_rows"
+                                       in m for m in got)
+                        # An option's own value, as a browser sends it.
+                        sel.value = sel.options[2 - k % 2][0]
+                        t1 = time.time()
+                        try:
+                            while time.time() - t1 < 20 and not _redrawn():
+                                session.force_roundtrip()
+                                time.sleep(0.2)
+                        finally:
+                            lg.removeHandler(hd)
+                            lg.setLevel(old)
+                        assert _redrawn(), (k, "no redraw")
+                    finally:
+                        session.close()
+        finally:
+            out = srv.proc.stdout.read() if srv.proc and srv.proc.stdout \
+                else ""
+        bad = [l for l in out.splitlines()
+               if "NameError" in l or "Traceback" in l
+               or "failed with following error" in l]
+        assert bad == [], "\n".join(bad[:20])

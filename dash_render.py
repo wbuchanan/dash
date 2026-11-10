@@ -7044,13 +7044,15 @@ def _dash_install_access_log_redaction():
     again.  Threat: filters piling up per session (exhaustion)."""
     import logging
     _dash_redact_access_record._dash_redacts_queries = True
+    # On Tornado's loggers past this module (bokeh serve clears it).
+    redact = _dash_rehome(_dash_redact_access_record)
     added = 0
     for name in ("tornado.access", "tornado.general", "tornado.application"):
         lg = logging.getLogger(name)
         if any(getattr(f, "_dash_redacts_queries", False)
                for f in lg.filters):
             continue
-        lg.addFilter(_dash_redact_access_record)
+        lg.addFilter(redact)
         added += 1
     return added
 
@@ -57372,6 +57374,54 @@ def _dash_served_state():
     return st
 
 
+def _dash_rehome(fn):
+    """A copy of *fn* that keeps working once its module is cleared.
+
+    bokeh serve runs the app in a fresh module per session and, when the
+    session ends, clears that module's namespace (``module.__dict__
+    .clear()``) before it runs the session's ``on_session_destroyed``
+    callbacks.  A function one session's module puts in the process -- a
+    warnings or logging hook, a destroyed callback -- would then raise
+    NameError on its first module name.  The copy reads those names from a
+    namespace of its own: every function of *fn*'s module that it reaches
+    is copied the same way (one copy each), any other value is shared.
+    Closure cells, defaults and attributes are kept.  Threat: a later
+    session's build, notes, log redaction or slot release failing."""
+    import builtins
+    import types
+    g = fn.__globals__
+    ns = {"__builtins__": g.get("__builtins__", builtins),
+          "__name__": g.get("__name__")}
+    done = {}
+
+    def _names(code):
+        out, todo = set(), [code]
+        while todo:
+            c = todo.pop()
+            out.update(c.co_names)
+            todo.extend(k for k in c.co_consts if isinstance(k, types.CodeType))
+        return out
+
+    def _copy(f):
+        if id(f) in done:
+            return done[id(f)]
+        nf = types.FunctionType(f.__code__, ns, f.__name__, f.__defaults__,
+                                f.__closure__)
+        nf.__kwdefaults__ = f.__kwdefaults__
+        nf.__qualname__ = f.__qualname__
+        nf.__dict__.update(f.__dict__)
+        done[id(f)] = nf
+        for n in _names(f.__code__):
+            if n in ns or n not in g:
+                continue
+            v = g[n]
+            ns[n] = (_copy(v) if isinstance(v, types.FunctionType)
+                     and v.__globals__ is g else v)
+        return nf
+
+    return _copy(fn)
+
+
 def _dash_sel_snapshot(sources) -> dict:
     """``{id(src): (src, selected indices)}`` for *sources*: what a served
     move's plan records, on the loop, before the move waits on the
@@ -57434,8 +57484,10 @@ def _dash_session_open(state, doc):
     if len(state.open) >= state.cap:
         return False
     state.open[key] = True
+    # Run after bokeh serve clears the session's module: no module name.
     doc.on_session_destroyed(
-        lambda session_context, _k=key: _dash_session_release(state, _k))
+        lambda session_context, _k=key, _rel=_dash_rehome(
+            _dash_session_release): _rel(state, _k))
     return True
 
 
@@ -74092,6 +74144,8 @@ def _dash_app_note_hook():
             return
         orig(message, category, filename, lineno, file, line)
 
+    # In the process past this module (bokeh serve clears it).
+    _show = _dash_rehome(_show)
     _show._dash_app_note_hook = True
     warnings.showwarning = _show
     warnings.filterwarnings("always", message=pat, category=UserWarning)
@@ -81437,6 +81491,9 @@ class ServerAppBuilder:
                          # the data decoded once per process.
                          "_dash_session_cap_value", "_dash_minutes_value",
                          "_dash_session_defaults", "_dash_served_state",
+                         # bokeh serve clears a session's module: what it
+                         # leaves in the process reads names of its own.
+                         "_dash_rehome",
                          "_dash_session_open", "_dash_session_release",
                          "_dash_idle_due", "_dash_cap_auth",
                          "_dash_shared_payload",
@@ -83351,6 +83408,10 @@ class ServerAppBuilder:
             "        self._pending = _collections.OrderedDict()",
             "        self._thread = None",
             "        self.ceiling = int(ceiling)",
+            "        # Held here: bokeh serve clears the module that made the",
+            "        # process's one worker once its session ends.",
+            "        self._new_thread = _threading.Thread",
+            "        self._log = logging.getLogger('dash')",
             "",
             "    def submit(self, slot, job):",
             "        \"\"\"Loop thread: queue *job* for *slot*, replacing its waiting one",
@@ -83363,7 +83424,7 @@ class ServerAppBuilder:
             "                return False",
             "            self._pending[slot] = job",
             "            if self._thread is None or not self._thread.is_alive():",
-            "                self._thread = _threading.Thread(",
+            "                self._thread = self._new_thread(",
             "                    target=self._run, name='dash-recompute', daemon=True)",
             "                self._thread.start()",
             "            self._cond.notify()",
@@ -83384,7 +83445,9 @@ class ServerAppBuilder:
             "            try:",
             "                job()",
             "            except Exception:",
-            "                logging.getLogger('dash').exception('dash: a recompute failed')",
+            "                # A closed session's job is dropped unsaid.",
+            "                if getattr(_slot, 'alive', True):",
+            "                    self._log.exception('dash: a recompute failed')",
             "",
             "",
             "def _dash_recompute_worker():",
@@ -83493,25 +83556,30 @@ class ServerAppBuilder:
             "",
             "",
             "class _DashLockedCatchWarnings(_DASH_CATCH_BASE):",
-            "    \"\"\"warnings.catch_warnings held under the process's warn lock.\"\"\"",
+            "    \"\"\"warnings.catch_warnings held under the process's warn lock.",
+            "    Its names are its own: it is the process's catch_warnings past",
+            "    the module that made it, which bokeh serve clears.\"\"\"",
+            "    _dash_lock = _DASH_WARN_LOCK",
+            "    _dash_clock = staticmethod(_time.perf_counter)",
+            "    _dash_stats = _DASH_WARN_LOCK_STATS",
             "",
             "    def __enter__(self):",
-            "        _DASH_WARN_LOCK.acquire()",
-            "        self._dash_t0 = _time.perf_counter()",
+            "        self._dash_lock.acquire()",
+            "        self._dash_t0 = self._dash_clock()",
             "        try:",
             "            return super().__enter__()",
             "        except BaseException:",
-            "            _DASH_WARN_LOCK.release()",
+            "            self._dash_lock.release()",
             "            raise",
             "",
             "    def __exit__(self, *exc):",
             "        try:",
             "            return super().__exit__(*exc)",
             "        finally:",
-            "            _held = _time.perf_counter() - self._dash_t0",
-            "            if _held > _DASH_WARN_LOCK_STATS['max_hold']:",
-            "                _DASH_WARN_LOCK_STATS['max_hold'] = _held",
-            "            _DASH_WARN_LOCK.release()",
+            "            _held = self._dash_clock() - self._dash_t0",
+            "            if _held > self._dash_stats['max_hold']:",
+            "                self._dash_stats['max_hold'] = _held",
+            "            self._dash_lock.release()",
             "",
             "",
             "class _DashWarnings:",
@@ -83611,12 +83679,13 @@ class ServerAppBuilder:
             "    # ---- The session's place in the recompute queue (WP-30 P1.31b) ----",
             "    _slot = _DashSlot()",
             "",
-            "    def _dash_worker_forget(session_context):",
+            "    def _dash_worker_forget(session_context, _st=_DASH_STATE):",
             "        # Loop thread: the session closed or idled out; its waiting",
-            "        # move is forgotten and a running one's result dropped.",
+            "        # move is forgotten and a running one's result dropped.  Run",
+            "        # after bokeh serve clears this module: no module name.",
             "        _slot.alive = False",
             "        _slot.gen += 1",
-            "        _w = getattr(_DASH_STATE, 'recompute', None)",
+            "        _w = getattr(_st, 'recompute', None)",
             "        if _w is not None:",
             "            _w.forget(_slot)",
             "    if _dash_worker_wanted(doc):",

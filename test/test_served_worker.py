@@ -273,6 +273,137 @@ class TestOneWorkerPerProcess:
 
 
 # ===========================================================================
+class TestTheSharedObjectsOutliveTheirModule:
+    """bokeh serve clears a session's module when the session ends
+    (``module.__dict__.clear()``) and runs its ``on_session_destroyed``
+    callbacks after that.  What one session's module puts in the process
+    must work once that module is cleared: here the module is a namespace
+    and ``ns.clear()`` is Bokeh's clear.
+
+    Bug (10nov2026): after the first session ended, a later session's build
+    failed in pandas' catch_warnings (``NameError: _DASH_WARN_LOCK``), the
+    worker could not start its thread, notes and the access-log redaction
+    failed (the redaction silently, logging the key), and the first
+    session's slot was never released."""
+
+    def test_the_worker(self, app_src):
+        ns = _fresh(app_src)
+        w = ns["_DashRecomputeWorker"](4)
+        ns.clear()
+        ran = []
+
+        def bad():
+            raise RuntimeError("a redraw that fails")
+        w.submit("a", bad)
+        w.submit("b", lambda: ran.append("b"))
+        TestTheQueue._drain(w)
+        assert ran == ["b"] and w._thread.is_alive()
+
+    def test_the_library_lock(self, app_src):
+        import warnings as real
+        orig = real.catch_warnings
+        ns = _fresh(app_src)
+        try:
+            ns["_dash_lock_library_warnings"]()
+            assert real.catch_warnings is not orig
+            ns.clear()
+            with real.catch_warnings():
+                real.simplefilter("ignore")
+        finally:
+            real.catch_warnings = orig
+
+    def test_the_note_hook(self, app_src, capfd):
+        import warnings as real
+        ns = _fresh(app_src)
+        orig, filters = real.showwarning, list(real.filters)
+        text = "dash: a note after its module was cleared %d" % next(_SEQ)
+        try:
+            real.showwarning = lambda *a, **k: None
+            ns["_dash_app_note_hook"]()
+            ns.clear()
+            real.warn(text, UserWarning)
+        finally:
+            real.showwarning = orig
+            real.filters[:] = filters
+        assert text in capfd.readouterr().err
+
+    def test_the_access_log_filter(self, app_src):
+        import logging
+        names = ("tornado.access", "tornado.general", "tornado.application")
+        kept = {n: list(logging.getLogger(n).filters) for n in names}
+        ns = _fresh(app_src)
+        try:
+            for n in names:
+                for f in kept[n]:
+                    logging.getLogger(n).removeFilter(f)
+            assert ns["_dash_install_access_log_redaction"]() == 3
+            ns.clear()
+            rec = logging.LogRecord("tornado.access", logging.WARNING,
+                                    __file__, 1, "403 GET %s", (
+                                        "/app?token=%s" % TEST_TOKEN,), None)
+            assert logging.getLogger("tornado.access").filter(rec)
+            assert TEST_TOKEN not in rec.getMessage(), rec.getMessage()
+        finally:
+            for n in names:
+                lg = logging.getLogger(n)
+                for f in list(lg.filters):
+                    lg.removeFilter(f)
+                for f in kept[n]:
+                    lg.addFilter(f)
+
+    def test_the_slot_release(self, app_src):
+        ns = _fresh(app_src)
+        st = types.SimpleNamespace(open={}, cap=5)
+        cbs = []
+
+        class _Doc:
+            session_context = types.SimpleNamespace(id="s-%d" % next(_SEQ))
+
+            def on_session_destroyed(self, cb):
+                cbs.append(cb)
+        assert ns["_dash_session_open"](st, _Doc())
+        assert st.open and len(cbs) == 1
+        ns.clear()
+        cbs[0](None)
+        assert st.open == {}
+
+    def test_rehome(self):
+        """_dash_rehome: the copy and every function of its module it
+        reaches read a namespace of their own; other values are shared,
+        and closures, defaults and attributes are kept."""
+        import dash_render as dr
+        g = {"__builtins__": __builtins__, "SHARED": []}
+        exec("def inner(x):\n    SHARED.append(x)\n    return x + 1\n"
+             "def outer(x, k=2):\n    return inner(x) * k\n", g)
+        outer = g["outer"]
+        outer.tag = "kept"
+        shared = g["SHARED"]
+        c = dr._dash_rehome(outer)
+        g.clear()
+        assert c(1) == 4 and c(1, k=3) == 6 and shared == [1, 1]
+        assert c.tag == "kept" and c.__name__ == "outer"
+        assert c.__globals__["inner"] is not None
+        assert c.__globals__["SHARED"] is shared
+
+    def test_the_worker_forget_reads_no_module_name(self, app_src):
+        """make_document's on_session_destroyed callback runs after the
+        clear, so it reads only its own closure and defaults."""
+        tree = ast.parse(app_src)
+        (fn,) = [n for n in ast.walk(tree)
+                 if isinstance(n, ast.FunctionDef)
+                 and n.name == "_dash_worker_forget"]
+        bound = {a.arg for a in fn.args.args}
+        body = [x for b in fn.body for x in ast.walk(b)]
+        loads = {n.id for n in body if isinstance(n, ast.Name)
+                 and isinstance(n.ctx, ast.Load)}
+        stores = {n.id for n in body if isinstance(n, ast.Name)
+                  and isinstance(n.ctx, ast.Store)}
+        import builtins
+        assert loads - bound - stores - set(dir(builtins)) <= {"_slot"}, \
+            loads
+
+
+# ===========================================================================
 class TestWhoUsesTheWorker:
 
     def test_the_rule(self, ns, monkeypatch):
