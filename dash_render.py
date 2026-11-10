@@ -44743,7 +44743,8 @@ def _dash_axis_default_titles(plots, var_labels=None, yaxis=1, xaxis=1,
         # when the last series has the same one (K01-K11).
         ys, xs = [], []
         for plot in rplots:
-            series = _dash_layer_series(plot, var_labels, default_level)
+            series = _dash_layer_series(plot, var_labels, default_level,
+                                        gvl)
             if _dash_is_horizontal(plot):
                 # Each series read through its orientation (WP-30 P1.9a).
                 series = [(s[1], s[0]) + tuple(s[2:]) for s in series]
@@ -44752,6 +44753,8 @@ def _dash_axis_default_titles(plots, var_labels=None, yaxis=1, xaxis=1,
         return (xs[0] if xs and xs[0] == xs[-1] else "",
                 ys[0] if ys and ys[0] == ys[-1] else "")
 
+    # WP-47 MS-3: a variable's last label in the plots of its rows.
+    gvl = _dash_graph_varlabels(plots)
     regs = _regions(plots)
     titles = [_region_titles(r[2]) for r in regs]
 
@@ -69705,7 +69708,74 @@ def _dash_varlabel_words(raw):
     return out
 
 
-def _dash_layer_series(plot, var_labels=None, default_level=None):
+def _dash_varlabel_group(plot):
+    """``(qualifier column, if, in)`` of *plot*: the rows it is drawn from,
+    by which twoway shares a variable's yvarlabel()/xvarlabel() between
+    plots (WP-47 MS-3).  Anything that is not a dict is ``("", "", "")``."""
+    if not isinstance(plot, dict):
+        return ("", "", "")
+    return tuple(str(plot.get(k, "") or "").strip()
+                 for k in ("qual_col", "if_expr", "in_expr"))
+
+
+#: The plot types whose yvarlabel()/xvarlabel() relabel a variable in every
+#: plot (WP-47 MS-3): those titled by their own variables.  A fit's,
+#: kdensity's or histogram's y is a variable twoway makes, and an
+#: immediate or function plot has none.
+_DASH_VARLABEL_OWN_TYPES = frozenset({"scatteri", "pci", "pcarrowi",
+                                      "function"})
+
+
+def _dash_graph_varlabels(plots):
+    """``{group: {"y": {var: text}, "x": {var: text}}}``: the label each
+    variable carries in the plots drawn from the same rows (*group* is
+    :func:`_dash_varlabel_group`'s), as twoway relabels a variable in
+    every such plot -- the last yvarlabel()/xvarlabel() given for it wins
+    (WP-47 MS-3, MS-4; varlabel_mlabel_truth.json varlabel.graph_last and
+    graph_two key B, B; graph_ifin, plots of other if, keys
+    "Mileage (mpg)", B).  Each plot's k-th yvarlabel() string labels its
+    k-th y variable (a data layer's ``yvar``; a range layer's ``yvar1``,
+    ``yvar2``; a pc layer's ``y1var``, ``y2var``; a rangept layer's three),
+    its first xvarlabel() string its ``xvar`` (``x1var``).  Fits,
+    kdensity, histogram, the immediates and function keep their own
+    strings (graph_fit1 keys A, "Fitted values"; graph_fit2 Q,
+    "Mileage (mpg)").  Total: anything that is not a dict, or whose
+    options are not one, is skipped; it never raises."""
+    out = {}
+    for plot in plots or ():
+        if not isinstance(plot, dict):
+            continue
+        opts = plot.get("options")
+        if not isinstance(opts, dict):
+            continue
+        g = out.setdefault(_dash_varlabel_group(plot), {"y": {}, "x": {}})
+        ptype = str(plot.get("type", "") or "").strip().lower()
+        if (ptype in _DASH_UNIVARIATE_TYPES or ptype in _DASH_FIT_TYPES
+                or ptype in _DASH_CI_TYPES
+                or ptype in _DASH_VARLABEL_OWN_TYPES):
+            continue
+        if ptype in _DASH_RANGE_TYPES:
+            ys, xk = ("yvar1", "yvar2"), "xvar"
+        elif ptype in _DASH_RANGEPT_TYPES:
+            ys, xk = ("yvar1", "yvar2", "yvar"), "xvar"
+        elif ptype in _DASH_PC_TYPES:
+            ys, xk = ("y1var", "y2var"), "x1var"
+        else:
+            ys, xk = ("yvar",), "xvar"
+        yw = _dash_varlabel_words(opts.get("yvarlabel"))
+        for k, key in enumerate(ys):
+            v = plot.get(key)
+            if k < len(yw) and isinstance(v, str) and v:
+                g["y"][v] = yw[k]
+        xw = _dash_varlabel_words(opts.get("xvarlabel"))
+        v = plot.get(xk)
+        if xw and isinstance(v, str) and v:
+            g["x"][v] = xw[0]
+    return out
+
+
+def _dash_layer_series(plot, var_labels=None, default_level=None,
+                       graph_vl=None):
     """``[(y_label, x_label), ...]``: one pair per series twoway draws for
     *plot* -- two for a ci fit, its band first -- in twoway's own text
     (WP-30 P1.16; test/fixtures/series_label_truth.json, measured by
@@ -69722,6 +69792,10 @@ def _dash_layer_series(plot, var_labels=None, default_level=None):
     smoothing grid``, lfit and qfit ``Fitted values``, mband ``Median
     bands`` and mspline ``Median spline``; a ci band ``<level>% CI``;
     histogram its scale word and kdensity ``kdensity <name>`` over ``x``.
+
+    *graph_vl* is :func:`_dash_graph_varlabels` of the figure's plots:
+    a variable's label from the last plot of the same rows that gave one
+    stands in for its own strings (WP-47 MS-3).
 
     The text is raw: never escaped or translated (the sink finishes it).
     Total: a plot that is not a dict gives ``[("", "")]``; options or
@@ -69742,7 +69816,7 @@ def _dash_layer_series(plot, var_labels=None, default_level=None):
     if _rhi and _rfrom in _DASH_RANGE_TYPES and plot.get("yvar"):
         q = dict(plot, type=_rfrom, yvar1=plot.get("yvar"), yvar2=_rhi)
         q.pop("recast_from", None)
-        return _dash_layer_series(q, var_labels, default_level)
+        return _dash_layer_series(q, var_labels, default_level, graph_vl)
 
     def L(name):
         return _dash_var_label(vl, name) if name not in (None, "") else ""
@@ -69755,16 +69829,32 @@ def _dash_layer_series(plot, var_labels=None, default_level=None):
     # line both from the first (measured,
     # test/fixtures/varlabel_mlabel_truth.json varlabel.range_two
     # "Band/Top", varlabel.fitci "Q/95% CI" and "Q", varlabel.fit "Q").
-    # A quoted "" is a string: the label is empty, as twoway's
-    # xvarlabel("") draws no title.
+    # WP-47 MS-3: a quoted "" is a string -- in yvarlabel() the variable's
+    # name (varlabel.y_empty titles and keys "mpg"), in xvarlabel() an
+    # empty label (varlabel.x_empty draws no x title) -- and a variable
+    # takes the label the last plot of the same rows gave it
+    # (_dash_graph_varlabels; varlabel.graph_two keys B, B).
     _yvl = _dash_varlabel_words(opts.get("yvarlabel"))
     _xvl = _dash_varlabel_words(opts.get("xvarlabel"))
+    _gvl = ((graph_vl or {}).get(_dash_varlabel_group(plot))
+            if isinstance(graph_vl, dict) else None)
+    _gy = _gvl.get("y", {}) if isinstance(_gvl, dict) else {}
+    _gx = _gvl.get("x", {}) if isinstance(_gvl, dict) else {}
 
     def Ly(name, k=0):
-        return _yvl[k] if k < len(_yvl) else L(name)
+        has = name not in (None, "")
+        v = _gy.get(name) if has else None
+        if v is None and k < len(_yvl):
+            v = _yvl[k]
+        if v is None:
+            return L(name)
+        return v if v != "" else (str(name) if has else "")
 
     def Lx(name):
-        return _xvl[0] if _xvl else L(name)
+        v = _gx.get(name) if name not in (None, "") else None
+        if v is None and _xvl:
+            v = _xvl[0]
+        return L(name) if v is None else v
 
     def name(key):
         v = plot.get(key, "")
@@ -69848,7 +69938,7 @@ def _dash_layer_series(plot, var_labels=None, default_level=None):
     return [(Ly(plot.get("yvar")), Lx(plot.get("xvar")))]
 
 
-def _dash_legend_key(plot, var_labels=None):
+def _dash_legend_key(plot, var_labels=None, graph_vl=None):
     """The legend key twoway writes for one plot layer: the y label of the
     last series it draws (:func:`_dash_layer_series`) -- twoway's per-type
     text, the line's for a ci fit.  A layer with no text (a hand-written
@@ -69857,11 +69947,12 @@ def _dash_legend_key(plot, var_labels=None):
     Args:
         plot:       One plot spec.
         var_labels: ``{varname: label}``.
+        graph_vl:   :func:`_dash_graph_varlabels` of the figure's plots.
 
     Returns:
         The key text.
     """
-    series = _dash_layer_series(plot, var_labels)
+    series = _dash_layer_series(plot, var_labels, graph_vl=graph_vl)
     text = series[-1][0] if series else ""
     ptype = (str(plot.get("type", "")).lower() if isinstance(plot, dict)
              else "")
@@ -69957,6 +70048,9 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
     """
     out = []
     n = 1
+    # WP-47 MS-3: a variable relabelled in one plot is relabelled in every
+    # plot of the same rows.
+    gvl = _dash_graph_varlabels([p for p, _ in plot_renderers])
     for plot, rends in plot_renderers:
         # WP-34 PIC-1: a layer with key glyphs (an area's outlined swatch)
         # is keyed by them alone.
@@ -69980,7 +70074,8 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
             if rends:
                 # The band is added alongside the line; Stata keys them
                 # separately, and the band's key carries the level.
-                ser = _dash_layer_series(plot, var_labels, default_level)
+                ser = _dash_layer_series(plot, var_labels, default_level,
+                                         gvl)
                 # A band drawn as another type by ciplot() is marked so;
                 # a line hidden by nofit takes no key (WP-31 C4).
                 # A fitplot(area) fit's fill carries its outline ring and
@@ -70016,7 +70111,8 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
             # named, not drawn; either consumes its number.
             rends = []
         if rends:
-            out.append((n, _dash_legend_key(plot, var_labels), rends))
+            out.append((n, _dash_legend_key(plot, var_labels, gvl),
+                        rends))
         n += 1
     return out
 
@@ -80526,7 +80622,9 @@ class ServerAppBuilder:
                       # WP-47 basic:PT-4: the aligned outlines' edges.
                       "_DASH_STROKE_EXPR_JS", "_DASH_STROKE_REFRESH_JS",
                       "_DASH_STROKE_RING_JS",
-                      "_DASH_STROKE_RECT_SPECS"):
+                      "_DASH_STROKE_RECT_SPECS",
+                      # WP-47 MS-3: the types that keep their own labels.
+                      "_DASH_VARLABEL_OWN_TYPES"):
             _val = getattr(_mod, _name, None)
             if _val is None:
                 continue
@@ -81300,8 +81398,10 @@ class ServerAppBuilder:
                          "_dash_read_token_line", "_dash_private_page",
                          "_dash_announce_key", "_dash_process_key",
                          "_dash_bokeh_serve_key",
-                         # WP-47 47-02: the varlabel strings (MS-2).
-                         "_dash_varlabel_words"):
+                         # WP-47 47-02: the varlabel strings (MS-2) and
+                         # a variable's label graph-wide (MS-3).
+                         "_dash_varlabel_words", "_dash_varlabel_group",
+                         "_dash_graph_varlabels"):
             if _fn_name in _emitted_names:
                 continue
             _fn = getattr(_mod, _fn_name, None)

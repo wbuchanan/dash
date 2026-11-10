@@ -1296,6 +1296,8 @@ FUNCTIONS = {
  '_dash_layer_series': 'test/test_series_labels.py::TestTheSeriesRule::test_each_type_gives_twoways_series',
  '_dash_function_yname': 'test/test_series_labels.py::TestTheSeriesRule::test_a_function_is_named_as_twoway_names_it',
  '_dash_varlabel_words': 'test/test_varlabel_options.py::TestEveryTypeTakesThem::test_the_words',
+ '_dash_varlabel_group': 'test/test_varlabel_options.py::TestGraphWide::test_the_map',
+ '_dash_graph_varlabels': 'test/test_varlabel_options.py::TestGraphWide::test_the_map',
  '_dash_layer_series.<locals>.L': 'test/test_series_labels.py::TestTheSeriesRule::test_each_type_gives_twoways_series',
  '_dash_layer_series.<locals>.name': 'test/test_series_labels.py::TestTheSeriesRule::test_names_and_labels_as_twoway_uses_them',
  '_dash_layer_series.<locals>.pair': 'test/test_series_labels.py::TestTheSeriesRule::test_equal_or_missing_boundaries_give_one_label',

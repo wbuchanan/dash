@@ -365,3 +365,115 @@ class TestEveryTypeTakesThem:
                 "titles and the legend keys take them, {cmd:histogram} "
                 "joining a {cmd:yvarlabel()} to its scale word "
                 "({cmd:D/Density})") in hlp
+
+
+# ---------------------------------------------------------------------------
+# WP-47 MS-3 (with MS-4): yvarlabel("") is the name; a variable's last
+# label relabels it in every plot drawn from the same rows
+# ---------------------------------------------------------------------------
+#
+# The defect (measured at 669a502): yvarlabel("") keyed the layer by its
+# type ("scatter") and drew no y title, and a label applied only to its
+# own layer.  twoway (varlabel_mlabel_truth.json): scatter mpg weight,
+# yvarlabel("") is titled and keyed "mpg"; (scatter mpg weight,
+# yvarlabel("A")) (scatter mpg length, yvarlabel("B")) keys B, B under
+# the y title B -- the last label given for mpg wins in every plot --
+# but only among plots of the same if/in: (scatter mpg weight if
+# foreign) (scatter mpg weight if !foreign, yvarlabel("B")) keys
+# "Mileage (mpg)", B; and a fit's label is its own: (scatter mpg weight,
+# yvarlabel("A")) (lfit mpg weight) keys A, "Fitted values", and
+# (lfit mpg weight, yvarlabel("Q")) (scatter mpg weight) Q,
+# "Mileage (mpg)".
+
+DF3 = DF.assign(length=[186.0, 173.0, 168.0], __dashq1=[1, 0, 1],
+                __dashq2=[0, 1, 0])
+VL3 = dict(VL, length="Length (in.)")
+
+
+def _sp(y, x="weight", **o):
+    return {"type": "scatter", "yvar": y, "xvar": x, "options": o}
+
+
+_MS3 = {
+    "y_empty": [_sp("mpg", yvarlabel='""')],
+    "y_empty_two": [_sp("mpg", yvarlabel='"" "B"'),
+                    _sp("price", yvarlabel='"B"')],
+    "y_two_empty": [_sp("mpg", yvarlabel='"A" ""'),
+                    _sp("price", yvarlabel='""')],
+    "graph_last": [_sp("mpg"), _sp("mpg", yvarlabel='"B"')],
+    "graph_two": [_sp("mpg", yvarlabel='"A"'),
+                  _sp("mpg", "length", yvarlabel='"B"')],
+    "graph_other": [_sp("mpg", yvarlabel='"A"'), _sp("price")],
+    "graph_x": [_sp("mpg", xvarlabel='"W"'), _sp("price")],
+    "graph_fit1": [_sp("mpg", yvarlabel='"A"'),
+                   {"type": "lfit", "yvar": "mpg", "xvar": "weight",
+                    "options": {}}],
+    "graph_fit2": [{"type": "lfit", "yvar": "mpg", "xvar": "weight",
+                    "options": {"yvarlabel": '"Q"'}}, _sp("mpg")],
+    "graph_ifin": [dict(_sp("mpg"), qual_col="__dashq1"),
+                   dict(_sp("mpg", yvarlabel='"B"'), qual_col="__dashq2")],
+}
+
+
+def _expect(case):
+    rec = T["varlabel"][case]
+    return (_title(rec["ytitle_lines"]), _title(rec["xtitle_lines"]),
+            rec["legend_labels"] if rec["legend_drawn"] else None)
+
+
+def _drawn(mode, tmp_path, plots):
+    # The qualifier columns only where a plot names one (the renderer
+    # refuses a __dash column no plot names).
+    df = (DF3 if any(p.get("qual_col") for p in plots)
+          else DF3.drop(columns=["__dashq1", "__dashq2"]))
+    f, _ = figs(mode, tmp_path, plots, df=df, vl=VL3)
+    keys = [k for lg in f[0].legend if lg.visible
+            for k in [it.label.get("value") if isinstance(it.label, dict)
+                      else getattr(it.label, "value", it.label)
+                      for it in lg.items]]
+    return axis_titles(f[0]) + (keys or None,)
+
+
+class TestEmptyMeansTheName:
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("case", ["y_empty", "y_empty_two",
+                                      "y_two_empty"])
+    def test_case(self, mode, case, tmp_path):
+        assert _drawn(mode, tmp_path, _MS3[case]) == _expect(case)
+
+
+class TestGraphWide:
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("case", sorted(k for k in _MS3
+                                            if k.startswith("graph_")))
+    def test_case(self, mode, case, tmp_path):
+        assert _drawn(mode, tmp_path, _MS3[case]) == _expect(case)
+
+    def test_the_map(self):
+        # Keyed by the plots' rows (qualifier column, if, in): a later
+        # plot's label overrides an earlier one's for the same variable.
+        got = dr._dash_graph_varlabels(_MS3["graph_two"])
+        assert got == {("", "", ""): {"y": {"mpg": "B"}, "x": {}}}
+        got = dr._dash_graph_varlabels(_MS3["graph_ifin"])
+        assert got == {("__dashq1", "", ""): {"y": {}, "x": {}},
+                       ("__dashq2", "", ""): {"y": {"mpg": "B"}, "x": {}}}
+        # A fit's label is its own; anything not a dict is skipped.
+        assert dr._dash_graph_varlabels(
+            _MS3["graph_fit2"] + [None, {"options": 3}]) == {
+                ("", "", ""): {"y": {}, "x": {}}}
+        assert dr._dash_varlabel_group(
+            {"qual_col": "__dashq3", "if_expr": " x>1 ", "in_expr": None}) \
+            == ("__dashq3", "x>1", "")
+        assert dr._dash_varlabel_group(None) == ("", "", "")
+
+    def test_help(self):
+        # AC-47-02.3: the help states the graph-wide rule and the "" rule.
+        with open(os.path.join(_ROOT, "dash.sthlp"), encoding="utf-8") as fh:
+            hlp = " ".join(fh.read().split())
+        assert ("in every plot of the graph drawn from the same rows (the "
+                "same {cmd:if} and {cmd:in}): the last one given for a "
+                "variable wins") in hlp
+        assert ("{cmd:yvarlabel(\"\")} shows the variable's name, and "
+                "{cmd:xvarlabel(\"\")} draws no x title") in hlp

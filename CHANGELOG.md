@@ -747,6 +747,7 @@ and now matches Stata.
   - Graph names are limited to 22 characters and KPI names to 18.
   - Names holding two underscores in a row, and the name `_all`, are
     refused.
+- A variable relabelled by yvarlabel() or xvarlabel() in one plot is relabelled in every plot of the same if and in, the last label winning, and yvarlabel("") shows the variable's name, as twoway draws them: (scatter mpg weight, yvarlabel("A")) (scatter mpg length, yvarlabel("B")) keyed A, B, now B, B, and scatter mpg weight, yvarlabel("") was keyed "scatter" with no y title, now "mpg" (WP-47, MS-3)
 
   (WP-04, WP-19, a17c552, 9f48cf7, f92ef65)
 - Unbalanced parentheses and stray text between plot groups are r(198), as

@@ -421,6 +421,42 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w47_run' {
 }
 * ==== end S02 ====
 
+* ==== S02 MS-3: yvarlabel("") is the name; a variable relabelled graph-wide ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w47_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4702-2: the last yvarlabel() given for a variable labels it in
+    // every plot of the same rows, yvarlabel("") is the variable's name,
+    // and plots of other if keep their own: dash's titles and keys
+    // (saved and served) equal twoway's, measured live.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local q2n 0
+    foreach c in `"(scatter mpg weight, yvarlabel("A")) (scatter mpg length, yvarlabel("B")), legend(on)"' ///
+                 `"scatter mpg weight, yvarlabel("")"' ///
+                 `"scatter mpg price weight, yvarlabel("A" "") legend(on)"' ///
+                 `"(scatter mpg weight if foreign) (scatter mpg weight if !foreign, yvarlabel("B")), legend(on)"' ///
+                 `"(lfit mpg weight, yvarlabel("Q")) (scatter mpg weight), legend(on)"' {
+        local ++q2n
+        quietly twoway `c' name(q4702, replace)
+        _q4702_tw q4702
+        capture graph drop q4702
+        dash clear
+        capture noisily dash `c' name(q2)
+        local drc = _rc
+        _w47_expect Q4702-2 "(`drc' == 0)" `"dash `c': rc `drc'"'
+        _dash_serve_spec, specpath("`w47_work'/q4702_2s.json") datapath("`w47_work'/q4702_2d.json")
+        python: import __main__ as _m4702; _m4702._q4702("`w47_work'/q4702_2s.json", "`w47_work'/q4702_2d.json", "`w47_work'/q4702_2a.py")
+        _w47_expect Q4702-2 `"("${q4702}" == "1 1")"' `"`c': twoway [`q2ty'][`q2tx'][`q2tk'], dash ${q4702_seen}"'
+        dash clear
+    }
+    _w47_done Q4702-2 "`q2n' graphs title and key relabelled variables as twoway does, in both modes"
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 // ----------------------------------------------------------------
 // S03 basic:PT-4 helpers.  _q4703_1_tw reads twoway's first stroked
 // bar rect and its fill rect from an SVG; _q4703_1 builds the saved

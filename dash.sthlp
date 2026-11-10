@@ -5762,16 +5762,20 @@ value is shown as its business day's date ({cmd:%tbu46 5} is
 in tooltips.
 
 {phang}{opt yvarlabel(strings)} and {opt xvarlabel(string)}, inside a plot,
-stand in for the labels of that layer's variables, as {cmd:twoway} reads
-them, on every plot type: the axis titles and the legend keys take them,
+stand in for the labels of the variables they follow, in every plot of
+the graph drawn from the same rows (the same {cmd:if} and {cmd:in}): the
+last one given for a variable wins, as in {cmd:twoway}
+({cmd:(scatter mpg weight, yvarlabel("A")) (scatter mpg length, yvarlabel("B"))}
+keys both plots {cmd:B}), while a fit keeps its own; they are read as
+{cmd:twoway} reads them, on every plot type: the axis titles and the legend keys take them,
 {cmd:histogram} joining a {cmd:yvarlabel()} to its scale word
 ({cmd:D/Density}) and the paired immediates keeping {cmd:/xb} on x
 ({cmd:pci 20 2000 30 4000, yvarlabel("Q" "R") xvarlabel("S")} is titled
 {cmd:Q/R} over {cmd:S} and {cmd:/xb}, two lines).  {cmd:yvarlabel()}
 holds one quoted string per y variable, in order -- a range plot's two
 boundaries take the first two, a ci fit's band and line the first, as
-{cmd:twoway} writes {cmd:Q/95% CI} and {cmd:Q} -- and {cmd:xvarlabel("")}
-draws no x title.
+{cmd:twoway} writes {cmd:Q/95% CI} and {cmd:Q} -- {cmd:yvarlabel("")}
+shows the variable's name, and {cmd:xvarlabel("")} draws no x title.
 
 {phang}{opt mlalign(alignmentstyle)} is drawn as {cmd:twoway} draws it: a
 marker's outline lies inside its edge by default ({cmd:inside}), centred

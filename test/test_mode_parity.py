@@ -3373,6 +3373,11 @@ CORPUS = [
     # WP-47 MS-2: yvarlabel()/xvarlabel() on every plot type.
     _case("kdensity varlabels",
           [plot_for("kdensity", {"xvarlabel": '"M"', "yvarlabel": '"D"'})]),
+    # WP-47 MS-3: yvarlabel("") is the name; a variable's last label wins.
+    _case("yvarlabel empty and graph-wide",
+          [plot_for("scatter", {"yvarlabel": '"A"'}),
+           plot_for("scatter", {"yvarlabel": '"B"'}, xvar="price"),
+           plot_for("scatter", {"yvarlabel": '""'}, yvar="price")]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair
