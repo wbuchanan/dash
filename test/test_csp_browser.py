@@ -387,11 +387,14 @@ def _specs():
                    if_expr="foreign == 1")]),
             _frame().assign(wt=[0.0, np.nan] + [float(v) for v in
                                                  range(3, 21)])),
-        # WP-47 PIC-9: empty histogram bins (start(0) empties the first
-        # bins, the key beside a scatter reads row 0), under by() and in a
-        # layer whose rows a move empties, its count edge through the
-        # empty-bin CustomJSTransform (_DASH_EMPTY_BIN_JS).
-        "bins": (_spec([
+        # WP-47 PIC-9 and PIC-10, one family (each family is a server of
+        # each kind): empty histogram bins (start(0) empties the first
+        # bins, the key beside a scatter reads row 0) and dot rows for a
+        # missing y (row 3) refilled by the finish code's dash_fill_dots,
+        # each under by() and in a layer whose rows a move empties; the
+        # bins' count edge through the empty-bin CustomJSTransform
+        # (_DASH_EMPTY_BIN_JS).
+        "s06": (_spec([
             _graph("g1", [{"type": "histogram", "var": "mpg",
                            "options": {"bin": "30", "start": "0"}},
                           _scatter()]),
@@ -401,16 +404,12 @@ def _specs():
                    by="foreign"),
             _graph("g3", [{"type": "histogram", "var": "mpg",
                            "options": {"bin": "8"},
-                           "if_expr": "foreign == 1"}])]), _frame()),
-        # WP-47 PIC-10: a dot row for a missing y (row 3), the rows
-        # refilled by the finish code's dash_fill_dots, under by() and in
-        # a layer whose rows a move empties.
-        "dots": (_spec([
-            _graph("g1", [{"type": "dot", "yvar": "mpg", "xvar": "weight",
+                           "if_expr": "foreign == 1"}]),
+            _graph("g4", [{"type": "dot", "yvar": "mpg", "xvar": "weight",
                            "options": {"ndots": "20"}}]),
-            _graph("g2", [{"type": "dot", "yvar": "mpg", "xvar": "weight",
+            _graph("g5", [{"type": "dot", "yvar": "mpg", "xvar": "weight",
                            "options": {"ndots": "20"}}], by="foreign"),
-            _graph("g3", [{"type": "dot", "yvar": "mpg", "xvar": "weight",
+            _graph("g6", [{"type": "dot", "yvar": "mpg", "xvar": "weight",
                            "options": {"ndots": "20"},
                            "if_expr": "foreign == 1"}])]),
             _frame().assign(mpg=lambda f: f["mpg"].where(f.index != 3))),
@@ -634,7 +633,7 @@ class TestSavedPageInChrome:
         """WP-47 PIC-9: an empty bin draws no bar and no stroke -- its
         stroked renderer's screen edge is not finite -- and every other
         bin draws, before and after a move, with the key's outline."""
-        with _CspProbe(_url(_saved_page("bins"))) as p:
+        with _CspProbe(_url(_saved_page("s06"))) as p:
             _check_empty_bins(p)
             p.in_task(_MOVE_SELECT_JS)
             time.sleep(1.0)
@@ -647,7 +646,7 @@ class TestSavedPageInChrome:
         """WP-47 PIC-10: the saved page's dash_fill_dots draws the row of
         the observation whose y is missing, every row the whole scale,
         before and after a move."""
-        with _CspProbe(_url(_saved_page("dots"))) as p:
+        with _CspProbe(_url(_saved_page("s06"))) as p:
             _check_dot_rows(p, True)
             for _ in range(2):
                 p.in_task(_MOVE_SELECT_JS)
@@ -703,8 +702,7 @@ class TestServedPageInChrome:
                 "a same-origin script without the nonce loaded")
             assert "script-src-elem " + src in p.violations(), p.violations()
 
-    @pytest.mark.parametrize("name", ["rich", "big", "outlines", "markers",
-                                      "bins", "dots"])
+    @pytest.mark.parametrize("name", ["rich", "big", "outlines", "markers"])
     def test_it_renders_filters_and_round_trips(self, servers, kind, name):
         with _CspProbe(_served_url(servers(kind, name))) as p:
             assert p.violations() == [], p.violations()
@@ -789,30 +787,27 @@ def _check_zero_weights_paint(p):
     diff = [(rid, k, n, after.get((rid, k))) for rid, k, n in before]
     assert all(a is not None and n - a > 50 for _r, _k, n, a in diff), diff
 
-    def test_empty_bins_draw_nothing(self, servers, kind):
-        """WP-47 PIC-9: the served page's empty bins draw nothing, before
-        and after the server's recount."""
-        with _CspProbe(_served_url(servers(kind, "bins"))) as p:
-            p.wait_change(_BINS_JS, [], timeout=20)
+    def test_empty_bins_and_dot_rows(self, servers, kind):
+        """WP-47 PIC-9 and PIC-10: the served page's empty bins draw
+        nothing and a missing y's dot row is drawn, before and after the
+        server's recounts.  One session: under bokeh serve a second
+        session's move on a computed layer fails (its worker reads the
+        first session's module, which bokeh serve has cleared: NameError
+        _DASH_WARN_LOCK), a served defect of its own, so the round trip
+        is this test's own moves."""
+        both = "JSON.stringify([%s, %s])" % (_BINS_JS, _DOTS_JS)
+        with _CspProbe(_served_url(servers(kind, "s06"))) as p:
+            p.wait_change(both, [[], []], timeout=20)
             _check_empty_bins(p)
+            _check_dot_rows(p, True)
             for _ in range(2):
-                before = p.read(_BINS_JS)
+                before = p.read(both)
                 p.in_task(_MOVE_SELECT_JS)
-                assert p.wait_change(_BINS_JS, before, timeout=40) != before
+                assert p.wait_change(both, before, timeout=40) != before
                 time.sleep(0.5)
                 _check_empty_bins(p)
-
-
-    def test_dot_rows_for_a_missing_y(self, servers, kind):
-        """WP-47 PIC-10: the served page draws the missing y's row too."""
-        with _CspProbe(_served_url(servers(kind, "dots"))) as p:
-            p.wait_change(_DOTS_JS, [], timeout=20)
-            _check_dot_rows(p, True)
-            before = p.read(_DOTS_JS)
-            p.in_task(_MOVE_SELECT_JS)
-            assert p.wait_change(_DOTS_JS, before, timeout=40) != before
-            time.sleep(0.5)
-            _check_dot_rows(p, False)
+                _check_dot_rows(p, False)
+            assert p.js_errors() == [], p.js_errors()
 
 
 #: Per dot-row renderer: [its rows' x positions, its dots].
