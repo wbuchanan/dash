@@ -283,6 +283,12 @@ def _jo_figs(doc):
 def _jo_field(v):
     if isinstance(v, dict):
         return v.get("field")
+    # Flipped (WP-47 basic:PT-4): rarea's bound Lines draw x through the
+    # inset expression over their own source; the column is the one it
+    # reads (xs).
+    e = getattr(v, "expr", None)
+    if e is not None and "xs" in (e.args or {}):
+        return e.args["xs"][0]
     return getattr(v, "field", v)
 
 

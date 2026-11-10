@@ -645,9 +645,16 @@ def _alphas_by_glyph(name, mode):
     assert len(d.figures) == len(_ALPHA_PLOTS), len(d.figures)
     out = {}
     for fig in d.figures:
-        gs = _glyphs(fig)
-        assert gs, f"{name} [{mode}] a figure drew nothing"
-        out[type(gs[0]).__name__] = _alpha_of(gs[0])
+        rs = [r for r in drawn_renderers(fig) if isinstance(r, GlyphRenderer)]
+        assert rs, f"{name} [{mode}] a figure drew nothing"
+        a = _alpha_of(rs[0].glyph)
+        # Flipped (WP-47 basic:PT-4): a bar's stroke is drawn by its
+        # outline renderer (the fill's line_alpha is 0): its opacity is
+        # the outline's.
+        o = getattr(rs[0], "_dash_outline", None)
+        if o is not None:
+            a = (a[0], o.glyph.line_alpha)
+        out[type(rs[0].glyph).__name__] = a
     assert set(out) == set(PINNED_ALPHAS), set(out)
     return out
 

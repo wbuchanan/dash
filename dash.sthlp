@@ -5782,10 +5782,14 @@ at 12 o'clock, as {cmd:twoway} draws them.  {cmd:msangle()} takes an
 anglestyle name as well as a number: {cmd:msangle(forty_five)} rotates
 the markers 45 degrees.
 
-{phang}{opt lalign(alignmentstyle)}, inside a plot, is taken as
-{cmd:twoway} takes it: {cmd:twoway} draws a line the same with
-{cmd:center}, {cmd:inside} or {cmd:outside}, and so does {cmd:dash},
-silently; another word is named in {cmd:twoway}'s words, {cmd:named style}
+{phang}{opt lalign(alignmentstyle)}, inside a plot, is drawn as
+{cmd:twoway} draws it: on {cmd:bar}, {cmd:histogram} and {cmd:rbar} the
+outline is drawn inside the bar's edge ({cmd:inside}, the scheme's
+default), centred on it ({cmd:center}) or outside it ({cmd:outside}); on
+{cmd:area}, {cmd:rarea} and a confidence band the bounds' outline moves
+the same way; on lines {cmd:twoway} draws the same picture with any of
+the three, and so does {cmd:dash}, silently; another word is named in
+{cmd:twoway}'s words, {cmd:named style}
 ... {cmd:not found in class alignstroke}, and the line drawn without it.
 As in {cmd:twoway}, {cmd:lalign} may be shortened to as little as
 {cmd:la}, so {cmd:lal} is {cmd:lalign}.

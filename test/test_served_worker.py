@@ -99,6 +99,9 @@ _WORKER_AUDIT = {
     # the plot keys of each axis -- a module constant, read and never
     # written.
     "_DASH_AXIS_VAR_KEYS",
+    # WP-47 basic:PT-4: a redrawn bar layer's outline reads the edge names
+    # of each rectangle glyph -- a module constant, read and never written.
+    "_DASH_STROKE_RECT_SPECS",
 }
 
 

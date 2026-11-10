@@ -42,6 +42,7 @@ import dash_render as dr  # noqa: E402
 import test_join_order as jo  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 import test_saved_filter_layers as sf  # noqa: E402
+from conftest import stroke_args_turned  # noqa: E402
 from js_runner import requires_node  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
@@ -354,6 +355,17 @@ def _all_turned(filt, upright=()):
                     build_options={"filter": filt})
 
 
+def _turned_spec(v):
+    """A coordinate's profile as it reads turned.  Flipped (WP-47
+    basic:PT-4): a bin's outline edge is an expression over the layer's
+    own specs, built after the turn, so its arguments turn with it
+    (test_mode_parity._spec_of: ``("expr", code, args)``)."""
+    if isinstance(v, (list, tuple)) and len(v) == 3 and v[0] == "expr":
+        a = stroke_args_turned(json.loads(v[2]))
+        return type(v)((v[0], v[1], json.dumps(a, sort_keys=True)))
+    return v
+
+
 def _turned_profile(geom):
     """An upright figure's after-move geometry as it reads turned: each
     glyph's class and coordinate roles through the transposition, and the
@@ -363,7 +375,8 @@ def _turned_profile(geom):
     g = copy.deepcopy(geom)
     for e in g["glyphs"]:
         e["type"] = dr._DASH_TRANSPOSE.get(e["type"], (e["type"],))[0]
-        e["coords"] = {_MIRROR.get(k, k): v for k, v in e["coords"].items()}
+        e["coords"] = {_MIRROR.get(k, k): _turned_spec(v)
+                       for k, v in e["coords"].items()}
     ax = g["axes"]
     ax["x_range"], ax["y_range"] = ax["y_range"], ax["x_range"]
     return g

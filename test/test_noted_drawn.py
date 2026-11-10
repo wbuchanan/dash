@@ -107,7 +107,12 @@ class TestHistogramMwidth:
         q0 = [r for r in _renderers(plot_for("histogram"), mode)[0]
               if type(r.glyph).__name__ == "Quad"][0]
         [vb] = [r for r in rs if type(r.glyph).__name__ == "VBar"]
-        assert not [r for r in rs if type(r.glyph).__name__ == "Quad"]
+        # Flipped (WP-47 basic:PT-4): the bars' inset outline is a Quad
+        # over the VBar's own source (tagged dash_outline); no bin is.
+        assert not [r for r in rs if type(r.glyph).__name__ == "Quad"
+                    and "dash_outline" not in (r.tags or [])]
+        assert [r._dash_outline_of for r in rs
+                if "dash_outline" in (r.tags or [])] == [vb]
         assert np.allclose(_col(vb, "x"), _col(q0, "left"))
         assert np.allclose(_col(vb, "top"), _col(q0, "top"))
         w, units = _width(vb)

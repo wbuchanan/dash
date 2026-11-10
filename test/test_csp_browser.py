@@ -351,6 +351,22 @@ def _specs():
         # a KPI that follows a brushed selection.
         "brush": (_spec([_graph("g1", [_scatter()])],
                         kpis=[dict(_KPI, update="brush")]), _frame()),
+        # WP-47 basic:PT-4: outlines drawn by CustomJSExpr edges and
+        # rings (_DASH_STROKE_EXPR_JS, _DASH_STROKE_RING_JS) and their
+        # refresh callback (_DASH_STROKE_REFRESH_JS).
+        "outlines": (_spec([
+            _graph("g1", [{"type": "bar", "yvar": "mpg", "xvar": "weight",
+                           "options": {"lwidth": "vthick",
+                                       "lalign": "outside"}}]),
+            _graph("g2", [{"type": "area", "yvar": "mpg",
+                           "xvar": "weight", "options": {}}]),
+            # by() with a second layer: the legend's key copies of the
+            # outline draw over an empty source (BokehJS's one row).
+            _graph("g3", [{"type": "histogram", "var": "mpg",
+                           "options": {}},
+                          {"type": "kdensity", "var": "mpg",
+                           "options": {}}], by="foreign")]),
+            _frame()),
     }
 
 
@@ -453,7 +469,7 @@ class TestSavedPageInChrome:
             assert set(p.violations()) == _INJECTED, p.violations()
 
     @pytest.mark.parametrize("name", ["auto", "bs", "rich", "formats",
-                                      "big", "brush"])
+                                      "big", "brush", "outlines"])
     def test_it_renders_with_no_violation_of_its_own(self, name):
         with _CspProbe(_url(_saved_page(name))) as p:
             assert p.violations() == [], p.violations()
@@ -501,6 +517,50 @@ class TestSavedPageInChrome:
                       encoding="utf-8") as fh:
                 assert "mpg" in fh.readline()
             assert p.violations() == [], p.violations()
+            assert p.js_errors() == [], p.js_errors()
+
+    def test_outlines_lie_where_twoway_puts_them(self):
+        """WP-47 basic:PT-4: under lalign(outside) the drawn outline's
+        edges lie half its drawn width outside the bar's, at the page's
+        own size and after a resize (the build's DataRange1d is replaced
+        by the axis finish, and the page scales the width with its
+        drawn size: both reach the expressions)."""
+        js = r"""(() => {
+          const out = [];
+          const walk = (pv) => {
+            if (pv.renderer_views) for (const rv of pv.renderer_views.values()) {
+              const gv = rv.glyph, nm = gv && gv.model.constructor.__name__;
+              if (nm !== "VBar" && nm !== "Quad") continue;
+              const lw = gv.model.line_width;
+              out.push([nm, Array.from(gv.sleft), Array.from(gv.sright),
+                        Array.from(gv.stop), Array.from(gv.sbottom),
+                        typeof lw === "object" ? lw.value : lw]);
+            }
+            if (pv.child_views) for (const c of pv.child_views) walk(c);
+          };
+          for (const v of Object.values(Bokeh.index)) walk(v);
+          return JSON.stringify(out);
+        })()"""
+
+        def check(rows):
+            (vb,) = [r for r in rows if r[0] == "VBar"]
+            # (the area's key swatch, a NaN row, is no outline)
+            (q,) = [r for r in rows if r[0] == "Quad"
+                    and len(r[1]) == len(vb[1]) and None not in r[1]]
+            h = q[5] / 2
+            assert h > 1
+            for i in range(len(vb[1])):
+                assert q[1][i] == pytest.approx(vb[1][i] - h, abs=0.5)
+                assert q[2][i] == pytest.approx(vb[2][i] + h, abs=0.5)
+                assert q[3][i] == pytest.approx(vb[3][i] - h, abs=0.5)
+                assert q[4][i] == pytest.approx(vb[4][i] + h, abs=0.5)
+            return h
+        with _CspProbe(_url(_saved_page("outlines"))) as p:
+            h0 = check(p.read(js))
+            p.in_task("for (const f of __dash_models('Figure')) "
+                      "{ f.sizing_mode = 'fixed'; f.width = 500; }")
+            time.sleep(1.5)
+            assert check(p.read(js)) != pytest.approx(h0)
             assert p.js_errors() == [], p.js_errors()
 
     def test_hover_and_brush_run(self):
@@ -552,7 +612,7 @@ class TestServedPageInChrome:
                 "a same-origin script without the nonce loaded")
             assert "script-src-elem " + src in p.violations(), p.violations()
 
-    @pytest.mark.parametrize("name", ["rich", "big"])
+    @pytest.mark.parametrize("name", ["rich", "big", "outlines"])
     def test_it_renders_filters_and_round_trips(self, servers, kind, name):
         with _CspProbe(_served_url(servers(kind, name))) as p:
             assert p.violations() == [], p.violations()

@@ -734,9 +734,81 @@ def drawn_renderers(fig):
     """*fig*'s renderers (a figure, or a list of renderers) without the
     legend-only key proxies: what the plot draws.  Since WP-43 LT-21 every
     marker layer a legend keys has a proxy, so a count or an unpacking of a
-    figure's glyph renderers reads this."""
+    figure's glyph renderers reads this.  Since WP-47 basic:PT-4 a bar's,
+    bin's or rbar's stroke is drawn by an outline-only companion renderer
+    (tagged ``dash_outline``, reached as the fill's ``_dash_outline``),
+    left out here with the proxies: the layer's glyphs are the fills."""
     rends = fig.renderers if hasattr(fig, "renderers") else fig
-    return [r for r in list(rends or ()) if not is_key_proxy(r)]
+    return [r for r in list(rends or ()) if not is_key_proxy(r)
+            and "dash_outline" not in (getattr(r, "tags", None) or ())]
+
+
+def stroke_field(r, axis):
+    """The source column an outline renderer *r* draws along *axis* ("x"
+    or "y"): its field, or, once WP-47 basic:PT-4 insets it, the field its
+    ``_DASH_STROKE_RING_JS`` expression reads (``xs``/``ys``)."""
+    v = getattr(r.glyph, axis)
+    if isinstance(v, str):
+        return v
+    f = getattr(v, "field", None)
+    if isinstance(f, str):
+        return f
+    e = getattr(v, "expr", None)
+    if e is not None and (axis + "s") in (e.args or {}):
+        return e.args[axis + "s"][0]
+    return v
+
+
+def without_outlines(rends):
+    """*rends* without WP-47 basic:PT-4's outline-only renderers (tagged
+    ``dash_outline``): the layer's own glyphs."""
+    return [r for r in list(rends or ())
+            if "dash_outline" not in (getattr(r, "tags", None) or ())]
+
+
+#: How a turned layer's names read upright (WP-47 basic:PT-4): an
+#: outline expression's edge, glyph kind and spec names, and the
+#: argument pairs that belong to one axis each.
+_STROKE_TURN = {"x": "y", "y": "x", "width": "height", "height": "width",
+                "top": "right", "right": "top", "bottom": "left",
+                "left": "bottom", "vbar": "hbar", "hbar": "vbar"}
+_STROKE_PAIRS = (("xlog", "ylog"), ("wscr", "hscr"), ("xname", "yname"),
+                 ("xs", "ys"), ("tx", "ty"))
+
+
+def stroke_args_turned(args):
+    """The arguments of an upright layer's outline expression
+    (``_DASH_STROKE_EXPR_JS``, ``_DASH_STROKE_RING_JS``) as the same
+    layer's turned outline carries them: x and y swapped in every edge,
+    spec name, glyph kind and per-axis argument."""
+    a = dict(args)
+    for k in ("which", "kind"):
+        if k in a:
+            a[k] = _STROKE_TURN.get(a[k], a[k])
+    for k in ("sp", "tf"):
+        if isinstance(a.get(k), dict):
+            a[k] = {_STROKE_TURN.get(n, n): v for n, v in a[k].items()}
+    for p, q in _STROKE_PAIRS:
+        if p in a or q in a:
+            a[p], a[q] = a.get(q), a.get(p)
+    if a.get("oth") is not None and "othx" in a:
+        a["othx"] = not a["othx"]
+    return a
+
+
+def stroke_expr_plain(v, turned=False):
+    """``(code, args)`` of a spec drawn by an outline expression, its
+    models named by their class and the figure left out (each mode and
+    each figure numbers its own), the arguments turned under *turned*
+    (:func:`stroke_args_turned`); None for any other spec."""
+    e = getattr(v, "expr", None)
+    if type(e).__name__ != "CustomJSExpr":
+        return None
+    a = {k: x for k, x in dict(e.args or {}).items() if k != "fig"}
+    if turned:
+        a = stroke_args_turned(a)
+    return e.code, json.dumps(a, sort_keys=True,
+                              default=lambda o: type(o).__name__)
 
 
 def _page_id(v):

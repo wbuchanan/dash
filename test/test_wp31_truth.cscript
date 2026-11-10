@@ -537,7 +537,7 @@ def _u03_draw(sp, dp, app):
                         continue
                     out["m"].append("%.12g" % float(g.size))
                     # The dots' y values, as count and sum (B5a).
-                    yf = g.y if isinstance(g.y, str) else g.y.field
+                    yf = _w31_fld(g.y, "ys")
                     ys = [float(v) for v in r.data_source.data[yf]
                           if v == v]
                     out["h"].append("%d:%.12g" % (len(ys), sum(ys)))
@@ -2290,6 +2290,19 @@ if inlist("`only'", "", "S11") & `: list posof "S11" in w31_run' {
 // glyph types -- into globals u12_<k>s (saved) and u12_<k>v (served), and
 // the spec's stored droplines pairs into u12_drops.  Built on _u03_docs.
 python:
+def _w31_fld(v, k):
+    """The source column a coordinate spec reads: its name or field, or
+    (Flipped, WP-47 basic:PT-4: an area's ring and rarea's bounds are
+    drawn through the inset expression over their own source) the field
+    its expression's *k* argument (xs or ys) names."""
+    if isinstance(v, str):
+        return v
+    e = getattr(v, "expr", None)
+    if e is not None and k in (e.args or {}):
+        return e.args[k][0]
+    return v.field
+
+
 def _u12_draw(sp, dp, app):
     import json
     from sfi import Macro
@@ -2309,6 +2322,10 @@ def _u12_draw(sp, dp, app):
                 # and its legend key (a Quad at NaN) are not the fill.
                 if "dash_area_outline" in (getattr(r, "tags", None) or []):
                     continue
+                # Flipped (WP-47 basic:PT-4): a bar's outline-only Quad
+                # over the bars' own source (tag dash_outline) is no bin.
+                if "dash_outline" in (getattr(r, "tags", None) or []):
+                    continue
                 if str(getattr(r, "name", "") or "").startswith("_clegend_"):
                     continue
                 out["k"].append(t)
@@ -2317,8 +2334,8 @@ def _u12_draw(sp, dp, app):
                         out["qw"].append("%.15g" % (float(hi) - float(lo)))
                         out["qc"].append("%.15g" % ((float(hi) + float(lo)) / 2))
                 elif t == "Line" and not out["lx0"]:
-                    xs = [float(v) for v in d[g.x if isinstance(g.x, str) else g.x.field]]
-                    ys = [float(v) for v in d[g.y if isinstance(g.y, str) else g.y.field]]
+                    xs = [float(v) for v in d[_w31_fld(g.x, "xs")]]
+                    ys = [float(v) for v in d[_w31_fld(g.y, "ys")]]
                     if xs:
                         out["lx0"].append("%.17g" % xs[0])
                         out["lx1"].append("%.17g" % xs[-1])
@@ -2327,7 +2344,7 @@ def _u12_draw(sp, dp, app):
                     out["sy0"] += ["%.15g" % float(v) for v in d["y0"]]
                     out["sy1"] += ["%.15g" % float(v) for v in d["y1"]]
                 elif t == "VBar":
-                    xf = g.x if isinstance(g.x, str) else g.x.field
+                    xf = _w31_fld(g.x, "xs")
                     out["bx"] += ["%.15g" % float(v) for v in d[xf]]
         for k, v in out.items():
             Macro.setGlobal("u12_%s%s" % (k, sfx), " ".join(v))
@@ -2714,7 +2731,7 @@ def _u14_draw(sp, dp, app):
                 kinds.append(t)
                 d = r.data_source.data
                 if t == "VArea" and not poly:
-                    xs = [num(v) for v in d[g.x if isinstance(g.x, str) else g.x.field]]
+                    xs = [num(v) for v in d[_w31_fld(g.x, "xs")]]
                     y1 = [num(v) for v in d[g.y1 if isinstance(g.y1, str) else g.y1.field]]
                     y2 = [num(v) for v in d[g.y2 if isinstance(g.y2, str) else g.y2.field]]
                     rid = d.get("__dash_row__")
@@ -2735,8 +2752,8 @@ def _u14_draw(sp, dp, app):
                     if cur:
                         poly.append("%.1f:%.1f" % (min(cur), max(cur)))
                 elif t == "Line" and not runs and g.line_alpha != 0:
-                    xs = [num(v) for v in d[g.x if isinstance(g.x, str) else g.x.field]]
-                    ys = [num(v) for v in d[g.y if isinstance(g.y, str) else g.y.field]]
+                    xs = [num(v) for v in d[_w31_fld(g.x, "xs")]]
+                    ys = [num(v) for v in d[_w31_fld(g.y, "ys")]]
                     n = 0
                     for x, y in zip(xs, ys):
                         if math.isfinite(x) and math.isfinite(y):
@@ -3552,7 +3569,7 @@ def _u18_draw(sp, dp, app):
                 ks = sorted(runs)
                 out["runs"] = " ".join(str(len(runs[k])) for k in ks) or "none"
                 out["lo"] = " ".join("%.12g" % min(runs[k]) for k in ks) or "none"
-                gx = g.x if isinstance(g.x, str) else g.x.field
+                gx = _w31_fld(g.x, "xs")
                 out["along"] = "y" if gx == "x" else "x"
                 out["fill"] = str(g.fill_color).lower()
                 out["size"] = "%.12g" % float(g.size)

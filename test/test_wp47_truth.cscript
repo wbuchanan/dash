@@ -292,6 +292,117 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w47_run' {
     display as text "S01 end " c(current_date) " " c(current_time)
 }
 * ==== end S01 ====
+// ----------------------------------------------------------------
+// S03 basic:PT-4 helpers.  _q4703_1_tw reads twoway's first stroked
+// bar rect and its fill rect from an SVG; _q4703_1 builds the saved
+// page and the served app from dash's spec and puts in $q4703_1, for
+// each mode, 1 when every bar layer has an outline-only companion over
+// its own source moved out (g > 0) and the fill draws no stroke.
+// ----------------------------------------------------------------
+python:
+def _q4703_1_tw(path):
+    import re
+    from sfi import Macro
+    txt = open(path, encoding="utf-8").read()
+    rs = []
+    for m in re.finditer(r"<rect\b([^>]*)>", txt):
+        a = dict(re.findall(r'([\w:-]+)="([^"]*)"', m.group(1)))
+        st = dict(kv.split(":", 1) for kv in a.get("style", "").split(";")
+                  if ":" in kv)
+        st = {k.strip(): v.strip() for k, v in st.items()}
+        try:
+            sw = float(st.get("stroke-width", ""))
+        except ValueError:
+            sw = 0.0
+        rs.append((float(a.get("x", 0)), st.get("fill"), sw))
+    w = max(r[2] for r in rs)
+    ok = 0
+    for i, r in enumerate(rs):
+        if r[2] == w and r[1] in (None, "none") and i > 0:
+            ok = int(r[0] < rs[i - 1][0] - 1)
+            break
+    Macro.setLocal("q1tw", str(ok))
+
+
+def _q4703_1(sp, dp, app):
+    import os
+    import sys
+    import warnings
+    # The block runs from test/ (the script checks): the repo is above.
+    repo = os.path.dirname(os.path.abspath(os.getcwd()))
+    if repo not in sys.path:
+        sys.path.insert(0, repo)
+    import dash_render as dr
+    from bokeh.document import Document
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+        src = open(app, encoding="utf-8").read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        ns = dict(__name__="dash_q4703_app")
+        exec(compile(src.replace(attach, "pass"), "dash_q4703_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+    out = []
+    for figs in (list(r.figures.values()), sv):
+        fills = [x for f in figs for x in f.renderers
+                 if type(getattr(x, "glyph", None)).__name__ == "VBar"]
+        outs = [x for f in figs for x in f.renderers
+                if "dash_outline" in (x.tags or [])]
+        good = bool(fills) and len(outs) == len(fills) and all(
+            o.data_source is fl.data_source and fl.glyph.line_alpha == 0
+            and o.glyph.left.expr.args["g"] > 0
+            for o, fl in zip(outs, fills))
+        out.append("1" if good else "0")
+    Macro.setGlobal("q4703_1", " ".join(out))
+end
+
+* ==== S03 basic:PT-4: bar outlines aligned as twoway aligns them ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w47_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4703-1: twoway strokes a bar's outline outside its edge under
+    // lalign(outside) (the outline rect, measured live from its SVG,
+    // starts left of the fill rect), and dash takes lalign(outside) in
+    // silence and draws an outline-only companion moved out (g > 0)
+    // over the bars' own source, in both modes.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    quietly twoway bar mpg weight in 1/5, lwidth(vthick) barwidth(100) lalign(outside) name(q4703o, replace)
+    cert_svg_export, name(q4703o) file("`w47_work'/q4703o.svg")
+    capture graph drop q4703o
+    local q1tw 0
+    python: import __main__ as _m4703; _m4703._q4703_1_tw(r"`w47_work'/q4703o.svg")
+    capture erase "`w47_work'/q4703o.svg"
+    _w47_expect Q4703-1 "(`q1tw' == 1)" "twoway's outline rect does not start outside its fill rect"
+    local lf "`w47_work'/q4703_1.log"
+    capture erase "`lf'"
+    quietly log using "`lf'", text replace name(q47031)
+    dash clear
+    capture noisily dash bar mpg weight in 1/5, lwidth(vthick) lalign(outside) name(q1)
+    local drc = _rc
+    quietly log close q47031
+    _w47_expect Q4703-1 "(`drc' == 0)" "dash bar lalign(outside) rc `drc'"
+    cert_log_has "`lf'", needle("lalign()")
+    _w47_expect Q4703-1 "(r(count) == 0)" "dash names lalign() `r(count)' times"
+    cert_log_has "`lf'", needle("alignstroke")
+    _w47_expect Q4703-1 "(r(count) == 0)" "dash notes the alignment `r(count)' times"
+    _dash_serve_spec, specpath("`w47_work'/q4703_1s.json") datapath("`w47_work'/q4703_1d.json")
+    python: import __main__ as _m4703; _m4703._q4703_1("`w47_work'/q4703_1s.json", "`w47_work'/q4703_1d.json", "`w47_work'/q4703_1a.py")
+    _w47_expect Q4703-1 `"("${q4703_1}" == "1 1")"' "the outline companions moved out over the bars' source (saved, served): ${q4703_1}"
+    dash clear
+    _w47_done Q4703-1 "twoway strokes outside the bar; dash draws the outline moved out in both modes, in silence"
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 * ==== S03 basic:PT-6: markers sized by their outline alignment ====
 local only : env WP47_ONLY
 if inlist("`only'", "", "S03") & `: list posof "S03" in w47_run' {

@@ -619,7 +619,12 @@ _OPTS = ("pstyle", "p", "lstyle", "clstyle", "mstyle", "mlstyle", "astyle",
 
 def _drawn_colours(fig):
     out = set()
-    for r in drawn_renderers(fig):
+    # Flipped (WP-47 basic:PT-4): a bar's, bin's or rbar's stroke is drawn
+    # by its outline-only companion (tag dash_outline), its fill unstroked.
+    rends = drawn_renderers(fig) + [
+        r for r in fig.renderers
+        if "dash_outline" in (getattr(r, "tags", None) or ())]
+    for r in rends:
         if not isinstance(r, GlyphRenderer):
             continue
         g = r.glyph

@@ -67,8 +67,12 @@ def _hist(**o):
 
 
 def _types(fig):
+    # Flipped (WP-47 basic:PT-4): a recast(rbar) histogram's bars draw
+    # their inset outline with an outline-only Quad over the bars' own
+    # source (tagged dash_outline), which is no bin.
     return [type(r.glyph).__name__ for r in fig.renderers
-            if getattr(r, "glyph", None) is not None]
+            if getattr(r, "glyph", None) is not None
+            and "dash_outline" not in (r.tags or [])]
 
 
 def _col(r, name):

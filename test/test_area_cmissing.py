@@ -51,6 +51,9 @@ import dash_render as dr  # noqa: E402
 import test_bar_range_geometry as bg  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from conftest import render_models  # noqa: E402
+# Flipped (WP-47 basic:PT-4): an outline's x and y are the inset
+# expression over its source; stroke_field reads the columns it draws.
+from conftest import stroke_field  # noqa: E402
 from js_runner import fit_helpers_js, requires_node, run_js  # noqa: E402
 from test_join_order import (_saved_figs, _saved_move, _served_figs,  # noqa: E402
                              _served_move, _write)
@@ -158,8 +161,8 @@ def _line_runs(fig, first=True):
         if not isinstance(g.glyph, Line) or g.glyph.line_alpha == 0:
             continue
         d = g.data_source.data
-        xs = dr._dash_float_values(d[g.glyph.x])
-        ys = dr._dash_float_values(d[g.glyph.y])
+        xs = dr._dash_float_values(d[stroke_field(g, "x")])
+        ys = dr._dash_float_values(d[stroke_field(g, "y")])
         runs, n = [], 0
         for a, b in zip(xs, ys):
             if np.isfinite(a) and np.isfinite(b):
@@ -186,8 +189,8 @@ def _outline_runs(fig):
         if "dash_rarea_outline" not in (g.tags or []):
             continue
         d = g.data_source.data
-        xs = dr._dash_float_values(d[g.glyph.x])
-        ys = dr._dash_float_values(d[g.glyph.y])
+        xs = dr._dash_float_values(d[stroke_field(g, "x")])
+        ys = dr._dash_float_values(d[stroke_field(g, "y")])
         runs, cur = [], []
         for a, b in zip(xs, ys):
             if np.isfinite(a) and np.isfinite(b):
@@ -472,7 +475,7 @@ class TestTheHelper:
         assert len(outs) == 2
         for g in outs:
             d, jn = g.data_source.data, g.data_source._dash_join
-            assert jn["brk"] is True and jn["ycols"] == [g.glyph.y]
+            assert jn["brk"] is True and jn["ycols"] == [stroke_field(g, "y")]
             od = {k: [None if (isinstance(v, float) and v != v) else
                       (float(v) if v is not None else None) for v in d[k]]
                   for k in d}
@@ -491,9 +494,9 @@ class TestTheHelper:
                   " f(b[SP.ycols[0]]), f(a[SP.x])]));\n")
             got, pinned, gx = run_js(js)
             want = ["nan" if not np.isfinite(v) else float(v)
-                    for v in dr._dash_float_values(d[g.glyph.y])]
+                    for v in dr._dash_float_values(d[stroke_field(g, "y")])]
             assert got == want, (got, want)
-            assert gx == [float(v) for v in d[g.glyph.x]]
+            assert gx == [float(v) for v in d[stroke_field(g, "x")]]
             assert "nan" not in pinned and got.count("nan") == 4
 
     def test_rows(self):

@@ -377,6 +377,18 @@ def _spec_of(v):
         return ("value", _num(val))
     if isinstance(v, (int, float)):
         return ("value", _num(v))
+    # WP-47 basic:PT-4: an outline edge drawn by an expression is compared
+    # on its code and its plain arguments (the edge, the move, the specs it
+    # reads), never on the models' ids, which each mode numbers itself.
+    e = getattr(v, "expr", None)
+    if type(e).__name__ == "CustomJSExpr":
+        import hashlib
+        a = dict(e.args or {})
+        a.pop("fig", None)
+        plain = json.dumps(a, sort_keys=True,
+                           default=lambda o: type(o).__name__)
+        return ("expr", hashlib.sha256(e.code.encode()).hexdigest()[:12],
+                plain)
     return ("other", str(v)[:40])
 
 
@@ -3353,6 +3365,11 @@ CORPUS = [
                                 "mlwidth": "vthick"})]),
     # WP-47 basic:PT-5: dots sized by dlalign().
     _case("dot dlalign(center)", [plot_for("dot", {"dlalign": "center"})]),
+    # WP-47 basic:PT-4: outlines drawn where twoway's alignment puts them.
+    _case("bar lwidth(vthick) lalign(outside)",
+          [plot_for("bar", {"lwidth": "vthick", "lalign": "outside"})]),
+    _case("histogram default outline inset", [plot_for("histogram")]),
+    _case("rarea lalign(inside)", [plot_for("rarea", {"lalign": "inside"})]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair
@@ -4738,6 +4755,9 @@ MOVE_CORPUS.append(_move_case(
 # WP-34 PIC-1: the outline ring follows the fill through a range move.
 MOVE_CORPUS.append(_move_case("area outline after a range move", _MOVES[1],
                               [plot_for("area")]))
+# WP-47 basic:PT-4: a bar's inset outline follows its fill's rows.
+MOVE_CORPUS.append(_move_case("bar outline after a move", _MOVES[0],
+                              [plot_for("bar", {"lwidth": "vthick"})]))
 # WP-34 AX-1: the default ticks stay over the kept data after a move.
 MOVE_CORPUS.append(_move_case("yscale range 0 after a move", _MOVES[1],
                               [_sc()], go={"yscale": "range(0)"}))

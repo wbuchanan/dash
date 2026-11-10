@@ -88,7 +88,11 @@ class TestRareaOutline:
                     width * PX_PER_UNIT)
             assert list(r.glyph.line_dash) == []
             assert r.data_source is rs[0].data_source
-        assert {rs[1].glyph.y, rs[2].glyph.y} == {"mpg", "price"}
+        # Flipped (WP-47 basic:PT-4): the bounds' y is the inset expression
+        # over the same columns.
+        from conftest import stroke_field
+        assert {stroke_field(rs[1], "y"), stroke_field(rs[2], "y")} == \
+            {"mpg", "price"}
 
     def test_alcolor_wins(self, mode):
         rs = _rarea(mode, {"alcolor": "red", "alwidth": "thick"})
@@ -111,7 +115,9 @@ class TestRbarOutline:
         ("ol.rbar_stcolor", {}, "stcolor")])
     def test_default_outline(self, mode, key, options, scheme):
         rs = _renderers(mode, [plot_for("rbar", options)], scheme)
-        g = rs[0].glyph
+        # Flipped (WP-47 basic:PT-4): the stroke is drawn by the outline
+        # renderer inset inside the bar (the fill's line_alpha is 0).
+        g = rs[0]._dash_outline.glyph
         colour, width = _stroke(key, "rect")
         assert g.line_color == colour
         assert g.line_alpha == 1.0

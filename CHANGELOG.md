@@ -1021,6 +1021,7 @@ and now matches Stata.
 - headlabel moves the marker labels of pcscatter and pccapsym and the labels of pcarrowi (plain or recast()) to the second point, as twoway does, and is never named in the note; pcscatter mpg weight trunk turn, mlabel(make) headlabel drew AMC Concord at (2930, 22), now at (40, 11) (WP-47, basic:PT-1)
 - mlalign(center) and mlalign(outside) draw the marker larger by one and two outline widths, as twoway draws them; both drew the default (inside) marker, and outside was named in a note (WP-47, basic:PT-6)
 - dlalign(center) and dlalign(outside) draw a dot plot's dots larger by one and two outline widths, as twoway draws them; dash drew every value as inside, and a word twoway does not know is now noted as twoway notes it (WP-47, basic:PT-5)
+- A bar's, histogram bin's and rbar's outline is drawn inside its edge by default, centred under lalign(center) and outside under lalign(outside), as twoway strokes it, and an area's, rarea's and confidence band's outline is inset or outset the same way on every edge; dash centred every outline on the edge and drew the three lalign() words as one picture (WP-47, basic:PT-4)
 
 ### Fixed in WP-46
 

@@ -64,6 +64,7 @@ def _opts(t, extra=None):
 
 from conftest import group_by_params  # noqa: E402
 from conftest import drawn_renderers  # noqa: E402
+from conftest import stroke_expr_plain  # noqa: E402
 
 #: Every test of one mode reads that mode's one build (``_pairs``): on one
 #: worker it is built once.
@@ -85,8 +86,14 @@ def _pairs(mode):
 
 
 def _props(m):
-    return {k: v for k, v in m.properties_with_values(
+    # Flipped (WP-47 basic:PT-4): an outline glyph's width change redraws
+    # its inset (a refresh CustomJS of its own figure): the events it
+    # listens to are compared, not each figure's own callback model.
+    out = {k: v for k, v in m.properties_with_values(
         include_defaults=False).items() if k not in ("id",)}
+    if "js_property_callbacks" in out:
+        out["js_property_callbacks"] = sorted(out["js_property_callbacks"])
+    return out
 
 
 def _num(v):
@@ -117,6 +124,18 @@ def _spec_eq(a, b):
         return set(a) == set(b) and all(_spec_eq(a[k], b[k]) for k in a)
     return json.dumps(_norm(a), default=repr, sort_keys=True) == json.dumps(
         _norm(b), default=repr, sort_keys=True)
+
+
+def _turned_eq(a, b):
+    """*a* (upright) and *b* (turned) are one coordinate under the turn.
+    Flipped (WP-47 basic:PT-4): a bar's, bin's, rbar's, area's or rarea's
+    outline is drawn by an expression over the turned layer's own specs
+    (dash_render._dash_stroke_outlines runs after the turn), so its
+    arguments turn with it: x and y swap in each edge, spec and axis."""
+    ea, eb = stroke_expr_plain(a, turned=True), stroke_expr_plain(b)
+    if ea is not None or eb is not None:
+        return ea == eb
+    return _spec_eq(a, b)
 
 
 def _layer_annotations(fig):
@@ -248,8 +267,9 @@ class TestHorizontalIsTheTranspose:
                         continue
                     pa, pb = _props(ga), _props(gb)
                     for p, q in pairs:
-                        if not _spec_eq(pa.pop(p, None), pb.pop(q, None)) or \
-                                not _spec_eq(pa.pop(q, None), pb.pop(p, None)):
+                        if not _turned_eq(pa.pop(p, None), pb.pop(q, None)) \
+                                or not _turned_eq(pa.pop(q, None),
+                                                  pb.pop(p, None)):
                             bad.append((t, s, p, q))
                     if "dash_cap" in (a.tags or ()):
                         if not math.isclose(_num(pb.pop("angle", 0.0)),

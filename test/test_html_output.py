@@ -228,6 +228,11 @@ def _figure_layers(html: str) -> list:
             if r.get("name") != "GlyphRenderer" \
                     or not attrs.get("visible", True) or is_key_proxy(r):
                 continue
+            # Flipped (WP-47 basic:PT-4): a bar's stroke is drawn by an
+            # outline-only companion (tagged dash_outline) over the fill's
+            # source; the layer is the fill, as before.
+            if "dash_outline" in (_column(attrs.get("tags", [])) or []):
+                continue
             src = resolve(attrs.get("data_source")).get(
                 "attributes", {}).get("data", {})
             data = {k: _column(v) for k, v in

@@ -16391,6 +16391,10 @@ class GlyphMapper:
         )
         # On the renderer: a glyph method's tags= lands on the glyph.
         outline_r.tags = ["dash_ci_outline"]
+        # WP-47 basic:PT-4: its ring inset as twoway aligns it
+        # (_dash_stroke_outlines; the scheme's alignstroke ci).
+        outline_r._dash_stroke_align = _dash_stroke_align(
+            options, "lalign", self.scheme, "ci")
         band_r._dash_ci_outline = outline_r
         return band_r, outline_r
 
@@ -16818,11 +16822,23 @@ class GlyphMapper:
                     glyph.line_alpha = la / 100.0
             except (ValueError, AttributeError):
                 pass
-        # lalign() (WP-31 C17): twoway draws a line the same with center,
-        # inside or outside (varlabel_mlabel_truth.json align.*: one
-        # picture), so they are silent; another word is noted in twoway's
-        # words (class alignstroke) and drawn as without it.
+        # lalign() (WP-31 C17, WP-47 basic:PT-4, D-47-03.e): twoway draws a
+        # line the same with center, inside or outside
+        # (varlabel_mlabel_truth.json align.*: one picture), and a bar's,
+        # an area's or a band's outline where the word puts it
+        # (_dash_stroke_outlines, stroke_align_truth.json A01-A21), so the
+        # three are silent; another word is noted in twoway's words (class
+        # alignstroke) and drawn as without it.
         _lal = str(options.get("lalign", "") or "").strip()
+        # WP-47 basic:PT-4: a bar's, bin's or rbar's outline is drawn where
+        # twoway's alignment puts it (_dash_stroke_outlines, once the layer
+        # is turned); lines are drawn the same with any word (D-47-03.e).
+        if role == "aline" and (
+                type(glyph).__name__ in _DASH_STROKE_RECT_SPECS
+                or {"dash_area_outline", "dash_rarea_outline"} & set(
+                    getattr(renderer, "tags", None) or ())):
+            renderer._dash_stroke_align = _dash_stroke_align(
+                options, "lalign", self.scheme, "p")
         if _lal and _lal not in ("center", "inside", "outside"):
             _dash_warn_once(
                 ("lalign", _dash_display(_lal)),
@@ -23951,6 +23967,10 @@ class GlyphMapper:
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # Quad supports line_width/line_dash/line_color for bin border styling
         self._apply_line_opts(r, options, role="aline")
+        # WP-47 basic:PT-4 (D-47-03.b): the bins' default alignment is the
+        # scheme's `alignstroke histogram'.
+        r._dash_stroke_align = _dash_stroke_align(
+            options, "lalign", self.scheme, "histogram")
         return r
 
     def map_histogram(
@@ -49578,6 +49598,307 @@ nd[x] = ox;
 nd[y2] = oy;
 ring.data = nd;
 """
+
+#: WP-47 basic:PT-4: the body of the ``CustomJSExpr`` that draws one edge of
+#: a bar's, histogram bin's or rbar's outline where twoway's alignment puts
+#: it (``_dash_stroke_outlines``).  ``this`` is the fill renderer's source;
+#: ``sp`` maps each spec name (x, width, top, bottom, y, height, left,
+#: right) to ``[field, value]`` and ``tf`` to the spec's transform (a date
+#: transform ``_dash_layer_in_axis_units`` gave the fill) or null; ``kind``
+#: is the fill's glyph (vbar, hbar, quad, rect); ``wscr``/``hscr`` say a
+#: width or height is in screen px.  Each edge pair is mapped to screen px
+#: through its axis's range and scale (linear, or log: ``xlog``/``ylog``),
+#: each edge moved ``g`` px away from the other (``g`` negative under
+#: inside, so the outline moves in; crossing edges are kept, as twoway
+#: draws them, stroke_align_truth.json A24) and mapped back; ``which`` is
+#: returned.  A value that is not finite, or not positive on a log axis,
+#: or a frame not laid out yet, keeps its edge.
+_DASH_STROKE_EXPR_JS = r"""
+const src = this;
+// The outline's width as drawn now (the page scales widths with its
+// drawn size): the move is half of it, signed by the alignment (g).
+const G = (() => {
+  if (!gl) return g;
+  let v = null;
+  try { v = gl.line_width; } catch (e) { v = null; }
+  const w = Number(v !== null && typeof v === "object" ? v.value : v);
+  return Number.isFinite(w) && w >= 0 ? Math.sign(g) * w / 2 : g;
+})();
+// BokehJS sizes an empty source's arrays as one row (get_length() ?? 1):
+// the result must be as long, or the glyph's set_data refuses it.
+const n0 = src.get_length ? src.get_length() : null;
+const n = n0 == null ? 1 : n0;
+const col = (nm) => {
+  const s = sp[nm] || ["", NaN], t = tf[nm] || null;
+  let a;
+  if (s[0]) {
+    const c = src.data[s[0]];
+    a = c ? Array.from(c, (v) => (v === null || v === undefined) ? NaN : Number(v))
+          : new Array(n).fill(NaN);
+    if (t != null && t.v_compute) a = Array.from(t.v_compute(a), Number);
+  } else {
+    a = new Array(n).fill(s[1] === null || s[1] === undefined ? NaN : Number(s[1]));
+  }
+  return a;
+};
+const axis = (isx) => {
+  // A frame not laid out yet has no inner size (BokehJS throws on an
+  // unset property): no move until the size arrives (the refresh).
+  let S = NaN;
+  try { S = Number(isx ? fig.inner_width : fig.inner_height); } catch (e) { S = NaN; }
+  // The figure's range now (the build's is replaced by the axis finish):
+  // by name, the default or a second axis's.
+  const nm = isx ? xname : yname;
+  let r = null;
+  if (!nm || nm === "default") r = isx ? fig.x_range : fig.y_range;
+  else {
+    const ex = isx ? fig.extra_x_ranges : fig.extra_y_ranges;
+    r = ex instanceof Map ? ex.get(nm) : (ex || {})[nm];
+  }
+  r = r || {start: NaN, end: NaN};
+  const lg = isx ? xlog : ylog, a = Number(r.start), b = Number(r.end);
+  const ok = Number.isFinite(S) && S > 0 && Number.isFinite(a) && Number.isFinite(b) && a !== b
+    && (!lg || (a > 0 && b > 0));
+  const la = lg && ok ? Math.log(a) : 0, lb = lg && ok ? Math.log(b) : 0;
+  return {
+    ok: ok, inc: b > a,
+    fwd: (v) => !Number.isFinite(v) || (lg && !(v > 0)) ? NaN
+      : lg ? (Math.log(v) - la) * S / (lb - la) : (v - a) * S / (b - a),
+    inv: (s) => lg ? Math.exp(la + s * (lb - la) / S) : a + s * (b - a) / S,
+  };
+};
+const isx = (which === "left" || which === "right");
+const A = axis(isx);
+let lo, hi, mid = null, half = null, scr = false;
+if (isx) {
+  if (kind === "vbar" || kind === "rect") { mid = col("x"); half = col("width"); scr = wscr; }
+  else { lo = col("left"); hi = col("right"); }
+} else {
+  if (kind === "hbar" || kind === "rect") { mid = col(kind === "rect" ? "y" : "y"); half = col("height"); scr = hscr; }
+  else { lo = col("bottom"); hi = col("top"); }
+}
+const own = (which === "left" || which === "bottom") ? 0 : 1;
+const out = new Float64Array(n);
+for (let i = 0; i < n; i++) {
+  let e0, e1, s0, s1;
+  if (mid !== null) {
+    const m = mid[i], h = half[i] / 2;
+    if (scr) {
+      const sm = A.fwd(m);
+      s0 = sm - h; s1 = sm + h;
+      e0 = A.ok && Number.isFinite(s0) ? A.inv(s0) : NaN;
+      e1 = A.ok && Number.isFinite(s1) ? A.inv(s1) : NaN;
+    } else {
+      e0 = m - h; e1 = m + h; s0 = A.fwd(e0); s1 = A.fwd(e1);
+    }
+  } else {
+    e0 = lo[i]; e1 = hi[i]; s0 = A.fwd(e0); s1 = A.fwd(e1);
+  }
+  const keep = own ? e1 : e0, so = own ? s1 : s0;
+  if (!A.ok || !Number.isFinite(so)) { out[i] = keep; continue; }
+  let up;
+  if (Number.isFinite(s0) && Number.isFinite(s1)) up = s1 >= s0 ? 1 : -1;
+  else if (Number.isFinite(e0) && Number.isFinite(e1)) up = ((e1 >= e0) === A.inc) ? 1 : -1;
+  else { out[i] = keep; continue; }
+  out[i] = A.inv(own ? so + up * G : so - up * G);
+}
+return out;
+"""
+
+#: WP-47 basic:PT-4: the body of the ``CustomJSExpr`` that draws an area's
+#: outline ring (34-05), a confidence band's outline ring or one of rarea's
+#: bound lines where twoway's alignment puts it (``_dash_stroke_outlines``).
+#: twoway strokes the shape with twice the width clipped to it (inside) or
+#: to its outside (stroke_align_truth.json A13-A21): a band ``w`` wide
+#: inside or outside the edge, which a centred stroke draws on the edge
+#: moved ``g`` px.  ``this`` is the outline's source; ``xs``/``ys`` are its
+#: ``[field, value]`` specs and ``tx``/``ty`` their transforms or null.
+#: Each run of finite vertices is mapped to screen px on its axes (linear
+#: or log), each vertex moved ``g`` px along the bisector of its edges'
+#: outward normals -- the miter ``g / cos(theta/2)``, capped at ``4|g|`` --
+#: and mapped back.  Ring mode (``mode`` "ring"): a run is a closed
+#: polygon, outward by its signed area, and a run the move turns inside
+#: out collapses to its centroid.  Bound mode ("bound"): a run is an open
+#: line, outward away from the other bound (``oth`` in ``osrc``), its ends
+#: moved along their one edge.  Non-finite vertices stay where they are;
+#: ``which`` ("x" or "y") is returned.
+_DASH_STROKE_RING_JS = r"""
+const src = this;
+// The outline's width as drawn now (the page scales widths with its
+// drawn size): the move is half of it, signed by the alignment (g).
+const G = (() => {
+  if (!gl) return g;
+  let v = null;
+  try { v = gl.line_width; } catch (e) { v = null; }
+  const w = Number(v !== null && typeof v === "object" ? v.value : v);
+  return Number.isFinite(w) && w >= 0 ? Math.sign(g) * w / 2 : g;
+})();
+// BokehJS sizes an empty source's arrays as one row (get_length() ?? 1):
+// the result must be as long, or the glyph's set_data refuses it.
+const n0 = src.get_length ? src.get_length() : null;
+const n = n0 == null ? 1 : n0;
+const col = (s, t, from) => {
+  const d = (from || src).data;
+  let a;
+  if (s && s[0]) {
+    const c = d[s[0]];
+    a = c ? Array.from(c, (v) => (v === null || v === undefined) ? NaN : Number(v))
+          : new Array(n).fill(NaN);
+    if (t != null && t.v_compute) a = Array.from(t.v_compute(a), Number);
+  } else a = new Array(n).fill(s && s[1] != null ? Number(s[1]) : NaN);
+  return a;
+};
+const axis = (isx) => {
+  // A frame not laid out yet has no inner size (BokehJS throws on an
+  // unset property): no move until the size arrives (the refresh).
+  let S = NaN;
+  try { S = Number(isx ? fig.inner_width : fig.inner_height); } catch (e) { S = NaN; }
+  // The figure's range now (the build's is replaced by the axis finish):
+  // by name, the default or a second axis's.
+  const nm = isx ? xname : yname;
+  let r = null;
+  if (!nm || nm === "default") r = isx ? fig.x_range : fig.y_range;
+  else {
+    const ex = isx ? fig.extra_x_ranges : fig.extra_y_ranges;
+    r = ex instanceof Map ? ex.get(nm) : (ex || {})[nm];
+  }
+  r = r || {start: NaN, end: NaN};
+  const lg = isx ? xlog : ylog, a = Number(r.start), b = Number(r.end);
+  const ok = Number.isFinite(S) && S > 0 && Number.isFinite(a) && Number.isFinite(b) && a !== b
+    && (!lg || (a > 0 && b > 0));
+  const la = lg && ok ? Math.log(a) : 0, lb = lg && ok ? Math.log(b) : 0;
+  return {
+    ok: ok,
+    fwd: (v) => !Number.isFinite(v) || (lg && !(v > 0)) ? NaN
+      : lg ? (Math.log(v) - la) * S / (lb - la) : (v - a) * S / (b - a),
+    inv: (s) => lg ? Math.exp(la + s * (lb - la) / S) : a + s * (b - a) / S,
+  };
+};
+const X = col(xs, tx), Y = col(ys, ty);
+const AX = axis(true), AY = axis(false);
+const OX = Float64Array.from(X), OY = Float64Array.from(Y);
+const want = which === "x" ? OX : OY;
+if (!AX.ok || !AY.ok || !(G !== 0)) return want;
+const SX = X.map(AX.fwd), SY = Y.map(AY.fwd);
+let OSY = null, OSX = null;
+if (mode === "bound" && osrc && oth) {
+  const O = col(oth, toth, osrc);
+  if (O.length === n) {
+    if (othx) { OSX = O.map(AX.fwd); OSY = SY; } else { OSY = O.map(AY.fwd); OSX = SX; }
+  }
+}
+const fin = (i) => Number.isFinite(SX[i]) && Number.isFinite(SY[i]);
+const nrm = (p, q) => {
+  const dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy);
+  return L > 1e-9 ? [dy / L, -dx / L] : null;
+};
+const area = (P) => {
+  let s = 0;
+  for (let k = 0; k < P.length; k++) {
+    const p = P[k], q = P[(k + 1) % P.length];
+    s += p[0] * q[1] - q[0] * p[1];
+  }
+  return s / 2;
+};
+const move = (p, n1, n2) => {
+  if (!n1 && !n2) return p;
+  n1 = n1 || n2; n2 = n2 || n1;
+  let ux = n1[0] + n2[0], uy = n1[1] + n2[1], L = Math.hypot(ux, uy);
+  if (L < 1e-9) { ux = n1[0]; uy = n1[1]; } else { ux /= L; uy /= L; }
+  const d = Math.max(ux * n1[0] + uy * n1[1], 0.25);
+  return [p[0] + G * ux / d, p[1] + G * uy / d];
+};
+for (let i = 0; i < n; ) {
+  if (!fin(i)) { i++; continue; }
+  let j = i;
+  while (j + 1 < n && fin(j + 1)) j++;
+  let P = [];
+  for (let k = i; k <= j; k++) P.push([SX[k], SY[k]]);
+  const closed = mode !== "bound" && P.length > 2
+    && Math.abs(P[0][0] - P[P.length - 1][0]) < 1e-9 && Math.abs(P[0][1] - P[P.length - 1][1]) < 1e-9;
+  if (closed) P = P.slice(0, P.length - 1);
+  const m = P.length;
+  let Q = null;
+  if (m >= 2 && mode !== "bound") {
+    const A0 = area(P), s = Math.sign(A0);
+    if (s !== 0 && m >= 3) {
+      const E = [];
+      for (let k = 0; k < m; k++) {
+        const e = nrm(P[k], P[(k + 1) % m]);
+        E.push(e ? [s * e[0], s * e[1]] : null);
+      }
+      const near = (k, step) => {
+        for (let t = 0; t < m; t++) {
+          const e = E[((k + step * t) % m + m) % m];
+          if (e) return e;
+        }
+        return null;
+      };
+      Q = P.map((p, k) => move(p, near(k - 1, -1), near(k, 1)));
+      const A1 = area(Q);
+      // Turned inside out: the other sign, no area, or every edge reversed.
+      let rev = 0, live = 0;
+      for (let k = 0; k < m; k++) {
+        const a = P[k], b = P[(k + 1) % m], c = Q[k], d = Q[(k + 1) % m];
+        const dx = b[0] - a[0], dy = b[1] - a[1];
+        if (Math.hypot(dx, dy) < 1e-9) continue;
+        live++;
+        if (dx * (d[0] - c[0]) + dy * (d[1] - c[1]) < 0) rev++;
+      }
+      if (!(Math.sign(A1) === s) || A1 === 0 || (live > 0 && rev === live)) {
+        let cx = 0, cy = 0;
+        for (const p of P) { cx += p[0]; cy += p[1]; }
+        Q = P.map(() => [cx / m, cy / m]);
+      }
+    }
+  } else if (m >= 2) {
+    const E = [];
+    for (let k = 0; k + 1 < m; k++) E.push(nrm(P[k], P[k + 1]));
+    let dot = 0;
+    if (OSX && OSY) {
+      for (let k = 0; k + 1 < m; k++) {
+        const e = E[k];
+        if (!e) continue;
+        const a = i + k;
+        const vx = SX[a] - OSX[a], vy = SY[a] - OSY[a];
+        if (Number.isFinite(vx) && Number.isFinite(vy)) dot += e[0] * vx + e[1] * vy;
+      }
+    }
+    if (dot !== 0) {
+      const s = Math.sign(dot);
+      const F = E.map((e) => e ? [s * e[0], s * e[1]] : null);
+      const near = (k, step) => {
+        for (let t = k; t >= 0 && t < F.length; t += step) if (F[t]) return F[t];
+        return null;
+      };
+      Q = P.map((p, k) => move(p, near(k - 1, -1), near(k, 1)));
+    }
+  }
+  if (Q) {
+    for (let k = 0; k < Q.length; k++) {
+      OX[i + k] = AX.inv(Q[k][0]);
+      OY[i + k] = AY.inv(Q[k][1]);
+    }
+    if (closed) { OX[j] = OX[i]; OY[j] = OY[i]; }
+  }
+  i = j + 1;
+}
+return want;
+"""
+
+#: WP-47 basic:PT-4: on a figure's resize, a range's move or an outline's
+#: new width, the outline expressions over each source are recomputed and
+#: the source redrawn (``_dash_stroke_refresh``): BokehJS keeps an
+#: expression's result until a property of its source changes, which
+#: ``_clear_watchers`` stands for (every setv calls it, in 3.8 and 3.9).
+#: The callback reaches only the sources, never a glyph or a figure.
+_DASH_STROKE_REFRESH_JS = r"""
+for (const s of srcs) {
+  if (!s) continue;
+  if (s._clear_watchers) s._clear_watchers();
+  if (s.change) s.change.emit();
+}
+"""
 for _tok, _val in (("@@DASH_MAX_TICKS@@", _MAX_AXIS_TICKS),
                    ("@@DASH_SIDE@@", _DASH_NATSCALE_SIDE),
                    ("@@DASH_UNCOVERED@@", _DASH_NATSCALE_UNCOVERED),
@@ -52095,6 +52416,274 @@ _DASH_SCALE2_SUBOPTS = (frozenset({"log", "reverse", "range"})
                         | _DASH_SCALE_LOOK_SUBOPTS)
 
 
+def _dash_stroke_axis(fig, r, axis):
+    """``(range name, log)`` a renderer *r* draws on along *axis* ("x" or
+    "y"): its named extra range and scale, else the figure's.  The
+    outline expressions read the range by name when they run: the axis
+    finish replaces the build's range (``_dash_hull_ranges``)."""
+    name = getattr(r, axis + "_range_name", "default") or "default"
+    scale = getattr(fig, axis + "_scale", None)
+    if name != "default":
+        scale = (getattr(fig, "extra_" + axis + "_scales", None) or {}).get(
+            name, scale)
+    return name, type(scale).__name__ == "LogScale"
+
+
+def _dash_stroke_refresh(fig, src, glyphs=()):
+    """Redraw *src*'s outline expressions when *fig* is resized,
+    one of its ranges moves or the width of one of *glyphs* (the
+    outlines, whose width the page scales with its drawn size) changes
+    (``_DASH_STROKE_REFRESH_JS``), one callback per source and figure
+    (WP-47 basic:PT-4).  The ranges are hooked by
+    :func:`_dash_stroke_rehook`, again once the axis finish has made
+    them."""
+    from bokeh.models import CustomJS
+    seen = getattr(fig, "_dash_stroke_refresh", None)
+    if seen is None:
+        seen = {}
+        fig._dash_stroke_refresh = seen
+    cb = seen.get(id(src))
+    if cb is None:
+        cb = CustomJS(args={"srcs": [src]}, code=_DASH_STROKE_REFRESH_JS)
+        seen[id(src)] = cb
+        for prop in ("inner_width", "inner_height"):
+            fig.js_on_change(prop, cb)
+    for gl in glyphs or ():
+        if gl is not None and cb not in (
+                gl.js_property_callbacks.get("change:line_width") or ()):
+            gl.js_on_change("line_width", cb)
+    _dash_stroke_rehook(fig)
+    return cb
+
+
+def _dash_stroke_rehook(fig):
+    """Hang each of *fig*'s outline refresh callbacks
+    (:func:`_dash_stroke_refresh`) on the start and end of every range
+    *fig* draws on now, once each (WP-47 basic:PT-4).  Called when an
+    outline is built and when ``_dash_hull_ranges`` has replaced the
+    build's ranges with the finished scale's, in both modes."""
+    cbs = list((getattr(fig, "_dash_stroke_refresh", None) or {}).values())
+    if not cbs:
+        return 0
+    rngs = [getattr(fig, "x_range", None), getattr(fig, "y_range", None)]
+    for k in ("extra_x_ranges", "extra_y_ranges"):
+        rngs += list((getattr(fig, k, None) or {}).values())
+    n, done = 0, set()
+    for rng in rngs:
+        if rng is None or id(rng) in done or \
+                not hasattr(rng, "js_property_callbacks"):
+            continue
+        done.add(id(rng))
+        for cb in cbs:
+            for prop in ("start", "end"):
+                if cb not in (rng.js_property_callbacks.get(
+                        "change:" + prop) or ()):
+                    rng.js_on_change(prop, cb)
+                    n += 1
+    return n
+
+
+def _dash_stroke_spec(v):
+    """``([field, value], transform)`` of one coordinate spec *v*, for the
+    outline expressions: a field and its transform (or None), else its
+    constant."""
+    f = _dash_spec_field(v)
+    if f:
+        t = getattr(v, "transform", None)
+        # A Field with no transform carries bokeh's ``_UnspecifiedType``.
+        return [f, None], (None if t is None or
+                           "Unspecified" in type(t).__name__ else t)
+    val = _dash_spec_value(v)
+    return ["", float(val) if isinstance(val, (int, float))
+            and not isinstance(val, bool) else None], None
+
+
+def _dash_stroke_polygon(fig, r, renderers=()):
+    """Draw *r* -- an area's outline ring (``dash_area_outline``), a
+    confidence band's (``dash_ci_outline``) or one of rarea's bound lines
+    (``dash_rarea_outline``) -- where twoway's alignment puts it (WP-47
+    basic:PT-4): its x and y become ``_DASH_STROKE_RING_JS`` expressions
+    over its own source, the ring moved ``_dash_stroke_grow(align, w)`` px
+    in screen space (a rarea bound away from the other bound, which is
+    the layer's other ``dash_rarea_outline`` in *renderers*), kept exact
+    on a resize and a range move (``_dash_stroke_refresh``).  Nothing
+    moves under center, with no width or with no line drawn.  Returns
+    True when the specs were replaced."""
+    from bokeh.core.properties import expr
+    from bokeh.models import CustomJSExpr
+    g = getattr(r, "glyph", None)
+    align = getattr(r, "_dash_stroke_align", None)
+    if g is None or align is None or getattr(r, "_dash_stroke_ring", None):
+        return False
+    lw = _dash_spec_value(getattr(g, "line_width", None))
+    la = _dash_spec_value(getattr(g, "line_alpha", 1.0))
+    if not (isinstance(lw, (int, float)) and not isinstance(lw, bool)
+            and math.isfinite(lw) and lw > 0) or \
+            (isinstance(la, (int, float)) and la <= 0):
+        return False
+    grow = _dash_stroke_grow(align, lw)
+    if grow == 0.0:
+        return False
+    tags = list(getattr(r, "tags", None) or ())
+    mode = "bound" if "dash_rarea_outline" in tags else "ring"
+    xs, tx = _dash_stroke_spec(g.x)
+    ys, ty = _dash_stroke_spec(g.y)
+    osrc, oth, toth, othx = None, None, None, False
+    if mode == "bound":
+        for o in renderers or ():
+            if o is r or "dash_rarea_outline" not in (
+                    getattr(o, "tags", None) or ()):
+                continue
+            og = o.glyph
+            done = getattr(o, "_dash_stroke_ring", None)
+            ox, otx = done["xs"] if done else _dash_stroke_spec(og.x)
+            oy, oty = done["ys"] if done else _dash_stroke_spec(og.y)
+            # The bounds differ in y upright, in x once turned.
+            othx = oy[0] == ys[0] and ox[0] != xs[0]
+            oth, toth = (ox, otx) if othx else (oy, oty)
+            osrc = o.data_source
+            break
+    xname, xlog = _dash_stroke_axis(fig, r, "x")
+    yname, ylog = _dash_stroke_axis(fig, r, "y")
+    specs = {}
+    for which in ("x", "y"):
+        e = CustomJSExpr(args={
+            "fig": fig, "xname": xname, "yname": yname, "g": float(grow),
+            "gl": g,
+            "which": which, "mode": mode, "xs": xs, "ys": ys, "tx": tx,
+            "ty": ty, "xlog": bool(xlog), "ylog": bool(ylog),
+            "osrc": osrc, "oth": oth, "toth": toth, "othx": bool(othx)},
+            code=_DASH_STROKE_RING_JS)
+        specs[which] = expr(e)
+    for attr in ("glyph", "nonselection_glyph", "muted_glyph",
+                 "hover_glyph", "selection_glyph"):
+        c = getattr(r, attr, None)
+        if c is not None and type(c) is type(g):
+            c.x = specs["x"]
+            c.y = specs["y"]
+    r._dash_stroke_ring = {"xs": (xs, tx), "ys": (ys, ty), "mode": mode}
+    _dash_stroke_refresh(fig, r.data_source, (g,))
+    if osrc is not None and osrc is not r.data_source:
+        # The other bound's rows move this one's sign: redraw on its change.
+        osrc.js_on_change("data", _dash_stroke_refresh(fig, r.data_source))
+    return True
+
+
+#: The edges of each rectangle glyph an outline is drawn for, and the
+#: spec names its edges are read from.
+_DASH_STROKE_RECT_SPECS = {
+    "VBar": ("vbar", ("x", "width", "top", "bottom")),
+    "HBar": ("hbar", ("y", "height", "left", "right")),
+    "Quad": ("quad", ("left", "right", "top", "bottom")),
+    "Rect": ("rect", ("x", "width", "y", "height")),
+}
+
+
+def _dash_stroke_outlines(fig, renderers):
+    """Draw each bar, histogram bin and rbar outline of *renderers* where
+    twoway's alignment puts it (WP-47 basic:PT-4, D-47-03.c, D-47-03.d).
+
+    twoway strokes a bar's outline inside its edge by default (the
+    scheme's ``alignstroke``), centred under lalign(center) and outside
+    under lalign(outside): the outline rect's edges lie half a width in
+    from, on, or out from the fill rect's, the same in px on a log axis
+    (stroke_align_truth.json A01-A12, A22-A23); a bar narrower than its
+    outline is drawn with the crossed edges, as twoway draws it (A24).
+    Bokeh strokes centred, so a renderer the mappers marked with
+    ``_dash_stroke_align`` (``GlyphMapper._apply_line_opts``) other than
+    center keeps its fill with no stroke (``line_alpha`` 0) and gets an
+    outline-only ``Quad`` over its own source and view, drawn right after
+    it, whose four edges are ``_DASH_STROKE_EXPR_JS`` expressions: the
+    fill's edges moved ``_dash_stroke_grow(align, w)`` px in screen
+    space, kept exact on a resize and a range move
+    (``_dash_stroke_refresh``).  It joins the fill's legend item, is
+    tagged ``dash_outline`` and has no hover.  Run after the layer is
+    turned and its date fields given their transforms, in both modes.
+    Returns the outline renderers added."""
+    from bokeh.core.properties import expr
+    from bokeh.models import CustomJSExpr, Quad
+    added = []
+    rends = list(renderers or ())
+    for r in rends:
+        if type(getattr(r, "glyph", None)).__name__ in ("Line", "Patch") \
+                and getattr(r, "_dash_stroke_align", None) is not None:
+            _dash_stroke_polygon(fig, r, rends)
+    for r in rends:
+        align = getattr(r, "_dash_stroke_align", None)
+        g = getattr(r, "glyph", None)
+        spec = _DASH_STROKE_RECT_SPECS.get(type(g).__name__)
+        if align is None or spec is None or \
+                getattr(r, "_dash_outline", None) is not None:
+            continue
+        lw = _dash_spec_value(getattr(g, "line_width", None))
+        la = _dash_spec_value(getattr(g, "line_alpha", 1.0))
+        lc = _dash_spec_value(getattr(g, "line_color", None))
+        if not (isinstance(lw, (int, float)) and not isinstance(lw, bool)
+                and math.isfinite(lw) and lw > 0) or lc is None or \
+                (isinstance(la, (int, float)) and la <= 0):
+            continue
+        grow = _dash_stroke_grow(align, lw)
+        if grow == 0.0:
+            continue
+        kind, names = spec
+        sp, tf = {}, {}
+        for nm in names:
+            sp[nm], tf[nm] = _dash_stroke_spec(getattr(g, nm, None))
+        xname, xlog = _dash_stroke_axis(fig, r, "x")
+        yname, ylog = _dash_stroke_axis(fig, r, "y")
+        wscr = str(getattr(g, "width_units", "data")) == "screen"
+        hscr = str(getattr(g, "height_units", "data")) == "screen"
+        exprs, edges = [], {}
+        for which in ("left", "right", "bottom", "top"):
+            e = CustomJSExpr(args={
+                "fig": fig, "xname": xname, "yname": yname,
+                "g": float(grow), "gl": None,
+                "which": which, "kind": kind, "sp": sp, "tf": tf,
+                "xlog": bool(xlog), "ylog": bool(ylog),
+                "wscr": bool(wscr), "hscr": bool(hscr)},
+                code=_DASH_STROKE_EXPR_JS)
+            exprs.append(e)
+            edges[which] = expr(e)
+        line = {p: getattr(g, p) for p in type(g).properties()
+                if p.startswith("line_")}
+        quad = Quad(fill_color=None, fill_alpha=0.0, **edges, **line)
+        # Each edge moves half the outline's width as drawn.
+        for e in exprs:
+            e.args = dict(e.args, gl=quad)
+        kw = {"view": r.view} if getattr(r, "view", None) is not None \
+            else {}
+        out = fig.add_glyph(r.data_source, quad, **kw)
+        out.x_range_name = r.x_range_name
+        out.y_range_name = r.y_range_name
+        out.level = r.level
+        out.visible = r.visible
+        out.tags = list(out.tags or []) + ["dash_outline"]
+        out._dash_outline_of = r
+        r._dash_outline = out
+        rs = list(fig.renderers)
+        rs.remove(out)
+        rs.insert(rs.index(r) + 1, out)
+        fig.renderers = rs
+        g.line_alpha = 0.0
+        for attr in ("nonselection_glyph", "muted_glyph", "hover_glyph",
+                     "selection_glyph"):
+            c = getattr(r, attr, None)
+            if c is not None and not isinstance(c, str) and \
+                    hasattr(c, "line_alpha"):
+                c.line_alpha = 0.0
+        for leg in list(getattr(fig, "legend", None) or ()):
+            for it in list(getattr(leg, "items", None) or ()):
+                rl = list(it.renderers or ())
+                if r in rl and out not in rl:
+                    # Right after its fill, as the figure draws them (the
+                    # served legend is keyed in that order).
+                    rl.insert(rl.index(r) + 1, out)
+                    it.renderers = rl
+        _dash_stroke_refresh(fig, r.data_source, (quad,))
+        added.append(out)
+    return added
+
+
 def _dash_secondary_values(fig, range_attr, name):
     """``(column_values, all_values)`` drawn on the secondary range *name*.
 
@@ -54202,6 +54791,8 @@ def _dash_hull_ranges(fig, entries, common=None, made=None):
         keep = [h for h in (getattr(fig, "_dash_hull_entries", None) or [])
                 if h["key"] not in common]
         fig._dash_hull_entries = keep + done
+    # WP-47 basic:PT-4: the aligned outlines redraw on the finished ranges.
+    _dash_stroke_rehook(fig)
     _dash_inner_box(fig)
     return done
 
@@ -69376,6 +69967,10 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
                         or (type(getattr(r, "glyph", None)).__name__
                             in ("VArea", "Band", "Patch")
                             and getattr(r, "_dash_area_ring", None) is None)]
+                # WP-47 basic:PT-4: a band drawn as bars keys its outline
+                # (the bars' outline-only companion) with it.
+                band += [r for r in rends if r not in band and any(
+                    getattr(r, "_dash_outline_of", None) is b for b in band)]
                 line = [r for r in rends if r not in band
                         and not getattr(r, "_dash_nofit", False)]
                 bkey = [k for k in keyed if getattr(k, "_dash_ci_band", False)]
@@ -76235,6 +76830,10 @@ class DashRenderer:
                 fig, _layer_renderers, list(fig.center[_c_before:]), plot,
                 getattr(self, "date_vars", {}) or {},
                 getattr(self, "_fmt_models", None))
+            # Outlines where twoway's alignment puts them (WP-47 basic:PT-4),
+            # in the layer: its legend item draws the fill and the stroke.
+            _layer_renderers.extend(
+                _dash_stroke_outlines(fig, _layer_renderers))
 
         # z options apply to this graph's colour key only (GAPS2 X2); reset
         # before the next figure builds so a titled key does not leak its
@@ -79899,7 +80498,11 @@ class ServerAppBuilder:
                       # The arrowheads' script and default angle (WP-31 C1).
                       "_DASH_ARROW_HEAD_JS", "_DASH_ARROW_ANGLE_DEG",
                       # An area's outline ring script (WP-34 PIC-1).
-                      "_DASH_AREA_RING_JS"):
+                      "_DASH_AREA_RING_JS",
+                      # WP-47 basic:PT-4: the aligned outlines' edges.
+                      "_DASH_STROKE_EXPR_JS", "_DASH_STROKE_REFRESH_JS",
+                      "_DASH_STROKE_RING_JS",
+                      "_DASH_STROKE_RECT_SPECS"):
             _val = getattr(_mod, _name, None)
             if _val is None:
                 continue
@@ -80027,6 +80630,11 @@ class ServerAppBuilder:
                          # horizontal (WP-30 P1.9a).
                          "_dash_is_horizontal", "_dash_role_letter",
                          "_dash_transpose_layer",
+                         # WP-47 basic:PT-4: outlines aligned as twoway's.
+                         "_dash_stroke_axis", "_dash_stroke_refresh",
+                         "_dash_stroke_rehook",
+                         "_dash_stroke_spec", "_dash_stroke_polygon",
+                         "_dash_stroke_outlines",
                          # A layer that drew nothing has to say so in BOTH
                          # modes, in the same words.
                          "_dash_layer_drew_anything",
@@ -82964,6 +83572,8 @@ class ServerAppBuilder:
             "        _dash_layer_in_axis_units(fig, fig.renderers[_before:],",
             "                                  list(fig.center[_before_c:]), plot,",
             "                                  _date_vars, _fmt_cache)",
+            "        # Outlines where twoway's alignment puts them (WP-47 basic:PT-4).",
+            "        _dash_stroke_outlines(fig, fig.renderers[_before:])",
             "        _srcs = []",
             "        for _rr in fig.renderers[_before:]:",
             "            # A colour key's invisible swatches are not a layer",

@@ -67,7 +67,11 @@ class TestOwners:
                   "within_tol": False}]
         for t in ("bar", "histogram", "rbar", "area", "line"):
             ex = {"plottype": t, "cmd": "twoway %s y x" % t}
-            assert verdict.explain(extra, ex, rows, states)[0]["gaps4"] == "basic:PT-4", t
+            # Flipped (WP-47 basic:PT-4): basic:PT-4 is closed and its
+            # plain outline_extra row deleted (D-33-05.i), so an extra
+            # outline is owned by no open item.
+            assert verdict.explain(extra, ex, rows, states)[0]["gaps4"] \
+                is None, t
             assert verdict.explain(width, ex, rows, states)[0]["gaps4"] == \
                 "VF-4 (residual)", t
 

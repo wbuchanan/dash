@@ -532,7 +532,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **MS-3 Tracked:** Open (WP-47 section 47-02).
 - **MS-5 Tracked:** Open (WP-47 section 47-02).
 - **basic:PT-3 Tracked:** Open (WP-47 section 47-02).
-- **basic:PT-4 Tracked:** Open (WP-47 section 47-03).
+- **basic:PT-4 Tracked:** Closed in WP-47, BUGS.md "Outline alignment: twoway strokes bars, histogram bins, areas and rbar inside and honours lalign(); dash centres every stroke and calls lalign() 'the same picture'; rcap caps butt-ended, not round", commit pending.
 - **basic:PT-6 Tracked:** Closed in WP-47, BUGS.md "mlalign(center) and inside draw one picture; the default marker is probably twoway's center picture", commit 6578f68.
 - **basic:PT-5 Tracked:** Closed in WP-47, BUGS.md "dlalign(center|outside) changes dot size in twoway; dash drops it silently (tw_silent built from one default value)", commit 45602f2.
 - **basic:PT-10 Tracked:** Open (WP-47 section 47-04).

@@ -629,8 +629,18 @@ def _w34s05_dash(path, p):
         return
     g = rings[0].glyph
     d = rings[0].data_source.data
-    fx = g.x if isinstance(g.x, str) else getattr(g.x, "field", None)
-    fy = g.y if isinstance(g.y, str) else getattr(g.y, "field", None)
+    # Flipped (WP-47 basic:PT-4): the ring's x and y are the inset
+    # expression over the same ring source; its field is the one the
+    # expression reads (xs, ys).
+
+    def _fld(v, k):
+        if isinstance(v, str):
+            return v
+        e = getattr(v, "expr", None)
+        if e is not None and k in (e.args or {}):
+            return e.args[k][0]
+        return getattr(v, "field", None)
+    fx, fy = _fld(g.x, "xs"), _fld(g.y, "ys")
     xs = [float(v) for v in d[fx]]
     ys = [-float(v) for v in d[fy]]
     runs, cur = [], []

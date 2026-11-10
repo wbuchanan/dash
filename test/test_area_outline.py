@@ -36,6 +36,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 import dash_render as dr  # noqa: E402
 from dash_render import SchemeParser  # noqa: E402
 from conftest import load_app, make_data_json, render_models  # noqa: E402
+from conftest import stroke_field  # noqa: E402
 from js_runner import JsSession, requires_node  # noqa: E402
 from test_mode_parity import (_DF, _LABEL_NAMES, _VALUE_LABELS,  # noqa: E402
                               _fire, _spec, _widgets_of)
@@ -117,9 +118,11 @@ def _swatches(fig):
 
 
 def _xy(ring_r):
+    # Flipped (WP-47 basic:PT-4): the outline's x and y are the inset
+    # expression over the same ring source; this reads its columns.
     d = ring_r.data_source.data
-    g = ring_r.glyph
-    return (np.asarray(d[g.x], dtype=float), np.asarray(d[g.y], dtype=float))
+    return (np.asarray(d[stroke_field(ring_r, "x")], dtype=float),
+            np.asarray(d[stroke_field(ring_r, "y")], dtype=float))
 
 
 def _runs(xs, ys):
@@ -377,9 +380,10 @@ class TestTheOutline:
         (fill,) = _fills(fig)
         assert type(fill.glyph).__name__ == "HArea"
         (ring_r,) = _rings(fig)
-        g = ring_r.glyph
         # Turned with the fill: x reads the values, y the year.
-        assert g.y == fill.glyph.y and g.x == fill.glyph.x2, (g.x, g.y)
+        # Flipped (WP-47 basic:PT-4): through the inset expression's fields.
+        gx, gy = stroke_field(ring_r, "x"), stroke_field(ring_r, "y")
+        assert gy == fill.glyph.y and gx == fill.glyph.x2, (gx, gy)
         runs = _runs(*_xy(ring_r))
         assert len(runs) == 1 and runs[0][0] == runs[0][-1]
 

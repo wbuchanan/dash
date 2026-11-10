@@ -43,9 +43,20 @@ def _quads(plots, scheme, mode):
             and type(r.glyph).__name__ == "Quad"]
 
 
-def _style(q):
-    return (_col(q.fill_color), _col(q.line_color),
-            round(float(q.fill_alpha), 4), round(float(q.line_alpha), 4))
+def _bins(plots, scheme, mode):
+    """``(renderer, glyph)`` of each histogram fill (no outline-only
+    companion, WP-47 basic:PT-4)."""
+    d = _draw(tp._spec(plots, {"scheme": scheme}), mode)
+    return [(r, r.glyph) for r in d.figures[0].renderers
+            if isinstance(r, GlyphRenderer) and not dr._dash_is_swatch(r)
+            and type(r.glyph).__name__ == "Quad"
+            and "dash_outline" not in (r.tags or [])]
+
+
+def _style(q, outline=None):
+    ln = outline.glyph if outline is not None else q
+    return (_col(q.fill_color), _col(ln.line_color),
+            round(float(q.fill_alpha), 4), round(float(ln.line_alpha), 4))
 
 
 @pytest.mark.parametrize("mode", MODES)
@@ -120,7 +131,11 @@ class TestTwowaysHistogram:
             scheme = ("w24h.scheme" if p["scheme"] == "w24h"
                       else p["scheme"])
             want = _twoway_style(p)
-            got = [_style(q) for q in _quads(plots, scheme, mode)]
+            # Flipped (WP-47 basic:PT-4): twoway's two rects, the fill and
+            # the inset outline, are dash's fill and its outline-only
+            # companion (the fill's _dash_outline), whose stroke is read.
+            got = [_style(q, getattr(r, "_dash_outline", None))
+                   for r, q in _bins(plots, scheme, mode)]
             if got != [want] * n:
                 bad.append(f"{pid}: twoway {want}, dash {got}")
         assert not bad, bad

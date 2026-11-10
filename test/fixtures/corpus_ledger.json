@@ -1,22 +1,13 @@
 {
   "_meta": {
     "born_date": "22 Oct 2026",
-    "dash_commit": "5855ea99db8f8cbd5deafcd86c6ad934b5bccf73",
-    "extracted": "09 Nov 2026",
+    "dash_commit": "8fb739d619fe5bf4a68afc16181dc0ad19454669",
+    "extracted": "10 Nov 2026",
     "source": "scripts/corpus/ledger.py",
     "stata_version": "19.5",
     "tsv": "scripts/corpus/ledger.tsv"
   },
   "rows": [
-    {
-      "check": "outline_extra",
-      "form": "plain",
-      "gaps4_id": "basic:PT-4",
-      "id": "basic:PT-4",
-      "note": "dash strokes a bar, histogram, rbar or area outline where twoway strokes none (D51, 47-03)",
-      "plottype": "*",
-      "when": "*"
-    },
     {
       "check": "marker_labels",
       "form": "plain",

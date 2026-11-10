@@ -560,7 +560,12 @@ class TestTheHelpers:
                    for r in f.renderers
                    if type(r.glyph).__name__ != "Scatter"
                    and not dr._dash_is_swatch(r)
-                   and "dash_area_outline" not in (r.tags or [])} or {None}
+                   and "dash_area_outline" not in (r.tags or [])
+                   # Flipped (WP-47 basic:PT-4): a bar's outline-only
+                   # companion draws expressions over the fill's columns,
+                   # no value a reader takes (the hull is the same with
+                   # and without it), so it has no base of its own.
+                   and "dash_outline" not in (r.tags or [])} or {None}
             for r in f.renderers:
                 if "dash_area_outline" in (r.tags or []) and not (
                         "x" in dr._dash_auto_base_props(r, "x")

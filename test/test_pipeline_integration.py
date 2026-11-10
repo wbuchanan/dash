@@ -148,7 +148,10 @@ class TestPipelineHistogram:
         # drew.  mpg is 1..20: Stata's default is min(sqrt(20),
         # 10*log10(20)) -> 4 bins of width 4.75 from 1, five cars in each,
         # density 5 / (20 * 4.75).
-        [quad] = fig.renderers
+        # Flipped (WP-47 basic:PT-4): the bins' inset outline is drawn by
+        # an outline-only companion over the same source, which
+        # drawn_renderers leaves out.
+        [quad] = drawn_renderers(fig)
         data = quad.data_source.data
         assert list(data["left"]) == [1.0, 5.75, 10.5, 15.25], data
         assert list(data["right"]) == [5.75, 10.5, 15.25, 20.0], data

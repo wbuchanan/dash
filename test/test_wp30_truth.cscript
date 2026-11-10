@@ -6168,7 +6168,10 @@ def _s24_summ(fig, by_id):
             alphas.add(la)
         if g.kind in ("Scatter", "VBar", "VArea", "Quad") and fa not in (None, 0.0) and fc != "#c0c0c0":
             alphas.add(fa)
-        if g.kind == "Quad":
+        # Flipped (WP-47 basic:PT-4): a bin's stroke is drawn by an
+        # outline-only Quad over its source (tag dash_outline) in the
+        # fill's line colour; Q is the fill's colours, as twoway's rect.
+        if g.kind == "Quad" and "dash_outline" not in (r.get("tags") or []):
             quads.add("%s/%s" % (fc, lc))
         if g.kind == "Scatter":
             mk = _s24_lower(g.get("marker"))
