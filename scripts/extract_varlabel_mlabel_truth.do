@@ -73,6 +73,10 @@ program define _vl_run
     local pos ""
     local ytn 0
     local xtn 0
+    local yall ""
+    local xall ""
+    local lgall ""
+    local lgv ""
     if `rc' == 0 {
         quietly graph export "${VL_WORK}/`key'.svg", name(g) replace
         local ytn "`.g.yaxis1.title.text.arrnels'"
@@ -80,6 +84,17 @@ program define _vl_run
         if 0`ytn' > 0 local yt `"`.g.yaxis1.title.text[1]'"'
         if 0`xtn' > 0 local xt `"`.g.xaxis1.title.text[1]'"'
         local pos "`.g.plotregion1.plot1.style.label.position.setting'"
+        forvalues i = 1/0`ytn' {
+            local yall `"`yall'`.g.yaxis1.title.text[`i']'|~|"'
+        }
+        forvalues i = 1/0`xtn' {
+            local xall `"`xall'`.g.xaxis1.title.text[`i']'|~|"'
+        }
+        local lgn "`.g.legend.labels.arrnels'"
+        local lgv "`.g.legend.draw_view.istrue'"
+        forvalues i = 1/0`lgn' {
+            local lgall `"`lgall'`.g.legend.labels[`i']'|~|"'
+        }
         capture graph drop g
     }
     global VL_R_`key' "`rc'"
@@ -88,6 +103,10 @@ program define _vl_run
     global VL_YN_`key' "`ytn'"
     global VL_XN_`key' "`xtn'"
     global VL_P_`key' "`pos'"
+    global VL_YA_`key' `"`yall'"'
+    global VL_XA_`key' `"`xall'"'
+    global VL_LG_`key' `"`lgall'"'
+    global VL_LV_`key' "`lgv'"
     global VL_KEYS "${VL_KEYS} `key'"
     display as text "VL `key': rc `rc' y[`yt'] x[`xt'] pos[`pos']"
 end
@@ -143,6 +162,56 @@ _vl_run c14__rpspike_y : rpspike lo hi mpg weight, mlabel(lo)
 _vl_run mwidth__rbar : rbar lo hi weight, mwidth
 _vl_run mlalign__declared : scatter mpg weight, mlal(center)
 _vl_run mlalign__mla : scatter mpg weight, mla(center)
+* WP-47 47-02: MS-2 (TR-6) every type takes yvarlabel()/xvarlabel()
+_vl_run varlabel__scatteri : scatteri 20 3000 25 4000, yvarlabel("Q") xvarlabel("R")
+_vl_run varlabel__function : function y = x, range(0 1) yvarlabel("Q") xvarlabel("R")
+_vl_run varlabel__function_key : (scatter mpg weight) (function y = 20, range(weight) yvarlab("y=x")), legend(on)
+_vl_run varlabel__kdensity : kdensity mpg, xvarlabel("M") yvarlabel("D")
+_vl_run varlabel__histogram : histogram mpg, xvarlabel("M") yvarlabel("D")
+_vl_run varlabel__histfreq : histogram mpg, frequency yvarlabel("D")
+_vl_run varlabel__pci : pci 20 2000 30 4000, yvarlabel("Q" "R") xvarlabel("S")
+_vl_run varlabel__pcarrowi : pcarrowi 20 2000 30 4000, yvarlabel("Q" "R") xvarlabel("S")
+* MS-3 (MS-4): "" is the name; the last label of a variable wins graph-wide
+_vl_run varlabel__y_empty : scatter mpg weight, yvarlabel("")
+_vl_run varlabel__y_empty_two : scatter mpg price weight, yvarlabel("" "B") legend(on)
+_vl_run varlabel__y_two_empty : scatter mpg price weight, yvarlabel("A" "") legend(on)
+_vl_run varlabel__graph_last : (scatter mpg weight) (scatter mpg weight, yvarlabel("B")), legend(on)
+_vl_run varlabel__graph_two : (scatter mpg weight, yvarlabel("A")) (scatter mpg length, yvarlabel("B")), legend(on)
+_vl_run varlabel__graph_other : (scatter mpg weight, yvarlabel("A")) (scatter price weight), legend(on)
+_vl_run varlabel__graph_x : (scatter mpg weight, xvarlabel("W")) (scatter price weight),
+_vl_run varlabel__graph_fit1 : (scatter mpg weight, yvarlabel("A")) (lfit mpg weight), legend(on)
+_vl_run varlabel__graph_fit2 : (lfit mpg weight, yvarlabel("Q")) (scatter mpg weight), legend(on)
+_vl_run varlabel__graph_ifin : (scatter mpg weight if foreign) (scatter mpg weight if !foreign, yvarlabel("B")), legend(on)
+* MS-5: x/yvarformat() on marker labels of the plotted variable
+_vl_run varformat__y : scatter mpg weight in 1/5, mlabel(mpg) yvarformat(%9.2f)
+_vl_run varformat__x : scatter mpg weight in 1/5, mlabel(weight) xvarformat(%9.1f)
+_vl_run varformat__other : scatter mpg weight in 1/5, mlabel(price) yvarformat(%9.2f)
+_vl_run varformat__both : scatter mpg weight in 1/5, mlabel(mpg) yvarformat(%9.2f) mlabformat(%9.1f)
+* basic:PT-3: mlabel() patterns
+_vl_run mlabel_pattern__none : scatter mpg weight in 1/5,
+_vl_run mlabel_pattern__none_two : scatter mpg price weight in 1/5,
+_vl_run mlabel_pattern__one_y : scatter mpg weight in 1/5, mlabel(t*)
+_vl_run mlabel_pattern__two_y : scatter mpg price weight in 1/5, mlabel(t*)
+_vl_run mlabel_pattern__single : scatter mpg weight in 1/5, mlabel(tr*)
+_vl_run mlabel_pattern__range : scatter mpg weight in 1/5, mlabel(make-foreign)
+_vl_run mlabel_pattern__lead : scatter mpg price weight in 1/5, mlabel(make t*)
+_vl_run mlabel_pattern__trail : scatter mpg price weight in 1/5, mlabel(t* make)
+_vl_run mlabel_pattern__list : scatter mpg price weight in 1/5, mlabel(trunk turn)
+* DG-7: titles and keys of emptied layers
+foreach t in lfit qfit lfitci qfitci fpfit {
+    _vl_run empty__`t' : `t' mpg weight if price<0, legend(on)
+}
+_vl_run empty__hist : histogram mpg if price<0,
+_vl_run empty__kdensity : kdensity mpg if price<0,
+_vl_run empty__scatter : scatter mpg weight if price<0,
+_vl_run empty__lfit_beside : (scatter mpg weight) (lfit mpg weight if price<0), legend(on)
+preserve
+clear
+set obs 0
+generate y = .
+generate x = .
+_vl_run empty__lfit_nodata : lfit y x, legend(on)
+restore
 
 python:
 import hashlib, json, os, re, sys
@@ -190,6 +259,12 @@ def record(key):
         rec["ytitle"] = G("VL_Y_" + key) if int(G("VL_YN_" + key) or 0) else None
         rec["xtitle"] = G("VL_X_" + key) if int(G("VL_XN_" + key) or 0) else None
         rec["label_position"] = G("VL_P_" + key)
+        def split(v):
+            return (v or "").split("|~|")[:-1]
+        rec["ytitle_lines"] = split(G("VL_YA_" + key))
+        rec["xtitle_lines"] = split(G("VL_XA_" + key))
+        rec["legend_labels"] = split(G("VL_LG_" + key))
+        rec["legend_drawn"] = G("VL_LV_" + key) == "1"
     return rec
 
 

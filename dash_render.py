@@ -69665,6 +69665,46 @@ def _dash_function_yname(name):
     return "y"
 
 
+def _dash_varlabel_words(raw):
+    """The strings of one yvarlabel()/xvarlabel() value as dash.ado writes
+    it, quotes and all (``_dash_varlabel_tail``): a plain or compound
+    quoted string is its content (``""`` an empty string), a bare word
+    itself; blanks separate.  Anything that is not a string gives ``[]``
+    (WP-47 MS-2: lifted out of :func:`_dash_layer_series` so
+    :func:`_dash_graph_varlabels` reads the strings the same way)."""
+    if not isinstance(raw, str):
+        return []
+    out, i, n = [], 0, len(raw)
+    while i < n:
+        if raw[i] in " \t":
+            i += 1
+        elif raw.startswith('`"', i):
+            depth, j = 0, i
+            while j < n:
+                if raw.startswith('`"', j):
+                    depth, j = depth + 1, j + 2
+                elif raw.startswith('"\'', j):
+                    depth, j = depth - 1, j + 2
+                    if depth == 0:
+                        break
+                else:
+                    j += 1
+            out.append(raw[i + 2:j - 2] if depth == 0 else raw[i + 2:])
+            i = j
+        elif raw[i] == '"':
+            j = raw.find('"', i + 1)
+            j = n if j < 0 else j
+            out.append(raw[i + 1:j])
+            i = j + 1
+        else:
+            j = i
+            while j < n and raw[j] not in " \t":
+                j += 1
+            out.append(raw[i:j])
+            i = j
+    return out
+
+
 def _dash_layer_series(plot, var_labels=None, default_level=None):
     """``[(y_label, x_label), ...]``: one pair per series twoway draws for
     *plot* -- two for a ci fit, its band first -- in twoway's own text
@@ -69676,7 +69716,8 @@ def _dash_layer_series(plot, var_labels=None, default_level=None):
     boundaries ``L(y1)/L(y2)`` (one label when they are the same) and a pc
     layer both its y and its x pairs; scatteri is ``("y", "x")``, pci and
     pcarrowi ``("y/yb", "x/xb")``; a function its Stata name before ``=``,
-    else ``y``, over ``x``; lowess ``lowess <y name> <x name>``, fpfit
+    else ``y``, over ``x`` -- each of these fixed texts replaced by the
+    layer's yvarlabel()/xvarlabel() strings (WP-47 MS-2); lowess ``lowess <y name> <x name>``, fpfit
     ``Predicted <y name>``, lpoly ``lpoly smooth: L(y)`` over ``lpoly
     smoothing grid``, lfit and qfit ``Fitted values``, mband ``Median
     bands`` and mspline ``Median spline``; a ci band ``<level>% CI``;
@@ -69716,41 +69757,8 @@ def _dash_layer_series(plot, var_labels=None, default_level=None):
     # "Band/Top", varlabel.fitci "Q/95% CI" and "Q", varlabel.fit "Q").
     # A quoted "" is a string: the label is empty, as twoway's
     # xvarlabel("") draws no title.
-    def words(raw):
-        if not isinstance(raw, str):
-            return []
-        out, i, n = [], 0, len(raw)
-        while i < n:
-            if raw[i] in " \t":
-                i += 1
-            elif raw.startswith('`"', i):
-                depth, j = 0, i
-                while j < n:
-                    if raw.startswith('`"', j):
-                        depth, j = depth + 1, j + 2
-                    elif raw.startswith('"\'', j):
-                        depth, j = depth - 1, j + 2
-                        if depth == 0:
-                            break
-                    else:
-                        j += 1
-                out.append(raw[i + 2:j - 2] if depth == 0 else raw[i + 2:])
-                i = j
-            elif raw[i] == '"':
-                j = raw.find('"', i + 1)
-                j = n if j < 0 else j
-                out.append(raw[i + 1:j])
-                i = j + 1
-            else:
-                j = i
-                while j < n and raw[j] not in " \t":
-                    j += 1
-                out.append(raw[i:j])
-                i = j
-        return out
-
-    _yvl = words(opts.get("yvarlabel"))
-    _xvl = words(opts.get("xvarlabel"))
+    _yvl = _dash_varlabel_words(opts.get("yvarlabel"))
+    _xvl = _dash_varlabel_words(opts.get("xvarlabel"))
 
     def Ly(name, k=0):
         return _yvl[k] if k < len(_yvl) else L(name)
@@ -69771,11 +69779,25 @@ def _dash_layer_series(plot, var_labels=None, default_level=None):
             return lb
         return la + "/" + lb
 
+    # WP-47 MS-2 (with TR-6): the types with a fixed text take the
+    # strings too -- the string replaces the whole text, histogram's y
+    # joins it to its scale word and pci's x keeps "/xb" on a second line
+    # (varlabel_mlabel_truth.json varlabel.scatteri, function,
+    # function_key "y=x", kdensity "D"/"M", histogram "D/Density"/"M",
+    # histfreq "D/Frequency", pci and pcarrowi "Q/R" over "S" "/xb").
+    def Oy(default, k=0):
+        return _yvl[k] if k < len(_yvl) else default
+
+    def Ox(default):
+        return _xvl[0] if _xvl else default
+
     if ptype in _DASH_UNIVARIATE_TYPES:
         var = plot.get("var", "") or plot.get("yvar", "")
         if ptype == "kdensity":
-            return [(("kdensity %s" % var) if var else "kdensity", "x")]
-        return [(_DASH_HIST_YTITLES[_dash_histogram_ymode(opts)], L(var))]
+            return [(Oy(("kdensity %s" % var) if var else "kdensity"),
+                     Ox("x"))]
+        _scale = _DASH_HIST_YTITLES[_dash_histogram_ymode(opts)]
+        return [((_yvl[0] + "/" + _scale) if _yvl else _scale, Lx(var))]
     if ptype in _DASH_RANGE_TYPES:
         return [(pair("yvar1", "yvar2"), Lx(plot.get("xvar")))]
     if ptype in _DASH_RANGEPT_TYPES:
@@ -69789,11 +69811,13 @@ def _dash_layer_series(plot, var_labels=None, default_level=None):
     if ptype in _DASH_PC_TYPES:
         return [(pair("y1var", "y2var"), pair("x1var", "x2var", False))]
     if ptype == "scatteri":
-        return [("y", "x")]
+        return [(Oy("y"), Ox("x"))]
     if ptype in ("pci", "pcarrowi"):
-        return [("y/yb", "x/xb")]
+        _a, _b = Oy("y", 0), Oy("yb", 1)
+        _y = _a if _a == _b else "/".join(t for t in (_a, _b) if t)
+        return [(_y, ("%s\n/xb" % _xvl[0]) if _xvl else "x/xb")]
     if ptype == "function":
-        return [(_dash_function_yname(plot.get("yname")), "x")]
+        return [(Oy(_dash_function_yname(plot.get("yname"))), Ox("x"))]
     if ptype in _DASH_FIT_TYPES or ptype in _DASH_CI_TYPES:
         yv, xv = name("yvar"), name("xvar")
         if ptype == "lowess":
@@ -81275,7 +81299,9 @@ class ServerAppBuilder:
                          "_dash_redirect_page", "_dash_open_tokenized",
                          "_dash_read_token_line", "_dash_private_page",
                          "_dash_announce_key", "_dash_process_key",
-                         "_dash_bokeh_serve_key"):
+                         "_dash_bokeh_serve_key",
+                         # WP-47 47-02: the varlabel strings (MS-2).
+                         "_dash_varlabel_words"):
             if _fn_name in _emitted_names:
                 continue
             _fn = getattr(_mod, _fn_name, None)

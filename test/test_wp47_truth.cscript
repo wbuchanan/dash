@@ -293,6 +293,135 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w47_run' {
 }
 * ==== end S01 ====
 // ----------------------------------------------------------------
+// S02 helpers (WP-47 47-02).  _q4702_tw reads twoway's graph g: its y
+// and x titles' lines and its legend labels, "|"-joined, into locals
+// q2ty, q2tx and q2tk.  _q4702 builds the saved page and the served
+// app from dash's spec and puts in $q4702, for each mode, 1 when the
+// first figure's y title, x title and legend keys equal the locals
+// q2ty, q2tx and q2tk (a title's lines "|"-joined), and in $q4702_lab
+// the saved figure's marker-label texts, "|"-joined.
+// ----------------------------------------------------------------
+capture program drop _q4702_tw
+program define _q4702_tw
+    version 19
+    args g
+    local ty ""
+    local tx ""
+    local tk ""
+    local n "`.`g'.yaxis1.title.text.arrnels'"
+    forvalues i = 1/0`n' {
+        local ty `"`ty'`=cond(`i' > 1, "|", "")'`.`g'.yaxis1.title.text[`i']'"'
+    }
+    local n "`.`g'.xaxis1.title.text.arrnels'"
+    forvalues i = 1/0`n' {
+        local tx `"`tx'`=cond(`i' > 1, "|", "")'`.`g'.xaxis1.title.text[`i']'"'
+    }
+    if "`.`g'.legend.draw_view.istrue'" == "1" {
+        local n "`.`g'.legend.labels.arrnels'"
+        forvalues i = 1/0`n' {
+            local tk `"`tk'`=cond(`i' > 1, "|", "")'`.`g'.legend.labels[`i']'"'
+        }
+    }
+    c_local q2ty `"`ty'"'
+    c_local q2tx `"`tx'"'
+    c_local q2tk `"`tk'"'
+end
+
+python:
+def _q4702(sp, dp, app):
+    import os
+    import sys
+    import warnings
+    # The block runs from test/ (the script checks): the repo is above.
+    repo = os.path.dirname(os.path.abspath(os.getcwd()))
+    if repo not in sys.path:
+        sys.path.insert(0, repo)
+    import dash_render as dr
+    from bokeh.document import Document
+    from bokeh.models import LabelSet
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+        src = open(app, encoding="utf-8").read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        ns = dict(__name__="dash_q4702_app")
+        exec(compile(src.replace(attach, "pass"), "dash_q4702_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    want = (Macro.getLocal("q2ty"), Macro.getLocal("q2tx"),
+            Macro.getLocal("q2tk"))
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+    out, seen = [], []
+    for figs in (list(r.figures.values()), sv):
+        f = figs[0]
+        keys = []
+        for lg in f.legend:
+            if not lg.visible:
+                continue
+            for it in lg.items:
+                lab = it.label
+                keys.append(lab.get("value") if isinstance(lab, dict)
+                            else getattr(lab, "value", lab))
+        got = ((f.yaxis[0].axis_label or "").replace("\n", "|"),
+               (f.xaxis[0].axis_label or "").replace("\n", "|"),
+               "|".join(str(k) for k in keys))
+        seen.append("[%s][%s][%s]" % got)
+        out.append("1" if got == want else "0")
+    labs = []
+    for m in r.figures[next(iter(r.figures))].references():
+        if isinstance(m, LabelSet):
+            fld = getattr(m.text, "field", None)
+            if fld and fld in m.source.data:
+                labs.extend(str(v) for v in m.source.data[fld])
+    Macro.setGlobal("q4702", " ".join(out))
+    Macro.setGlobal("q4702_seen", " ".join(seen))
+    Macro.setGlobal("q4702_lab", "|".join(labs))
+    Macro.setGlobal("q4702_nlab", str(sum(
+        isinstance(m, LabelSet) for m in
+        r.figures[next(iter(r.figures))].references())))
+end
+
+* ==== S02 MS-2: yvarlabel() and xvarlabel() on every plot type ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w47_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4702-1: kdensity, histogram, scatteri, function and pci take
+    // yvarlabel() and xvarlabel(): dash's titles and keys (saved and
+    // served) equal twoway's, measured live from its graph.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    local q1n 0
+    foreach c in `"kdensity mpg, xvarlabel("M") yvarlabel("D")"' ///
+                 `"histogram mpg, xvarlabel("M") yvarlabel("D")"' ///
+                 `"scatteri 20 3000 25 4000, yvarlabel("Q") xvarlabel("R")"' ///
+                 `"function y = x, range(0 1) yvarlabel("Q") xvarlabel("R")"' ///
+                 `"pci 20 2000 30 4000, yvarlabel("Q" "R") xvarlabel("S")"' ///
+                 `"(scatter mpg weight) (function y = 20, range(weight) yvarlab("y=x")), legend(on)"' {
+        local ++q1n
+        quietly twoway `c' name(q4702, replace)
+        _q4702_tw q4702
+        capture graph drop q4702
+        dash clear
+        capture noisily dash `c' name(q1)
+        local drc = _rc
+        _w47_expect Q4702-1 "(`drc' == 0)" `"dash `c': rc `drc'"'
+        _dash_serve_spec, specpath("`w47_work'/q4702_1s.json") datapath("`w47_work'/q4702_1d.json")
+        python: import __main__ as _m4702; _m4702._q4702("`w47_work'/q4702_1s.json", "`w47_work'/q4702_1d.json", "`w47_work'/q4702_1a.py")
+        _w47_expect Q4702-1 `"("${q4702}" == "1 1")"' `"`c': twoway [`q2ty'][`q2tx'][`q2tk'], dash ${q4702_seen}"'
+        dash clear
+    }
+    _w47_done Q4702-1 "`q1n' types take yvarlabel()/xvarlabel() as twoway does, in both modes"
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
+// ----------------------------------------------------------------
 // S03 basic:PT-4 helpers.  _q4703_1_tw reads twoway's first stroked
 // bar rect and its fill rect from an SVG; _q4703_1 builds the saved
 // page and the served app from dash's spec and puts in $q4703_1, for

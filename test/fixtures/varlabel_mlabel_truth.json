@@ -1,8 +1,8 @@
 {
  "_meta": {
-  "born_date": "12 Aug 2026",
-  "dash_commit": "0aa96dc5c5c5e8b63798971984646237035a3f7b",
-  "extracted": "15 Oct 2026 16:15:59",
+  "born_date": "04 Nov 2026",
+  "dash_commit": "f9bf176b9de5103623d89556c3480800af0787af",
+  "extracted": "10 Nov 2026 04:13:25",
   "source": "scripts/extract_varlabel_mlabel_truth.do",
   "stata_version": "19.5"
  },
@@ -10,6 +10,10 @@
   "bogus": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [
     "(note:  named style bogus not found in class alignstroke, default attributes used)",
     "(note:  named style bogus not found in class alignstroke, default attributes used)"
@@ -59,11 +63,21 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "center": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "0bfbde2afaeaa21d0895e25ab6ac3aec9a71303f34ee6e78c88b0e7741512dba",
@@ -110,11 +124,21 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "inside": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "0bfbde2afaeaa21d0895e25ab6ac3aec9a71303f34ee6e78c88b0e7741512dba",
@@ -161,11 +185,21 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "la": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "0bfbde2afaeaa21d0895e25ab6ac3aec9a71303f34ee6e78c88b0e7741512dba",
@@ -212,11 +246,21 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "outside": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "0bfbde2afaeaa21d0895e25ab6ac3aec9a71303f34ee6e78c88b0e7741512dba",
@@ -263,13 +307,23 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   }
  },
  "bardefault": {
   "bar": {
    "error": "",
    "label_position": "12",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "c432206678deea09f0d3c26d8ba8202228016bb61a06056561b72fe30c1cc876",
@@ -340,11 +394,21 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "rbar": {
    "error": "",
    "label_position": "12",
+   "legend_drawn": false,
+   "legend_labels": [
+    "lo/hi"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "82f71cf8e217a9d23ff9bb0f07de6468ae1ff1da38fdf056db0098f5e036c226",
@@ -403,11 +467,21 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "lo/hi"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "lo/hi",
+   "ytitle_lines": [
+    "lo/hi"
+   ]
   },
   "scatter": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "e23df1f74fd17133cfa2b7ef44bbc08d569a2d3ba65562928885957e383f6ae3",
@@ -478,13 +552,23 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   }
  },
  "c14": {
   "other": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "lo/hi"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "2bb57bdb7ac479ace112cad15427be9c65ba8492e657c08903468f6bfe197dd2",
@@ -1127,7 +1211,13 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "lo/hi"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "lo/hi",
+   "ytitle_lines": [
+    "lo/hi"
+   ]
   },
   "rarea_y": {
    "error": "rarea requires 3 variables: lo hi weight",
@@ -1195,10 +1285,357 @@
    "rc": 102
   }
  },
+ "empty": {
+  "fpfit": {
+   "error": "observation numbers out of range",
+   "notes": [
+    "(note:  fracpoly could not fit model)"
+   ],
+   "rc": 198
+  },
+  "hist": {
+   "error": "",
+   "label_position": "12",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Density"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "a874825f333c1fd82bd5c919fa4c9cee4933f28155b2a70a132774f355153757",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "-1"
+    },
+    {
+     "fill": "#000000",
+     "text": "1"
+    },
+    {
+     "fill": "#000000",
+     "text": "Density"
+    },
+    {
+     "fill": "#000000",
+     "text": "x"
+    }
+   ],
+   "xtitle": "x",
+   "xtitle_lines": [
+    "x"
+   ],
+   "ytitle": "Density",
+   "ytitle_lines": [
+    "Density"
+   ]
+  },
+  "kdensity": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "kdensity mpg"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "b5460ca81551f5138a13073d0a0ef6aafbc3d31b412b16b63270620334095b2a",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "kdensity mpg"
+    },
+    {
+     "fill": "#000000",
+     "text": "x"
+    }
+   ],
+   "xtitle": "x",
+   "xtitle_lines": [
+    "x"
+   ],
+   "ytitle": "kdensity mpg",
+   "ytitle_lines": [
+    "kdensity mpg"
+   ]
+  },
+  "lfit": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "mpg"
+   ],
+   "notes": [
+    "(note:  regress could not fit model)"
+   ],
+   "rc": 0,
+   "svg_sha": "fd7be1956067990a294414a1d1010b637c08729cc12c10053fa667ee95436bc8",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "mpg"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "mpg"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "mpg",
+   "ytitle_lines": [
+    "mpg"
+   ]
+  },
+  "lfit_beside": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "Mileage (mpg)",
+    "mpg"
+   ],
+   "notes": [
+    "(note:  regress could not fit model)"
+   ],
+   "rc": 0,
+   "svg_sha": "45c03da2487156362544af9f4f1a3e23a3fd9ca2f2122c31d3d4ed722a3db55b",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "mpg"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "lfit_nodata": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "y"
+   ],
+   "notes": [
+    "(note:  regress could not fit model)"
+   ],
+   "rc": 0,
+   "svg_sha": "e9dc28d86b205b1b637eaa5630197ca1a037b450d0a7302373a94c2e9209ae5b",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "y"
+    },
+    {
+     "fill": "#000000",
+     "text": "x"
+    },
+    {
+     "fill": "#000000",
+     "text": "y"
+    }
+   ],
+   "xtitle": "x",
+   "xtitle_lines": [
+    "x"
+   ],
+   "ytitle": "y",
+   "ytitle_lines": [
+    "y"
+   ]
+  },
+  "lfitci": {
+   "error": "",
+   "label_position": "12",
+   "legend_drawn": true,
+   "legend_labels": [
+    "95% CI",
+    "mpg"
+   ],
+   "notes": [
+    "(note:  regress could not fit model)"
+   ],
+   "rc": 0,
+   "svg_sha": "f5200c58ba69ef79e5edfe3291b01d6dcafa80b2f0c94807896c0fb3ebe050a4",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "95% CI"
+    },
+    {
+     "fill": "#000000",
+     "text": "mpg"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "qfit": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "mpg"
+   ],
+   "notes": [
+    "(note:  regress could not fit model)"
+   ],
+   "rc": 0,
+   "svg_sha": "fd7be1956067990a294414a1d1010b637c08729cc12c10053fa667ee95436bc8",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "mpg"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "mpg"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "mpg",
+   "ytitle_lines": [
+    "mpg"
+   ]
+  },
+  "qfitci": {
+   "error": "",
+   "label_position": "12",
+   "legend_drawn": true,
+   "legend_labels": [
+    "95% CI",
+    "mpg"
+   ],
+   "notes": [
+    "(note:  regress could not fit model)"
+   ],
+   "rc": 0,
+   "svg_sha": "f5200c58ba69ef79e5edfe3291b01d6dcafa80b2f0c94807896c0fb3ebe050a4",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "95% CI"
+    },
+    {
+     "fill": "#000000",
+     "text": "mpg"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "scatter": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "04c4ba09bd47e5bb76b1b47eae02e11ad356ee566c5d4b48948148ce750a92a2",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
+  }
+ },
  "malign": {
   "bogus": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [
     "(note:  named style bogus not found in class alignstroke, default attributes used)"
    ],
@@ -1247,11 +1684,21 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "center": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "7de52be8bf0493c262206ce6e08faced9854faf3f0cb2acdb74b701bde73a80b",
@@ -1298,11 +1745,21 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "inside": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "c035a286c3b031235a2e407acd6c2adba2b3d27154cd64b91566a813a6426ad7",
@@ -1349,11 +1806,21 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "outside": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "dd63ab734b3530a662b42486a0cf9a6a367b87beae34214c0e8e0e0e0b309979",
@@ -1400,13 +1867,725 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
+  }
+ },
+ "mlabel_pattern": {
+  "lead": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "Mileage (mpg)",
+    "Price"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "66a657ea397665231e218a7995698855c4564f22df20370c76b8a86e6b240b86",
+   "texts": [
+    {
+     "fill": "#1a476f",
+     "text": "AMC Concord"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "AMC Pacer"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "AMC Spirit"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick Century"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick Electra"
+    },
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": "2000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4000"
+    },
+    {
+     "fill": "#000000",
+     "text": "6000"
+    },
+    {
+     "fill": "#000000",
+     "text": "8000"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Price"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "list": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "Mileage (mpg)",
+    "Price"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "456f4ceeb607de4a36865be8668a9dee28d95c666f7ac9379125eca4e4a5cb60",
+   "texts": [
+    {
+     "fill": "#1a476f",
+     "text": "11"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "11"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "12"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "16"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "20"
+    },
+    {
+     "fill": "#90353b",
+     "text": "40"
+    },
+    {
+     "fill": "#90353b",
+     "text": "40"
+    },
+    {
+     "fill": "#90353b",
+     "text": "35"
+    },
+    {
+     "fill": "#90353b",
+     "text": "40"
+    },
+    {
+     "fill": "#90353b",
+     "text": "43"
+    },
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": "2000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4000"
+    },
+    {
+     "fill": "#000000",
+     "text": "6000"
+    },
+    {
+     "fill": "#000000",
+     "text": "8000"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Price"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "none": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "88e7357b0f99338049b5eee6427e47e2d4bee003553dc18a8848c8fd7af45507",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "14"
+    },
+    {
+     "fill": "#000000",
+     "text": "16"
+    },
+    {
+     "fill": "#000000",
+     "text": "18"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
+  },
+  "none_two": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "Mileage (mpg)",
+    "Price"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "faa50c7854e9806fbc0a21fdc3d3d323ad0308432d56ff62aea42c8ad7525d02",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": "2000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4000"
+    },
+    {
+     "fill": "#000000",
+     "text": "6000"
+    },
+    {
+     "fill": "#000000",
+     "text": "8000"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Price"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "one_y": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "88e7357b0f99338049b5eee6427e47e2d4bee003553dc18a8848c8fd7af45507",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "14"
+    },
+    {
+     "fill": "#000000",
+     "text": "16"
+    },
+    {
+     "fill": "#000000",
+     "text": "18"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
+  },
+  "range": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "88e7357b0f99338049b5eee6427e47e2d4bee003553dc18a8848c8fd7af45507",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "14"
+    },
+    {
+     "fill": "#000000",
+     "text": "16"
+    },
+    {
+     "fill": "#000000",
+     "text": "18"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
+  },
+  "single": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "13b8734644b0b60530f6692f3aeae2c92c054295c54d95307c630e9123e5442b",
+   "texts": [
+    {
+     "fill": "#1a476f",
+     "text": "11"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "11"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "12"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "16"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "14"
+    },
+    {
+     "fill": "#000000",
+     "text": "16"
+    },
+    {
+     "fill": "#000000",
+     "text": "18"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
+  },
+  "trail": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "Mileage (mpg)",
+    "Price"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "93763a059730a7501617518ac75c77fd4f540532a2e2945f853caa21adeb19f4",
+   "texts": [
+    {
+     "fill": "#90353b",
+     "text": "AMC Concord"
+    },
+    {
+     "fill": "#90353b",
+     "text": "AMC Pacer"
+    },
+    {
+     "fill": "#90353b",
+     "text": "AMC Spirit"
+    },
+    {
+     "fill": "#90353b",
+     "text": "Buick Century"
+    },
+    {
+     "fill": "#90353b",
+     "text": "Buick Electra"
+    },
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": "2000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4000"
+    },
+    {
+     "fill": "#000000",
+     "text": "6000"
+    },
+    {
+     "fill": "#000000",
+     "text": "8000"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Price"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "two_y": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "Mileage (mpg)",
+    "Price"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "faa50c7854e9806fbc0a21fdc3d3d323ad0308432d56ff62aea42c8ad7525d02",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": "2000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4000"
+    },
+    {
+     "fill": "#000000",
+     "text": "6000"
+    },
+    {
+     "fill": "#000000",
+     "text": "8000"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Price"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
   }
  },
  "mlabstyle": {
   "bogus": {
    "error": "",
    "label_position": "12",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [
     "(note:  named style bogus not found in class labelstyle, default attributes used)"
    ],
@@ -1479,11 +2658,21 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "p2": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "d820a8057f31c80515969d4294cd7c3b7f4253aff83a542ac7a6d246aea23bb5",
@@ -1554,13 +2743,23 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   }
  },
  "mlalign": {
   "declared": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "7de52be8bf0493c262206ce6e08faced9854faf3f0cb2acdb74b701bde73a80b",
@@ -1607,7 +2806,13 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "mla": {
    "error": "variable center not found",
@@ -1619,6 +2824,10 @@
   "bogus": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [
     "(note:  named style bogus not found in class anglestyle, default attributes used)"
    ],
@@ -1667,11 +2876,21 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "forty_five": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "a18840f8f0930666a3bad1b22f7fcbe399d591c817d1d0bad598b8935cc9eefc",
@@ -1718,11 +2937,21 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "n0": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "f8af2379c956a8e9e8d7b6569c9e848f31124c4c35b01ab97bc8d00145c20c82",
@@ -1769,11 +2998,21 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "n45": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "a18840f8f0930666a3bad1b22f7fcbe399d591c817d1d0bad598b8935cc9eefc",
@@ -1820,13 +3059,23 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   }
  },
  "mwidth": {
   "rbar": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "lo/hi"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "6ad89264fe9826a528c94ff89b7614e3993961ab8de41562e88fc00df17a93d8",
@@ -1877,13 +3126,23 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "lo/hi"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "lo/hi",
+   "ytitle_lines": [
+    "lo/hi"
+   ]
   }
  },
  "prefix": {
   "both": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "56ad80d545d8444ebe32e53956cb024ef419be279e510ff4c518e51d8326461c",
@@ -1954,11 +3213,21 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "none": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "e23df1f74fd17133cfa2b7ef44bbc08d569a2d3ba65562928885957e383f6ae3",
@@ -2029,13 +3298,365 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
+  }
+ },
+ "varformat": {
+  "both": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "3006f59e7a4db7e186bcf68903dfff5d32e9fd68327641abfad0be84db24f914",
+   "texts": [
+    {
+     "fill": "#1a476f",
+     "text": "22.0"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "17.0"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "22.0"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "20.0"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "15.0"
+    },
+    {
+     "fill": "#000000",
+     "text": "14.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "16.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "18.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "20.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "22.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
+  },
+  "other": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "2c21b022a3a046aca1e718a7338a5da486385280f697f56803536d190adaaf1d",
+   "texts": [
+    {
+     "fill": "#1a476f",
+     "text": "4,099"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "4,749"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "3,799"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "4,816"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "7,827"
+    },
+    {
+     "fill": "#000000",
+     "text": "14.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "16.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "18.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "20.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "22.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
+  },
+  "x": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "45401460df06a885ff60958b2f4e02590a41f718ac2f8f0b6365113f4aea3a43",
+   "texts": [
+    {
+     "fill": "#1a476f",
+     "text": "2930.0"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "3350.0"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "2640.0"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "3250.0"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "4080.0"
+    },
+    {
+     "fill": "#000000",
+     "text": "14"
+    },
+    {
+     "fill": "#000000",
+     "text": "16"
+    },
+    {
+     "fill": "#000000",
+     "text": "18"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2500.0"
+    },
+    {
+     "fill": "#000000",
+     "text": "3000.0"
+    },
+    {
+     "fill": "#000000",
+     "text": "3500.0"
+    },
+    {
+     "fill": "#000000",
+     "text": "4000.0"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
+  },
+  "y": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "6aa8de59948d9b1158098945b5129706633be6d812aabead456392b6cfaea5dc",
+   "texts": [
+    {
+     "fill": "#1a476f",
+     "text": "22.00"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "17.00"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "22.00"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "20.00"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "15.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "14.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "16.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "18.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "20.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "22.00"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,500"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   }
  },
  "varlabel": {
   "both": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Miles"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "6ce17e585e25a42ccd48c6058e49272ea62ba55f8db80037b987a112abd491f7",
@@ -2082,11 +3703,21 @@
     }
    ],
    "xtitle": "Pounds",
-   "ytitle": "Miles"
+   "xtitle_lines": [
+    "Pounds"
+   ],
+   "ytitle": "Miles",
+   "ytitle_lines": [
+    "Miles"
+   ]
   },
   "fit": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Q"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "fc3be3487fa746b4d651d8cbc6e369173d3fda966c140c8719af02c02240f087",
@@ -2137,14 +3768,25 @@
     }
    ],
    "xtitle": "Pounds",
-   "ytitle": "Q"
+   "xtitle_lines": [
+    "Pounds"
+   ],
+   "ytitle": "Q",
+   "ytitle_lines": [
+    "Q"
+   ]
   },
   "fitci": {
    "error": "",
    "label_position": "12",
+   "legend_drawn": true,
+   "legend_labels": [
+    "Q/95% CI",
+    "Q"
+   ],
    "notes": [],
    "rc": 0,
-   "svg_sha": "1e91b554c875f8468f32b61bb989c5c4b2ee169596742a8a2bbbece4d4516c72",
+   "svg_sha": "011647f0090f7f236a030ae43f5420d6477209c12787bd1b48c7ed6f43b0ac81",
    "texts": [
     {
      "fill": "#000000",
@@ -2196,11 +3838,836 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": null
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "function": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Q"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "71b1f432503f6cf737f87d18f19ab37dcad82d8c67f5a542a8d052634d795531",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": ".2"
+    },
+    {
+     "fill": "#000000",
+     "text": ".4"
+    },
+    {
+     "fill": "#000000",
+     "text": ".6"
+    },
+    {
+     "fill": "#000000",
+     "text": ".8"
+    },
+    {
+     "fill": "#000000",
+     "text": "1"
+    },
+    {
+     "fill": "#000000",
+     "text": "Q"
+    },
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": ".2"
+    },
+    {
+     "fill": "#000000",
+     "text": ".4"
+    },
+    {
+     "fill": "#000000",
+     "text": ".6"
+    },
+    {
+     "fill": "#000000",
+     "text": ".8"
+    },
+    {
+     "fill": "#000000",
+     "text": "1"
+    },
+    {
+     "fill": "#000000",
+     "text": "R"
+    }
+   ],
+   "xtitle": "R",
+   "xtitle_lines": [
+    "R"
+   ],
+   "ytitle": "Q",
+   "ytitle_lines": [
+    "Q"
+   ]
+  },
+  "function_key": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "Mileage (mpg)",
+    "y=x"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "e0e710ead280242da333b0188f5fe6cf7e593aa86f58dd503f3a8c5378a9f1e6",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "y=x"
+    }
+   ],
+   "xtitle": null,
+   "xtitle_lines": [],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "graph_fit1": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "A",
+    "Fitted values"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "ec09ca5dfb0699bd2eff4eed669ed8ce1ab1d148e4f420623a15ccab3883086f",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "A"
+    },
+    {
+     "fill": "#000000",
+     "text": "Fitted values"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "graph_fit2": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "Q",
+    "Mileage (mpg)"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "54783cdde69fa1d67da31439053e9cd6f0c7540c52306b9dcf6f567c28726c8a",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "2000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Q"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "graph_ifin": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "Mileage (mpg)",
+    "B"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "2b60e1da5b17812cef53410c0c027fba6ce4ed4ebe9eb7b3a35b5504fd3392c9",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "B"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "graph_last": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "B",
+    "B"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "38147cadb6aa7fdc7d6029893df6a49f3b7645fb884f3fd047146e21a926b40b",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "B"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "B"
+    },
+    {
+     "fill": "#000000",
+     "text": "B"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "B",
+   "ytitle_lines": [
+    "B"
+   ]
+  },
+  "graph_other": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "A",
+    "Price"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "11091cdcbe354f35cb8f8b4d3fbd771214ec2ac4a50a215af36f03fcba7c0277",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": "5000"
+    },
+    {
+     "fill": "#000000",
+     "text": "10000"
+    },
+    {
+     "fill": "#000000",
+     "text": "15000"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "A"
+    },
+    {
+     "fill": "#000000",
+     "text": "Price"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "graph_two": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "B",
+    "B"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "fddc9783ce073fa1fe6c3d9d75ac31118812f940c76adf4fa4fa50318726deb4",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "B"
+    },
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": "1,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "B"
+    },
+    {
+     "fill": "#000000",
+     "text": "B"
+    }
+   ],
+   "xtitle": null,
+   "xtitle_lines": [],
+   "ytitle": "B",
+   "ytitle_lines": [
+    "B"
+   ]
+  },
+  "graph_x": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "Mileage (mpg)",
+    "Price"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "3bf13190f3c4c41a0f3949716ea477d0b305d1d48a3fdad447a00274318510da",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": "5000"
+    },
+    {
+     "fill": "#000000",
+     "text": "10000"
+    },
+    {
+     "fill": "#000000",
+     "text": "15000"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "W"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Price"
+    }
+   ],
+   "xtitle": "W",
+   "xtitle_lines": [
+    "W"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "histfreq": {
+   "error": "",
+   "label_position": "12",
+   "legend_drawn": false,
+   "legend_labels": [
+    "D/Frequency"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "764888b1fe16c78f09a67ceb39a238d12e5d9970f8d5e315612fec223ebc1cb7",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": "5"
+    },
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "15"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "25"
+    },
+    {
+     "fill": "#000000",
+     "text": "D/Frequency"
+    },
+    {
+     "fill": "#000000",
+     "text": "15"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "25"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "35"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    }
+   ],
+   "xtitle": "Mileage (mpg)",
+   "xtitle_lines": [
+    "Mileage (mpg)"
+   ],
+   "ytitle": "D/Frequency",
+   "ytitle_lines": [
+    "D/Frequency"
+   ]
+  },
+  "histogram": {
+   "error": "",
+   "label_position": "12",
+   "legend_drawn": false,
+   "legend_labels": [
+    "D/Density"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "61835ff0d82b5ab4fc07ec6276568a96701f3db0b8534ce68c7de36a6fc2196a",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": ".02"
+    },
+    {
+     "fill": "#000000",
+     "text": ".04"
+    },
+    {
+     "fill": "#000000",
+     "text": ".06"
+    },
+    {
+     "fill": "#000000",
+     "text": ".08"
+    },
+    {
+     "fill": "#000000",
+     "text": ".1"
+    },
+    {
+     "fill": "#000000",
+     "text": "D/Density"
+    },
+    {
+     "fill": "#000000",
+     "text": "15"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "25"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "35"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "M"
+    }
+   ],
+   "xtitle": "M",
+   "xtitle_lines": [
+    "M"
+   ],
+   "ytitle": "D/Density",
+   "ytitle_lines": [
+    "D/Density"
+   ]
+  },
+  "kdensity": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "D"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "dc5abff16a0ac8d7d95e6ca2109fa91252e1a322158f8a1ed095c83393912a63",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": ".02"
+    },
+    {
+     "fill": "#000000",
+     "text": ".04"
+    },
+    {
+     "fill": "#000000",
+     "text": ".06"
+    },
+    {
+     "fill": "#000000",
+     "text": ".08"
+    },
+    {
+     "fill": "#000000",
+     "text": "D"
+    },
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "M"
+    }
+   ],
+   "xtitle": "M",
+   "xtitle_lines": [
+    "M"
+   ],
+   "ytitle": "D",
+   "ytitle_lines": [
+    "D"
+   ]
   },
   "overlay": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "Mileage (mpg)",
+    "Q"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "594a48eb4b02e64796da9d4470bcd0e75b2bff07d6a41dc2b0f0b9b2144b0d51",
@@ -2251,11 +4718,175 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": null
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "pcarrowi": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Q/R"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "80d720f67d6d67d8e590c7af8583900413bb359aaa873c0692738f5ae1085f8b",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "24"
+    },
+    {
+     "fill": "#000000",
+     "text": "26"
+    },
+    {
+     "fill": "#000000",
+     "text": "28"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "Q/R"
+    },
+    {
+     "fill": "#000000",
+     "text": "2000"
+    },
+    {
+     "fill": "#000000",
+     "text": "2500"
+    },
+    {
+     "fill": "#000000",
+     "text": "3000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3500"
+    },
+    {
+     "fill": "#000000",
+     "text": "4000"
+    },
+    {
+     "fill": "#000000",
+     "text": "S"
+    },
+    {
+     "fill": "#000000",
+     "text": "/xb"
+    }
+   ],
+   "xtitle": "S",
+   "xtitle_lines": [
+    "S",
+    "/xb"
+   ],
+   "ytitle": "Q/R",
+   "ytitle_lines": [
+    "Q/R"
+   ]
+  },
+  "pci": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Q/R"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "ce56b1ea72e97bd9c615f0960808fcb93ca50d77c321d76dc378214151eb8dbf",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "24"
+    },
+    {
+     "fill": "#000000",
+     "text": "26"
+    },
+    {
+     "fill": "#000000",
+     "text": "28"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "Q/R"
+    },
+    {
+     "fill": "#000000",
+     "text": "2000"
+    },
+    {
+     "fill": "#000000",
+     "text": "2500"
+    },
+    {
+     "fill": "#000000",
+     "text": "3000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3500"
+    },
+    {
+     "fill": "#000000",
+     "text": "4000"
+    },
+    {
+     "fill": "#000000",
+     "text": "S"
+    },
+    {
+     "fill": "#000000",
+     "text": "/xb"
+    }
+   ],
+   "xtitle": "S",
+   "xtitle_lines": [
+    "S",
+    "/xb"
+   ],
+   "ytitle": "Q/R",
+   "ytitle_lines": [
+    "Q/R"
+   ]
   },
   "plain": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "c035a286c3b031235a2e407acd6c2adba2b3d27154cd64b91566a813a6426ad7",
@@ -2302,11 +4933,22 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "plain_two": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "Mileage (mpg)",
+    "Price"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "55814658e0376f246dc971b81b75317c0b4db573db22660d3218dcb2784b56b1",
@@ -2357,11 +4999,19 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": null
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
   },
   "range": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Band/hi"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "d5cafb7811c7e16d24baa7efb3e12dc3f28447865b824448dd92fe245ca77785",
@@ -2412,11 +5062,21 @@
     }
    ],
    "xtitle": "Pounds",
-   "ytitle": "Band/hi"
+   "xtitle_lines": [
+    "Pounds"
+   ],
+   "ytitle": "Band/hi",
+   "ytitle_lines": [
+    "Band/hi"
+   ]
   },
   "range_two": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Band/Top"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "ae90907ce62fd489414e67b55b224980c9839e8a8ad2808da58b31d9b06ef816",
@@ -2467,11 +5127,98 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Band/Top"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Band/Top",
+   "ytitle_lines": [
+    "Band/Top"
+   ]
+  },
+  "scatteri": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Q"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "12f9b0b30605cdf753eb1aa3aae9d5cf63677ef3435b883d9cbfc76e6e0fd030",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "21"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "23"
+    },
+    {
+     "fill": "#000000",
+     "text": "24"
+    },
+    {
+     "fill": "#000000",
+     "text": "25"
+    },
+    {
+     "fill": "#000000",
+     "text": "Q"
+    },
+    {
+     "fill": "#000000",
+     "text": "3000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3200"
+    },
+    {
+     "fill": "#000000",
+     "text": "3400"
+    },
+    {
+     "fill": "#000000",
+     "text": "3600"
+    },
+    {
+     "fill": "#000000",
+     "text": "3800"
+    },
+    {
+     "fill": "#000000",
+     "text": "4000"
+    },
+    {
+     "fill": "#000000",
+     "text": "R"
+    }
+   ],
+   "xtitle": "R",
+   "xtitle_lines": [
+    "R"
+   ],
+   "ytitle": "Q",
+   "ytitle_lines": [
+    "Q"
+   ]
   },
   "x": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "be19ee83069ae299824b0865350b76d2581dc9b07a5619e3fa2eef860e9a4393",
@@ -2518,11 +5265,21 @@
     }
    ],
    "xtitle": "Pounds",
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [
+    "Pounds"
+   ],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "x_empty": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Mileage (mpg)"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "46a9bb7523d917090c7e2b562845337d2928f24da4dc5890b12535644701edc6",
@@ -2565,11 +5322,19 @@
     }
    ],
    "xtitle": null,
-   "ytitle": "Mileage (mpg)"
+   "xtitle_lines": [],
+   "ytitle": "Mileage (mpg)",
+   "ytitle_lines": [
+    "Mileage (mpg)"
+   ]
   },
   "y": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "Miles"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "d5c2b04ee0822e80049bb552f04e5d04f1b4971db92f3e52b2a0274148800e95",
@@ -2616,11 +5381,147 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": "Miles"
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "Miles",
+   "ytitle_lines": [
+    "Miles"
+   ]
+  },
+  "y_empty": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": false,
+   "legend_labels": [
+    "mpg"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "8a7af34a19d0dc76f0c81c569dc17386fba510aa7e71810f75bbb8b835e8c13e",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "mpg"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": "mpg",
+   "ytitle_lines": [
+    "mpg"
+   ]
+  },
+  "y_empty_two": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "mpg",
+    "B"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "33ffb4d9e018d4a4916e53430225944043c9b1a8a4ebdaa6a671f2c8447f9dae",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": "5000"
+    },
+    {
+     "fill": "#000000",
+     "text": "10000"
+    },
+    {
+     "fill": "#000000",
+     "text": "15000"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "mpg"
+    },
+    {
+     "fill": "#000000",
+     "text": "B"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
   },
   "y_two": {
    "error": "",
    "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "A",
+    "B"
+   ],
    "notes": [],
    "rc": 0,
    "svg_sha": "83bb3e3cb5863116dc034d6b2afe65df0ee7bf827df035fb7edc60e8b5895862",
@@ -2671,7 +5572,75 @@
     }
    ],
    "xtitle": "Weight (lbs.)",
-   "ytitle": null
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
+  },
+  "y_two_empty": {
+   "error": "",
+   "label_position": "3",
+   "legend_drawn": true,
+   "legend_labels": [
+    "A",
+    "price"
+   ],
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "e23db09956364692af607daa722b5651604f71a10abbcebfb141d683244824f4",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": "5000"
+    },
+    {
+     "fill": "#000000",
+     "text": "10000"
+    },
+    {
+     "fill": "#000000",
+     "text": "15000"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "A"
+    },
+    {
+     "fill": "#000000",
+     "text": "price"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "xtitle_lines": [
+    "Weight (lbs.)"
+   ],
+   "ytitle": null,
+   "ytitle_lines": []
   }
  }
 }

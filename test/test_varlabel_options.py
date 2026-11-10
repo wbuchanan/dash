@@ -137,9 +137,11 @@ class TestTheFixture:
             "scripts/extract_varlabel_mlabel_truth.do"
 
     def test_keys(self):
-        assert sorted(T) == ["_meta", "align", "bardefault", "c14", "malign",
-                             "mlabstyle", "mlalign", "msangle", "mwidth",
-                             "prefix", "varlabel"]
+        # WP-47 47-02: varformat, mlabel_pattern and empty added.
+        assert sorted(T) == ["_meta", "align", "bardefault", "c14", "empty",
+                             "malign", "mlabel_pattern", "mlabstyle",
+                             "mlalign", "msangle", "mwidth", "prefix",
+                             "varformat", "varlabel"]
         v = T["varlabel"]
         assert (v["both"]["ytitle"], v["both"]["xtitle"]) == ("Miles",
                                                              "Pounds")
@@ -264,3 +266,102 @@ class TestTheDeclarations:
         assert "yvarlabel" not in sl and "xvarlabel" not in sl
         assert "_dash_varlabel_tail(st_global(\"s(yvarlabel)\"), `series')" \
             in ado
+
+
+# ---------------------------------------------------------------------------
+# WP-47 MS-2 (with TR-6): every plot type takes yvarlabel()/xvarlabel()
+# ---------------------------------------------------------------------------
+#
+# The defect (measured at f9bf176): scatteri, pci, pcarrowi, function,
+# kdensity and histogram kept their fixed texts ("y"/"x", "y/yb"/"x/xb",
+# the function's name, "kdensity mpg"/"x", the scale word) whatever
+# yvarlabel()/xvarlabel() gave.  twoway (varlabel_mlabel_truth.json, the
+# MS-2 rows): scatteri and function are titled Q/R, kdensity D/M,
+# histogram "D/Density" over M ("D/Frequency" under frequency), pci and
+# pcarrowi "Q/R" over the two lines "S" and "/xb"; a function keyed by
+# yvarlab("y=x") is keyed "y=x".
+
+def _fn(**o):
+    return {"type": "function", "expr": "x", "yname": "y",
+            "options": dict({"range": "0 1"}, **o)}
+
+
+_MS2 = {
+    # case: (plots, index of the plot under test)
+    "scatteri": ([{"type": "scatteri", "values": [[20.0, 3000.0],
+                                                  [25.0, 4000.0]],
+                   "options": {"yvarlabel": '"Q"', "xvarlabel": '"R"'}}], 0),
+    "function": ([_fn(yvarlabel='"Q"', xvarlabel='"R"')], 0),
+    "function_key": ([sc(), {"type": "function", "expr": "20",
+                             "yname": "y",
+                             "options": {"range": "2000 4000",
+                                         "yvarlabel": '"y=x"'}}], 1),
+    "kdensity": ([{"type": "kdensity", "var": "mpg",
+                   "options": {"xvarlabel": '"M"', "yvarlabel": '"D"'}}], 0),
+    "histogram": ([{"type": "histogram", "var": "mpg",
+                    "options": {"xvarlabel": '"M"', "yvarlabel": '"D"'}}], 0),
+    "histfreq": ([{"type": "histogram", "var": "mpg",
+                   "options": {"frequency": "frequency",
+                               "yvarlabel": '"D"'}}], 0),
+    "pci": ([{"type": "pci", "values": [[20.0, 2000.0, 30.0, 4000.0]],
+              "options": {"yvarlabel": '"Q" "R"', "xvarlabel": '"S"'}}], 0),
+    "pcarrowi": ([{"type": "pcarrowi",
+                   "values": [[20.0, 2000.0, 30.0, 4000.0]],
+                   "options": {"yvarlabel": '"Q" "R"',
+                               "xvarlabel": '"S"'}}], 0),
+}
+
+
+def _title(lines):
+    """A fixture title's lines as dash writes a title: one string, a line
+    break between lines."""
+    return "\n".join(lines or [])
+
+
+class TestEveryTypeTakesThem:
+
+    def test_the_rows(self):
+        v = T["varlabel"]
+        for case in _MS2:
+            assert v[case]["rc"] == 0 and v[case]["notes"] == [], case
+        # pci's x title is two lines, as twoway draws it.
+        assert v["pci"]["xtitle_lines"] == ["S", "/xb"]
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("case", sorted(_MS2))
+    def test_titles(self, mode, case, tmp_path):
+        rec = T["varlabel"][case]
+        plots, _ = _MS2[case]
+        f, notes = figs(mode, tmp_path, plots)
+        assert axis_titles(f[0]) == (_title(rec["ytitle_lines"]),
+                                     _title(rec["xtitle_lines"])), case
+        assert not [n for n in notes if "varlabel" in n], notes
+
+    @pytest.mark.parametrize("case", sorted(_MS2))
+    def test_key(self, case):
+        rec = T["varlabel"][case]
+        plots, i = _MS2[case]
+        assert dr._dash_legend_key(plots[i], VL) == rec["legend_labels"][-1]
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_drawn_keys(self, mode, tmp_path):
+        rec = T["varlabel"]["function_key"]
+        f, _ = figs(mode, tmp_path, _MS2["function_key"][0])
+        assert rec["legend_drawn"]
+        assert legend_keys(f[0]) == rec["legend_labels"]
+
+    def test_the_words(self):
+        # _dash_varlabel_words: one string per quoted or compound-quoted
+        # value, "" an empty string, a bare word itself; a non-string none.
+        assert dr._dash_varlabel_words('"A" `"B C"\' "" d') == \
+            ["A", "B C", "", "d"]
+        assert dr._dash_varlabel_words(None) == []
+
+    def test_help(self):
+        # AC-47-02.3: the help says every plot type takes them.
+        with open(os.path.join(_ROOT, "dash.sthlp"), encoding="utf-8") as fh:
+            hlp = " ".join(fh.read().split())
+        assert ("as {cmd:twoway} reads them, on every plot type: the axis "
+                "titles and the legend keys take them, {cmd:histogram} "
+                "joining a {cmd:yvarlabel()} to its scale word "
+                "({cmd:D/Density})") in hlp

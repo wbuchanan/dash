@@ -1295,6 +1295,7 @@ FUNCTIONS = {
  # WP-30 S19 (P1.16): Legend keys and default axis titles (P1.16)
  '_dash_layer_series': 'test/test_series_labels.py::TestTheSeriesRule::test_each_type_gives_twoways_series',
  '_dash_function_yname': 'test/test_series_labels.py::TestTheSeriesRule::test_a_function_is_named_as_twoway_names_it',
+ '_dash_varlabel_words': 'test/test_varlabel_options.py::TestEveryTypeTakesThem::test_the_words',
  '_dash_layer_series.<locals>.L': 'test/test_series_labels.py::TestTheSeriesRule::test_each_type_gives_twoways_series',
  '_dash_layer_series.<locals>.name': 'test/test_series_labels.py::TestTheSeriesRule::test_names_and_labels_as_twoway_uses_them',
  '_dash_layer_series.<locals>.pair': 'test/test_series_labels.py::TestTheSeriesRule::test_equal_or_missing_boundaries_give_one_label',
@@ -1306,7 +1307,8 @@ FUNCTIONS = {
  # WP-31 S34 (D8): yvarlabel() and xvarlabel() read by the series rule.
  '_dash_layer_series.<locals>.Lx': 'test/test_varlabel_options.py::TestVarlabels::test_series',
  '_dash_layer_series.<locals>.Ly': 'test/test_varlabel_options.py::TestVarlabels::test_range_and_fit_layers',
- '_dash_layer_series.<locals>.words': 'test/test_varlabel_options.py::TestVarlabels::test_range_and_fit_layers',
+ '_dash_layer_series.<locals>.Oy': 'test/test_varlabel_options.py::TestEveryTypeTakesThem::test_key',
+ '_dash_layer_series.<locals>.Ox': 'test/test_varlabel_options.py::TestEveryTypeTakesThem::test_key',
  '_dash_axis_default_titles': 'test/test_series_labels.py::TestTheAxisTitleRule::test_first_equals_last',
  '_dash_axis_default_titles.<locals>._axis_title': 'test/test_axis_titles_p9.py::TestTheRegionRule::test_each_probe',
  '_dash_axis_default_titles.<locals>._nums': 'test/test_axis_titles_p9.py::TestTheRegionRule::test_each_probe',

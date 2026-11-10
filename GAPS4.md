@@ -528,7 +528,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **RH-11 Tracked:** Closed in WP-46, BUGS.md "Abbreviated yx names on y2xtype sources (sc, li, co, b) are read as full names; twoway notes them and draws rspike", commit 492ce02.
 - **basic:PT-1 Tracked:** Closed in WP-47, BUGS.md "headlabel is ignored on pcscatter/pccapsym with mlabel() and on pcarrowi labels: labels stay at the first point", commit f2d63fc.
 - **MS-7 Tracked:** Closed in WP-47, BUGS.md "Immediate-type labels: pci labels dropped under recast() with a false note; scatteri labels vanish under recast(); mlabel(nosuch) on scatteri is refused r(111)", commit dfa66fd.
-- **MS-2 Tracked:** Open (WP-47 section 47-02).
+- **MS-2 Tracked:** Closed in WP-47, BUGS.md "yvarlabel()/xvarlabel() are ignored on scatteri, pci, pcarrowi, function, kdensity and histogram", commit pending.
 - **MS-3 Tracked:** Open (WP-47 section 47-02).
 - **MS-5 Tracked:** Open (WP-47 section 47-02).
 - **basic:PT-3 Tracked:** Open (WP-47 section 47-02).

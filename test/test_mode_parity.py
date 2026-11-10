@@ -3370,6 +3370,9 @@ CORPUS = [
           [plot_for("bar", {"lwidth": "vthick", "lalign": "outside"})]),
     _case("histogram default outline inset", [plot_for("histogram")]),
     _case("rarea lalign(inside)", [plot_for("rarea", {"lalign": "inside"})]),
+    # WP-47 MS-2: yvarlabel()/xvarlabel() on every plot type.
+    _case("kdensity varlabels",
+          [plot_for("kdensity", {"xvarlabel": '"M"', "yvarlabel": '"D"'})]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair
