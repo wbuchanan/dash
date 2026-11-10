@@ -1915,6 +1915,34 @@ def _dash_axis_format_text(raw, first=False):
     return (words[0] if first else words[-1])[:61]
 
 
+def _dash_mlabel_varformat(options, mlabel_var, layer_vars):
+    """The format a layer's marker labels of *mlabel_var* are written in
+    (WP-47 MS-5): ``mlabformat()`` when given; else the layer's
+    ``yvarformat()`` when *mlabel_var* is one of its y variables, or its
+    ``xvarformat()`` when it is its x variable -- read as the axis reads
+    them (:func:`_dash_axis_format_text`, the first word) and only a
+    ``%f``, ``%g`` or ``%e`` number format; else ``""``.  *layer_vars* is
+    ``((y, ...), x)`` (varlabel_mlabel_truth.json varformat.y 22.00,
+    varformat.x 2930.0, varformat.other price's own 4,099, varformat.both
+    mlabformat()'s 22.0).  Never raises."""
+    opts = options if isinstance(options, dict) else {}
+    own = str(opts.get("mlabformat", "") or "").strip()
+    if own:
+        return own
+    if not (isinstance(layer_vars, (tuple, list)) and len(layer_vars) == 2
+            and mlabel_var):
+        return ""
+    ys, x = layer_vars
+    ys = tuple(ys) if isinstance(ys, (tuple, list)) else (ys,)
+    if mlabel_var in ys:
+        fmt = _dash_axis_format_text(opts.get("yvarformat"), first=True)
+    elif mlabel_var == x:
+        fmt = _dash_axis_format_text(opts.get("xvarformat"), first=True)
+    else:
+        return ""
+    return fmt if re.match(r"^%-?\d*\.?\d*[fge]c?$", fmt or "") else ""
+
+
 def _dash_layer_tick_format(plot, dim, numeric_formats, date_vars):
     """``(fmt, by_option)``: the display format twoway labels the *dim*
     (``"x"`` or ``"y"``) axis with when *plot* is the layer that axis
@@ -19055,6 +19083,7 @@ class GlyphMapper:
         radius_px: "float | None" = None,
         color_idx: int = 0,
         vpos_col: "str | None" = None,
+        layer_vars: "tuple | None" = None,
     ) -> None:
         """Add a LabelSet annotation when the mlabel() option is set.
 
@@ -19223,8 +19252,9 @@ class GlyphMapper:
                         source.data[style_col] = _sty
                 source.data[text_col] = rendered
 
-        # mlabformat() (WP-22): the labels in the format the user gave.
-        _mfmt = str(options.get("mlabformat", "") or "").strip()
+        # mlabformat() (WP-22): the labels in the format the user gave;
+        # WP-47 MS-5: else the layer's y/xvarformat() for its own variable.
+        _mfmt = _dash_mlabel_varformat(options, mlabel_var, layer_vars)
         if _mfmt:
             text_col = self._mlabformat_column(source, mlabel_var, _mfmt,
                                                text_col, values_col)
@@ -20021,7 +20051,7 @@ class GlyphMapper:
             if _sel is not None:
                 _label_source = self._subset_source(plot_source, _sel)
         self._apply_mlabel_opts(fig, _label_source, options, xvar, yvar,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx, layer_vars=((yvar,), xvar))
         fig.add_tools(self._hover_tool(yvar, xvar, renderers=[r]))
         # Every row missing its y or its x: twoway draws nothing, rc 0, and
         # says nothing (`twoway scatter m1 m2' on two all-missing
@@ -20720,7 +20750,7 @@ class GlyphMapper:
         if "mlabstyle" not in _mlopts:
             _mlopts.setdefault("mlabposition", "12")
         self._apply_mlabel_opts(fig, clean_source, _mlopts, xvar, yvar,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx, layer_vars=((yvar,), xvar))
         return r
 
     #: The reserved columns a bar on a period axis is drawn from (D-14c).
@@ -26121,7 +26151,7 @@ class GlyphMapper:
                              options)
         self._apply_mlabel_opts(fig, dl_source, options, xvar, yvar,
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx,
-                                vpos_col=_dl_vpos)
+                                vpos_col=_dl_vpos, layer_vars=((yvar,), xvar))
         return [seg, dot]
 
     def map_rcapsym(
@@ -26263,9 +26293,9 @@ class GlyphMapper:
         # the caller's source, as the top one always was -- restricted to
         # the layer's own rows, which it labelled every row of.
         self._apply_mlabel_opts(fig, _label_source, options, xvar, y1var,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx, layer_vars=((y1var, y2var), xvar))
         self._apply_mlabel_opts(fig, _label_source, options, xvar, y2var,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx, layer_vars=((y1var, y2var), xvar))
         return [spine, bot_dot, top_dot]
 
     def map_rpcap(
@@ -27418,7 +27448,8 @@ class GlyphMapper:
                                 _DASH_MLABEL_Y, label_col=_DASH_MLABEL_VALUES,
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx,
                                 vpos_col=(self._MLABVPOS_VALUES if _has_vp
-                                          else None))
+                                          else None),
+                                layer_vars=((y1var,), x1var))
         return [r]
 
     def _pc_clean_with_label(self, source: ColumnDataSource, y1var: str,
@@ -27805,7 +27836,7 @@ class GlyphMapper:
                                 x2var if _at_head else x1var,
                                 y2var if _at_head else y1var,
                                 radius_px=self._mlabel_radius_px(options, _hpx),
-                                color_idx=color_idx)
+                                color_idx=color_idx, layer_vars=((y1var,), x1var))
         return [seg]
 
     def map_pcbarrow(
@@ -27909,7 +27940,7 @@ class GlyphMapper:
                                 x2var if _at_head else x1var,
                                 y2var if _at_head else y1var,
                                 radius_px=self._mlabel_radius_px(options, _hpx),
-                                color_idx=color_idx)
+                                color_idx=color_idx, layer_vars=((y1var,), x1var))
         return [seg]
 
     def map_pccapsym(
@@ -28038,7 +28069,7 @@ class GlyphMapper:
         self._apply_mlabel_opts(fig, seg_src, options,
                                 x2var if _at_head else x1var,
                                 y2var if _at_head else y1var,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx, layer_vars=((y1var,), x1var))
         return [seg, dots]
 
     @staticmethod
@@ -28421,7 +28452,7 @@ class GlyphMapper:
         self._colorvar_layer(fig, [(r, rs_source)], options)
         self._apply_mlabel_opts(fig, rs_source, options, "x", "y",
                                 label_col=_DASH_MLABEL_VALUES,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx, layer_vars=((y1var, y2var), xvar))
         return [r]
 
     def map_mspline(
@@ -81401,7 +81432,9 @@ class ServerAppBuilder:
                          # WP-47 47-02: the varlabel strings (MS-2) and
                          # a variable's label graph-wide (MS-3).
                          "_dash_varlabel_words", "_dash_varlabel_group",
-                         "_dash_graph_varlabels"):
+                         "_dash_graph_varlabels",
+                         # and the marker labels' varformat (MS-5).
+                         "_dash_mlabel_varformat"):
             if _fn_name in _emitted_names:
                 continue
             _fn = getattr(_mod, _fn_name, None)

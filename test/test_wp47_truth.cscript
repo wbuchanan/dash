@@ -371,18 +371,19 @@ def _q4702(sp, dp, app):
                "|".join(str(k) for k in keys))
         seen.append("[%s][%s][%s]" % got)
         out.append("1" if got == want else "0")
+    f = list(r.figures.values())[0]
+    sets = [m for m in (list(f.center) + list(f.above) + list(f.below)
+                        + list(f.left) + list(f.right) + list(f.renderers))
+            if isinstance(m, LabelSet)]
     labs = []
-    for m in r.figures[next(iter(r.figures))].references():
-        if isinstance(m, LabelSet):
-            fld = getattr(m.text, "field", None)
-            if fld and fld in m.source.data:
-                labs.extend(str(v) for v in m.source.data[fld])
+    for m in sets:
+        fld = getattr(m.text, "field", None) or m.text
+        if isinstance(fld, str) and fld in m.source.data:
+            labs.extend(str(v) for v in m.source.data[fld])
     Macro.setGlobal("q4702", " ".join(out))
     Macro.setGlobal("q4702_seen", " ".join(seen))
-    Macro.setGlobal("q4702_lab", "|".join(labs))
-    Macro.setGlobal("q4702_nlab", str(sum(
-        isinstance(m, LabelSet) for m in
-        r.figures[next(iter(r.figures))].references())))
+    Macro.setGlobal("q4702_lab", "|".join(labs) or ".")
+    Macro.setGlobal("q4702_nlab", str(len(sets)))
 end
 
 * ==== S02 MS-2: yvarlabel() and xvarlabel() on every plot type ====
@@ -453,6 +454,44 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w47_run' {
         dash clear
     }
     _w47_done Q4702-2 "`q2n' graphs title and key relabelled variables as twoway does, in both modes"
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
+* ==== S02 MS-5: marker labels in the layer's varformat ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w47_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4702-3: mlabel(mpg) yvarformat(%9.2f) labels the markers as
+    // twoway does (its first SVG text, measured live: 22.00); dash's
+    // first label is the same, and mlabformat(%9.1f) wins (22.0).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    foreach f in "" "mlabformat(%9.1f)" {
+        quietly twoway scatter mpg weight in 1/5, mlabel(mpg) yvarformat(%9.2f) `f' name(q4702, replace)
+        cert_svg_export, name(q4702) file("`w47_work'/q4702_3.svg")
+        capture graph drop q4702
+        cert_svg_texts, file("`r(file)'")
+        local q3l "`r(list)'"
+        python: import json as _j4702; from sfi import Macro as _M4702; _M4702.setLocal("q3tw", _j4702.loads(open(_M4702.getLocal("q3l"), encoding="utf-8").readline())["text"])
+        capture erase "`q3l'"
+        capture erase "`w47_work'/q4702_3.svg"
+        _q4702_tw q4702
+        dash clear
+        capture noisily dash scatter mpg weight in 1/5, mlabel(mpg) yvarformat(%9.2f) `f' name(q3)
+        _w47_expect Q4702-3 "(_rc == 0)" "dash rc `=_rc'"
+        _dash_serve_spec, specpath("`w47_work'/q4702_3s.json") datapath("`w47_work'/q4702_3d.json")
+        local q2ty ""
+        local q2tx ""
+        local q2tk ""
+        python: import __main__ as _m4702; _m4702._q4702("`w47_work'/q4702_3s.json", "`w47_work'/q4702_3d.json", "`w47_work'/q4702_3a.py")
+        mata: st_local("q3d", tokens(st_global("q4702_lab"), "|")[1])
+        _w47_expect Q4702-3 `"("`q3d'" == "`q3tw'")"' "`f': twoway's first label [`q3tw'], dash's [`q3d']"
+        dash clear
+    }
+    _w47_done Q4702-3 "marker labels of the y variable take its yvarformat(), mlabformat() first, as twoway writes them"
     display as text "S02 end " c(current_date) " " c(current_time)
 }
 * ==== end S02 ====

@@ -3378,6 +3378,9 @@ CORPUS = [
           [plot_for("scatter", {"yvarlabel": '"A"'}),
            plot_for("scatter", {"yvarlabel": '"B"'}, xvar="price"),
            plot_for("scatter", {"yvarlabel": '""'}, yvar="price")]),
+    # WP-47 MS-5: marker labels of the y variable in its yvarformat().
+    _case("mlabel yvarformat",
+          [plot_for("scatter", {"mlabel": "mpg", "yvarformat": "%9.2f"})]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

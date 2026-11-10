@@ -5744,7 +5744,9 @@ r(198), as in {cmd:twoway}.
 
 {phang}{opt xvarformat(fmt)} and {opt yvarformat(fmt)}, inside a plot,
 replace that layer's x or y variable's display format for the axis it
-labels, as {cmd:twoway} reads them; written after the plot groups' comma
+labels, and the marker labels of that variable, unless {cmd:mlabformat()}
+is given ({cmd:mlabel(mpg) yvarformat(%9.2f)} labels {cmd:22.00}), as
+{cmd:twoway} reads them; written after the plot groups' comma
 they are refused, {cmd:option xvarformat() not allowed}, r(198).  The
 hexadecimal, byte-dump and string formats are written as under
 {cmd:format()} above, in these options and in a variable's own display

@@ -1024,6 +1024,7 @@ and now matches Stata.
 - dlalign(center) and dlalign(outside) draw a dot plot's dots larger by one and two outline widths, as twoway draws them; dash drew every value as inside, and a word twoway does not know is now noted as twoway notes it (WP-47, basic:PT-5)
 - A bar's, histogram bin's and rbar's outline is drawn inside its edge by default, centred under lalign(center) and outside under lalign(outside), as twoway strokes it, and an area's, rarea's and confidence band's outline is inset or outset the same way on every edge; dash centred every outline on the edge and drew the three lalign() words as one picture (WP-47, basic:PT-4)
 - yvarlabel() and xvarlabel() title and key scatteri, pci, pcarrowi, function, kdensity and histogram as twoway does; kdensity mpg, xvarlabel("M") yvarlabel("D") was titled "kdensity mpg" over x, now D over M, and histogram mpg, yvarlabel("D") "D/Density" (WP-47, MS-2)
+- xvarformat() and yvarformat() write the marker labels of the variable they format, unless mlabformat() is given, as twoway does: scatter mpg weight, mlabel(mpg) yvarformat(%9.2f) labelled 22, now 22.00 (WP-47, MS-5)
 
 ### Fixed in WP-46
 
