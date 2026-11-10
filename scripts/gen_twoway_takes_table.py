@@ -26,7 +26,10 @@ that twoway takes and draws nothing different with: one row per option,
 its name and the plot types where the fixture's twoway_draws is false (the
 same picture), between ``// BEGIN tw_silent`` and ``// END tw_silent``.
 dash takes each there without a note.  sort is the types both its probes
-(sort and sort(price)) draw the same on.
+(sort and sort(price)) draw the same on.  A probe key ``<name>+<context>``
+(a second base command, e.g. ``headlabel+mlabel``) counts as a probe of
+``<name>``; a type such a probe does not hold keeps the other probes'
+verdict.
 
     python3 scripts/gen_twoway_takes_table.py          # rewrite dash_parse.mata
     python3 scripts/gen_twoway_takes_table.py --check  # exit 1 if stale
@@ -134,12 +137,16 @@ def silent_rows(nx):
     types = nx["types"]
     by = {}
     for opt in sorted(nx["probes"]):
-        name = opt.split("(", 1)[0]
+        # A probe "<name>+<context>" (headlabel+mlabel: a second base
+        # command) is a probe of <name> (WP-47 basic:PT-1).
+        name = opt.split("(", 1)[0].split("+", 1)[0]
         if name not in SILENT:
             continue
         rows = nx["probes"][opt]
+        # A type the probe does not hold keeps the other probes' verdict.
         same = {t for t in types
-                if rows[t]["twoway_rc"] == 0 and rows[t]["twoway_draws"] is False}
+                if t not in rows or (rows[t]["twoway_rc"] == 0
+                                     and rows[t]["twoway_draws"] is False)}
         by[name] = same if name not in by else by[name] & same
     out = []
     for name in sorted(by):

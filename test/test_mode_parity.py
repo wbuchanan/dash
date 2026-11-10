@@ -3333,6 +3333,11 @@ CORPUS = [
     # WP-46 RH-5: a recast histogram in its own style, a bin wide.
     _case("histogram recast(bar) gap(50) (WP-46 RH-5)",
           [plot_for("histogram", {"recast": "bar", "gap": "50"})]),
+    # WP-47 basic:PT-1: headlabel labels the second point.
+    _case("pcscatter mlabel headlabel (WP-47 basic:PT-1)",
+          [plot_for("pcscatter", {"mlabel": "rep", "headlabel": "headlabel"})]),
+    _case("pccapsym mlabel headlabel (WP-47 basic:PT-1)",
+          [plot_for("pccapsym", {"mlabel": "rep", "headlabel": "headlabel"})]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

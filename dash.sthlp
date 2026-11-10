@@ -362,7 +362,12 @@ point {it:size}*cos({cmd:mangle}) behind the tip.
 head, instead of the first.
 
 {pstd}
-On the other plot types these three options are named in the note.
+{cmd:headlabel} also moves the labels of {cmd:pcscatter}, {cmd:pccapsym} and
+{cmd:pcarrowi}; on {cmd:pcspike}, {cmd:pci}, {cmd:rpcap} and {cmd:rpspike}
+it is taken in silence, as {cmd:twoway} takes it, and on every other type it
+is refused, as {cmd:twoway} refuses it.  {cmd:mangle()} and
+{cmd:barbsize()} off the arrow types are taken in silence, as {cmd:twoway}
+draws nothing different with them.
 
 {pstd}
 A range type takes three variables, {it:y1 y2 x}, and a paired-coordinate
@@ -750,7 +755,7 @@ What {cmd:twoway} drops silently at the end of the list -- too little for
 another point, segment or arrow, or everything from a {cmd:""} where one's
 last number belongs -- {cmd:dash} drops with a note.  A label is drawn at
 its point for {cmd:scatteri} and at its arrow's tail for {cmd:pcarrowi},
-placed by its clock position, else by {cmd:mlabposition()}, else at 3
+or at its head under {cmd:headlabel}, placed by its clock position, else by {cmd:mlabposition()}, else at 3
 o'clock; a clock position that is not a whole number, such as 3.5, is drawn
 at 12 o'clock, where {cmd:twoway} draws it, with a note.  {cmd:pci} draws
 no labels, as {cmd:twoway pci} draws none, and says so; otherwise it is
@@ -4227,9 +4232,10 @@ refuses it, {cmd:rscatter requires 3 variables: lo hi weight}, r(102).
 {cmd:pcscatter}, {cmd:pccapsym}, {cmd:pcarrow} and {cmd:pcbarrow}
 label the first point, ({it:y1var}, {it:x1var}) -- the tail of an arrow.
 {cmd:headlabel} moves those labels to the second point, the head, on
-{cmd:pcarrow}, {cmd:pcbarrow} and {cmd:pcarrowi}, as {cmd:twoway} does; on
-{cmd:pcscatter} and {cmd:pccapsym} {cmd:dash} names it in the note and
-draws the labels at the first point.  A paired-coordinate observation with a missing
+{cmd:pcscatter}, {cmd:pccapsym}, {cmd:pcarrow}, {cmd:pcbarrow} and
+{cmd:pcarrowi}, as {cmd:twoway} does; on {cmd:pcspike}, {cmd:pci},
+{cmd:rpcap} and {cmd:rpspike}, which draw no labels, it changes nothing,
+and is taken in silence.  A paired-coordinate observation with a missing
 coordinate is not drawn at all, marker or label, where {cmd:twoway}, when
 only the second point is missing, still labels the first point (and marks
 it, on {cmd:pcscatter} and {cmd:pccapsym}).  {cmd:scatteri} and
@@ -7711,7 +7717,7 @@ in either direction.
 
 {phang2}{ul:Not drawn.}
     {cmd:msize()} on {cmd:rbar} without {cmd:mwidth},
-    {cmd:headlabel} on {cmd:pcspike}, {cmd:pccapsym}, {cmd:pcscatter},
+    {cmd:headlabel} on {cmd:pcspike},
     {cmd:pci}, {cmd:rpcap} and {cmd:rpspike}, {cmd:mangle()} and
     {cmd:barbsize()} off the arrow types, {cmd:recast()} on {cmd:dot}
     and {cmd:sort} on the fits, {cmd:kdensity}, {cmd:histogram},

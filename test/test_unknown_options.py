@@ -125,10 +125,14 @@ class TestTheSilentTableIsTheNotedFixture:
         nx = _noted()
         rows = dict(gen.silent_rows(nx))
         for opt, by in nx["probes"].items():
-            name = opt.split("(", 1)[0]
+            # WP-47 basic:PT-1: a probe "<name>+<context>" (headlabel+mlabel)
+            # is a probe of <name>; a type it does not hold is not read.
+            name = opt.split("(", 1)[0].split("+", 1)[0]
             if name not in rows:
                 continue
             for t in rows[name].split():
+                if by.get(t) is None:
+                    continue
                 assert by[t]["twoway_rc"] == 0, (opt, t)
                 assert by[t]["twoway_draws"] is False, (opt, t)
 
@@ -144,3 +148,20 @@ class TestTheSilentTableIsTheNotedFixture:
         assert "scatter" not in rows["sort"].split()
         assert "lfit" in rows["sort"].split()
         assert "pcspike" in rows["headlabel"].split()
+
+    def test_a_context_probe_folds_into_its_option(self):
+        """WP-47 basic:PT-1 (D-47-01.b): a probe "headlabel+mlabel", asked on
+        the types that take headlabel only, is a probe of headlabel: a type
+        it draws differently on leaves headlabel's row, and a type it does
+        not hold keeps the plain probe's verdict."""
+        def row(rc, draws):
+            return {"twoway_rc": rc, "twoway_draws": draws}
+        nx = {"types": ["scatter", "pcspike", "pcscatter"],
+              "probes": {
+                  "headlabel": {"scatter": row(198, None),
+                                "pcspike": row(0, False),
+                                "pcscatter": row(0, False)},
+                  "headlabel+mlabel": {"pcspike": row(0, False),
+                                       "pcscatter": row(0, True)}}}
+        rows = dict(gen.silent_rows(nx))
+        assert rows == {"headlabel": "pcspike"}

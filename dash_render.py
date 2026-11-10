@@ -27192,17 +27192,24 @@ class GlyphMapper:
         # The label goes at the FIRST point only -- twoway: "By default, the
         # labels are placed at ... the point defined by y1var and x1var"
         # (twoway_pcarrow.sthlp); measured on pcscatter, ten labels for ten
-        # observations, every one at (y1, x1).  The labels ride the markers'
-        # own source, so a filter redraw refreshes them with the markers; a
-        # second point's label position is NaN, which BokehJS draws nothing
-        # at.  dash drew no pcscatter label at all.
+        # observations, every one at (y1, x1).  headlabel puts them at the
+        # SECOND point, (y2, x2) (twoway_pcscatter.sthlp, "labels be drawn
+        # at the (y2var,x2var) point"; measured 10nov2026,
+        # immediate_label_truth.json H02: "AMC Concord" beside (40, 11), not
+        # (2930, 22); WP-47 basic:PT-1).  The labels ride the markers' own
+        # source, so a filter redraw refreshes them with the markers; the
+        # second half's label position -- the second points' markers -- is
+        # NaN whichever point is labelled, which BokehJS draws nothing at.
         if _has_lab:
             _n = len(clean)
             _nan = np.full(_n, np.nan)
+            _at_head = bool(str(options.get("headlabel", "") or "").strip())
             _pc_cols[_DASH_MLABEL_X] = np.concatenate(
-                [_dash_float_values(clean[x1var]), _nan])
+                [_dash_float_values(clean[x2var if _at_head else x1var]),
+                 _nan])
             _pc_cols[_DASH_MLABEL_Y] = np.concatenate(
-                [_dash_float_values(clean[y1var]), _nan])
+                [_dash_float_values(clean[y2var if _at_head else y1var]),
+                 _nan])
             if clean[_DASH_MLABEL_VALUES].dtype.kind == "M":
                 # An array, not Timestamps: Bokeh writes a Timestamp
                 # through its nanosecond value, which raises past 2262.
@@ -27768,7 +27775,7 @@ class GlyphMapper:
         the markers' outlines -- ``mlcolor()`` and ``mlwidth()`` are the
         outline's own -- and ``color()`` colours both.  ``mlabel()`` labels
         the first coordinate, (x1, y1), where twoway puts a label without
-        ``headlabel``.
+        ``headlabel``, and the second, (x2, y2), with it.
 
         Args:
             fig:       Bokeh Figure object.
@@ -27862,7 +27869,13 @@ class GlyphMapper:
         # colorvar() (WP-31 C8a): the spike and both markers, one key.
         self._colorvar_layer(fig, [(seg, seg_src), (dots, dot_src)], options)
 
-        self._apply_mlabel_opts(fig, seg_src, options, x1var, y1var,
+        # headlabel: at the second point, (x2, y2), as twoway draws them
+        # (measured 10nov2026, immediate_label_truth.json H04; WP-47
+        # basic:PT-1).  seg_src holds the four coordinates by name.
+        _at_head = bool(str(options.get("headlabel", "") or "").strip())
+        self._apply_mlabel_opts(fig, seg_src, options,
+                                x2var if _at_head else x1var,
+                                y2var if _at_head else y1var,
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         return [seg, dots]
 
@@ -28019,8 +28032,10 @@ class GlyphMapper:
 
         The arrows are drawn by :meth:`map_pcarrow`, from a source built out
         of the records, so every option pcarrow honours is honoured the same
-        way.  Each label is drawn at its arrow's tail, (x1, y1), where twoway
-        puts it without ``headlabel``, by :meth:`_immediate_labels`, as
+        way.  Each label is drawn at its arrow's tail, (x1, y1), or at its
+        head, (x2, y2), under ``headlabel``, as twoway places it (measured
+        10nov2026, immediate_label_truth.json H05-H07, recast(pcbarrow)
+        too), by :meth:`_immediate_labels`, as
         scatteri's are: placed by its own clock position, else by
         ``mlabposition()``, else at 3 o'clock.  A clock position that is not
         a whole number is drawn at 12 o'clock, where twoway draws it (it was
@@ -28048,14 +28063,18 @@ class GlyphMapper:
         out = _draw(fig, src, "y1", "x1", "y2", "x2", _popts,
                                color_idx=color_idx)
         if any(labels):
-            # A label sits at its arrow's tail, and only on an arrow drawn.
+            # A label sits at its arrow's tail -- its head under headlabel
+            # (WP-47 basic:PT-1) -- and only on an arrow drawn.
             nan = float("nan")
             drawn = [all(math.isfinite(v) for v in (y1[i], x1[i], y2[i], x2[i]))
                      for i in range(len(labels))]
+            _at_head = bool(str(options.get("headlabel", "") or "").strip())
+            _lx, _ly = (x2, y2) if _at_head else (x1, y1)
             self._immediate_labels(
-                fig, [x1[i] if drawn[i] else nan for i in range(len(labels))],
-                [y1[i] if drawn[i] else nan for i in range(len(labels))],
-                labels, clocks, options, "pcarrowi", "x1", "y1",
+                fig, [_lx[i] if drawn[i] else nan for i in range(len(labels))],
+                [_ly[i] if drawn[i] else nan for i in range(len(labels))],
+                labels, clocks, options, "pcarrowi",
+                *(("x2", "y2") if _at_head else ("x1", "y1")),
                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         return out
 

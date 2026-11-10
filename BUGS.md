@@ -5904,11 +5904,11 @@
   - Suggested fix: Name each unreadable mangle() and barbsize() value in twoway's note, as the other style readers do.
   - Resolution: Not fixed because it was found by the WP-46 46-01 follow-up's note check and is outside recast(). Graded S3 (WP-46): a missing note.
 
-- [ ] Title: headlabel is ignored on pcscatter/pccapsym with mlabel() and on pcarrowi labels: labels stay at the first point
+- [x] Title: headlabel is ignored on pcscatter/pccapsym with mlabel() and on pcarrowi labels: labels stay at the first point
   - File Names and Line Numbers: map_pcscatter/map_pccapsym/map_pcarrowi (dash_render.py:25019-25079, 25692, 25834-25886); tw SVGs move labels; tw_silent headlabel row came from a probe without mlabel
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids basic:PT-1, basic:PT-2, MS-6; confirmed; tracked: untracked. Registered as GAPS4 basic:PT-1 (WP-47, section 47-01, Fix).
   - Suggested fix: Read headlabel and label (x2,y2); re-measure with mlabel()
-  - Resolution: Not fixed because WP-47 section 47-01 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+  - Resolution: Fixed 10nov2026 (WP-47, basic:PT-1). map_pcscatter fills its label columns from (x2, y2) under headlabel (the second half still NaN), map_pccapsym hands (x2var, y2var) to _apply_mlabel_opts, and map_pcarrowi draws each label at its arrow's head, plain or under recast(); the mappers are the served app's own, so both modes and a filter move draw the same. dash.ado's _hl_named loop no longer names headlabel on pcscatter and pccapsym, and _dash_tw_silent_tab's headlabel row, regenerated from the new headlabel+mlabel probes of extract_noted_option_truth.do (gen_twoway_takes_table.py folds a <name>+<context> probe into its option's row), is rpcap rpspike pcspike pci. Pinned by test/test_pc_immediate_labels.py::TestHeadlabel, test/test_unknown_options.py::TestTheSilentTableIsTheNotedFixture::test_a_context_probe_folds_into_its_option, test/test_wp47_truth.cscript Q4701-1, Q4701-2; fixture test/fixtures/immediate_label_truth.json. Closes GAPS4 basic:PT-1 (WP-47, basic:PT-1).
 
 - [ ] Title: Immediate-type labels: pci labels dropped under recast() with a false note; scatteri labels vanish under recast(); mlabel(nosuch) on scatteri is refused r(111)
   - File Names and Line Numbers: map_pci_literal (24913-24929); map_scatteri (24764-24796); dash.ado:6230; C05-C15, E15-E18

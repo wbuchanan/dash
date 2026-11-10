@@ -151,6 +151,45 @@ foreach one of local probes {
 }
 global ZN_K "`k'"
 
+* WP-47 basic:PT-1: headlabel again, on the types that take it, each
+* asked WITH marker labels -- mlabel(make), or the immediate types' own
+* labels -- since the base commands above draw none for it to move.
+* Stored as the probe "headlabel+mlabel" (gen_twoway_takes_table.py
+* folds it into headlabel's row); its base pictures are bl<j>/cl<j>.
+local labtypes pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi rpcap rpspike
+global ZN_LTYPES "`labtypes'"
+local tr ""
+local dr ""
+local j 0
+foreach t of local labtypes {
+    local ++j
+    if inlist("`t'", "pci", "pcarrowi") local a `"`t' 20 2000 30 4000 "A" 25 3000 35 4000 (9) "B","'
+    else if inlist("`t'", "rpcap", "rpspike") local a "`t' yl yh mpg weight in 1/5, mlabel(make)"
+    else local a "`t' mpg weight trunk turn in 1/5, mlabel(make)"
+    foreach v in bl cl {
+        capture graph drop _all
+        set seed 12345
+        capture twoway `macval(a)' name(zo, replace)
+        if !_rc capture graph export "${ZN_WORK}/`v'`j'.svg", name(zo) replace as(svg)
+    }
+    capture graph drop _all
+    quietly log using "${ZN_WORK}/tl_`j'.log", replace text name(zn)
+    set seed 12345
+    capture noisily twoway `macval(a)' headlabel name(zo, replace)
+    local rc = _rc
+    quietly log close zn
+    local tr "`tr' `rc'"
+    if !`rc' capture graph export "${ZN_WORK}/ol_`j'.svg", name(zo) replace as(svg)
+    capture graph drop _all
+    quietly log using "${ZN_WORK}/dl_`j'.log", replace text name(zn)
+    capture noisily dash `macval(a)' headlabel name(zq)
+    local dr "`dr' `=_rc'"
+    quietly log close zn
+    capture dash clear
+}
+global ZN_LTR "`tr'"
+global ZN_LDR "`dr'"
+
 * Graph level, and bare replace in each position.
 local gl `" "(scatter mpg weight), filter(foreign)" "(scatter mpg weight), link(g1)" "(scatter mpg weight), play(zn_no_such_recording)" "(scatter mpg weight), replace" "scatter mpg weight, replace" "scatter mpg weight, saving(zn_f1) replace" "(scatter mpg weight), saving(zn_f2) replace" "scatter mpg weight, name(zq) replace" "(scatter mpg weight), name(zq) replace" "scatter mpg weight, name(zq) saving(zn_f3) replace" "scatter mpg weight, saving(zn_f4, replace)" "scatter mpg weight || line mpg weight, replace" "'
 local j 0
@@ -245,13 +284,14 @@ def unordered(lines):
     return sorted(one(ln) for ln in lines)
 
 
-def draws(j, opath):
+def draws(j, opath, base=("b", "c")):
     """What twoway draws with the option against without it: False for the
     same picture, "order" for the same marks drawn in another order, True
     for a different picture, None where the plain graph's two exports
-    already differ in what they draw."""
-    b = svg_lines(os.path.join(work, "b%d.svg" % j))
-    c = svg_lines(os.path.join(work, "c%d.svg" % j))
+    already differ in what they draw.  *base* names the plain pictures'
+    files (the headlabel+mlabel set's are bl<j>, cl<j>)."""
+    b = svg_lines(os.path.join(work, "%s%d.svg" % (base[0], j)))
+    c = svg_lines(os.path.join(work, "%s%d.svg" % (base[1], j)))
     o = svg_lines(opath)
     if b is None or c is None or o is None:
         return None
@@ -284,6 +324,28 @@ for k in range(1, int(G("ZN_K")) + 1):
             except OSError:
                 pass
     probes[opt] = rows
+# headlabel with marker labels, on the types that take it only.
+ltypes = G("ZN_LTYPES").split()
+ltr = [int(v) for v in G("ZN_LTR").split()]
+ldr = [int(v) for v in G("ZN_LDR").split()]
+rows = {}
+for j, t in enumerate(ltypes, 1):
+    tl = os.path.join(work, "tl_%d.log" % j)
+    dl = os.path.join(work, "dl_%d.log" % j)
+    tt, dt = read(tl), read(dl)
+    rows[t] = {"twoway_rc": ltr[j - 1],
+               "twoway_message": first_error(tt) if ltr[j - 1] else "",
+               "twoway_draws": draws(j, os.path.join(work, "ol_%d.svg" % j),
+                                     ("bl", "cl")) if ltr[j - 1] == 0 else None,
+               "dash_rc": ldr[j - 1],
+               "dash_message": first_error(dt) if ldr[j - 1] else "",
+               "dash_note": note(dt)}
+    for f in (tl, dl):
+        try:
+            os.remove(f)
+        except OSError:
+            pass
+probes["headlabel+mlabel"] = rows
 graph = []
 for j in range(1, int(G("ZN_J")) + 1):
     tl = os.path.join(work, "gt%d.log" % j)
@@ -313,7 +375,7 @@ with open(G("ZN_OUT"), "w", encoding="utf-8") as fh:
     fh.write("\n")
 # ZN_KEEP=1 in the environment keeps the SVGs in c(tmpdir)dash_noted_probe
 # for reading what twoway draws.
-for f in ["git_head.txt"] + ([] if os.environ.get("ZN_KEEP") else ["%s%d.svg" % (c, i) for c in "bc" for i in range(1, len(types) + 1)] + ["o%d_%d.svg" % (k, j) for k in range(1, int(G("ZN_K")) + 1) for j in range(1, len(types) + 1)]):
+for f in ["git_head.txt"] + ([] if os.environ.get("ZN_KEEP") else ["%s%d.svg" % (c, i) for c in "bc" for i in range(1, len(types) + 1)] + ["o%d_%d.svg" % (k, j) for k in range(1, int(G("ZN_K")) + 1) for j in range(1, len(types) + 1)] + ["%s%d.svg" % (c, i) for c in ("bl", "cl", "ol_") for i in range(1, len(ltypes) + 1)]):
     try:
         os.remove(os.path.join(work, f))
     except OSError:

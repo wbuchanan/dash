@@ -3252,17 +3252,24 @@ program define _dash_fold_typed, sclass
     // (noted_option_truth.json), and _arrow_head_line and _arrow_head_fill
     // draw them so: they are not named.
     // WP-31 C1: mangle(), barbsize() and headlabel draw the arrowhead and
-    // its labels on the arrow types only; on every other type (pcspike,
-    // pccapsym, pcscatter and pci until section 34 draws headlabel there)
-    // they are named.  twoway takes any number for the two sizes
+    // its labels on the arrow types; on every other type they were named
+    // (headlabel on pcscatter and pccapsym is drawn since WP-47, below).  twoway takes any number for the two sizes
     // (measured 13oct2026: barbsize(-1), barbsize(20000), mangle(400) rc
     // 0; test/fixtures/arrowhead_truth.json refusals).  headlabel twoway
     // takes on the paired-coordinate types and rpcap and rpspike alone;
     // elsewhere it is refused before this, as twoway refuses it (WP-32,
     // _dash_tw_refuses_tab), so it is named only there.
+    // WP-47 basic:PT-1: headlabel is drawn on pcscatter and pccapsym
+    // (map_pcscatter, map_pccapsym), as twoway draws it, so it is never
+    // named there.  On pcspike, pci, rpcap and rpspike twoway draws
+    // nothing different with it (noted_option_truth.json headlabel and
+    // headlabel+mlabel), and _dash_tw_silent_tab takes it in silence;
+    // mangle() and barbsize() likewise off the arrow types.
     local _hl_named "mangle barbsize headlabel"
+    local _hl_drawn "pcscatter pccapsym"
     if !`: list ptype in arrow_types' {
         foreach o of local _hl_named {
+            if "`o'" == "headlabel" & `: list ptype in _hl_drawn' continue
             mata: st_local("_ft", strofreal(st_global("s(`o')") != ""))
             if `_ft' local named "`named' `o'"
         }

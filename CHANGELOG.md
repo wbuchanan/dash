@@ -1017,6 +1017,8 @@ and now matches Stata.
 
 ### Fixed in WP-47
 
+- headlabel moves the marker labels of pcscatter and pccapsym and the labels of pcarrowi (plain or recast()) to the second point, as twoway does, and is never named in the note; pcscatter mpg weight trunk turn, mlabel(make) headlabel drew AMC Concord at (2930, 22), now at (40, 11) (WP-47, basic:PT-1)
+
 ### Fixed in WP-46
 
 - The help states that histogram and rbar with recast() and horizontal are drawn as the transpose of the upright layer, where twoway draws a broken picture (WP-46, RH-8)

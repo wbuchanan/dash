@@ -390,6 +390,7 @@ GENERATORS = {
     "help_claims_6_truth.json": "scripts/extract_twoway_oracle_truth.do",
     "help_examples.txt": HAND_WRITTEN,
     "horizontal_truth.json": "scripts/extract_horizontal_truth.do",
+    "immediate_label_truth.json": "scripts/extract_immediate_label_truth.do",
     "intensity_truth.json": "scripts/extract_intensity_truth.do",
     "join_order_truth.json": "scripts/extract_join_order_truth.do",
     "kde_hist_fn_truth.json": "scripts/extract_kde_hist_fn_truth.do",

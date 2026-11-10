@@ -203,6 +203,62 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w47_run' {
 }
 * ==== end S00 ====
 
+* ==== S01 basic:PT-1: headlabel on pcscatter, pccapsym, pcarrowi ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w47_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4701-1: headlabel with mlabel() on pcscatter and pccapsym is taken
+    // as twoway takes it (rc 0) and never named in the note: dash draws it
+    // (the labels at the second point; test_pc_immediate_labels.py
+    // TestHeadlabel, immediate_label_truth.json H02, H04).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    foreach t in pcscatter pccapsym {
+        capture noisily twoway `t' mpg weight trunk turn in 1/5, mlabel(make) headlabel name(q4701, replace)
+        local q1t = _rc
+        capture graph drop q4701
+        local q1lg "`w47_work'/q4701_1_`t'.log"
+        capture erase "`q1lg'"
+        quietly log using "`q1lg'", text replace name(q4701)
+        capture noisily dash `t' mpg weight trunk turn in 1/5, mlabel(make) headlabel name(q4701a)
+        local q1d = _rc
+        quietly log close q4701
+        capture dash clear
+        _w47_expect Q4701-1 "(`q1t' == 0 & `q1d' == 0)" "`t': twoway rc `q1t', dash rc `q1d'"
+        cert_log_has "`q1lg'", needle("headlabel")
+        _w47_expect Q4701-1 "(r(found) == 0)" "`t': the note names headlabel"
+        capture erase "`q1lg'"
+    }
+    _w47_done Q4701-1 "pcscatter and pccapsym take mlabel() headlabel, rc 0, and say nothing"
+
+    // ------------------------------------------------------------
+    // Q4701-2: the same on pcarrowi with labels, and under
+    // recast(pcbarrow) (immediate_label_truth.json H06, H07).
+    // ------------------------------------------------------------
+    foreach r in "" "recast(pcbarrow)" {
+        capture noisily twoway pcarrowi 20 2000 30 4000 "A" 25 3000 35 4000 (9) "B", headlabel `r' name(q4701, replace)
+        local q2t = _rc
+        capture graph drop q4701
+        local q2lg "`w47_work'/q4701_2.log"
+        capture erase "`q2lg'"
+        quietly log using "`q2lg'", text replace name(q4701)
+        capture noisily dash pcarrowi 20 2000 30 4000 "A" 25 3000 35 4000 (9) "B", headlabel `r' name(q4701b)
+        local q2d = _rc
+        quietly log close q4701
+        capture dash clear
+        _w47_expect Q4701-2 "(`q2t' == 0 & `q2d' == 0)" "pcarrowi `r': twoway rc `q2t', dash rc `q2d'"
+        cert_log_has "`q2lg'", needle("headlabel")
+        _w47_expect Q4701-2 "(r(found) == 0)" "pcarrowi `r': the note names headlabel"
+        capture erase "`q2lg'"
+    }
+    _w47_done Q4701-2 "pcarrowi takes headlabel with labels, plain and recast(pcbarrow), rc 0, and says nothing"
+
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
