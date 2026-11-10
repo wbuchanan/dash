@@ -1668,7 +1668,7 @@ if inlist("`only'", "", "S08") & `: list posof "S08" in w30_run' {
     _w30_done SU-15 "zlabel(, labsize(large)) draws 14pt on the colour bar, as in twoway"
 
     // SU-16: msize(HUGE) is noted and drawn at the scheme's default (s2color:
-    // medium, as twoway); msize(-1) is silent.
+    // medium, as twoway); msize(-1) is silent and draws the smallest ring.
     capture log close su1k
     log using "`w30_work'/su16a.log", text replace name(su1k)
     twoway scatter mpg weight, msize(HUGE)
@@ -1702,8 +1702,11 @@ if inlist("`only'", "", "S08") & `: list posof "S08" in w30_run' {
     // Once per build: dash build and (WP-30 P1.26b) dash build, server.
     _w30_expect SU-16 "(`s08_n1' >= 1 & `s08_n2' == 2)" "notes: twoway `s08_n1', dash `s08_n2'"
     _w30_expect SU-16 `"(abs(real(word(subinstr("`s08_h'", "|", " ", .), 1)) - 5.8667) < 0.001 & word(subinstr("`s08_h'", "|", " ", .), 1) == word(subinstr("`s08_h'", "|", " ", .), 2))"' "dash HUGE `s08_h'"
-    _w30_expect SU-16 `"(`s08_n3' == 0 & `s08_n4' == 0 & "`s08_z'" == "0|0")"' "msize(-1): notes `s08_n3' / `s08_n4', size `s08_z'"
-    _w30_done SU-16 "an unknown name draws medium with one note; a negative size draws nothing in silence"
+    // Flipped (10387b9): twoway strokes its smallest ring for a negative
+    // size (size_units_truth.json marker_r_units), which dash floors at
+    // 0.2 px, the smallest ring Chrome paints.
+    _w30_expect SU-16 `"(`s08_n3' == 0 & `s08_n4' == 0 & "`s08_z'" == "0.2|0.2")"' "msize(-1): notes `s08_n3' / `s08_n4', size `s08_z'"
+    _w30_done SU-16 "an unknown name draws medium with one note; a negative size draws the smallest ring in silence"
     forvalues k = 1/4 {
         local s08_l : word `k' of a b c d
         capture erase "`w30_work'/su16`s08_l'.log"
@@ -6439,7 +6442,9 @@ if inlist("`only'", "", "S24") & `: list posof "S24" in w30_run' {
         local sv = substr("`sv'", strrpos("`sv'", ";") + 1, .)
         local se : copy global S24_SERVED_M
         local se = substr("`se'", strrpos("`se'", ";") + 1, .)
-        local ok = (substr("`tw'", 1, 8) == "diamond:" & substr("`sv'", 1, 8) == "diamond:" & substr("`se'", 1, 8) == "diamond:")
+        // Flipped (WP-47 PIC-2): dash draws twoway's diamond through its
+        // own marker path, named @dash_diamond.
+        local ok = (substr("`tw'", 1, 8) == "diamond:" & inlist(substr("`sv'", 1, strpos("`sv'", ":")), "diamond:", "@dash_diamond:") & inlist(substr("`se'", 1, strpos("`se'", ":")), "diamond:", "@dash_diamond:"))
         _w30_expect SK-07 "(`ok' == 1)" "`t': twoway `tw', saved `sv', served `se'"
     }
     _w30_done SK-07 "s1mono's second dropline and rcapsym layers draw p2's diamond in both modes"

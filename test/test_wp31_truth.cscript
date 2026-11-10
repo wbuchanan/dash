@@ -478,6 +478,21 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w31_run' {
 // (saved) and u03_<k>v (served); _u03_svg: twoway's median bar width over
 // min(W, H) * 100 from an SVG, into u03_ratio.
 python:
+# _w31_fld is read by _u03_draw (S03) and the S12 helpers, so it is
+# defined here, before S03 runs (it sat in the S12 helpers, after S03).
+def _w31_fld(v, k):
+    """The source column a coordinate spec reads: its name or field, or
+    (Flipped, WP-47 basic:PT-4: an area's ring and rarea's bounds are
+    drawn through the inset expression over their own source) the field
+    its expression's *k* argument (xs or ys) names."""
+    if isinstance(v, str):
+        return v
+    e = getattr(v, "expr", None)
+    if e is not None and k in (e.args or {}):
+        return e.args[k][0]
+    return v.field
+
+
 import os as _u03_os, sys as _u03_sys
 for _u03_p in (_u03_os.path.abspath(".."),
                _u03_os.path.abspath(_u03_os.path.join("..", "scripts"))):
@@ -2293,19 +2308,6 @@ if inlist("`only'", "", "S11") & `: list posof "S11" in w31_run' {
 // glyph types -- into globals u12_<k>s (saved) and u12_<k>v (served), and
 // the spec's stored droplines pairs into u12_drops.  Built on _u03_docs.
 python:
-def _w31_fld(v, k):
-    """The source column a coordinate spec reads: its name or field, or
-    (Flipped, WP-47 basic:PT-4: an area's ring and rarea's bounds are
-    drawn through the inset expression over their own source) the field
-    its expression's *k* argument (xs or ys) names."""
-    if isinstance(v, str):
-        return v
-    e = getattr(v, "expr", None)
-    if e is not None and k in (e.args or {}):
-        return e.args[k][0]
-    return v.field
-
-
 def _u12_draw(sp, dp, app):
     import json
     from sfi import Macro
@@ -10709,7 +10711,12 @@ def _u41_outline(sp, dp, app, svg, kind):
                 bad.append("%s %d outlines" % (name, len(gs)))
                 continue
         else:
-            gs = [r.glyph for r in rs if type(r.glyph).__name__ == "VBar"]
+            # Flipped (WP-47 basic:PT-4): the bars keep their fill with no
+            # stroke and an outline-only quad tagged dash_outline draws the
+            # edge, where twoway strokes it.
+            gs = [r.glyph for r in rs if "dash_outline" in (r.tags or [])]
+            if not gs:
+                gs = [r.glyph for r in rs if type(r.glyph).__name__ == "VBar"]
         for g in gs:
             if str(g.line_color).lower() != want_c or \
                     abs(float(g.line_width) - want_w * px) > 1e-6 or \
@@ -12912,9 +12919,11 @@ if inlist("`only'", "", "S46") & `: list posof "S46" in w31_run' {
     // U46-05: after a move the saved page's recast histogram (bins 10(5)45,
     // the build's and twoway's on the kept rows alike) and recast kdensity
     // over range(10 45) are twoway's on the kept rows, and the kdensity,
-    // whose grid is the user's, carries no stale cue.
+    // whose grid is the user's, carries no stale cue.  Flipped (7a78167):
+    // the plain histogram of start() and width() is re-binned on the kept
+    // rows too, so neither case leaves a frozen layer.
     local k 0
-    foreach c in "histogram mpg, start(10) width(5) recast(line)|histogram mpg if foreign == 1, start(10) width(5) recast(line)|1" "kdensity mpg, range(10 45) recast(line)|kdensity mpg if foreign == 1, range(10 45) recast(line)|0" {
+    foreach c in "histogram mpg, start(10) width(5) recast(line)|histogram mpg if foreign == 1, start(10) width(5) recast(line)|0" "kdensity mpg, range(10 45) recast(line)|kdensity mpg if foreign == 1, range(10 45) recast(line)|0" {
         local ++k
         mata: u46_t = ustrsplit(st_local("c"), "[|]"); st_local("cmd", u46_t[1]); st_local("tw", u46_t[2]); st_local("nfr", u46_t[3])
         sysuse auto, clear
@@ -14393,11 +14402,15 @@ def _u60_glyphs(fig):
 def _u60_quads(fig):
     from bokeh.models import GlyphRenderer, Quad
     for g in fig.renderers:
-        if isinstance(g, GlyphRenderer) and isinstance(g.glyph, Quad):
+        # Flipped (WP-47 basic:PT-4): the outline-only quad over the fill
+        # (tagged dash_outline) reads its edges through an expression.
+        if (isinstance(g, GlyphRenderer) and isinstance(g.glyph, Quad)
+                and "dash_outline" not in (g.tags or [])):
             d = g.data_source.data
             return [(round(float(a), 9), round(float(b), 9), round(float(c), 9))
-                    for a, b, c in zip(d[g.glyph.left], d[g.glyph.right],
-                                       d[g.glyph.top])]
+                    for a, b, c in zip(d[_w31_fld(g.glyph.left, "")],
+                                       d[_w31_fld(g.glyph.right, "")],
+                                       d[_w31_fld(g.glyph.top, "")])]
     return []
 
 
