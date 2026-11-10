@@ -835,6 +835,43 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w47_run' {
 }
 * ==== end S06 ====
 
+* ==== S06 DG-12: zero- and missing-weight markers ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S06") & `: list posof "S06" in w47_run' {
+    display as text "S06 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4706-5: twoway draws a zero-weight marker as its minimal dot, a
+    // ring of radius under one unit (live SVG); dash's page draws the
+    // size-zero row through the transform that floors it
+    // (_DASH_ZERO_WEIGHT_PX), where BokehJS would stroke nothing.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    keep in 1/8
+    generate wz = cond(_n == 1, 0, price)
+    quietly twoway scatter mpg weight [aw=wz], name(q4706w, replace)
+    cert_svg_export, name(q4706w) file("`w47_work'/q4706w.svg")
+    python: import re as _re4706; _t = open(r"`w47_work'/q4706w.svg").read(); _r = [float(v) for v in _re4706.findall(r'<circle[^>]* r="([0-9.]+)"', _t)]; from sfi import Macro as _M4706; _M4706.setLocal("q5n", str(sum(1 for v in _r if v < 1)))
+    capture erase "`w47_work'/q4706w.svg"
+    capture graph drop q4706w
+    _w47_expect Q4706-5 "(`q5n' >= 1)" "twoway draws `q5n' rings under one unit for the zero weight"
+    local q5f "`w47_work'/q4706_5.html"
+    capture erase "`q5f'"
+    dash clear
+    capture noisily dash scatter mpg weight [aw=wz], name(q4706z)
+    local q5rc = _rc
+    capture noisily dash build, saving("`q5f'", replace) nobrowser
+    local q5brc = _rc
+    _w47_expect Q4706-5 "(`q5rc' == 0 & `q5brc' == 0)" "dash [aw=wz] rc `q5rc', build rc `q5brc'"
+    cert_file_has "`q5f'", needle("(v === 0 ? z : v)")
+    _w47_expect Q4706-5 "(r(count) >= 1)" "the page has no size-zero floor for the weighted markers"
+    capture erase "`q5f'"
+    dash clear
+    _w47_done Q4706-5 "twoway draws a minimal dot (`q5n' small rings); dash floors size zero"
+    display as text "S06 end " c(current_date) " " c(current_time)
+}
+* ==== end S06 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

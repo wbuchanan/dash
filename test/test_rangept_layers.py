@@ -339,8 +339,12 @@ class TestWeightMeasured:
     def test_the_marker_is_sized_and_the_caps_are_not(self, mode, tmp_path):
         f = _fig(mode, tmp_path, opts={"weight": "aweight", "wexp": "price"})
         [mk] = _markers(f)
-        assert isinstance(mk.glyph.size, str)
-        sizes = np.asarray(mk.data_source.data[mk.glyph.size], dtype=float)
+        # Flipped (WP-47 DG-12): a bare column name was wrong because the
+        # weighted size is drawn through a transform (the size-zero dot's
+        # floor); the field is still the size column.
+        col = dr._dash_spec_field(mk.glyph.size)
+        assert col
+        sizes = np.asarray(mk.data_source.data[col], dtype=float)
         assert len(set(np.round(sizes, 9))) > 1
         for c in _caps(f):
             assert not isinstance(c.glyph.size, str)

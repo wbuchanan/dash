@@ -377,6 +377,16 @@ def _specs():
                           _scatter(msymbol="Dh")], by="foreign"),
             _graph("g3", [_scatter(msymbol="arrow")],
                    if_expr="foreign == 1")]), _frame()),
+        # WP-47 DG-12: a zero and a missing weight drawn as twoway's
+        # minimal dot, in a by() graph and in a layer a move empties.
+        "wzero": (_spec([
+            _graph("g1", [_scatter(weight="aweight", wexp="wt")]),
+            _graph("g2", [_scatter(weight="aweight", wexp="wt")],
+                   by="foreign"),
+            _graph("g3", [_scatter(weight="aweight", wexp="wt")],
+                   if_expr="foreign == 1")]),
+            _frame().assign(wt=[0.0, np.nan] + [float(v) for v in
+                                                 range(3, 21)])),
     }
 
 
@@ -584,6 +594,16 @@ class TestSavedPageInChrome:
             assert p.violations() == [], p.violations()
             assert p.js_errors() == [], p.js_errors()
 
+    def test_zero_weights_paint(self):
+        """WP-47 DG-12: a zero- or missing-weight marker paints a dot
+        (twoway's size-zero marker), before and after a move."""
+        with _CspProbe(_url(_saved_page("wzero"))) as p:
+            _check_zero_weights_paint(p)
+            p.in_task(_MOVE_SELECT_JS)
+            time.sleep(1.0)
+            assert p.violations() == [], p.violations()
+            assert p.js_errors() == [], p.js_errors()
+
     def test_hover_and_brush_run(self):
         with _CspProbe(_url(_saved_page("brush"))) as p:
             assert p.read(_TOOLTIP_JS) == []
@@ -654,6 +674,69 @@ class TestServedPageInChrome:
             _check_markers_paint(p)
             assert p.js_errors() == [], p.js_errors()
 
+    def test_zero_weights_paint(self, servers, kind):
+        """WP-47 DG-12: the served page's zero-weight dots paint too."""
+        with _CspProbe(_served_url(servers(kind, "wzero"))) as p:
+            _check_zero_weights_paint(p)
+            assert p.js_errors() == [], p.js_errors()
+
+
+#: [renderer id, row, ink round that row's marker] for every row drawn at
+#: size zero by a visible weighted Scatter (WP-47 DG-12): ink is the sum
+#: over a 7 px box of how far each pixel is from white.
+_WZERO_INK_JS = r"""(() => {
+  const out = [];
+  const walk = (pv) => {
+    if (pv.renderer_views && pv.canvas_view) {
+      let comp = null;
+      for (const rv of pv.renderer_views.values()) {
+        const gv = rv.glyph;
+        if (!gv || gv.model.constructor.__name__ !== "Scatter") continue;
+        const sz = gv.model.size;
+        const fld = sz && typeof sz === "object" ? sz.field : null;
+        if (!fld || !String(fld).includes("wsize")) continue;
+        const col = rv.model.data_source.data[fld];
+        if (!col) continue;
+        for (let k = 0; k < gv.sx.length; k++) {
+          if (Number(col[k]) !== 0) continue;
+          if (!Number.isFinite(gv.sx[k]) || !Number.isFinite(gv.sy[k])) continue;
+          if (comp == null) comp = pv.canvas_view.compose();
+          const pr = comp.pixel_ratio || 1;
+          const x0 = Math.round((gv.sx[k] - 3) * pr), y0 = Math.round((gv.sy[k] - 3) * pr);
+          const w = Math.max(1, Math.round(7 * pr));
+          const d = comp.ctx.getImageData(x0, y0, w, w).data;
+          let n = 0;
+          for (let j = 0; j < d.length; j += 4) n += 765 - d[j] - d[j + 1] - d[j + 2];
+          out.push([rv.model.id, k, n]);
+        }
+      }
+    }
+    if (pv.child_views) for (const c of pv.child_views) walk(c);
+  };
+  for (const v of Object.values(Bokeh.index)) walk(v);
+  return JSON.stringify(out);
+})()"""
+
+
+def _check_zero_weights_paint(p):
+    """Each size-zero row's box holds ink its layer drew: hiding the
+    layers clears it."""
+    assert p.violations() == [], p.violations()
+    assert p.js_errors() == [], p.js_errors()
+    before = p.read(_WZERO_INK_JS)
+    assert len(before) >= 2, before
+    ids = json.dumps(sorted({r[0] for r in before}))
+    p.in_task("const ids = new Set(%s); for (const r of __dash_models("
+              "'GlyphRenderer')) if (ids.has(r.id)) r.visible = false;" % ids)
+    time.sleep(1.0)
+    # Hidden, a layer's view keeps its screen positions, so the same
+    # boxes are read again, now without the layer.
+    after = {(rid, k): n for rid, k, n in p.read(_WZERO_INK_JS)}
+    p.in_task("for (const r of __dash_models('GlyphRenderer')) "
+              "r.visible = true;")
+    time.sleep(0.5)
+    diff = [(rid, k, n, after.get((rid, k))) for rid, k, n in before]
+    assert all(a is not None and n - a > 50 for _r, _k, n, a in diff), diff
 
 #: [marker, row, dark pixels round that row's marker, renderer id] for
 #: every visible Scatter drawn with a defs marker or the cross.

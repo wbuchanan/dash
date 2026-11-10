@@ -3395,6 +3395,10 @@ CORPUS = [
            plot_for("scatter", {"msymbol": "V"}),
            plot_for("scatter", {"msymbol": "+"}),
            plot_for("scatter", {"msymbol": "arrowf"})]),
+    # WP-47 DG-12: zero weights (foreign is 0 on half the rows) drawn as
+    # twoway's minimal dot through the size transform.
+    _case("weighted zero weights (WP-47 DG-12)",
+          [plot_for("scatter", {"weight": "aweight", "wexp": "foreign"})]),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair

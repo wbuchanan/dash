@@ -5036,7 +5036,8 @@ largest is at most the scheme's {cmd:max_wted_symsize} (10) times the
 size.  As in {cmd:twoway}, a weight at or below zero anywhere in the plot
 scales every marker by 10*sqrt({it:w}/{it:wmax}) instead; a negative
 weight's marker is not drawn, a zero or missing weight's is drawn at size
-zero; a plot with no weight above zero stops the graph, r(198), without a
+zero -- a dot as wide as its outline, as {cmd:twoway} draws it; a plot
+with no weight above zero stops the graph, r(198), without a
 word, as {cmd:twoway} stops it -- under {cmd:by()} the rule is applied to
 each panel, as {cmd:twoway} applies it; and markers labelled by {cmd:mlabel()},
 and the point symbol, keep their size.  On {cmd:line}, {cmd:area},

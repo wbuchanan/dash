@@ -137,10 +137,14 @@ class TestMarkers:
         assert type(tf).__name__ == "CustomJSTransform", spec
         assert tf.args["g"] == pytest.approx(2 * float(r.glyph.line_width))
         # The column keeps twoway's weighted sizes; the default (inside)
-        # draws the column itself.
+        # draws the column itself, moved nothing (g 0).
+        # Flipped (WP-47 DG-12): "inside draws the bare column" was wrong
+        # because twoway draws a size-zero weighted marker as its minimal
+        # dot, which BokehJS paints only through the transform's floor.
         (p,) = _scatters(figs(mode, tmp_path, [sc(
             weight="aweight", wexp="price")])[0])
-        assert isinstance(p.glyph.size, str)
+        assert dr._dash_spec_field(p.glyph.size) == "__dash_wsize"
+        assert p.glyph.size.transform.args["g"] == 0.0
 
     def test_no_outline_no_move(self, tmp_path):
         (r,) = _scatters(figs("saved", tmp_path, [sc(

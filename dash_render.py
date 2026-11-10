@@ -17258,17 +17258,25 @@ class GlyphMapper:
             glyph._dash_stroke_nominal = (float(size), out)
             return
         field = size if isinstance(size, str) else _dash_spec_field(size)
-        if not field or g2 == 0.0:
+        if not field:
             return
+        # A weighted marker of size zero -- a zero or missing weight -- is
+        # twoway's minimal dot: its outline stroked round a circle of no
+        # size, a dot as wide as the outline (weighted_markers_truth.json
+        # W06_zero, W06_mis; WP-47 DG-12).  BokehJS strokes nothing round
+        # a radius of 0, so it is drawn at _DASH_ZERO_WEIGHT_PX, under
+        # every alignment; a negative weight's NaN stays undrawn.
         from bokeh.models import CustomJSTransform
         from bokeh.transform import transform
         tf = CustomJSTransform(
-            args={"g": g2, "lo": _DASH_MIN_MARKER_PX},
-            func="return x > 0 ? Math.max(x + g, lo) : x",
+            args={"g": g2, "lo": _DASH_MIN_MARKER_PX,
+                  "z": _DASH_ZERO_WEIGHT_PX},
+            func="return x > 0 ? Math.max(x + g, lo) : (x === 0 ? z : x)",
             v_func="const out = new Float64Array(xs.length);\n"
                    "for (let i = 0; i < xs.length; i++) {\n"
                    "  const v = xs[i];\n"
-                   "  out[i] = v > 0 ? Math.max(v + g, lo) : v;\n"
+                   "  out[i] = v > 0 ? Math.max(v + g, lo)"
+                   " : (v === 0 ? z : v);\n"
                    "}\nreturn out")
         glyph.size = transform(field, tf)
         glyph._dash_stroke_nominal = (field, g2)
@@ -29715,6 +29723,15 @@ def _dash_warn_once(key, message, stacklevel=4):
 # size still draws its stroke.
 _DASH_MIN_MARKER_PX = 0.01
 _DASH_STROKE_ALIGNS = ("inside", "center", "outside")
+# WP-47 DG-12: the size a weighted marker of size zero (a zero or missing
+# weight) is drawn at, so its outline paints twoway's minimal dot.  twoway
+# strokes the outline round a ring of radius 0.25 against a nominal ring of
+# 22.03 (weighted_markers_truth.json W06_zero, W06_mis, R_med), about
+# 0.08 px; Chrome paints no pixel for a stroked circle 0.05 px across or
+# less (measured 10nov2026: the ink round the marker is 0 at 0.01 px, 58
+# at 0.05, 525 at 0.1 and 755 at 0.3), so the ring is drawn 0.2 px
+# across, within 0.2 px of twoway's dot.
+_DASH_ZERO_WEIGHT_PX = 0.2
 
 
 def _dash_stroke_grow(align, w) -> float:
@@ -81821,7 +81838,9 @@ class ServerAppBuilder:
                 "_DASH_NOTED = set()", "",
                 # WP-47 basic:PT-6: the marker size floor and the words.
                 "_DASH_MIN_MARKER_PX = %r" % (_DASH_MIN_MARKER_PX,),
-                "_DASH_STROKE_ALIGNS = %r" % (_DASH_STROKE_ALIGNS,), "",
+                "_DASH_STROKE_ALIGNS = %r" % (_DASH_STROKE_ALIGNS,),
+                # WP-47 DG-12: the size-zero weighted marker's ring.
+                "_DASH_ZERO_WEIGHT_PX = %r" % (_DASH_ZERO_WEIGHT_PX,), "",
                 # WP-47 PIC-2: twoway's marker shapes.
                 "_DASH_MARKER_PATHS = %r" % (_DASH_MARKER_PATHS,),
                 "_DASH_MARKER_DEFS = %r" % (_DASH_MARKER_DEFS,), "",

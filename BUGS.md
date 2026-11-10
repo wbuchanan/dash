@@ -6006,11 +6006,11 @@
   - Suggested fix: Draw rows for every non-missing x
   - Resolution: Not fixed because WP-47 section 47-06 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
 
-- [ ] Title: Markers with missing or zero weight are invisible; twoway still draws a dot
+- [x] Title: Markers with missing or zero weight are invisible; twoway still draws a dot
   - File Names and Line Numbers: t_EM03.svg; dash.sthlp:4192-4194
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 15 (minor): ids DG-12; confirmed; tracked: untracked. Registered as GAPS4 DG-12 (WP-47, section 47-06, Fix).
   - Suggested fix: Draw twoway's minimal dot
-  - Resolution: Not fixed because WP-47 section 47-06 has not landed. Graded S3 (WP-47): drop-in audit package 15, minor.
+  - Resolution: Fixed 10nov2026 (WP-47, DG-12). Measured (test/fixtures/weighted_markers_truth.json W06_zero, W06_mis against R_med, scripts/extract_weighted_markers_truth.do; reused, no new probe): twoway draws a zero- or missing-weight marker at size zero as a ring of radius 0.25 stroked with the marker's outline width (8.64) over a fill circle of radius 4.57 -- a dot as wide as its outline -- where its nominal ring is 22.03. dash wrote size 0, and BokehJS paints nothing for a stroke round no radius: in Chrome the box round such a marker held no ink, saved and served (test/test_csp_browser.py test_zero_weights_paint, failed at e9ffb43c); Chrome paints no pixel for a stroked circle 0.05 px across or less. The weighted size column keeps twoway's zero (the saved and served rescalers are unchanged; _FILTER_JS's dash_rescale_wsizes already writes 0, never NaN, for a drawn row: test_js_twin_writes_zero), and GlyphMapper._align_marker_size now draws every weighted field size through its CustomJSTransform, inside included, mapping 0 to _DASH_ZERO_WEIGHT_PX (0.2 px, within 0.2 px of twoway's 0.08 px ring) so the outline paints twoway's minimal dot in both modes and after a move; a negative weight's NaN stays undrawn. The help's sentence (HR-19) now says so. Regression: test/test_marker_fidelity.py::TestZeroWeights::test_minimal_dot.
 
 - [ ] Title: Dot-plot dots floored to 1 px before the outline (0.46 vs 0.30 rs); dot patterns rounded to whole pixels
   - File Names and Line Numbers: dash_render.py:23733-23735; dash.sthlp:3811, 1287-1289

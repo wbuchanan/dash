@@ -236,3 +236,127 @@ class TestShapes:
         assert r.glyph.fill_alpha == 0.0
         assert "fill.apply" not in dr._DASH_MARKER_DEFS["@dash_chevron"]
         assert "fill.apply" not in dr._DASH_MARKER_DEFS["@dash_arrow"]
+
+
+# ---------------------------------------------------------------------------
+# DG-12: zero- and missing-weight markers (47-06-05)
+# ---------------------------------------------------------------------------
+with open(os.path.join(_FIX, "weighted_markers_truth.json"),
+          encoding="utf-8") as _fh:
+    WMT = json.load(_fh)
+
+
+def _weighted(mode, w):
+    """The marker renderer of ``scatter mpg weight [aw=wt]`` drawn with the
+    weights *w* (one per row of the parity frame)."""
+    import numpy as np  # noqa: F401
+    old = tp._DF
+    tp._DF = old.assign(wt=w)
+    try:
+        rs, _ = _drawn(mode, [plot_for("scatter", {"weight": "aweight",
+                                                   "wexp": "wt"})])
+    finally:
+        tp._DF = old
+    (r,) = rs
+    return r
+
+
+def _size_spec(glyph):
+    """(column, CustomJSTransform or None) of a field size spec."""
+    s = glyph.size
+    if isinstance(s, str):
+        return s, None
+    return dr._dash_spec_field(s), getattr(s, "transform", None)
+
+
+def _drawn_sizes(r):
+    """The sizes BokehJS draws the renderer's markers at: its size column
+    through its transform's v_func, run in node as CustomJSTransform
+    compiles it (new Function(...args, "xs", v_func))."""
+    col, tf = _size_spec(r.glyph)
+    xs = [None if v != v else float(v) for v in r.data_source.data[col]]
+    if tf is None or type(tf).__name__ == "UnspecifiedType" \
+            or not hasattr(tf, "v_func"):
+        return [float("nan") if v is None else v for v in xs]
+    args = dict(tf.args)
+    src = ("const f = new Function(...%s, 'xs', %s);\n"
+           "const xs = %s.map((v) => v === null ? NaN : v);\n"
+           "const out = Array.from(f(...%s, xs));\n"
+           "console.log(JSON.stringify(out.map((v) => Number.isNaN(v) ? "
+           "null : v)));\n" % (json.dumps(list(args)),
+                               json.dumps(tf.v_func), json.dumps(xs),
+                               json.dumps(list(args.values()))))
+    return [float("nan") if v is None else v for v in run_js(src)]
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestZeroWeights:
+    """twoway draws a marker whose weight is zero or missing at size zero:
+    a stroked circle of radius 0.25 with the marker's outline width over a
+    fill circle half a width wider -- a dot as wide as its outline
+    (weighted_markers_truth.json W06_zero, W06_mis: radii 0.25, fill
+    radii 4.57, against R_med's 22.03 and 26.35).  dash wrote size 0,
+    which BokehJS draws as nothing at all: a stroke round a circle of no
+    radius paints no pixel (Chrome, test_csp_browser.py
+    test_zero_weights_paint)."""
+
+    @pytest.mark.parametrize("probe", ["W06_zero", "W06_mis"])
+    def test_minimal_dot(self, mode, probe):
+        import numpy as np
+        w = list(tp._DF["price"].astype(float))
+        w[0] = 0.0 if probe == "W06_zero" else np.nan
+        r = _weighted(mode, w)
+        col, _ = _size_spec(r.glyph)
+        raw = np.asarray(r.data_source.data[col], dtype=float)
+        # The column keeps twoway's size zero (the rescalers' value).
+        assert raw[0] == 0.0
+        drawn = _drawn_sizes(r)
+        lw = float(r.glyph.line_width)
+        rec, ref = WMT[probe], WMT["R_med"]
+        # px per SVG unit: the layer's nominal size is twoway's nominal
+        # ring's diameter.
+        k = float(r._dash_wsize_base) / (2.0 * ref["radii"][0])
+        want_w = 2.0 * (rec["fill_radii"][0] - rec["radii"][0]) * k
+        want_outer = 2.0 * rec["fill_radii"][0] * k
+        assert lw == pytest.approx(want_w, abs=0.2)
+        # Drawn, not size 0: BokehJS strokes nothing round no radius.
+        assert drawn[0] > 0, drawn[:3]
+        assert drawn[0] + lw == pytest.approx(want_outer, abs=0.2)
+        # The other markers are drawn at their weighted sizes.
+        assert np.allclose(drawn[1:], raw[1:])
+
+    def test_negative_still_draws_nothing(self, mode):
+        import numpy as np
+        w = list(tp._DF["price"].astype(float))
+        w[0] = -1.0
+        r = _weighted(mode, w)
+        assert np.isnan(_drawn_sizes(r)[0])
+
+    def test_js_twin_writes_zero(self, mode):
+        """The saved page's rescale after a move writes 0, never NaN, for
+        a drawn row whose weight is zero or missing (the transform then
+        floors it)."""
+        js = dr._FILTER_JS
+        body = js[js.index("function dash_weighted_sizes("):
+                  js.index("// ---- WP-31 F1: the fit layers' shared helpers")]
+        src = body + """
+const src = {data: {x: [1, 2, 3, 4], y: [1, 2, 3, NaN],
+                    w: [0, null, 4, 9], c: [9, 9, 9, 9]},
+             tags: ["dash_wsize=c|w|x|y|6.5|10|"],
+             change: {emit: () => {}}};
+dash_rescale_wsizes(src);
+console.log(JSON.stringify(src.data.c.map((v) => Number.isNaN(v) ? "nan" : v)));
+"""
+        out = run_js(src)
+        assert out[0] == 0 and out[1] == 0
+        assert out[2] > 0 and out[3] == "nan"
+
+
+class TestTheHelpDG12:
+    def test_zero_weight_dot(self):
+        """HR-19: the help's zero-weight sentence is what dash draws."""
+        with open(os.path.join(os.path.dirname(__file__), "..",
+                               "dash.sthlp"), encoding="utf-8") as fh:
+            text = " ".join(fh.read().split())
+        assert ("a zero or missing weight's is drawn at size zero -- a dot "
+                "as wide as its outline, as {cmd:twoway} draws it") in text

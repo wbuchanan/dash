@@ -202,9 +202,14 @@ def _markers(figs):
 
 
 def _sizes(r):
+    """The weighted size column the glyph reads.  Flipped (WP-47 DG-12):
+    a bare column name was wrong because the size is drawn through a
+    transform (the outline's alignment and the size-zero dot's floor,
+    _DASH_ZERO_WEIGHT_PX); the column holds twoway's sizes."""
     s = r.glyph.size
-    if isinstance(s, str):
-        return np.asarray(r.data_source.data[s], dtype=float)
+    f = s if isinstance(s, str) else dr._dash_spec_field(s)
+    if f:
+        return np.asarray(r.data_source.data[f], dtype=float)
     return None
 
 
