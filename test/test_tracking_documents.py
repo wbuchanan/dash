@@ -2924,7 +2924,6 @@ class TestTheCountsAreTrue:
 GAPS4_OPEN = {
     'basic:PT-10': 'Spellings twoway draws as other options are only noted: symbol(), msymangle(), mlabels(), bcolor(), bfintensity(), blwidth(), blpattern(), afcolor(), afintensity(), bsymbol(), bmsize() on arrows (= barbsize)',
     'basic:PT-11': 'Noted options twoway draws: back markers (bm*), alalign/blalign, mlabalignment, mlabjustification, bartype(spanning), dropto(), numkeys(), omitanymiss on multi-y, dlpattern(), xtransform, onepanel etc.',
-    'PIC-10': 'dot draws no row for an observation whose y is missing (dotextend yes); twoway draws the full row',
     'PIC-16': 'Dot-plot dots floored to 1 px before the outline (0.46 vs 0.30 rs); dot patterns rounded to whole pixels',
     'PIC-17': 'rarea fills an interior gap where only one bound is missing by interpolating across it; twoway breaks the area there',
     'MS-15': 'dash clips marker labels at the plot region; twoway lets them extend over the axis area',

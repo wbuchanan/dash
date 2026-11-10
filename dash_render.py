@@ -20023,10 +20023,15 @@ class GlyphMapper:
             # remain available on clean_source.
             x_series = pd.Series(source.data[xvar])
             y_series = pd.Series(source.data[yvar])
-            has_nan = x_series.isna().any() or y_series.isna().any()
+            # A dot layer under dotextend(yes) keeps the rows missing y
+            # (WP-47 PIC-10, map_dot): only a missing x is dropped, so the
+            # layer's own source is drawn whenever its x is complete.
+            _x_only = getattr(self, "_dash_dot_rows_x", None) == xvar
+            has_nan = x_series.isna().any() or (
+                not _x_only and y_series.isna().any())
             if has_nan:
                 df = pd.DataFrame({col: source.data[col] for col in source.data})
-                df = df.dropna(subset=[xvar, yvar])
+                df = df.dropna(subset=[xvar] if _x_only else [xvar, yvar])
                 clean_source: ColumnDataSource = ColumnDataSource(df)
             else:
                 clean_source = source
@@ -25691,8 +25696,15 @@ class GlyphMapper:
             ``[dots renderer, marker renderer]``.  With ``base()`` the
             marker carries ``_dash_axis_include`` ``{"y": base}``.
         """
-        rs = self.map_scatter(fig, source, yvar, xvar, options, view=view,
-                              color_idx=color_idx)
+        # WP-47 PIC-10: under dotextend(yes) the markers' source keeps the
+        # rows missing y (a missing marker draws nothing), so _dot_fill and
+        # its JS twin draw their rows.
+        self._dash_dot_rows_x = xvar if _dash_dot_extends(options) else None
+        try:
+            rs = self.map_scatter(fig, source, yvar, xvar, options,
+                                  view=view, color_idx=color_idx)
+        finally:
+            self._dash_dot_rows_x = None
         # base(): twoway registers it with the y scale and draws the dots
         # from the axis's own base (yxview.class:1583-1587; WP-31 B5a):
         # base(50) widens the scale to 50 and leaves the ticks
@@ -25757,12 +25769,7 @@ class GlyphMapper:
             rends.remove(dr)
             rends.insert(rends.index(marker_r), dr)
             fig.renderers = rends
-        ext = str((options or {}).get("dotextend", "") or "").strip()
-        # twoway's yesno reads lowercase no, n, off, false and their
-        # abbreviations as no and anything else as yes (yesno.class
-        # _unabbrev; dot_truth.json D05-D05j).
-        extend = ext not in ("n", "no", "off", "f", "fa", "fal", "fals",
-                             "false")
+        extend = _dash_dot_extends(options)
         nd = 75.0
         _raw = str((options or {}).get("ndots", "") or "").split()
         if _raw:
@@ -25846,8 +25853,12 @@ class GlyphMapper:
         itself out (measured: 74 distinct dots over 14..22 at ndots 75, 75
         over 14..50; dot_truth.json D01, D10).  A run more than 10,000
         steps long is not drawn; ndots(1) draws none; a step of 0 none; a
-        negative one only the base's own dot.  A missing value draws no
-        row.  Over *limit* dots in all, ndots is lowered until they fit.
+        negative one only the base's own dot.  Under dotextend(no) a
+        missing value draws no row; under dotextend(yes) every
+        observation with its other coordinate draws its full row
+        (yxview_dot_draw.ado draw_full_dots; WP-47 PIC-10,
+        marker_fidelity_truth.json R01).  Over *limit* dots in all, ndots
+        is lowered until they fit.
         Vectorised: one step sequence each way, every run a prefix of it."""
         empty = (np.empty(0, dtype=float), np.empty(0, dtype=np.int64), ndots)
         try:
@@ -25862,9 +25873,8 @@ class GlyphMapper:
         vals = np.asarray(vals, dtype=float).ravel()
         n = len(vals)
         if extend:
-            ok = np.isfinite(vals)
-            ends = np.where(ok[:, None], np.array([[lo, hi]]),
-                            np.nan).ravel()
+            # WP-47 PIC-10: a row for every observation, its value or not.
+            ends = np.tile(np.array([lo, hi]), n)
             rows = np.repeat(np.arange(n, dtype=np.int64), 2)
         else:
             ends = vals.copy()
@@ -26003,7 +26013,11 @@ class GlyphMapper:
                 return _dash_date_units(c, u) if u else c
 
             vals, pos = col(along), col(across)
-            keep = np.isfinite(vals) & np.isfinite(pos)
+            # WP-47 PIC-10: under dotextend(yes) an observation with its
+            # other coordinate keeps its row whatever its value
+            # (yxview_dot_draw.ado draw_full_dots).
+            keep = (np.isfinite(pos) if bool(spec.get("extend", True))
+                    else np.isfinite(vals) & np.isfinite(pos))
             vals, pos, rows = vals[keep], pos[keep], rows[keep]
             if scale is None and fig is not None:
                 name = getattr(dr, along + "_range_name",
@@ -26012,7 +26026,8 @@ class GlyphMapper:
             if scale is None:
                 inc = (getattr(m, "_dash_axis_include", None)
                        or {}).get(along)
-                ext = list(vals) + ([float(inc)] if isinstance(
+                ext = [v for v in vals if math.isfinite(v)] + (
+                    [float(inc)] if isinstance(
                     inc, (int, float)) and not isinstance(inc, bool)
                     and math.isfinite(float(inc)) else [])
                 if not ext:
@@ -49108,8 +49123,8 @@ function dash_dot_positions(lo, hi, vals, extend, ndots, max) {
     for (let i = 0; i < vals.length; i++) {
         const v = vals[i];
         if (extend) {
-            const ok = Number.isFinite(v);
-            ends.push(ok ? lo : NaN, ok ? hi : NaN);
+            // WP-47 PIC-10: a row for every observation, its value or not.
+            ends.push(lo, hi);
             erow.push(i, i);
         } else { ends.push(v); erow.push(i); }
     }
@@ -49193,7 +49208,7 @@ function dash_fill_dots(a, models, lo, hi) {
             for (let i = 0; i < n; i++) rows.push(i);
         }
         const num = (v) => (v === null || v === undefined || v === "") ? NaN : Number(v);
-        const kept = rows.filter((i) => Number.isFinite(num(al[i])) && Number.isFinite(num(ac[i])));
+        const kept = rows.filter((i) => Number.isFinite(num(ac[i])) && (d.extend || Number.isFinite(num(al[i]))));
         const got = dash_dot_positions(lo, hi, kept.map((i) => num(al[i])),
                                        d.extend, d.ndots, d.max);
         const nd = {x: got[1].map((k) => num(ac[kept[k]])), y: got[0]};
@@ -69447,7 +69462,9 @@ def _dash_layer_source(g_df, df, xvar, yvar, label_var, gname, linked_names,
     standalone renderer has always done it.
 
     *keep_missing* keeps the rows missing x or y: a cmissing(n) layer's
-    breaks, which its mapper draws as the saved page does (WP-30 P1.8a).
+    breaks, which its mapper draws as the saved page does (WP-30 P1.8a);
+    ``"y"`` keeps only the rows missing y, a dot layer's under
+    dotextend(yes) (WP-47 PIC-10).
     """
     cols = [c for c in [xvar, yvar, label_var] + list(extra_cols)
             if c and c in g_df.columns]
@@ -69457,6 +69474,9 @@ def _dash_layer_source(g_df, df, xvar, yvar, label_var, gname, linked_names,
     # hover(rep78) would otherwise silently delete the five cars whose
     # rep78 is missing.
     _drop_on = [c for c in [xvar, yvar] if c and c in g_df.columns]
+    if keep_missing == "y":
+        _drop_on = [c for c in [xvar] if c and c in g_df.columns]
+        keep_missing = False
     if keep_missing and _drop_on:
         clean = g_df[cols]
     else:
@@ -72596,6 +72616,18 @@ def _dash_sort_cols_named(spec):
 # carries a null row id and null in every carried column.  The saved
 # page's twin is _FILTER_JS's dash_join_rebuild.
 # ---------------------------------------------------------------------------
+
+def _dash_dot_extends(options) -> bool:
+    """Does a dot layer draw ``dotextend(yes)`` (the default)?  twoway's
+    yesno reads lowercase no, n, off, false and their abbreviations as no
+    and anything else as yes (yesno.class _unabbrev; dot_truth.json
+    D05-D05j).  Under yes every observation with its x draws its full row,
+    its y missing or not (WP-47 PIC-10; yxview_dot_draw.ado
+    draw_full_dots), so both modes keep those rows in the layer's
+    source."""
+    ext = str((options or {}).get("dotextend", "") or "").strip()
+    return ext not in ("n", "no", "off", "f", "fa", "fal", "fals", "false")
+
 
 def _dash_join_spec(options):
     """``(style, cmiss)`` of a plot's options: the connect() style dash.ado
@@ -81008,6 +81040,8 @@ class ServerAppBuilder:
                          "_dash_sort_cols_named", "_dash_take_sort_columns",
                          "_dash_join_glyph", "_dash_join_vertices",
                          "_dash_join_spec", "_dash_join_hide",
+                         # WP-47 PIC-10: dotextend(yes) keeps a missing y's row.
+                         "_dash_dot_extends",
                          # One column reader for both modes' loaders, and
                          # the date axes it makes possible (WP-27): the
                          # axis kind, its tick formatter, a number given
@@ -83994,7 +84028,9 @@ class ServerAppBuilder:
             "                    extra_cols=_hv + _dash_option_columns(opts, df.columns),",
             "                    # mband and mspline read the rows missing y or x too:",
             "                    # the band count and range are twoway's (WP-31 C6b).",
-            "                    keep_missing=(_dash_join_spec(opts)[1] == 'n'",
+            "                    # WP-47 PIC-10: a dot row for a missing y.",
+            "                    keep_missing=('y' if ptype == 'dot' and _dash_dot_extends(opts)",
+            "                                  else _dash_join_spec(opts)[1] == 'n'",
             "                                  or ptype in ('mband', 'mspline')))",
             "                _jo = (_dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
             "                       if (ptype in _DASH_JOIN_TYPES or ptype in _DASH_ORDER_TYPES) and _ly_src is not None else None)",

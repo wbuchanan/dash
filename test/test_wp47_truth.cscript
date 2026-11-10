@@ -967,6 +967,78 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w47_run' {
 }
 * ==== end S06 ====
 
+python:
+import os as _q47064_os, sys as _q47064_sys
+for _q47064_p in (_q47064_os.path.abspath(".."),
+                  _q47064_os.path.abspath(_q47064_os.path.join("..", "scripts"))):
+    if _q47064_p not in _q47064_sys.path:
+        _q47064_sys.path.insert(0, _q47064_p)
+
+
+def _q47064_count(sp, dp, app):
+    """Dots and rows of the dot layer, saved and served (WP-47 PIC-10)."""
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+        with open(app, encoding="utf-8") as fh:
+            src = fh.read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        ns = dict(__name__="dash_q47064_app")
+        exec(compile(src.replace(attach, "pass"), "dash_q47064_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    for tag, models in (("saved", r._last_layout_root.references()),
+                        ("served", doc.models)):
+        dots = [m for m in models if type(m).__name__ == "GlyphRenderer"
+                and "dash_dots" in (m.tags or [])]
+        d = dots[0].data_source.data if len(dots) == 1 else {"x": [], "y": []}
+        Macro.setGlobal("q47064_" + tag, "%d %d" % (len(d["y"]),
+                                                   len(set(d["x"]))))
+end
+
+* ==== S06 PIC-10: a dot row for an observation whose y is missing ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S06") & `: list posof "S06" in w47_run' {
+    display as text "S06 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4706-4: twoway's dot close date in 1/45 (sp500, close missing in
+    // row 3) draws 45 rows of 75 dots, 3375 (live SVG, the dots in
+    // magenta); dash draws the same rows in both modes.
+    // ------------------------------------------------------------
+    sysuse sp500, clear
+    keep in 1/45
+    replace close = . in 3
+    quietly twoway dot close date, dcolor("255 0 255") ndots(75) name(q4706r, replace)
+    cert_svg_export, name(q4706r) file("`w47_work'/q4706r.svg")
+    python: import os as _o47064, sys as _s47064; _s47064.path.insert(0, _o47064.path.abspath("../scripts")); import svg_layer as _sl47064; _c = [e for e in _sl47064.svg_elements(r"`w47_work'/q4706r.svg") if e["kind"] == "circle" and e["fill"] == "#ff00ff"]; from sfi import Macro as _M47064; _M47064.setLocal("q4tw", "%d %d" % (len(_c), len({e["center"][0] for e in _c})))
+    capture erase "`w47_work'/q4706r.svg"
+    capture graph drop q4706r
+    _w47_expect Q4706-4 `"("`q4tw'" == "3375 45")"' "twoway draws `q4tw' dots and rows"
+    dash clear
+    capture noisily dash dot close date, ndots(75) name(q4706d)
+    local q4rc = _rc
+    _w47_expect Q4706-4 "(`q4rc' == 0)" "dash dot rc `q4rc'"
+    _dash_serve_spec, specpath("`w47_work'/q47064s.json") datapath("`w47_work'/q47064d.json")
+    python: import __main__ as _q47064_m; _q47064_m._q47064_count(r"`w47_work'/q47064s.json", r"`w47_work'/q47064d.json", r"`w47_work'/q47064a.py")
+    _w47_expect Q4706-4 `"("${q47064_saved}" == "3375 45")"' "dash's saved page draws ${q47064_saved} dots and rows"
+    _w47_expect Q4706-4 `"("${q47064_served}" == "3375 45")"' "dash's served app draws ${q47064_served} dots and rows"
+    capture erase "`w47_work'/q47064s.json"
+    capture erase "`w47_work'/q47064d.json"
+    capture erase "`w47_work'/q47064a.py"
+    dash clear
+    _w47_done Q4706-4 "twoway and both of dash's modes draw 3375 dots in 45 rows"
+    display as text "S06 end " c(current_date) " " c(current_time)
+}
+* ==== end S06 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

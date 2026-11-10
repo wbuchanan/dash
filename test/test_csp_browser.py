@@ -402,6 +402,18 @@ def _specs():
             _graph("g3", [{"type": "histogram", "var": "mpg",
                            "options": {"bin": "8"},
                            "if_expr": "foreign == 1"}])]), _frame()),
+        # WP-47 PIC-10: a dot row for a missing y (row 3), the rows
+        # refilled by the finish code's dash_fill_dots, under by() and in
+        # a layer whose rows a move empties.
+        "dots": (_spec([
+            _graph("g1", [{"type": "dot", "yvar": "mpg", "xvar": "weight",
+                           "options": {"ndots": "20"}}]),
+            _graph("g2", [{"type": "dot", "yvar": "mpg", "xvar": "weight",
+                           "options": {"ndots": "20"}}], by="foreign"),
+            _graph("g3", [{"type": "dot", "yvar": "mpg", "xvar": "weight",
+                           "options": {"ndots": "20"},
+                           "if_expr": "foreign == 1"}])]),
+            _frame().assign(mpg=lambda f: f["mpg"].where(f.index != 3))),
     }
 
 
@@ -631,6 +643,17 @@ class TestSavedPageInChrome:
             time.sleep(1.0)
             _check_empty_bins(p)
 
+    def test_dot_rows_for_a_missing_y(self):
+        """WP-47 PIC-10: the saved page's dash_fill_dots draws the row of
+        the observation whose y is missing, every row the whole scale,
+        before and after a move."""
+        with _CspProbe(_url(_saved_page("dots"))) as p:
+            _check_dot_rows(p, True)
+            for _ in range(2):
+                p.in_task(_MOVE_SELECT_JS)
+                time.sleep(1.0)
+                _check_dot_rows(p, False)
+
     def test_hover_and_brush_run(self):
         with _CspProbe(_url(_saved_page("brush"))) as p:
             assert p.read(_TOOLTIP_JS) == []
@@ -681,7 +704,7 @@ class TestServedPageInChrome:
             assert "script-src-elem " + src in p.violations(), p.violations()
 
     @pytest.mark.parametrize("name", ["rich", "big", "outlines", "markers",
-                                      "bins"])
+                                      "bins", "dots"])
     def test_it_renders_filters_and_round_trips(self, servers, kind, name):
         with _CspProbe(_served_url(servers(kind, name))) as p:
             assert p.violations() == [], p.violations()
@@ -770,12 +793,54 @@ def _check_zero_weights_paint(p):
         """WP-47 PIC-9: the served page's empty bins draw nothing, before
         and after the server's recount."""
         with _CspProbe(_served_url(servers(kind, "bins"))) as p:
+            p.wait_change(_BINS_JS, [], timeout=20)
+            _check_empty_bins(p)
             for _ in range(2):
                 before = p.read(_BINS_JS)
                 p.in_task(_MOVE_SELECT_JS)
-                assert p.wait_change(_BINS_JS, before, timeout=20) != before
+                assert p.wait_change(_BINS_JS, before, timeout=40) != before
                 time.sleep(0.5)
                 _check_empty_bins(p)
+
+
+    def test_dot_rows_for_a_missing_y(self, servers, kind):
+        """WP-47 PIC-10: the served page draws the missing y's row too."""
+        with _CspProbe(_served_url(servers(kind, "dots"))) as p:
+            p.wait_change(_DOTS_JS, [], timeout=20)
+            _check_dot_rows(p, True)
+            before = p.read(_DOTS_JS)
+            p.in_task(_MOVE_SELECT_JS)
+            assert p.wait_change(_DOTS_JS, before, timeout=40) != before
+            time.sleep(0.5)
+            _check_dot_rows(p, False)
+
+
+#: Per dot-row renderer: [its rows' x positions, its dots].
+_DOTS_JS = r"""(() => {
+  const out = [];
+  for (const r of __dash_models('GlyphRenderer')) {
+    if (!(r.tags || []).includes('dash_dots')) continue;
+    const d = r.data_source.data;
+    out.push([Array.from(new Set(Array.from(d.x || []))).sort((a, b) => a - b),
+              (d.y || []).length]);
+  }
+  return JSON.stringify(out);
+})()"""
+
+
+def _check_dot_rows(p, first):
+    assert p.violations() == [], p.violations()
+    assert p.js_errors() == [], p.js_errors()
+    rows = p.read(_DOTS_JS)
+    assert rows, rows
+    for xs, n in rows:
+        # Under dotextend(yes) every row runs the whole scale: as many
+        # dots each.
+        assert not xs or n % len(xs) == 0, (xs, n)
+    if first:
+        # Row 3 (mpg missing) keeps its row in the plain graph.
+        w3 = float(_frame()["weight"][3])
+        assert any(w3 in xs and len(xs) == 20 for xs, _ in rows), rows
 
 
 #: Per histogram bar renderer: [raw counts of its drawn rows, screen top,

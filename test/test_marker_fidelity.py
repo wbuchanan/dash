@@ -671,3 +671,111 @@ class TestEmptyBins:
                    for a, b in zip(seen, seen[1:])
                    for i in range(min(len(a), len(b))))
 
+
+# ---------------------------------------------------------------------------
+# PIC-10: a dot row for an observation whose y is missing
+# ---------------------------------------------------------------------------
+
+def _sp500_45():
+    """sysuse sp500 in 1/45 with close missing in row 3, as
+    scripts/extract_marker_fidelity_truth.do draws R01/R02 (the dates are
+    any 45 distinct days: they place the rows, not the dots)."""
+    import numpy as np
+    import pandas as pd
+    sp = pd.read_csv(os.path.join(_FIX, "data", "sp500.csv")).iloc[:45]
+    close = sp["close"].to_numpy(dtype=float).copy()
+    close[2] = np.nan
+    return pd.DataFrame({"close": close,
+                         "date": 14977.0 + np.arange(45, dtype=float)})
+
+
+def _dot_layer(mode, tmp_path, options):
+    import test_bar_range_geometry as bg
+    p = {"type": "dot", "yvar": "close", "xvar": "date",
+         "options": dict(options)}
+    figs, _ = bg._figs(mode, tmp_path, bg._spec([p]), _sp500_45())
+    (r,) = [r for r in figs[0].renderers
+            if "dash_dots" in (getattr(r, "tags", None) or ())]
+    return r
+
+
+def _js_dots():
+    js = dr._DASH_AXIS_FINISH_JS
+    a = js.index("function dash_dot_positions(")
+    b = js.index("// WP-31 D15:", a)
+    return js[a:b]
+
+
+_DOT_MODES = ("saved", "served")
+
+
+class TestDotRows:
+    """R01/R02 (marker_fidelity_truth.json): twoway's dot close date in
+    1/45 (sp500, close missing in row 3) draws 45 rows of 75 dots, 3375 in
+    all -- the missing close's row too (yxview_dot_draw.ado
+    draw_full_dots loops over every observation, x only) -- and under
+    dotextend(no) 1854 dots in 44 rows.  dash drew 44 rows, 3300 dots."""
+
+    @pytest.mark.parametrize("mode", _DOT_MODES)
+    def test_count_matches_twoway(self, mode, tmp_path):
+        rec = TRUTH["R01"]
+        assert rec == {"dots": 3375, "rc": 0, "rows": 45}
+        d = _dot_layer(mode, tmp_path, {"ndots": "75"}).data_source.data
+        assert (len(d["y"]), len(set(d["x"]))) == (rec["dots"], rec["rows"])
+
+    @pytest.mark.parametrize("mode", _DOT_MODES)
+    def test_extend_no_keeps_twoways_count(self, mode, tmp_path):
+        rec = TRUTH["R02"]
+        d = _dot_layer(mode, tmp_path, {"ndots": "75", "dotextend": "no"}
+                       ).data_source.data
+        assert (len(d["y"]), len(set(d["x"]))) == (rec["dots"], rec["rows"])
+
+    @pytest.mark.parametrize("mode", _DOT_MODES)
+    def test_missing_y_keeps_its_row(self, mode, tmp_path):
+        """The missing close's row (its date, 14979) runs the whole scale,
+        as every other row does."""
+        d = _dot_layer(mode, tmp_path, {}).data_source.data
+        runs = {}
+        for x, y in zip(d["x"], d["y"]):
+            runs.setdefault(float(x), []).append(float(y))
+        assert 14979.0 in runs
+        assert sorted(runs[14979.0]) == sorted(runs[14977.0])
+
+    def test_extend_words(self):
+        """_dash_dot_extends reads dotextend() as twoway's yesno does."""
+        for v in ("", "yes", "y", "on", "No", "anything"):
+            assert dr._dash_dot_extends({"dotextend": v}), v
+        for v in ("n", "no", "off", "f", "fa", "fal", "fals", "false"):
+            assert not dr._dash_dot_extends({"dotextend": v}), v
+        assert dr._dash_dot_extends(None)
+
+    def test_python_rule(self):
+        pos, rows, _ = dr.GlyphMapper._dot_positions(
+            0, 1, [0.5, float("nan")], True, 11)
+        assert sorted(set(rows.tolist())) == [0, 1]
+        assert list(rows).count(1) == list(rows).count(0) > 0
+
+    def test_js_twin_agrees(self):
+        """dash_dot_positions and dash_fill_dots (_DASH_AXIS_FINISH_JS):
+        under extend the missing value's row is drawn; under
+        dotextend(no) it is not; a missing x draws no row either way."""
+        src = _js_dots() + r"""
+function dash_axis_same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+const out = {};
+out.pos = dash_dot_positions(0, 1, [0.5, NaN], true, 11, Infinity)[1];
+out.posno = dash_dot_positions(0, 1, [0.5, NaN], false, 11, Infinity)[1];
+for (const ext of [true, false]) {
+  const ds = {data: {}};
+  const ms = {data: {y: [0.5, null, 0.25], x: [1, 2, null]}};
+  dash_fill_dots({dots: [{dsrc: 0, msrc: 1, along: "y", across: "x",
+                          mfilt: -1, extend: ext, ndots: 11, max: 1e18}]},
+                 [ds, ms], 0, 1);
+  out[ext ? "fill" : "fillno"] = Array.from(new Set(ds.data.x));
+}
+console.log(JSON.stringify(out));
+"""
+        got = run_js(src)
+        assert sorted(set(got["pos"])) == [0, 1]
+        assert sorted(set(got["posno"])) == [0]
+        assert got["fill"] == [1, 2] and got["fillno"] == [1]
+

@@ -3408,6 +3408,10 @@ CORPUS = [
     # WP-47 PIC-9: an empty bin draws nothing (start(0) empties bin 0).
     _case("histogram discrete empty bins (WP-47 PIC-9)",
           [plot_for("histogram", {"bin": "30", "start": "0"})]),
+    # WP-47 PIC-10: dotextend(yes) draws the row of a missing y (mpg
+    # missing in row 1).
+    _case("dot missing y rows (WP-47 PIC-10)", [plot_for("dot")],
+          {"_parity_frame": "missing_first_y"}),
 ]
 
 #: The entries TestTheServedBuildNamesTheSavedNotes reads: _render_pair
@@ -4857,6 +4861,10 @@ MOVE_CORPUS.append(_move_case(
     [plot_for("scatter", yvar="mpg", xvar="price")],
     bo={"formats": {"price": "%tC"}}))
 
+# WP-47 PIC-10: a missing y's dot row follows a move in both modes.
+MOVE_CORPUS.append(_move_case("dot rows after a move with a missing y",
+                              _MOVES[0], [plot_for("dot")],
+                              bo={"_parity_frame": "missing_first_y"}))
 # WP-47 PIC-9: the bins a move empties draw nothing in both modes.
 MOVE_CORPUS.append(_move_case("histogram empty bins after a move", _MOVES[0],
                               [plot_for("histogram", {"bin": "6"})]))

@@ -968,6 +968,7 @@ FUNCTIONS = {
  '_dash_stroke_grow': 'test/test_stroke_align.py::TestTheRule::test_grow',
  '_dash_stroke_align': 'test/test_stroke_align.py::TestTheRule::test_align_reads_the_option_then_the_scheme',
  '_dash_marker_defs': 'test/test_marker_fidelity.py::TestShapes::test_function_form',
+ '_dash_dot_extends': 'test/test_marker_fidelity.py::TestDotRows::test_extend_words',
  'SchemeParser.alignstroke': 'test/test_stroke_align.py::TestTheRule::test_scheme_default',
  'GlyphMapper._align_marker_size': 'test/test_stroke_align.py::TestMarkers::test_outer_diameter',
  '_dash_stroke_axis': 'test/test_stroke_align.py::TestTheHelpers::test_stroke_axis',

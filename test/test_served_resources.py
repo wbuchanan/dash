@@ -728,7 +728,11 @@ _SAVED_DIGEST = (
     # a6e3fc6a -> 095981d0: WP-47 PIC-2, the key painter's code gains the
     # cross, diamond, chevron and arrow branches (key painter JS text only:
     # with the old _DASH_KEY_PAINT_JS spliced in the old digest is given).
-    "095981d068c86d473e7c39971bd4fcb2d148baef602bbcdbbf28708b5ff25030")
+    # 095981d0 -> 56751f6e: WP-47 PIC-10, the finish code's
+    # dash_dot_positions and dash_fill_dots keep a missing y's row under
+    # dotextend(yes) (finish JS text only: the old statements spliced in
+    # give the old digest), the same under both Pythons.
+    "56751f6e5badd966d241c5c2e5a0a24b5cb4e22dc7bd433298f6c7f1e35e3d4a")
 
 
 # ===========================================================================

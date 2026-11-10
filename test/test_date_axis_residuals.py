@@ -725,13 +725,19 @@ _PLAIN_DIGESTS = {
         # and cb2e0754... -> f08c9445... (served); yaxis2 b72f9d52... ->
         # f6d4fc4a... and 9f8feced... -> edc34f85..., under Bokeh 3.8 and
         # 3.9.
-        "60f159abdefd25990e143e385b73e436cc4a95b451130ab1a6875645f8c2dde5",
+        # WP-47 PIC-10: the finish code's dash_dot_positions and
+        # dash_fill_dots draw a missing y's row under dotextend(yes):
+        # 60f159ab... -> 38fa274c... (saved) and 716bad35... -> 5edc5553...
+        # (served); yaxis2 ef52ed54... -> d2c9e34b... and 4ebf96d9... ->
+        # 8b9c4ce1...; finish JS text only (the old statements spliced in
+        # give the old digests); the same under both Pythons.
+        "38fa274c054d8523ce1f891d6c5c39d1ad7f230204479e2b5cf90c01f9107a67",
     ("saved", "yaxis2"):
-        "ef52ed547b038f7092e0c58266365922b2a2c183ae33faf1124ae732c010de83",
+        "d2c9e34b0a91f3ca7fc34753c0a4e053f5f175eef0acc2d8cdbc097e0ffcab87",
     ("served", "plain"):
-        "716bad358c7672e68e2d4465bf9e00bcf90206b226d828be5b8df6dacb0cb46a",
+        "5edc55532aeae9b522f6dc6a1760894f55af6d1b198d81dcd452fa62877ba77c",
     ("served", "yaxis2"):
-        "4ebf96d9897dd21cbf0d6fe4fd34dac8133af41695e5cf12d49cb005c250dc11",
+        "8b9c4ce14b73103a3dd69ca05a0bf01a699faab2f2dafd501cdf03017baebf38",
 }
 
 

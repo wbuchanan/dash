@@ -4604,7 +4604,9 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     its marker; the rows run up and down from the y axis's base (0 when
     the axis's scale holds 0, else the scale's end nearest 0) to both
     ends of the scale, or with {cmd:dotextend(no)} to the observation's
-    value, along x under {cmd:horizontal}.  {cmd:no}, {cmd:n},
+    value, along x under {cmd:horizontal}.  An observation whose value
+    is missing has its row too, as {cmd:twoway} draws it, and none under
+    {cmd:dotextend(no)}.  {cmd:no}, {cmd:n},
     {cmd:off} and {cmd:false} (lower case, as {cmd:twoway} reads them) are
     no; anything else is yes.  The rows follow the axis when a filter
     moves, in the saved page and the served app: each kept observation's

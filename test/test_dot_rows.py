@@ -232,6 +232,15 @@ class TestGeometry:
             0, 1, [0.5, np.nan], False)
         assert set(rows.tolist()) == {0}
 
+    def test_a_missing_value_keeps_its_row_under_extend(self):
+        # WP-47 PIC-10: under dotextend(yes) twoway draws a missing
+        # value's full row (yxview_dot_draw.ado draw_full_dots;
+        # marker_fidelity_truth.json R01: 45 rows of 75 dots).
+        pos, rows, _ = dr.GlyphMapper._dot_positions(
+            0, 1, [0.5, np.nan], True)
+        assert set(rows.tolist()) == {0, 1}
+        assert list(rows).count(0) == list(rows).count(1)
+
     def test_the_cap(self):
         vals = np.full(100_000, 0.5)
         pos, _, nd = dr.GlyphMapper._dot_positions(0, 1, vals, True, 75,

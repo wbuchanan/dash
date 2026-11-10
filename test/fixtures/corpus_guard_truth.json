@@ -1,8 +1,8 @@
 {
   "_meta": {
     "born_date": "04 Nov 2026",
-    "dash_commit": "5855ea99db8f8cbd5deafcd86c6ad934b5bccf73",
-    "extracted": " 9 Nov 2026 05:43:10",
+    "dash_commit": "c8ece50cb3c57033392694ab11cb90ddd5d3e571",
+    "extracted": "10 Nov 2026 05:38:09",
     "ledger": "test/fixtures/corpus_ledger.json",
     "rules": "test/fixtures/corpus_verdict_rules.json",
     "source": "scripts/extract_corpus_guard_truth.do",
@@ -85,7 +85,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7676,
+      "ssim": 0.7678,
       "summary": "margins, line width",
       "verdict": "Close"
     },
@@ -244,7 +244,7 @@
         ]
       },
       "size_matched": true,
-      "ssim": 0.7766,
+      "ssim": 0.7762,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -442,7 +442,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.5789,
+      "ssim": 0.5776,
       "summary": "margins, line width, plot region shape",
       "verdict": "Close"
     },
@@ -481,13 +481,12 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.5821,
+      "ssim": 0.5938,
       "summary": "margins",
       "verdict": "Close"
     },
     "help-twoway_dot-11245001": {
       "checks": [
-        "glyphs",
         "margins",
         "marker_size"
       ],
@@ -522,9 +521,9 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.3461,
-      "summary": "number of markers, margins, marker size",
-      "verdict": "Differs"
+      "ssim": 0.3367,
+      "summary": "margins, marker size",
+      "verdict": "Close"
     },
     "help-twoway_dropline-bff26da0": {
       "checks": [
@@ -598,7 +597,7 @@
         "stripped": []
       },
       "size_matched": false,
-      "ssim": 0.8318,
+      "ssim": 0.8316,
       "summary": "margins",
       "verdict": "Close"
     },
@@ -749,7 +748,7 @@
         "stripped": []
       },
       "size_matched": true,
-      "ssim": 0.7628,
+      "ssim": 0.7635,
       "summary": "margins, line width",
       "verdict": "Close"
     },
