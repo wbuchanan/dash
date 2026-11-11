@@ -506,8 +506,15 @@ picture along {it:x}.  Each bound of {cmd:rline} and {cmd:tsrline} keeps
 its own missing values: it is drawn through the observations where that
 bound is present, as {cmd:twoway} draws it; {cmd:rarea} keeps an
 observation missing one bound as {cmd:twoway}'s polygon does, its edge
-running straight across the gap from the bound's neighbours (one at the
-first or last such observation is left out).  A fractional period value
+running straight across the gap from the bound's neighbours.  The
+polygon spans the observations from the first to the last with the
+first bound: one outside them is left out, and where the second bound
+is missing at either end the area closes straight from the first
+bound's end point, as {cmd:twoway} closes it, before and after a filter
+move.  {it:Difference from twoway:} under {cmd:connect(stairstep)} or
+{cmd:connect(stepstair)} an observation missing one bound is left out
+of both, where {cmd:twoway} steps the other bound through it.  A
+fractional period value
 ({cmd:%tm} 745.5) is drawn at its fraction toward the next period and
 shown as the period that holds it, as {cmd:twoway} draws and shows it.  {cmd:rarea} is outlined in the
 scheme's area line style -- its plot colour at the medium line width,

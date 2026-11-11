@@ -99,9 +99,16 @@ class TestRareaOneBound:
         assert hi == [11, 12, 13, 14, 15, 16]
 
     def test_an_end_row_is_left_out(self):
+        # Flipped (WP-47 PIC-17): a last row missing the second bound was
+        # left out; twoway's polygon closes from the first bound's last
+        # point there (rarea_gap_truth.json G15), so the row is drawn with
+        # the second bound at the first's point.  A row with no first
+        # bound at an end is still left out (G04's hi1).
         nan = float("nan")
         x, lo, hi = _rarea([1, 2, 3.0], [11, 12, nan], [1, 2, 3.0])
-        assert x == [1, 2]
+        assert x == [1, 2, 3] and hi == [11, 12, 3]
+        x, lo, hi = _rarea([nan, 2, 3.0], [11, 12, 13], [1, 2, 3.0])
+        assert x == [2, 3]
 
     def test_helper(self):
         cols = {"x": np.array([0.0, 1, 3]), "a": np.array([0.0, np.nan, 3]),

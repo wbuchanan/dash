@@ -1073,6 +1073,154 @@ end
 }
 * ==== end S05 ====
 
+// ----------------------------------------------------------------
+// S06 PIC-17 helper: _q4706r(svg, sp, dp, app) compares the polygons
+// twoway fills in its SVG (closed subpaths read back to data units by
+// scripts/svg_truth.py's axis reading) with the area dash fills on its
+// saved page and in its served app (each VArea's runs, forward along y1
+// and back along y2), at grid points over x 0.5-8.6, y 0.3-25.6; it puts
+// the two counts of grid points that differ in $q4706r ("saved served").
+// ----------------------------------------------------------------
+python:
+def _q4706r(svg, sp, dp, app):
+    import os
+    import re
+    import sys
+    import warnings
+    import numpy as np
+    repo = os.path.dirname(os.path.abspath(os.getcwd()))
+    for p in (repo, os.path.join(repo, "scripts")):
+        if p not in sys.path:
+            sys.path.insert(0, p)
+    import dash_render as dr
+    import svg_truth
+    from bokeh.document import Document
+    from sfi import Macro
+
+    def fit(axis):
+        pr = svg_truth.svg_axis_reading(svg, axis).get("pairs") or []
+        n = float(len(pr))
+        mx = sum(p for p, _ in pr) / n
+        mv = sum(v for _, v in pr) / n
+        b = (sum((p - mx) * (v - mv) for p, v in pr)
+             / sum((p - mx) ** 2 for p, _ in pr))
+        return mv - b * mx, b
+
+    def inside(poly, pts):
+        poly = np.asarray(poly, dtype=float)
+        x, y = pts[:, 0], pts[:, 1]
+        res = np.zeros(len(pts), dtype=bool)
+        for i in range(len(poly)):
+            x1, y1 = poly[i]
+            x2, y2 = poly[(i + 1) % len(poly)]
+            if y1 != y2:
+                res ^= (((y1 > y) != (y2 > y))
+                        & (x < (x2 - x1) * (y - y1) / (y2 - y1) + x1))
+        return res
+
+    gx, gy = np.meshgrid(np.arange(0.513, 8.6, 0.0571),
+                         np.arange(0.317, 25.6, 0.0913))
+    grid = np.column_stack([gx.ravel(), gy.ravel()])
+    fx, fy = fit("x"), fit("y")
+    want = np.zeros(len(grid), dtype=bool)
+    text = open(svg, encoding="utf-8").read()
+    for el in re.findall(r"<path[^>]*>", text):
+        m = re.search(r'\sd="([^"]*)"', el)
+        for sub in (re.split(r"(?=M)", m.group(1)) if m else []):
+            if "Z" not in sub and "z" not in sub:
+                continue
+            nums = re.findall(r"[ML]\s*(-?[0-9.]+)\s+(-?[0-9.]+)", sub)
+            ring = [(fx[0] + fx[1] * float(a), fy[0] + fy[1] * float(b))
+                    for a, b in nums]
+            if len(ring) > 2:
+                want ^= inside(ring, grid)
+
+    def cover(fig):
+        cov = np.zeros(len(grid), dtype=bool)
+        f = dr._dash_float_values
+        for r in fig.renderers:
+            if type(r.glyph).__name__ != "VArea":
+                continue
+            d, g = r.data_source.data, r.glyph
+            x, a, b = f(d[g.x]), f(d[g.y1]), f(d[g.y2])
+            ok = np.isfinite(x) & np.isfinite(a) & np.isfinite(b)
+            run = []
+            for i in list(range(len(x))) + [None]:
+                if i is not None and ok[i]:
+                    run.append(i)
+                    continue
+                if run:
+                    cov ^= inside([(x[j], a[j]) for j in run]
+                                  + [(x[j], b[j]) for j in run[::-1]], grid)
+                run = []
+        return cov
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+        src = open(app, encoding="utf-8").read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        ns = dict(__name__="dash_q4706r_app")
+        exec(compile(src.replace(attach, "pass"), "dash_q4706r_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+    out = [int((cover(list(r.figures.values())[0]) != want).sum()),
+           int((cover(sv[0]) != want).sum())]
+    Macro.setGlobal("q4706r", " ".join(str(v) for v in out))
+end
+
+* ==== S06 PIC-17: rarea where a row misses one bound ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S06") & `: list posof "S06" in w47_run' {
+    display as text "S06 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4706-17: twoway's rarea over x = 1..8 (lo = x, hi = 20 + 4 *
+    // mod(x,2)) with hi missing inside the series, at its last two rows
+    // and at its first, and with cmissing(n): the area dash fills on its
+    // saved page and in its served app is the polygon twoway fills (live
+    // SVG), within 12 of about 39,000 grid points (edge rounding).
+    // Under the default twoway passes over the missing bound; under
+    // cmissing(n) it breaks there (rarea_gap_truth.json G01, G15, G17,
+    // N01).
+    // ------------------------------------------------------------
+    local q17n 0
+    foreach c in `"4|sort"' `"7 8|sort"' `"1|sort"' `"4|sort cmissing(n)"' {
+        local ++q17n
+        gettoken rows o : c, parse("|")
+        local o = substr(`"`o'"', 2, .)
+        clear
+        quietly set obs 8
+        quietly generate double x = _n
+        quietly generate double lo = x
+        quietly generate double hi = 20 + 4 * mod(x, 2)
+        foreach r of local rows {
+            quietly replace hi = . in `r'
+        }
+        quietly twoway rarea lo hi x, `o' name(q4706r, replace)
+        cert_svg_export, name(q4706r) file("`w47_work'/q4706r.svg")
+        capture graph drop q4706r
+        dash clear
+        capture noisily dash rarea lo hi x, `o' name(q17)
+        local drc = _rc
+        _w47_expect Q4706-17 "(`drc' == 0)" `"dash rarea lo hi x, `o' (hi missing in `rows'): rc `drc'"'
+        _dash_serve_spec, specpath("`w47_work'/q4706r_s.json") datapath("`w47_work'/q4706r_d.json")
+        python: import __main__ as _m4706r; _m4706r._q4706r(r"`w47_work'/q4706r.svg", "`w47_work'/q4706r_s.json", "`w47_work'/q4706r_d.json", "`w47_work'/q4706r_a.py")
+        local q17s : word 1 of ${q4706r}
+        local q17v : word 2 of ${q4706r}
+        _w47_expect Q4706-17 "(`q17s' <= 12 & `q17v' <= 12)" `"hi missing in `rows', `o': saved `q17s', served `q17v' grid points off twoway's fill"'
+        capture erase "`w47_work'/q4706r.svg"
+        dash clear
+    }
+    _w47_done Q4706-17 "rarea's fill is twoway's polygon in `q17n' gap cases, saved and served"
+    display as text "S06 end " c(current_date) " " c(current_time)
+}
+* ==== end S06 ====
+
 * ==== S06 PIC-2: twoway's marker shapes and msymbol(invisible) ====
 local only : env WP47_ONLY
 if inlist("`only'", "", "S06") & `: list posof "S06" in w47_run' {

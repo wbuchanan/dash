@@ -25156,9 +25156,12 @@ class GlyphMapper:
 
         The band joins its rows as twoway's rarea does: in the data's order
         unless ``sort`` or *order* (``sort(varlist)``'s rank) says otherwise
-        (``_join_order``).  One VArea is twoway's polygon where both bounds
-        are present; a row missing one bound is left out of both (twoway
-        keeps the other bound's point there; WP-29 residual O1).
+        (``_join_order``).  One VArea is twoway's polygon: under the
+        default cmissing(y) a row missing one bound keeps the other, the
+        missing one on the polygon's edge, over the span of rows that have
+        the first bound (``_dash_rarea_one_bound``; WP-31 G6, WP-47
+        PIC-17); cmissing(n) breaks the area at any row missing x or a
+        bound.
 
         Args:
             fig:    Bokeh Figure object.
@@ -25205,12 +25208,31 @@ class GlyphMapper:
             v: _dash_float_values(source.data[v])[_ord]
             for v in (xvar, y1var, y2var)
         }
+        _bound_rec = None
         if not _expand:
             _cols, _ord = _dash_rarea_one_bound(_cols, _ord, xvar, y1var,
                                                 y2var)
+            # WP-47 PIC-17: the drawn rows that miss a bound, with their
+            # own values, so the saved page recomputes the filled bound
+            # from the rows a move keeps (_FILTER_JS's
+            # dash_rarea_bound_kept); recorded only when there are any.
+            _r1 = _dash_float_values(source.data[y1var])[_ord]
+            _r2 = _dash_float_values(source.data[y2var])[_ord]
+            _gaps = np.flatnonzero(~np.isfinite(_r1) | ~np.isfinite(_r2))
+            if len(_gaps) and _ROW_ID_COLUMN in source.data:
+                _rids = list(source.data[_ROW_ID_COLUMN])
+                _bound_rec = {
+                    "kind": "rarea", "x": str(xvar), "y1": str(y1var),
+                    "y2": str(y2var),
+                    "raw": [[int(_rids[int(_ord[i])]),
+                             float(_r1[i]) if np.isfinite(_r1[i]) else None,
+                             float(_r2[i]) if np.isfinite(_r2[i]) else None]
+                            for i in _gaps]}
         # The caller's other columns -- the variables hover() names --
         # ride along in the same order: each point is an observation.
         source = ColumnDataSource(self._carry_cols(source, _cols, _ord))
+        if _bound_rec is not None:
+            source._dash_join = _bound_rec
         view = None
         if _expand:
             _ok = (np.isfinite(_cols[xvar]) & np.isfinite(_cols[y1var])
@@ -35714,6 +35736,59 @@ function dash_fill_rebuild_kept(od, spec, rowId, keep) {
     return out;
 }
 
+// rarea's rows that miss one bound after a move (WP-47 PIC-17), the twin
+// of _dash_rarea_one_bound over the kept rows nd (join order): each row
+// spec.raw names takes its own values back, then the span from the first
+// to the last kept row with x and spec.y1 is drawn, a missing bound on the
+// straight line between that bound's neighbours, y1's end points standing
+// in for a y2 the span's ends lack; every other row is left out.  Hoisted.
+function dash_rarea_bound_kept(nd, spec, rowId) {
+    const num = (v) => (v === null || v === undefined) ? NaN : Number(v);
+    const raw = new Map();
+    for (const r of (spec.raw || [])) raw.set(r[0], r);
+    const ids = nd[rowId] || [];
+    const n = ids.length;
+    const x = [], y1 = [], y2 = [];
+    for (let i = 0; i < n; i++) {
+        const r = raw.get(ids[i]);
+        x.push(num(nd[spec.x][i]));
+        y1.push(r ? num(r[1]) : num(nd[spec.y1][i]));
+        y2.push(r ? num(r[2]) : num(nd[spec.y2][i]));
+    }
+    const keep = new Array(n).fill(false);
+    const h1 = [];
+    for (let i = 0; i < n; i++) if (isFinite(x[i]) && isFinite(y1[i])) h1.push(i);
+    if (h1.length) {
+        const a = h1[0], b = h1[h1.length - 1];
+        const h2 = [];
+        for (let i = a; i <= b; i++) {
+            keep[i] = isFinite(x[i]) && (isFinite(y1[i]) || isFinite(y2[i]));
+            if (isFinite(x[i]) && isFinite(y2[i])) h2.push(i);
+        }
+        const c1 = h1.map(i => [i, x[i], y1[i]]);
+        const c2 = h2.map(i => [i, x[i], y2[i]]);
+        if (!h2.length || h2[0] !== a) c2.unshift([a, x[a], y1[a]]);
+        if (!h2.length || h2[h2.length - 1] !== b) c2.push([b, x[b], y1[b]]);
+        for (const [yb, ch] of [[y1, c1], [y2, c2]]) {
+            let j = 0;
+            for (let i = 0; i < n; i++) {
+                while (j < ch.length && ch[j][0] < i) j++;
+                if (!keep[i] || isFinite(yb[i])) continue;
+                if (j < ch.length && ch[j][0] === i) { yb[i] = ch[j][2]; continue; }
+                const p = ch[j - 1], q = ch[j];
+                yb[i] = (q[1] === p[1]) ? p[2] : p[2] + (x[i] - p[1]) * (q[2] - p[2]) / (q[1] - p[1]);
+            }
+        }
+    }
+    const out = {};
+    for (const c of Object.keys(nd)) {
+        dash_own_col(out, c);
+        const src = c === spec.y1 ? y1 : (c === spec.y2 ? y2 : nd[c]);
+        for (let i = 0; i < n; i++) if (keep[i]) out[c].push(src[i]);
+    }
+    return out;
+}
+
 // The zero-height pairs of a split area (a null row id; spec.repin) after
 // the axis finish refilled its default base: each spec.ycols column takes the
 // spec.pin column's value there again, as _dash_finish_auto_bases keeps
@@ -35897,6 +35972,9 @@ if (_primary_ids) {
         } else if (_jn && _jn.kind === "area") {
             // A filled layer split under cmissing(n) (WP-31 H1).
             _dsrcs[_di].data = dash_fill_rebuild_kept(_od, _jn, ROW_ID, _dkeep_ids);
+        } else if (_jn && _jn.kind === "rarea") {
+            // rarea's rows missing one bound (WP-47 PIC-17).
+            _dsrcs[_di].data = dash_rarea_bound_kept(_nd, _jn, ROW_ID);
         } else if (_jn && (_jn.x in _nd) && (_jn.y in _nd)) {
             _dsrcs[_di].data = dash_join_rebuild(_nd, _jn, ROW_ID);
         } else {
@@ -73628,36 +73706,53 @@ def _dash_join_key(source, sort_keys, col):
 
 def _dash_rarea_one_bound(cols, order, xvar, y1var, y2var):
     """rarea's rows with one bound missing, as twoway's polygon draws them
-    (WP-31 G6).
+    (WP-31 G6; WP-47 PIC-17).
 
-    twoway's rarea polygon runs along the lower bound through every row
-    that has it and back along the upper bound through every row that has
-    it (measured: ``rarea lo hi x`` with hi missing on row 3 of 6 is the
-    polygon lo1..lo6, hi6, hi5, hi4, hi2, hi1).  A VArea needs both bounds
-    at each x, so a row missing one bound takes the point the polygon's
-    edge passes there: the straight line between that bound's neighbours
-    in the join order.  A row with no neighbour on one side (the first or
-    last with the bound) is left out, as before.  *cols* hold the columns
-    in join order and *order* the row indices; returns both, filtered.
+    twoway's rarea polygon (test/fixtures/rarea_gap_truth.json) spans the
+    rows, in join order, from the first to the last that has x and the
+    first bound *y1var*: it runs forward along y1 through every such row
+    that has it and back along *y2var* through every one that has it, and
+    closes straight from y1's last point to the last y2 point and from the
+    first y2 point to y1's first point (G04, G15, G17: a y2 missing at an
+    end of the span; a y2 point outside the span is left out).  A VArea
+    needs both bounds at each x, so a row missing one takes the point the
+    polygon's edge passes at its x: the straight line between that
+    bound's neighbours in the join order, y1's end points standing in for
+    y2 at an end of the span that has none (a row the line passes outside
+    its neighbours' x, unsorted, adds a spike of no area).  Rows outside
+    the span, and rows missing x or both bounds, are left out.  *cols*
+    hold the columns in join order and *order* the row indices; returns
+    both, filtered.  _FILTER_JS's dash_rarea_bound_kept is the twin.
     """
     x = np.asarray(cols[xvar], dtype=float)
-    keep = np.isfinite(x)
     out = {k: np.asarray(v, dtype=float).copy() for k, v in cols.items()}
-    for b in (y1var, y2var):
-        yb = out[b]
-        have = np.flatnonzero(np.isfinite(yb))
-        for i in np.flatnonzero(~np.isfinite(yb)):
-            lo = have[have < i]
-            hi = have[have > i]
-            if not len(lo) or not len(hi):
-                keep[i] = False
-                continue
-            a, c = lo[-1], hi[0]
-            if x[c] == x[a]:
-                yb[i] = yb[a]
-            else:
-                yb[i] = yb[a] + (x[i] - x[a]) * (yb[c] - yb[a]) / (x[c] - x[a])
-    keep &= np.isfinite(out[y1var]) & np.isfinite(out[y2var])
+    y1 = out[y1var]
+    y2 = out[y2var]
+    fin = np.isfinite(x)
+    keep = np.zeros(len(x), dtype=bool)
+    h1 = np.flatnonzero(fin & np.isfinite(y1))
+    if len(h1):
+        a, b = int(h1[0]), int(h1[-1])
+        keep[a:b + 1] = (fin & (np.isfinite(y1) | np.isfinite(y2)))[a:b + 1]
+        h2 = [i for i in range(a, b + 1) if fin[i] and np.isfinite(y2[i])]
+        px = [x[i] for i in h2]
+        py = [y2[i] for i in h2]
+        pos = list(h2)
+        if not h2 or h2[0] != a:
+            pos, px, py = [a] + pos, [x[a]] + px, [y1[a]] + py
+        if not h2 or h2[-1] != b:
+            pos, px, py = pos + [b], px + [x[b]], py + [y1[b]]
+        for yb, cp, cx, cy in ((y1, list(h1), [x[i] for i in h1],
+                                [y1[i] for i in h1]), (y2, pos, px, py)):
+            cp = np.asarray(cp, dtype=np.int64)
+            for i in np.flatnonzero(keep & ~np.isfinite(yb)):
+                j = int(np.searchsorted(cp, i))
+                if j < len(cp) and cp[j] == i:
+                    yb[i] = cy[j]
+                    continue
+                xa, ya, xc, yc = cx[j - 1], cy[j - 1], cx[j], cy[j]
+                yb[i] = ya if xc == xa else (
+                    ya + (x[i] - xa) * (yc - ya) / (xc - xa))
     return ({k: v[keep] for k, v in out.items()},
             np.asarray(order)[keep])
 

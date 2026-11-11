@@ -738,7 +738,11 @@ _SAVED_DIGEST = (
     # old -> new: 4224042 -> 6923685: basic:PT-11 the filter code's
     # dash_bar_span (spanning and obs bars) and kdensity's keep_first
     # (WP-47 47-05; filter JS text only), the same under both Pythons.
-    "69236850919946965d650f03cea29483dd15b9a0f6d3658b2e08b57613db66f9")
+    # old -> new: 6923685 -> dcfbc92: PIC-17 the filter code's
+    # dash_rarea_bound_kept and its "rarea" branch (filter JS text only:
+    # with the old _FILTER_JS spliced in the old digest is given), the
+    # same under both Pythons.
+    "dcfbc9223ab038f91fa1c95ff2d854517c7c7e26a95203f16127a5e3df8d548b")
 
 
 # ===========================================================================

@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'PIC-17': 'rarea fills an interior gap where only one bound is missing by interpolating across it; twoway breaks the area there',
     'MS-15': 'dash clips marker labels at the plot region; twoway lets them extend over the axis area',
     'LT-27': "The 'typo is reported as ignored ... titel(x) appears in the note' paragraph is stale; the paragraph before it (xreverse, xcommon, lockaspect ... reach the note) is stale too",
     'plot:PT-5': "'graph is a prefix before twoway' / 'unrecognised plot type graph' is stale",

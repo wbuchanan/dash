@@ -256,6 +256,12 @@ def _write(spec):
     df = _DF
     if variant == "missing_first_y":
         df = _DF.assign(mpg=[float("nan")] + list(_DF["mpg"][1:]))
+    # WP-47 PIC-17: price missing in rows 2 and 10 (weights 3350 and
+    # 2650), a rarea's second bound missing inside the series and, once a
+    # move keeps Foreign, at its last row.
+    if variant == "price_gaps":
+        df = _DF.assign(price=[float("nan") if i in (1, 9) else v
+                               for i, v in enumerate(_DF["price"])])
     if (spec.get("build_options") or {}).get("frame_cols"):
         day = pd.Timestamp("1960-01-01") + pd.to_timedelta(_DF["when"],
                                                            unit="D")
@@ -4907,6 +4913,10 @@ MOVE_CORPUS.append(_move_case("bartype obs after a move", _MOVES[1],
 MOVE_CORPUS.append(_move_case("omitanymiss kdensity after a move", _MOVES[0],
                               [plot_for("kdensity", {"omit": "omitanymiss",
                                                      "omit_n": "10"})]))
+# WP-47 PIC-17: a rarea's one-bound rows recomputed from the kept rows.
+MOVE_CORPUS.append(_move_case("rarea one bound missing after a move",
+                              _MOVES[0], [plot_for("rarea", {"sort": "sort"})],
+                              bo={"_parity_frame": "price_gaps"}))
 
 _MOVE_CORPUS_NAMES = frozenset(p.values[0] for p in MOVE_CORPUS)
 

@@ -300,6 +300,56 @@ def _frame(n=20):
     })
 
 
+def _p17_frame():
+    """WP-47 PIC-17's rows: _frame() with lo = mpg - 3 and hi = mpg + 3,
+    hi missing in rows 2, 3 and 19 (the last) and lo in row 10: mpg
+    turns at rows 2 and 3, so each move's straight edge differs from the
+    one over every row."""
+    f = _frame()
+    f["lo"] = (f["mpg"] - 3).where(f.index != 10)
+    f["hi"] = (f["mpg"] + 3).where(~f.index.isin([2, 3, 19]))
+    return f
+
+
+#: The rarea's VArea: [the Select's value, x, y1, y2] as the page holds
+#: them (NaN as null).
+_P17_JS = r"""(() => {
+  const s = __dash_models('Select')[0];
+  for (const m of __dash_models('GlyphRenderer')) {
+    const g = m.glyph;
+    if (!g || g.constructor.__name__ !== 'VArea') continue;
+    const d = m.data_source.data;
+    const f = (c) => Array.from(d[c.field || c], (v) =>
+      (v !== null && Number.isFinite(Number(v))) ? Number(v) : null);
+    return JSON.stringify([s.value, f(g.x), f(g.y1), f(g.y2)]);
+  }
+  return JSON.stringify(null);
+})()"""
+
+
+def _check_p17(p):
+    """The page's rarea is _dash_rarea_one_bound over the rows its Select
+    keeps (every row, or foreign equal to its value)."""
+    assert p.violations() == [], p.violations()
+    assert p.js_errors() == [], p.js_errors()
+    got = p.read(_P17_JS)
+    assert got, got
+    value, xs, y1, y2 = got
+    f = _p17_frame()
+    try:
+        f = f[f["foreign"] == float(value)]
+    except (TypeError, ValueError):
+        pass
+    f = f.sort_values("weight", kind="stable")
+    cols = {c: f[c].to_numpy(dtype=float) for c in ("weight", "lo", "hi")}
+    want, _ = dr._dash_rarea_one_bound(cols, np.arange(len(f)), "weight",
+                                       "lo", "hi")
+    assert xs == pytest.approx(list(want["weight"])), (value, xs)
+    assert y1 == pytest.approx(list(want["lo"])), (value, y1)
+    assert y2 == pytest.approx(list(want["hi"])), (value, y2)
+    return value
+
+
 def _graph(name, plots, **go):
     go["name"] = name
     return {"name": name, "plots": plots, "graph_options": go,
@@ -424,6 +474,13 @@ def _specs():
             _graph("g2", [{"type": "bar", "yvar": "mpg", "xvar": "weight",
                            "options": {"bartype": "spanning"}}])],
             kpis=[dict(_KPI, update="brush")]), _frame()),
+        # WP-47 PIC-17: a rarea whose bounds miss rows inside the series
+        # and at its ends; the saved page's dash_rarea_bound_kept
+        # recomputes the filled bounds from the rows a move keeps.
+        "p17": (_spec([
+            _graph("g1", [{"type": "rarea", "yvar1": "lo", "yvar2": "hi",
+                           "xvar": "weight", "options": {"sort": "sort"}}])]),
+            _p17_frame()),
     }
 
 
@@ -679,6 +736,18 @@ class TestSavedPageInChrome:
                       "if (s.get_length() > 3) s.selected.indices = [0, 1];")
             time.sleep(1.0)
             _check_s05(p, brushed=True)
+
+    def test_rarea_one_bound_after_a_move(self):
+        """WP-47 PIC-17: the saved page's dash_rarea_bound_kept leaves the
+        rarea's filled bounds those of the kept rows' polygon, before and
+        after each move of its dropdown."""
+        with _CspProbe(_url(_saved_page("p17"))) as p:
+            seen = {_check_p17(p)}
+            for _ in range(3):
+                p.in_task(_MOVE_SELECT_JS)
+                time.sleep(1.0)
+                seen.add(_check_p17(p))
+            assert len(seen) >= 3, seen
 
     def test_hover_and_brush_run(self):
         with _CspProbe(_url(_saved_page("brush"))) as p:
