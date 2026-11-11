@@ -38,6 +38,27 @@ sys.path.insert(0, _HERE)
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _ADO = os.path.join(_HERE, "..", "dash.ado")
 _FIX = os.path.join(_HERE, "fixtures", "parsed_values_truth.json")
 
@@ -93,7 +114,7 @@ def test_two_labelsets(mode):
     else:
         doc, _w = tp._served(spec)
         models = [m for root in doc.roots for m in root.references()]
-    sets = [m for m in models if isinstance(m, LabelSet)]
+    sets = [m for m in _mls_all(models) if isinstance(m, _MLS)]
     assert len(sets) == 2
     texts = sorted(str(s.text.field if hasattr(s.text, "field") else s.text)
                    for s in sets)
@@ -155,7 +176,7 @@ class TestPatterns:
         else:
             doc, w = tp._served(spec)
             models = [m for root in doc.roots for m in root.references()]
-        assert len([m for m in models if isinstance(m, LabelSet)]) == \
+        assert len([m for m in _mls_all(models) if isinstance(m, _MLS)]) == \
             len([v for v in ml if v != "."])
         assert not [x for x in w if "mlabel" in str(x)], w
 

@@ -1,0 +1,169 @@
+{
+ "_meta": {
+  "born_date": "04 Nov 2026",
+  "dash_commit": "17710f9eb50f7a3c7c44a7dfbbc6a69b2f1833df",
+  "data": "sysuse lifeexp (CAL: pos = 3, 9 for Honduras); EDGE and BY: four rows, x = 0 10 5 5, y = 5 5 10 0, p = 9 3 12 6, g = mod(_n, 2), lab = Label<n>_runs_well_past_the_region",
+  "extracted": "11 Nov 2026 01:42:32",
+  "generator": "scripts/extract_mlabel_clip_truth.do",
+  "probes": 3,
+  "scheme": "stcolor",
+  "source": "scripts/extract_mlabel_clip_truth.do",
+  "stata_version": "19.5",
+  "widths": "Helvetica AFM advance widths at the text's font size"
+ },
+ "probes": {
+  "BY": {
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "clips": 0,
+   "cmd": "scatter y x, mlabel(lab) mlabvposition(p) by(g)",
+   "labels": [
+    {
+     "anchor": "start",
+     "left": 2722.78,
+     "right": 3908.21,
+     "size": 76.44,
+     "text": "Label2_runs_well_past_the_region",
+     "width": 1185.43,
+     "x": 2722.78,
+     "y": 1509.1
+    },
+    {
+     "anchor": "middle",
+     "left": 1058.84,
+     "right": 2244.27,
+     "size": 76.44,
+     "text": "Label4_runs_well_past_the_region",
+     "width": 1185.43,
+     "x": 1651.56,
+     "y": 2700.44
+    },
+    {
+     "anchor": "end",
+     "left": 1818.49,
+     "right": 3003.92,
+     "size": 76.44,
+     "text": "Label1_runs_well_past_the_region",
+     "width": 1185.43,
+     "x": 3003.92,
+     "y": 1509.1
+    },
+    {
+     "anchor": "middle",
+     "left": 3482.26,
+     "right": 4667.69,
+     "size": 76.44,
+     "text": "Label3_runs_well_past_the_region",
+     "width": 1185.43,
+     "x": 4074.98,
+     "y": 317.76
+    }
+   ],
+   "rc": 0,
+   "regions": [
+    {
+     "bottom": 2674.18,
+     "left": 553.33,
+     "right": 2749.95,
+     "top": 290.59
+    },
+    {
+     "bottom": 2674.18,
+     "left": 2976.75,
+     "right": 5173.2,
+     "top": 290.59
+    }
+   ]
+  },
+  "CAL": {
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "clips": 0,
+   "cmd": "scatter lexp gnppc if region==2, mlabel(country) mlabv(pos) xsca(range(35000))",
+   "labels": [
+    {
+     "anchor": "end",
+     "left": 262.5,
+     "right": 652.39,
+     "size": 89.94,
+     "text": "Honduras",
+     "width": 389.89,
+     "x": 652.39,
+     "y": 1278.42
+    }
+   ],
+   "rc": 0,
+   "regions": [
+    {
+     "bottom": 2766.66,
+     "left": 522.79,
+     "right": 5286.6,
+     "top": 113.4
+    }
+   ]
+  },
+  "EDGE": {
+   "canvas": {
+    "h": 3240.0,
+    "w": 5400.0
+   },
+   "clips": 0,
+   "cmd": "scatter y x, mlabel(lab) mlabvposition(p)",
+   "labels": [
+    {
+     "anchor": "end",
+     "left": -840.11,
+     "right": 554.68,
+     "size": 89.94,
+     "text": "Label1_runs_well_past_the_region",
+     "width": 1394.79,
+     "x": 554.68,
+     "y": 1471.47
+    },
+    {
+     "anchor": "start",
+     "left": 5254.71,
+     "right": 6649.5,
+     "size": 89.94,
+     "text": "Label2_runs_well_past_the_region",
+     "width": 1394.79,
+     "x": 5254.71,
+     "y": 1471.47
+    },
+    {
+     "anchor": "middle",
+     "left": 2207.3,
+     "right": 3602.09,
+     "size": 89.94,
+     "text": "Label3_runs_well_past_the_region",
+     "width": 1394.79,
+     "x": 2904.69,
+     "y": 145.29
+    },
+    {
+     "anchor": "middle",
+     "left": 2207.3,
+     "right": 3602.09,
+     "size": 89.94,
+     "text": "Label4_runs_well_past_the_region",
+     "width": 1394.79,
+     "x": 2904.69,
+     "y": 2797.47
+    }
+   ],
+   "rc": 0,
+   "regions": [
+    {
+     "bottom": 2766.66,
+     "left": 522.79,
+     "right": 5286.6,
+     "top": 113.4
+    }
+   ]
+  }
+ }
+}

@@ -31,6 +31,27 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from conftest import render_models  # noqa: E402
 from conftest import drawn_renderers  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 
 @pytest.fixture
 def auto_df():
@@ -1032,9 +1053,9 @@ class TestFillOptions:
 # ================================================================
 
 def _get_labelsets(fig):
-    """Return all LabelSet objects from a figure (in fig.center)."""
+    """Return all LabelSet objects from a figure (in _mls_center(fig))."""
     from bokeh.models import LabelSet
-    return [r for r in fig.center if isinstance(r, LabelSet)]
+    return [r for r in _mls_center(fig) if isinstance(r, _MLS)]
 
 
 def _assert_labels_each_point(ls, src, col):
@@ -1057,7 +1078,7 @@ class TestMlabelOption:
         std_cds.data["label"] = [f"pt{i}" for i in range(len(std_cds.data["y"]))]
         gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": "label"})
         label_sets = _get_labelsets(fig)
-        assert len(label_sets) == 1, "mlabel should add one LabelSet to fig.center"
+        assert len(label_sets) == 1, "mlabel should add one LabelSet to _mls_center(fig)"
         _assert_labels_each_point(label_sets[0], std_cds, "label")
 
     def test_mlabel_missing_var_no_labelset(self, fig, std_cds):
@@ -1073,7 +1094,7 @@ class TestMlabelOption:
         std_cds.data["label"] = ["a"] * len(std_cds.data["y"])
         gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": "label", "mlabcolor": "red"})
         label_sets = _get_labelsets(fig)
-        assert label_sets, "mlabcolor test: no LabelSet found in fig.center"
+        assert label_sets, "mlabcolor test: no LabelSet found in _mls_center(fig)"
         ls = label_sets[0]
         assert ls.text_color == "#ff0000"
 
@@ -1083,7 +1104,7 @@ class TestMlabelOption:
         std_cds.data["label"] = ["x"] * len(std_cds.data["y"])
         gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": "label", "mlabposition": "9"})
         label_sets = _get_labelsets(fig)
-        assert label_sets, "mlabposition test: no LabelSet found in fig.center"
+        assert label_sets, "mlabposition test: no LabelSet found in _mls_center(fig)"
         ls = label_sets[0]
         assert ls.x_offset < 0, "clock position 9 should give negative x offset"
 
@@ -1093,7 +1114,7 @@ class TestMlabelOption:
         std_cds.data["label"] = ["z"] * len(std_cds.data["y"])
         gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": "label", "mlabposition": "12"})
         label_sets = _get_labelsets(fig)
-        assert label_sets, "mlabposition 12 test: no LabelSet found in fig.center"
+        assert label_sets, "mlabposition 12 test: no LabelSet found in _mls_center(fig)"
         ls = label_sets[0]
         assert ls.y_offset > 0, "clock position 12 should give positive y offset"
 
@@ -1103,7 +1124,7 @@ class TestMlabelOption:
         std_cds.data["label"] = ["s"] * len(std_cds.data["y"])
         gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": "label", "mlabsize": "large"})
         label_sets = _get_labelsets(fig)
-        assert label_sets, "mlabsize test: no LabelSet found in fig.center"
+        assert label_sets, "mlabsize test: no LabelSet found in _mls_center(fig)"
         ls = label_sets[0]
         # WP-30 P1.12a: twoway's mlabsize(large) is 14 pt, so the size is
         # a point string ("14pt"), no longer a px string.
@@ -1115,7 +1136,7 @@ class TestMlabelOption:
         std_cds.data["label"] = ["g"] * len(std_cds.data["y"])
         gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": "label", "mlabgap": "10"})
         label_sets = _get_labelsets(fig)
-        assert label_sets, "mlabgap test: no LabelSet found in fig.center"
+        assert label_sets, "mlabgap test: no LabelSet found in _mls_center(fig)"
         ls = label_sets[0]
         # Default x_offset for position 3 is 4; with gap=10 it should be >4
         assert ls.x_offset > 4, f"mlabgap=10 should give x_offset > 4, got {ls.x_offset}"
@@ -1146,7 +1167,7 @@ class TestMlabelOnNonScatter:
         gm = GlyphMapper()
         src = self._cds_with_label(std_df)
         gm.map_line(fig, src, "y", "x", {"mlabel": "lbl"})
-        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        ls = [r for r in _mls_center(fig) if isinstance(r, _MLS)]
         assert ls == [], "twoway draws no marker label on a line"
 
     def test_mlabel_on_bar(self, fig, std_df):
@@ -1154,7 +1175,7 @@ class TestMlabelOnNonScatter:
         gm = GlyphMapper()
         src = self._cds_with_label(std_df)
         r = gm.map_bar(fig, src, "y", "x", {"mlabel": "lbl"})
-        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        ls = [r for r in _mls_center(fig) if isinstance(r, _MLS)]
         # One, at each bar's top: ">= 1" passed the labels drawn twice.
         assert len(ls) == 1, "mlabel on bar should add one LabelSet"
         # From the source the bars are drawn from -- the layer's own rows
@@ -1168,7 +1189,7 @@ class TestMlabelOnNonScatter:
         gm = GlyphMapper()
         src = self._cds_with_label(std_df)
         gm.map_spike(fig, src, "y", "x", {"mlabel": "lbl"})
-        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        ls = [r for r in _mls_center(fig) if isinstance(r, _MLS)]
         assert ls == [], "twoway draws no marker label on a spike"
 
     def test_mlabel_on_dot(self, fig, std_df):
@@ -1176,7 +1197,7 @@ class TestMlabelOnNonScatter:
         gm = GlyphMapper()
         src = self._cds_with_label(std_df)
         gm.map_dot(fig, src, "y", "x", {"mlabel": "lbl"})
-        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        ls = [r for r in _mls_center(fig) if isinstance(r, _MLS)]
         # One, at each dot: ">= 1" passed the labels drawn twice.
         assert len(ls) == 1
         _assert_labels_each_point(ls[0], src, "lbl")
@@ -1208,7 +1229,7 @@ class TestMlabelOnRangePlots:
         """The (y field, labels) each LabelSet on *fig* draws."""
         from bokeh.models import LabelSet
         return sorted((ls.y, list(ls.source.data[ls.text]))
-                      for ls in fig.center if isinstance(ls, LabelSet))
+                      for ls in _mls_center(fig) if isinstance(ls, _MLS))
 
     @pytest.mark.parametrize("mapper", ["map_rspike", "map_rcap", "map_rline",
                                         "map_rarea", "map_rbar"])
@@ -1232,7 +1253,7 @@ class TestMlabelOnRangePlots:
         src = self._range_cds_with_label()
         gm = GlyphMapper()
         gm.map_rspike(fig, src, "lo", "hi", "x", {})
-        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        ls = [r for r in _mls_center(fig) if isinstance(r, _MLS)]
         assert len(ls) == 0, "no mlabel option must not add LabelSet"
 
 
@@ -2081,7 +2102,10 @@ class TestMlabwidth:
                 "angle")
         assert ({k: getattr(with_w, k) for k in keys}
                 == {k: getattr(without, k) for k in keys})
-        assert fig.renderers == []
+        # Flipped (WP-47 MS-15): the labels are the figure's one renderer
+        # (a Text glyph), where the LabelSet left fig.renderers empty;
+        # mlabwidth() still adds nothing.
+        assert len(fig.renderers) == len(plain.renderers) == 1
 
     def test_mlabwidth_label_still_created(self, fig, gm):
         """LabelSet must still be added to the figure when mlabwidth is present."""
@@ -2089,7 +2113,7 @@ class TestMlabwidth:
         df = pd.DataFrame({"y": [1.0, 2.0], "x": [1.0, 2.0], "lbl": ["a", "b"]})
         src = ColumnDataSource(df)
         gm._apply_mlabel_opts(fig, src, {"mlabel": "lbl", "mlabwidth": "15"}, "x", "y")
-        label_sets = [c for c in fig.center if isinstance(c, LabelSet)]
+        label_sets = [c for c in _mls_center(fig) if isinstance(c, _MLS)]
         # One: ">= 1" passed the labels drawn twice.
         assert len(label_sets) == 1
         _assert_labels_each_point(label_sets[0], src, "lbl")

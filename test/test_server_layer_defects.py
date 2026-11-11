@@ -56,6 +56,27 @@ import dash_render as dr
 from conftest import make_data_json, load_app, memo_build
 from conftest import drawn_renderers  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _SEQ = itertools.count()
 
 _DF = pd.DataFrame({
@@ -260,9 +281,9 @@ def label_texts(figs):
     f = figs[0]
     return sorted(
         r.text for r in
-        list(f.center) + list(f.above) + list(f.below) + list(f.left) +
+        _mls_center(f) + list(f.above) + list(f.below) + list(f.left) +
         list(f.right)
-        if isinstance(r, LabelSet)
+        if isinstance(r, _MLS)
     )
 
 

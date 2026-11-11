@@ -184,6 +184,42 @@ mata: _w30_part("test_wp30_truth.cscript", st_local("w30_secs"), `w30_k', `w30_N
 display as text "test_wp30_truth: part `w30_k'/`w30_N' runs `: word count `w30_run'' blocks: `w30_run'"
 // ---- parts: end ----
 
+// WP-47 MS-15: a layer's marker labels are a Text glyph renderer tagged
+// dash_mlabel, where they were a LabelSet.  _ms15_labels(doc or model or
+// models) gives each LabelSet as it is and each such renderer as an
+// object that reads as the LabelSet did (source, text, x, text_color ...).
+python:
+class _MS15Label(object):
+    def __init__(self, r):
+        self.renderer = r
+        self.source = r.data_source
+
+    def __getattr__(self, name):
+        g = self.renderer.glyph
+        if name in g.properties():
+            return getattr(g, name)
+        return getattr(self.renderer, name)
+
+
+def _ms15_labels(obj):
+    from bokeh.models import GlyphRenderer, LabelSet
+    if hasattr(obj, "select"):
+        ms = (list(obj.select({"type": LabelSet}))
+              + list(obj.select({"type": GlyphRenderer})))
+    else:
+        ms = list(obj)
+    out, seen = [], set()
+    for m in ms:
+        if id(m) in seen:
+            continue
+        seen.add(id(m))
+        if isinstance(m, LabelSet):
+            out.append(m)
+        elif isinstance(m, GlyphRenderer) and "dash_mlabel" in (m.tags or []):
+            out.append(_MS15Label(m))
+    return out
+end
+
 * ==== S01 scaffold: the helpers load and a twoway SVG is read ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S01") & `: list posof "S01" in w30_run' {
@@ -1417,7 +1453,10 @@ def _s08_summary(models):
             msz.append("%g" % float(get("size")))
         elif kind == "Title" and get("text"):
             ttl.append(str(get("text_font_size")))
-        elif kind == "LabelSet":
+        elif kind in ("LabelSet", "MarkerLabel"):
+            # Flipped (WP-47 MS-15): a layer's marker labels are a Text
+            # glyph tagged dash_mlabel (MarkerLabel here), where they were
+            # a LabelSet; its copies hold the same values.
             lbl.append("%.3f|%.3f|%s" % (float(get("x_offset")), float(get("y_offset")),
                                          get("text_font_size")))
         elif kind == "Legend":
@@ -1438,7 +1477,7 @@ def _s08_set(prefix, summ):
 
 
 def _s08_page():
-    models = [(("KeyAxis" if "dash_key_axis" in (a.get("tags") or []) else k),
+    models = [(("KeyAxis" if "dash_key_axis" in (a.get("tags") or []) else "MarkerLabel" if "dash_mlabel" in (a.get("tags") or []) and k == "Text" else k),
                (lambda a, k=k: (lambda attr: _s08_get(k, a, attr)))(a))
               for k, a in _s08_saved_models(_s08_M.getGlobal("S08_PAGE"))]
     _s08_set("S08_", _s08_summary(models))
@@ -1449,7 +1488,7 @@ def _s08_doc_summary(doc):
     for root in doc.roots:
         for m in root.references():
             seen[m.id] = m
-    models = [(("KeyAxis" if "dash_key_axis" in (getattr(m, "tags", None) or []) else type(m).__name__),
+    models = [(("KeyAxis" if "dash_key_axis" in (getattr(m, "tags", None) or []) else "MarkerLabel" if "dash_mlabel" in (getattr(m, "tags", None) or []) and type(m).__name__ == "Text" else type(m).__name__),
                (lambda m=m: (lambda attr: _s08_val(getattr(m, attr, None))))())
               for m in seen.values()]
     return _s08_summary(models)
@@ -5188,8 +5227,12 @@ def _s20_read(doc):
     plots = [m for m in doc.models if isinstance(m, Plot) and any(isinstance(r, GlyphRenderer) for r in m.renderers)]
     p = plots[0]
     labels = []
-    for ls in [x for x in list(p.center) + list(p.above) + list(p.below) + list(p.left) + list(p.right) if isinstance(x, LabelSet)]:
-        texts = [str(t) for t in ls.source.data[field(ls.text)]]
+    sets = [(x.source, x.text) for x in list(p.center) + list(p.above) + list(p.below) + list(p.left) + list(p.right) if isinstance(x, LabelSet)]
+    # Flipped (WP-47 MS-15): a layer's marker labels are a Text glyph
+    # renderer tagged dash_mlabel, where they were a LabelSet.
+    sets += [(r.data_source, r.glyph.text) for r in p.renderers if isinstance(r, GlyphRenderer) and "dash_mlabel" in (r.tags or [])]
+    for src_, txt_ in sets:
+        texts = [str(t) for t in src_.data[field(txt_)]]
         labels.append([len(texts), texts[0] if texts else ""])
     # Flipped (WP-43 LT-21, 097a8f7): a legend-only key proxy (named
     # __dash_keyproxy, tagged dash_key_proxy, its x a NaN value) draws a
@@ -8090,7 +8133,7 @@ def _s33_read(doc):
                          "%s:%.3f" % (str(t.text_color).lower(),
                                       rs(t.text_font_size))])
     out = []
-    for ls in doc.select({"type": LabelSet}):
+    for ls in _ms15_labels(doc):
         # A saved page's LabelSet holds value specs.
         e = "%s:%.3f:%.2f" % (str(getattr(ls.text_color, "value", ls.text_color)).lower(),
                               rs(ls.text_font_size),
@@ -9319,7 +9362,7 @@ def _s37_page():
             with _s37_w.catch_warnings():
                 _s37_w.simplefilter("ignore")
                 doc = Document.from_json(dj)
-            for ls in doc.select({"type": LabelSet}):
+            for ls in _ms15_labels(doc):
                 data = ls.source.data
 
                 def col(v, n):
@@ -9412,7 +9455,7 @@ def _s37_sizes_pg(path):
             with _s37_w.catch_warnings():
                 _s37_w.simplefilter("ignore")
                 doc = Document.from_json(dj)
-            for ls in doc.select({"type": LabelSet}):
+            for ls in _ms15_labels(doc):
                 f = getattr(ls.text, "field", ls.text)
                 first = str(list(ls.source.data[f])[0])
                 sz = getattr(ls.text_font_size, "value", ls.text_font_size)
@@ -11064,13 +11107,14 @@ def _s48_check():
             from bokeh.models import LabelSet
             doc = doc_of(path)
             for root in doc.roots:
-                for m in root.references():
-                    if isinstance(m, LabelSet):
-                        v = m.text_font_size
-                        v = v.get("value") if isinstance(v, dict) else v
-                        v = getattr(v, "value", v)
-                        hit = re.search(r"[0-9]*\.?[0-9]+", str(v))
-                        return float(hit.group(0)) if hit else None
+                # Flipped (WP-47 MS-15): the marker labels' Text glyph,
+                # where it was a LabelSet.
+                for m in _ms15_labels(list(root.references())):
+                    v = m.text_font_size
+                    v = v.get("value") if isinstance(v, dict) else v
+                    v = getattr(v, "value", v)
+                    hit = re.search(r"[0-9]*\.?[0-9]+", str(v))
+                    return float(hit.group(0)) if hit else None
             return None
 
         def tmin(path):

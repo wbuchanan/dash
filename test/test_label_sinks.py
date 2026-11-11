@@ -168,6 +168,27 @@ sys.path.insert(0, _HERE)
 import dash_render as dr  # noqa: E402
 from conftest import group_by_params, make_data_json, load_app  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 #: The bokeh minors the behaviour described above was verified on: the
 #: verified window's (dash_render._DASH_BOKEH_VERIFIED, WP-30 P1.30).  A
 #: patch release inherits its minor's verification (A104).  See
@@ -910,7 +931,7 @@ class TestTextSinks:
     def test_mlabel_draws_the_raw_string_column(self, built, mode):
         b = built(mode, "all")
         # LabelSet(text="make") names the column; Bokeh keeps the string.
-        sets = [m for m in b.models if isinstance(m, LabelSet)
+        sets = [m for m in _mls_all(b.models) if isinstance(m, _MLS)
                 and "make" in (m.text, getattr(m.text, "field", None))]
         assert sets, f"{mode}: no LabelSet draws mlabel(make)"
         for ls in sets:

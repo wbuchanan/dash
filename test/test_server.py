@@ -63,6 +63,26 @@ from by_panel_probe import is_chrome, panel_label  # noqa: E402  (WP-30 P1.15a)
 from conftest import render_models  # noqa: E402
 from conftest import drawn_renderers  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    return list(objs) + mlabel_sets(list(objs))
+
+
 
 def _panel_name(fig):
     """A by() panel's label row, else the figure's title.  Flipped (WP-30
@@ -2201,7 +2221,7 @@ class TestServerMlabel:
                     _collect(child)
         for root in doc.roots:
             _collect(root)
-        has_labelset = any(isinstance(o, LabelSet) for o in all_objs)
+        has_labelset = any(isinstance(o, _MLS) for o in _mls_all(all_objs))
         assert has_labelset, \
             "server-mode scatter with mlabel() must produce a LabelSet annotation"
 
@@ -2256,7 +2276,7 @@ class TestServerMlabelNonScatter:
             "graph_options": {"name": "g1"},
         }])
         all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmline")
-        assert not any(isinstance(o, LabelSet) for o in all_objs), \
+        assert not any(isinstance(o, _MLS) for o in _mls_all(all_objs)), \
             "server-mode line with mlabel() must draw no LabelSet (twoway draws none)"
 
     def test_mlabel_in_connected_produces_labelset(self, dr_module, auto_df):
@@ -2268,7 +2288,7 @@ class TestServerMlabelNonScatter:
             "graph_options": {"name": "g1"},
         }])
         all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmconn")
-        assert any(isinstance(o, LabelSet) for o in all_objs), \
+        assert any(isinstance(o, _MLS) for o in _mls_all(all_objs)), \
             "server-mode connected with mlabel() must produce a LabelSet annotation"
 
     def test_mlabel_in_dot_produces_labelset(self, dr_module, auto_df):
@@ -2280,7 +2300,7 @@ class TestServerMlabelNonScatter:
             "graph_options": {"name": "g1"},
         }])
         all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmdot")
-        assert any(isinstance(o, LabelSet) for o in all_objs), \
+        assert any(isinstance(o, _MLS) for o in _mls_all(all_objs)), \
             "server-mode dot with mlabel() must produce a LabelSet annotation"
 
     def test_mlabel_in_tsline_draws_no_labelset(self, dr_module, auto_df):
@@ -2292,7 +2312,7 @@ class TestServerMlabelNonScatter:
             "graph_options": {"name": "g1"},
         }])
         all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmtsline")
-        assert not any(isinstance(o, LabelSet) for o in all_objs), \
+        assert not any(isinstance(o, _MLS) for o in _mls_all(all_objs)), \
             "server-mode tsline with mlabel() must draw no LabelSet (twoway draws none)"
 
     def test_mlabel_in_dropline_produces_labelset(self, dr_module, auto_df):
@@ -2304,7 +2324,7 @@ class TestServerMlabelNonScatter:
             "graph_options": {"name": "g1"},
         }])
         all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmdropline")
-        assert any(isinstance(o, LabelSet) for o in all_objs), \
+        assert any(isinstance(o, _MLS) for o in _mls_all(all_objs)), \
             "server-mode dropline with mlabel() must produce a LabelSet annotation"
 
     def test_mlabel_on_rspike_draws_no_labelset(self, dr_module, auto_df):
@@ -2316,7 +2336,7 @@ class TestServerMlabelNonScatter:
             "graph_options": {"name": "g1"},
         }])
         all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmrspike_mlab")
-        assert not any(isinstance(o, LabelSet) for o in all_objs), \
+        assert not any(isinstance(o, _MLS) for o in _mls_all(all_objs)), \
             "server-mode rspike with mlabel() must draw no LabelSet (twoway draws none)"
 
     def test_mlabel_on_rline_draws_no_labelset(self, dr_module, auto_df):
@@ -2328,7 +2348,7 @@ class TestServerMlabelNonScatter:
             "graph_options": {"name": "g1"},
         }])
         all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmrline_mlab")
-        assert not any(isinstance(o, LabelSet) for o in all_objs), \
+        assert not any(isinstance(o, _MLS) for o in _mls_all(all_objs)), \
             "server-mode rline with mlabel() must draw no LabelSet (twoway draws none)"
 
     def test_mlabel_on_rbar_draws_no_labelset(self, dr_module, auto_df):
@@ -2340,7 +2360,7 @@ class TestServerMlabelNonScatter:
             "graph_options": {"name": "g1"},
         }])
         all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmrbar_mlab")
-        assert not any(isinstance(o, LabelSet) for o in all_objs), \
+        assert not any(isinstance(o, _MLS) for o in _mls_all(all_objs)), \
             "server-mode rbar with mlabel() must draw no LabelSet (twoway draws none)"
 
 
@@ -3579,7 +3599,7 @@ class TestServerRconnectedMlabel:
                         if c is not None: collect(c)
                 elif child is not None: collect(child)
         for root in doc.roots: collect(root)
-        assert any(isinstance(o, LabelSet) for o in all_objs), \
+        assert any(isinstance(o, _MLS) for o in _mls_all(all_objs)), \
             "server-mode rconnected with mlabel() must produce a LabelSet"
 
 

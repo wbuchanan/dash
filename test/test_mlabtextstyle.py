@@ -38,6 +38,27 @@ from test_mode_parity import _spec as _mp_spec  # noqa: E402
 import test_mlabvposition as _mv  # noqa: E402
 from probe_groups import probe_params, representative  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _FIX = json.load(open(os.path.join(_HERE, "fixtures",
                                    "mlabtextstyle_truth.json"),
                       encoding="utf-8"))
@@ -170,8 +191,8 @@ def _drawn(mode, sch):
     probes, spec, df = _dashboard(sch)
     ms = (_mv._saved if mode == "saved" else _mv._served)(spec, df)
     out = {}
-    for ls in ms:
-        if not isinstance(ls, LabelSet):
+    for ls in _mls_all(ms):
+        if not isinstance(ls, _MLS):
             continue
         first = str(ls.source.data[_mv._field(ls.text)][0])
         m = re.match(r"([QS])([0-9]+)_", first)
@@ -238,7 +259,7 @@ class TestTheLabels:
                 ms = [m for r in doc.roots for m in r.references()]
         body = _parser("stcolor").textbox_style("body")
         drawn = {(_pt(ls.text_font_size), _col(ls.text_color))
-                 for ls in ms if isinstance(ls, LabelSet)}
+                 for ls in _mls_all(ms) if isinstance(ls, _MLS)}
         assert drawn == {(_pt(body[0]), body[1].lower())}, drawn
         msgs = [str(w.message) for w in caught]
         assert ("dash: mlabtextstyle(Heading) is not a recognised text "

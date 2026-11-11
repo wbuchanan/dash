@@ -25,6 +25,27 @@ sys.path.insert(0, _HERE)
 
 from test_varlabel_options import T, MODES, ado_text, figs  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _PRE = {"mlabel": "make", "mlabprefix": '"["', "mlabsuffix": '"]"'}
 
 
@@ -38,7 +59,7 @@ def _plot(t, **o):
 def _texts(fs):
     out = []
     for f in fs:
-        for ls in f.select({"type": LabelSet}):
+        for ls in _mls_select(f):
             col = ls.text if isinstance(ls.text, str) else ls.text.field
             out.extend(str(v) for v in ls.source.data[col])
     return out

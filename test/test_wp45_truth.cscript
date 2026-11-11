@@ -475,7 +475,10 @@ def _q4502_saved(sp, dp, what):
               if any(type(m).__name__ == "Legend" for m in getattr(f, s))]
         got = "ok" if on == ["center"] else "legend on %s" % on
     elif what == "mlab_9":
-        t = [m for m in f.center if type(m).__name__ == "LabelSet"]
+        # Flipped (WP-47 MS-15): the marker labels are a Text glyph
+        # (tagged dash_mlabel), where they were a LabelSet in the centre.
+        t = [r.glyph for r in f.renderers
+             if "dash_mlabel" in (getattr(r, "tags", None) or [])]
         got = ("ok" if t and all(float(g.x_offset) < 0 and
                                  float(g.y_offset) == 0 for g in t)
                else "offsets %s" % [(g.x_offset, g.y_offset) for g in t])

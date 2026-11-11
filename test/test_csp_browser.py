@@ -427,6 +427,14 @@ def _specs():
                           _scatter(msymbol="Dh")], by="foreign"),
             _graph("g3", [_scatter(msymbol="arrow")],
                    if_expr="foreign == 1")]), _frame()),
+        # WP-47 MS-15: marker labels at 9 o'clock that run past the plot
+        # region's left edge, over the y axis, as twoway draws them.
+        "mlabels": (_spec([
+            _graph("g1", [_scatter(mlabel="weight", mlabposition="9",
+                                   mlabprefix="A long marker label ")]),
+            _graph("g2", [_scatter(mlabel="weight", mlabposition="9",
+                                   mlabprefix="A long marker label ")],
+                   by="foreign")]), _frame()),
         # WP-47 DG-12: a zero and a missing weight drawn as twoway's
         # minimal dot, in a by() graph and in a layer a move empties.
         "wzero": (_spec([
@@ -677,6 +685,18 @@ class TestSavedPageInChrome:
             assert check(p.read(js)) != pytest.approx(h0)
             assert p.js_errors() == [], p.js_errors()
 
+    def test_marker_labels_run_past_the_frame(self):
+        """WP-47 MS-15: a 9 o'clock label at the left edge draws over the
+        y axis, in a plain graph and in each by() panel."""
+        with _CspProbe(_url(_saved_page("mlabels"))) as p:
+            _check_labels_run_past_the_frame(p)
+
+    def test_a_pan_takes_a_label_out_with_its_point(self):
+        """WP-47 MS-15: a point panned out of the frame is not labelled
+        over the axes; panned back, it is labelled again."""
+        with _CspProbe(_url(_saved_page("mlabels"))) as p:
+            _check_labels_follow_the_frame(p)
+
     def test_custom_markers_paint(self):
         """WP-47 PIC-2: the defs markers compile under the page's CSP (no
         violation, no error) and paint: hiding each layer clears pixels
@@ -812,6 +832,16 @@ class TestServedPageInChrome:
             assert p.ran() == [False, False], p.ran()
             assert set(p.violations()) == _INJECTED, p.violations()
 
+
+    def test_marker_labels_run_past_the_frame(self, servers, kind):
+        """WP-47 MS-15: the served page's marker labels too."""
+        with _CspProbe(_served_url(servers(kind, "mlabels"))) as p:
+            _check_labels_run_past_the_frame(p)
+
+    def test_a_pan_takes_a_label_out_with_its_point(self, servers, kind):
+        """WP-47 MS-15: the served page's labels follow a pan too."""
+        with _CspProbe(_served_url(servers(kind, "mlabels"))) as p:
+            _check_labels_follow_the_frame(p)
 
     def test_custom_markers_paint(self, servers, kind):
         """WP-47 PIC-2: the served page's defs markers paint too."""
@@ -1101,6 +1131,116 @@ _MARKER_INK_JS = r"""(() => {
   for (const v of Object.values(Bokeh.index)) walk(v);
   return JSON.stringify(out);
 })()"""
+
+
+#: WP-47 MS-15: per plot, the ink left of the plot frame (the y axis's
+#: strip, where twoway runs a 9 o'clock label on) and the marker-label
+#: renderers' ids.
+_LABEL_INK_JS = r"""(() => {
+  const out = [];
+  const walk = (pv) => {
+    if (pv.renderer_views && pv.canvas_view && pv.frame) {
+      const ids = [];
+      for (const rv of pv.renderer_views.values()) {
+        const gv = rv.glyph;
+        if (!gv || gv.model.constructor.__name__ !== "Text") continue;
+        if (!(gv.model.tags || []).includes("dash_mlabel")) continue;
+        if (!rv.model.visible) continue;
+        ids.push(rv.model.id);
+      }
+      if (ids.length) {
+        const comp = pv.canvas_view.compose();
+        const pr = comp.pixel_ratio || 1;
+        const fb = pv.frame.bbox;
+        const w = Math.max(1, Math.floor(fb.left * pr) - 1);
+        const y0 = Math.round(fb.top * pr), h = Math.round(fb.height * pr);
+        const d = comp.ctx.getImageData(0, y0, w, h).data;
+        let n = 0;
+        for (let j = 0; j < d.length; j += 4)
+          if (d[j] < 200 || d[j + 1] < 200 || d[j + 2] < 200) n++;
+        out.push([ids, n]);
+      }
+    }
+    if (pv.child_views) for (const c of pv.child_views) walk(c);
+  };
+  for (const v of Object.values(Bokeh.index)) walk(v);
+  return JSON.stringify(out);
+})()"""
+
+
+def _check_labels_run_past_the_frame(p):
+    """Each plot's marker labels put ink left of its frame: hiding them
+    clears pixels there (BokehJS clipped a LabelSet at the frame)."""
+    assert p.violations() == [], p.violations()
+    assert p.js_errors() == [], p.js_errors()
+    before = p.read(_LABEL_INK_JS)
+    assert len(before) >= 2, before
+    ids = json.dumps([i for row in before for i in row[0]])
+    p.in_task("const ids = new Set(%s); for (const r of __dash_models("
+              "'GlyphRenderer')) if (ids.has(r.id)) r.visible = false;" % ids)
+    time.sleep(1.0)
+    after = p.read(_LABEL_INK_JS.replace("if (!rv.model.visible) continue;",
+                                         ""))
+    gone = [b[1] - a[1] for b, a in zip(before, after)]
+    assert len(after) == len(before) and all(g > 0 for g in gone), (
+        before, after)
+
+
+#: WP-47 MS-15: per marker-label renderer, [rows its view draws, rows
+#: whose point lies in its figure's x range and y range].
+_LABEL_ROWS_JS = r"""(() => {
+  const out = [];
+  for (const f of __dash_models('Figure')) {
+    for (const r of f.renderers) {
+      const g = r.glyph;
+      if (!g || g.constructor.__name__ !== "Text") continue;
+      if (!(g.tags || []).includes("dash_mlabel")) continue;
+      const xs = r.data_source.get_column(g.x.field) || [];
+      const ys = r.data_source.get_column(g.y.field) || [];
+      const lo = (a, b) => Math.min(a, b), hi = (a, b) => Math.max(a, b);
+      const xr = f.x_range, yr = f.y_range;
+      let n = 0;
+      for (let i = 0; i < xs.length; i++) {
+        const x = Number(xs[i]), y = Number(ys[i]);
+        if (x >= lo(xr.start, xr.end) && x <= hi(xr.start, xr.end) &&
+            y >= lo(yr.start, yr.end) && y <= hi(yr.start, yr.end)) n++;
+      }
+      out.push([r.view.indices.count, n, xs.length]);
+    }
+  }
+  return JSON.stringify(out);
+})()"""
+
+#: Moves the first labelled figure's x range to the upper half of its
+#: points (a pan the reader could make), or back to *where*.
+_LABEL_PAN_JS = r"""
+for (const f of __dash_models('Figure')) {
+  const r = f.renderers.find(r => r.glyph && r.glyph.constructor.__name__
+      === "Text" && (r.glyph.tags || []).includes("dash_mlabel"));
+  if (!r) continue;
+  window.__dash_ms15 = window.__dash_ms15 || [f.x_range.start, f.x_range.end];
+  const xs = Array.from(r.data_source.get_column(r.glyph.x.field)).map(Number);
+  const mid = (Math.min(...xs) + Math.max(...xs)) / 2;
+  if (%s) { f.x_range.start = window.__dash_ms15[0]; f.x_range.end = window.__dash_ms15[1]; }
+  else { f.x_range.start = mid; }
+  break;
+}
+"""
+
+
+def _check_labels_follow_the_frame(p):
+    """A pan that takes points out of the frame takes their labels too:
+    each label renderer draws exactly the rows whose point is in its
+    figure's ranges, all of them at first and again after the pan back."""
+    first = p.read(_LABEL_ROWS_JS)
+    assert first and all(d == n == t for d, n, t in first), first
+    p.in_task(_LABEL_PAN_JS % "false")
+    moved = p.wait_change(_LABEL_ROWS_JS, first)
+    assert moved[0][0] == moved[0][1] < moved[0][2], moved
+    p.in_task(_LABEL_PAN_JS % "true")
+    back = p.wait_change(_LABEL_ROWS_JS, moved)
+    assert back == first, (first, moved, back)
+    assert p.js_errors() == [], p.js_errors()
 
 
 def _check_markers_paint(p):

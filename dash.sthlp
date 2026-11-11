@@ -4158,8 +4158,14 @@ panel and every other linked graph -- in the markers of {cmd:scatter},
 {pstd}
 Marker labels are drawn on the plot types {cmd:twoway} draws them on, at
 the places {cmd:twoway} draws them (measured against {cmd:twoway}'s own
-pictures); see {it:Where labels are drawn} below.  These options apply to
-the per-plot specification (not to {cmd:dash build} options).
+pictures); see {it:Where labels are drawn} below.  A label runs past the
+plot region, over the axes and their labels, to the edge of the graph, as
+{cmd:twoway} draws it; under {cmd:by()} it stops at its panel's edge,
+where {cmd:twoway}'s runs on over the next panel.  When a pan, a zoom or
+a range move takes a point out of the plot region, its label goes with
+it, so no label of a point you cannot see is left over the axes.  These
+options apply to the per-plot specification (not to {cmd:dash build}
+options).
 
 {synoptset 28}{...}
 {synopt:{cmdab:ml:abel(}{it:varname}{cmd:)}}label each observation with

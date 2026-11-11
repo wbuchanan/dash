@@ -740,7 +740,63 @@ def drawn_renderers(fig):
     left out here with the proxies: the layer's glyphs are the fills."""
     rends = fig.renderers if hasattr(fig, "renderers") else fig
     return [r for r in list(rends or ()) if not is_key_proxy(r)
-            and "dash_outline" not in (getattr(r, "tags", None) or ())]
+            and "dash_outline" not in (getattr(r, "tags", None) or ())
+            and MLABEL_TAG not in (getattr(r, "tags", None) or ())]
+
+
+#: The tag on a marker-label renderer and its Text glyphs (WP-47 MS-15).
+MLABEL_TAG = "dash_mlabel"
+
+
+class MarkerLabels:
+    """One layer's marker labels, read as the ``LabelSet`` they were drawn
+    with until WP-47 MS-15: ``source`` is the renderer's data source,
+    ``renderer`` the renderer, and every other attribute the Text glyph's
+    (``text``, ``x``, ``y``, ``x_offset``, ``text_color``, ...).  The
+    values are the models' own, so a pin on them reads what the page
+    draws."""
+
+    def __init__(self, renderer):
+        self.renderer = renderer
+        self.source = renderer.data_source
+
+    def __getattr__(self, name):
+        # The glyph's properties; the renderer's own (x_range_name, level,
+        # view, visible) where the glyph has none.
+        g = self.renderer.glyph
+        if name in g.properties():
+            return getattr(g, name)
+        return getattr(self.renderer, name)
+
+    def __repr__(self):
+        return "MarkerLabels(%r)" % (self.renderer,)
+
+
+def is_mlabel(r):
+    """True for a marker-label renderer (WP-47 MS-15)."""
+    return MLABEL_TAG in (getattr(r, "tags", None) or ())
+
+
+def mlabel_sets(fig):
+    """The marker labels of *fig* (a figure, a document, or an iterable of
+    models or figures) as :class:`MarkerLabels`, in renderer order: what
+    a reader of the old ``LabelSet`` in ``fig.center`` reads now."""
+    if hasattr(fig, "renderers"):
+        rends = list(fig.renderers)
+    elif hasattr(fig, "roots") or hasattr(fig, "models"):
+        rends = [m for m in (fig.models if hasattr(fig, "models") else ())]
+    else:
+        rends = []
+        for m in fig:
+            rends.extend(list(m.renderers) if hasattr(m, "renderers")
+                         and not hasattr(m, "glyph") else [m])
+    seen, out = set(), []
+    for r in rends:
+        if (is_mlabel(r) and getattr(r, "glyph", None) is not None
+                and id(r) not in seen):
+            seen.add(id(r))
+            out.append(MarkerLabels(r))
+    return out
 
 
 def stroke_field(r, axis):

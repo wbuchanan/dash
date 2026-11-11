@@ -257,7 +257,9 @@ class TestPlainFace:
         assert all(v.startswith("Courier") for v in title), title
         sub = fonts[("Title", "S", "text_font")]
         assert all(v.startswith("Times") for v in sub), sub
-        for cls, text in (("LabelSet", "lab"), ("Label", "added")):
+        # Flipped (WP-47 MS-15): the marker labels are a Text glyph, where
+        # they were a LabelSet.
+        for cls, text in (("Text", "lab"), ("Label", "added")):
             got = fonts[(cls, text, "text_font")]
             assert all(v.startswith("Courier") for v in got), (cls, got)
 

@@ -80,6 +80,7 @@ _HELP = os.path.join(_HERE, "..", "dash.sthlp")
 # ===========================================================================
 
 from conftest import render_models  # noqa: E402
+from conftest import mlabel_sets  # noqa: E402
 from conftest import drawn_renderers  # noqa: E402
 
 
@@ -230,9 +231,11 @@ def _served_figures(doc):
 
 
 def _labelsets(fig):
+    # WP-47 MS-15: the marker labels are Text glyph renderers, read as the
+    # LabelSets they were (conftest.MarkerLabels).
     return [x for x in (list(fig.center) + list(fig.above) + list(fig.below)
                         + list(fig.left) + list(fig.right))
-            if isinstance(x, LabelSet)]
+            if isinstance(x, LabelSet)] + mlabel_sets(fig)
 
 
 def _field(spec):

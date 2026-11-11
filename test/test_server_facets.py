@@ -69,6 +69,27 @@ _LABEL_NAMES = {"foreign": "origin"}
 from conftest import render_models  # noqa: E402
 from conftest import drawn_renderers  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 
 def _write(tmp_path, spec, df=_DF):
     tag = next(_SEQ)
@@ -163,9 +184,9 @@ def panel_profile(fig):
                         for t in f.tools
                         if isinstance(t, HoverTool) and t.tooltips),
         "labels": sorted(r.text for r in
-                         list(f.center) + list(f.above) + list(f.below) +
+                         _mls_center(f) + list(f.above) + list(f.below) +
                          list(f.left) + list(f.right)
-                         if isinstance(r, LabelSet)),
+                         if isinstance(r, _MLS)),
         "legend": [([_label_of(i) for i in lg.items],
                     lg.label_text_font_size, lg.visible)
                    for lg in list(f.center) + list(f.above) +

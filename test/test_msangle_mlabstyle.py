@@ -34,6 +34,27 @@ import dash_render as dr  # noqa: E402
 from test_varlabel_options import T, MODES, ado_text, figs, sc  # noqa: E402
 from conftest import drawn_renderers  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 
 def _marker_angles(fs):
     out = []
@@ -48,7 +69,7 @@ def _marker_angles(fs):
 
 
 def _labelsets(fs):
-    return [ls for f in fs for ls in f.select({"type": LabelSet})]
+    return [ls for f in fs for ls in _mls_select(f)]
 
 
 class TestMsangle:

@@ -73,6 +73,7 @@ _DF["weight2"] = _DF["weight"] + 300.0
 
 from conftest import render_models  # noqa: E402
 from conftest import drawn_renderers  # noqa: E402
+from conftest import mlabel_sets  # noqa: E402
 
 
 def _spec(plots, scheme, go=None, bo=None):
@@ -193,7 +194,10 @@ def _of_type(fig, name):
 
 
 def _labelsets(fig):
-    return _of_type(fig, "LabelSet")
+    # WP-47 MS-15: the marker labels are Text glyph renderers, read as the
+    # LabelSets they were (conftest.MarkerLabels); any other LabelSet as
+    # before.
+    return _of_type(fig, "LabelSet") + mlabel_sets(fig)
 
 
 def _one_labelset(fig):

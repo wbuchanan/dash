@@ -26,6 +26,27 @@ import dash_render as dr
 from conftest import load_app, make_data_json, render_models
 from test_server_layer_defects import plot_for
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _HELP = os.path.join(_HERE, "..", "dash.sthlp")
 _NAN = float("nan")
 
@@ -177,8 +198,8 @@ def _frames_files(spec, df=None):
 
 
 def _label_texts(fig):
-    for a in fig.center:
-        if type(a).__name__ == "LabelSet":
+    for a in _mls_center(fig):
+        if type(a).__name__ in ("LabelSet", "MarkerLabels"):
             return list(a.source.data[a.text])
     return None
 
@@ -243,11 +264,11 @@ class TestTheFramePage:
         mod = load_app(ap, "_frames_served_app", draw=False)
         doc = Document()
         mod.make_document(doc)
-        texts = [sorted(set(m.source.data[m.text])) for m in doc.models
-                 if isinstance(m, LabelSet)]
+        texts = [sorted(set(m.source.data[m.text])) for m in _mls_all(doc.models)
+                 if isinstance(m, _MLS)]
         assert ["Abroad", "US"] in texts and ["Domestic", "Foreign"] in texts
-        fsrc = [list(m.source.data["foreign"]) for m in doc.models
-                if isinstance(m, LabelSet)]
+        fsrc = [list(m.source.data["foreign"]) for m in _mls_all(doc.models)
+                if isinstance(m, _MLS)]
         assert [1.0, 0.0, 1.0, 0.0, 1.0] in fsrc
 
     def test_a_served_move_filters_each_graph_by_its_own_frame(self):
@@ -265,11 +286,11 @@ class TestTheFramePage:
         mod.make_document(doc)
         w = [x for x in _widgets_of(doc) if isinstance(x, Select)][0]
         _fire(w, [v for v, lab in w.options if lab == "Foreign"][0])
-        kept = sorted(len(m.source.data["foreign"]) for m in doc.models
-                      if isinstance(m, LabelSet))
+        kept = sorted(len(m.source.data["foreign"]) for m in _mls_all(doc.models)
+                      if isinstance(m, _MLS))
         assert kept == [2, 3]
-        for m in doc.models:
-            if isinstance(m, LabelSet):
+        for m in _mls_all(doc.models):
+            if isinstance(m, _MLS):
                 assert set(m.source.data["foreign"]) == {1.0}
 
     def test_a_split_plotted_variable_keeps_its_rows(self):

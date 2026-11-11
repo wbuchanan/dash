@@ -521,7 +521,9 @@ assert r(rc) == 0
 // once it draws it; the labels' place is U02-06's.
 cert_log_has "`logfile'", needle("headlabel")
 assert r(found) == 0
-cert_file_has "`page'", needle(`""name":"LabelSet""')
+// Flipped (WP-47 MS-15): the labels are a Text renderer tagged
+// dash_mlabel, where they were a LabelSet.
+cert_file_has "`page'", needle(`""dash_mlabel""')
 assert r(found) == 1
 display "HC5-09 PASS: twoway's headlabel moves the label to the head; dash takes headlabel with no note and draws its labels"
 

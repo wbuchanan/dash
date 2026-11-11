@@ -78,6 +78,27 @@ _PAST = 2936550.0
 
 from conftest import render_models  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 
 def _iso(ts):
     return None if pd.isna(ts) else pd.Timestamp(ts).strftime("%Y-%m-%d")
@@ -584,7 +605,7 @@ class TestTheSavedPageHoldsThePlaceholder:
     def test_the_marker_labels_write_the_placeholder_as_a_date(self, tmp_path):
         # GAPS2 E3/G6, WP-28 S12: _LABELS is Stata's %td text now.
         r, _w = _saved(tmp_path, _spec(_LABELLED), _frame())
-        (ls,) = [x for x in r.figures["g1"].center if isinstance(x, LabelSet)]
+        (ls,) = [x for x in _mls_center(r.figures["g1"]) if isinstance(x, _MLS)]
         assert list(ls.source.data[ls.text]) == _LABELS
 
     def test_a_by_panel_of_the_placeholder_is_titled_with_its_date(
@@ -636,7 +657,7 @@ class TestTheSavedPageHoldsThePlaceholder:
         # The four dates are drawn and labelled; the value Stata prints as
         # a number is a missing x, which twoway leaves out.
         assert _drawn_date(r.figures["g1"]) == _ISO[:4]
-        (ls,) = [x for x in r.figures["g1"].center if isinstance(x, LabelSet)]
+        (ls,) = [x for x in _mls_center(r.figures["g1"]) if isinstance(x, _MLS)]
         assert list(ls.source.data[ls.text]) == _LABELS[:4]
         snap = r.filter_callbacks[0].args["orig_source"].data["date"]
         assert list(snap) == _MS[:4] + [None]
@@ -657,7 +678,7 @@ class TestTheServedAppWritesThePlaceholder:
     def test_the_marker_labels_write_the_placeholder_as_a_date(self, tmp_path):
         # GAPS2 E3/G6, WP-28 S12: _LABELS is Stata's %td text now.
         doc, _w = _served(tmp_path, _spec(_LABELLED), _frame())
-        (ls,) = list(doc.select({"type": LabelSet}))
+        (ls,) = list(_mls_select(doc))
         assert list(ls.source.data[ls.text]) == _LABELS
 
     def test_a_by_panel_of_the_placeholder_is_titled_with_its_date(
@@ -851,7 +872,7 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
         r, _w = _saved(tmp_path, _spec([_plot_for("dropline",
                                                   {"mlabel": "date"})]),
                        _spread_frame())
-        (ls,) = [x for x in r.figures["g1"].center if isinstance(x, LabelSet)]
+        (ls,) = [x for x in _mls_center(r.figures["g1"]) if isinstance(x, _MLS)]
         labels = list(ls.source.data[ls.text])
         # `display %td 14977' 02jan2001, `display %td 14977+330' 28nov2001.
         # GAPS2 E3/G6, WP-28 S12: Stata's text, 02jan2001 .. 28nov2001.
@@ -883,8 +904,8 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
                            "lo": [1.0, 2.0, 3.0, 4.0],
                            "hi": [2.0, 3.0, 4.0, 5.0]})
         r, _w = _saved(tmp_path, _spec([plot]), df)
-        return [list(x.source.data[x.text]) for x in r.figures["g1"].center
-                if isinstance(x, LabelSet)]
+        return [list(x.source.data[x.text]) for x in _mls_center(r.figures["g1"])
+                if isinstance(x, _MLS)]
 
     def test_rscatter_labels_a_missing_and_a_far_date(self, tmp_path):
         """Both ends labelled; a missing date in its label list failed the

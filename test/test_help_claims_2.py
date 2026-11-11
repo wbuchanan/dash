@@ -82,6 +82,27 @@ from serve_token_probe import FakeStdin  # noqa: E402  (WP-29 P0.12a)
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _HELP = os.path.join(_ROOT, "dash.sthlp")
 
 
@@ -637,7 +658,7 @@ class TestLabelsUsedAutomatically:
         spec = _spec([plot_for("scatter", {"mlabel": "foreign"})])
         r, _, _, doc, _, _ = _both(tmp_path, spec)
         for fig in (_saved_figure(r), _served_figure(doc)):
-            ls = [x for x in fig.center if isinstance(x, LabelSet)]
+            ls = [x for x in _mls_center(fig) if isinstance(x, _MLS)]
             assert len(ls) == 1
             text = set(str(t) for t in ls[0].source.data[ls[0].text])
             assert text == {"Domestic", "Foreign"}, text

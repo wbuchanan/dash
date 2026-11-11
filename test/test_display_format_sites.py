@@ -87,6 +87,7 @@ Built = namedtuple("Built", "mode models warnings obj")
 
 
 from conftest import render_models  # noqa: E402
+from conftest import mlabel_sets  # noqa: E402
 
 
 def _graph(name, plots, **go):
@@ -565,7 +566,8 @@ class TestNumericAxis:
 
 def _labelset_texts(b):
     out = {}
-    for ls in of_type(b, LabelSet):
+    # WP-47 MS-15: the marker labels, read as the LabelSets they were.
+    for ls in of_type(b, LabelSet) + mlabel_sets(list(b.models)):
         out[ls.text if isinstance(ls.text, str) else ls.text.field] = list(
             ls.source.data[ls.text if isinstance(ls.text, str)
                            else ls.text.field])

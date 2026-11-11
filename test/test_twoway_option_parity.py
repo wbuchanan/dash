@@ -157,9 +157,9 @@ def _glyphs(fig, kind):
 
 
 def _labelset(fig):
-    sets = [x for x in (list(fig.center) + list(fig.above) + list(fig.below)
+    sets = [x for x in (list(_mls_center(fig)) + list(fig.above) + list(fig.below)
                         + list(fig.left) + list(fig.right))
-            if isinstance(x, LabelSet)]
+            if isinstance(x, _MLS)]
     assert len(sets) == 1, sets
     return sets[0]
 
@@ -192,6 +192,27 @@ def _notes(fn):
 # ===========================================================================
 
 from test_abbreviations import _program_body, _syntax_options  # noqa: E402
+
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
 
 _ADO = os.path.join(_HERE, "..", "dash.ado")
 
@@ -552,7 +573,7 @@ def test_mlabangle_reaches_every_layer_that_labels():
             [plot_for(ptype, {"mlabel": "make", "mlabangle": "45"})])
         assert std_w == srv_w
         for fig in _figures(r, doc):
-            sets = [x for x in fig.center if isinstance(x, LabelSet)]
+            sets = [x for x in _mls_center(fig) if isinstance(x, _MLS)]
             assert len(sets) == (2 if ptype == "rcapsym" else 1), ptype
             for ls in sets:
                 assert float(ls.angle) == pytest.approx(
@@ -632,7 +653,7 @@ def test_two_layers_label_one_variable_in_two_formats():
     ])
     assert std_w == srv_w
     for fig in _figures(r, doc):
-        sets = [x for x in fig.center if isinstance(x, LabelSet)]
+        sets = [x for x in _mls_center(fig) if isinstance(x, _MLS)]
         assert sorted(_texts(s)[0] for s in sets) == ["22.0", "22.00"]
 
 

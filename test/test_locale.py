@@ -268,8 +268,11 @@ class TestGraphSetFontsDrawn:
         ms = self._models(mode, tmp_path, opts={"mlabel": "lab"})
         # Flipped: the face is a value() now, not a plain string (which a
         # LabelSet serialises as a column name); read the value it holds.
+        # Flipped (WP-47 MS-15): the labels are Text glyphs tagged
+        # dash_mlabel, where they were a LabelSet; the face is the same.
         fonts = [getattr(m.text_font, "value", m.text_font) for m in ms
-                 if type(m).__name__ == "LabelSet"]
+                 if type(m).__name__ == "Text"
+                 and "dash_mlabel" in (m.tags or [])]
         assert fonts and all(str(f).startswith("Courier") for f in fonts), \
             fonts
 
@@ -293,7 +296,9 @@ class TestGraphSetFontsDrawn:
                     continue
                 out = d.property.to_serializable(m, p, getattr(m, p))
                 seen.append((type(m).__name__, p, out))
-        assert any(n == "LabelSet" for n, _p, _o in seen), seen
+        # Flipped (WP-47 MS-15): the marker labels' Text glyphs, where
+        # they were a LabelSet.
+        assert any(n == "Text" for n, _p, _o in seen), seen
         bad = [r for r in seen if isinstance(r[2], Field)]
         assert not bad, bad
 

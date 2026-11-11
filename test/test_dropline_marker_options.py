@@ -34,6 +34,27 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 
 @pytest.fixture
 def src():
@@ -92,7 +113,7 @@ class TestTheMarkerOptionsReachTheDot:
 class TestMarkerLabelsAreDrawn:
     def test_mlabel_produces_a_label_set(self, src):
         _gm, fig, _seg, _dot = _draw({"mlabel": "make"}, src=src)
-        labels = [r for r in fig.center if isinstance(r, LabelSet)]
+        labels = [r for r in _mls_center(fig) if isinstance(r, _MLS)]
         assert labels, (
             "dash.sthlp lists dropline as taking mlabel(); no labels are "
             "drawn because the label column is not in the source"
@@ -102,7 +123,7 @@ class TestMarkerLabelsAreDrawn:
     def test_no_mlabel_draws_no_labels(self, src):
         """The control: a LabelSet must not appear without the option."""
         _gm, fig, _seg, _dot = _draw({}, src=src)
-        assert not [r for r in fig.center if isinstance(r, LabelSet)]
+        assert not [r for r in _mls_center(fig) if isinstance(r, _MLS)]
 
 
 class TestTheSchemeSetsTheSizeAndWidth:

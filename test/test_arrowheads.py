@@ -48,6 +48,27 @@ from bokeh.models import (Arrow, ColumnDataSource, CustomJS, LabelSet,  # noqa: 
 from bokeh.plotting import figure  # noqa: E402
 from js_runner import requires_node, run_js  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _FIX = os.path.join(_HERE, "fixtures", "arrowhead_truth.json")
 with open(_FIX, encoding="utf-8") as _fh:
     TRUTH = json.load(_fh)
@@ -462,7 +483,7 @@ class TestHeadlabel:
             getattr(gm, "map_" + ptype)(fig, ColumnDataSource(df), "y1",
                                         "x1", "y2", "x2",
                                         dict(opts, mlabel="lab"))
-        [ls] = [a for a in fig.center if isinstance(a, LabelSet)]
+        [ls] = [a for a in _mls_center(fig) if isinstance(a, _MLS)]
         return ls
 
     @pytest.mark.parametrize("ptype", ["pcarrow", "pcbarrow"])

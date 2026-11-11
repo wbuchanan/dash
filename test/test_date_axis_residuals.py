@@ -909,6 +909,27 @@ from bokeh.models import (Arrow, CustomJSTransform, DatetimeAxis,  # noqa: E402,
                           LogAxis,
                           Span)
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _E = -315619200000.0
 _DA_I = np.arange(12)
 _DA = pd.DataFrame({"date": 14977.0 + 30 * _DA_I,
@@ -1685,7 +1706,7 @@ class TestADateBesideANumber:
         d = _da_layer(fig, "Scatter", 0)
         assert _units_of(d.glyph.x) == "td"
         assert _fld(d.glyph.x) != "date"
-        labs = [a for a in fig.center if isinstance(a, LabelSet)]
+        labs = [a for a in _mls_center(fig) if isinstance(a, _MLS)]
         assert labs and all(_units_of(a.x) == "td" for a in labs)
 
     @pytest.mark.parametrize("mode", MODES)

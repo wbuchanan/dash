@@ -76,11 +76,17 @@ class TestOwners:
                 "VF-4 (residual)", t
 
     def test_clipped_marker_labels_belong_to_ms15(self):
-        # D50: twoway draws a marker label past the plot region; dash clips it.
+        # D50: twoway draws a marker label past the plot region.  Flipped
+        # (WP-47 MS-15, Partly): dash draws it so too, so a clipped label is
+        # no item's; under by() it stops at its panel's edge, MS-15's
+        # residual.
         rows = verdict.load_ledger(_FIXTURE)
         d = [{"check": "marker_labels", "twoway": True, "dash": False, "within_tol": False}]
+        st = ledger.gaps4_states()
         ex = {"plottype": "scatter", "cmd": "scatter y x, mlabel(country)"}
-        assert verdict.explain(d, ex, rows, ledger.gaps4_states())[0]["gaps4"] == "MS-15"
+        assert verdict.explain(d, ex, rows, st)[0]["gaps4"] is None
+        ex = {"plottype": "scatter", "cmd": "scatter y x, mlabel(country) by(g)"}
+        assert verdict.explain(d, ex, rows, st)[0]["gaps4"] == "MS-15 (residual)"
 
 
 class TestReading:

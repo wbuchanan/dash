@@ -177,6 +177,42 @@ mata: _w31_part("test_wp31_truth.cscript", st_local("w31_secs"), `w31_k', `w31_N
 display as text "test_wp31_truth: part `w31_k'/`w31_N' runs `: word count `w31_run'' blocks: `w31_run'"
 // ---- parts: end ----
 
+// WP-47 MS-15: a layer's marker labels are a Text glyph renderer tagged
+// dash_mlabel, where they were a LabelSet.  _ms15_labels(doc or model or
+// models) gives each LabelSet as it is and each such renderer as an
+// object that reads as the LabelSet did (source, text, x, text_color ...).
+python:
+class _MS15Label(object):
+    def __init__(self, r):
+        self.renderer = r
+        self.source = r.data_source
+
+    def __getattr__(self, name):
+        g = self.renderer.glyph
+        if name in g.properties():
+            return getattr(g, name)
+        return getattr(self.renderer, name)
+
+
+def _ms15_labels(obj):
+    from bokeh.models import GlyphRenderer, LabelSet
+    if hasattr(obj, "select"):
+        ms = (list(obj.select({"type": LabelSet}))
+              + list(obj.select({"type": GlyphRenderer})))
+    else:
+        ms = list(obj)
+    out, seen = [], set()
+    for m in ms:
+        if id(m) in seen:
+            continue
+        seen.add(id(m))
+        if isinstance(m, LabelSet):
+            out.append(m)
+        elif isinstance(m, GlyphRenderer) and "dash_mlabel" in (m.tags or []):
+            out.append(_MS15Label(m))
+    return out
+end
+
 * ==== S01 scaffold: the helpers load and a twoway SVG is read ====
 local only : env WP31_ONLY
 if inlist("`only'", "", "S01") & `: list posof "S01" in w31_run' {
@@ -256,6 +292,11 @@ def _u02_rec(models):
                 cbs[m.id] = m
             elif isinstance(m, LabelSet):
                 labs.append(m)
+            elif "dash_mlabel" in (getattr(m, "tags", None) or []) \
+                    and hasattr(m, "data_source"):
+                # Flipped (WP-47 MS-15): the marker labels' Text glyph
+                # renderer, where they were a LabelSet.
+                labs.append(_MS15Label(m))
     [cb] = cbs.values()
     a, g = cb.args, cb.args["hr"].glyph
     hpx = sorted(set(float(v) for v in a["src"].data[a["hpx"]]))
@@ -921,11 +962,12 @@ def _u06_draw(sp, dp, app):
             if f.extra_y_ranges.get("y2") is not None \
                     and f.extra_y_ranges["y2"] is f.y_range:
                 tie = 1
-            for c in f.center:
-                if type(c).__name__ == "LabelSet":
-                    # The column is the variable's, prefixed.
-                    labs.append(str(getattr(c.text, "field", c.text))
-                                .replace("__dash_mlabel_", "", 1))
+            # Flipped (WP-47 MS-15): the marker labels are a Text glyph
+            # renderer, where they were a LabelSet in the centre.
+            for c in _ms15_labels(f):
+                # The column is the variable's, prefixed.
+                labs.append(str(getattr(c.text, "field", c.text))
+                            .replace("__dash_mlabel_", "", 1))
         Macro.setGlobal("u06_ln" + sfx, str(ln))
         Macro.setGlobal("u06_rt" + sfx, str(rt))
         Macro.setGlobal("u06_tie" + sfx, str(tie))
@@ -8125,7 +8167,7 @@ def _u34_labels(sp, dp, app):
     for figs, sfx in ((a, "s"), (b, "v")):
         out = []
         for f in figs:
-            for ls in f.select({"type": LabelSet}):
+            for ls in _ms15_labels(f):
                 col = ls.text if isinstance(ls.text, str) else ls.text.field
                 out.extend(str(v) for v in ls.source.data[col])
         Macro.setGlobal("u34_" + sfx, " ~ ".join(out))
@@ -8142,7 +8184,7 @@ def _u34_style(sp, dp, app):
     for figs, sfx in ((a, "s"), (b, "v")):
         out = []
         for f in figs:
-            for ls in f.select({"type": LabelSet}):
+            for ls in _ms15_labels(f):
                 out.append("%s %s %s" % (str(ls.text_color).lower(),
                                          ls.text_align, ls.text_baseline))
             for r in f.renderers:

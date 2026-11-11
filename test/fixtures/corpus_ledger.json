@@ -1,8 +1,8 @@
 {
   "_meta": {
     "born_date": "22 Oct 2026",
-    "dash_commit": "8fb739d619fe5bf4a68afc16181dc0ad19454669",
-    "extracted": "10 Nov 2026",
+    "dash_commit": "84d0a91b08f0e6b5cfef6ed56f9d2e6d0a041c90",
+    "extracted": "11 Nov 2026",
     "source": "scripts/corpus/ledger.py",
     "stata_version": "19.5",
     "tsv": "scripts/corpus/ledger.tsv"
@@ -10,12 +10,12 @@
   "rows": [
     {
       "check": "marker_labels",
-      "form": "plain",
-      "gaps4_id": "MS-15",
+      "form": "residual",
+      "gaps4_id": "MS-15 (residual)",
       "id": "MS-15",
-      "note": "dash clips marker labels at the plot region; twoway lets them extend over the axis area (D50, 47-06)",
+      "note": "under by() a marker label stops at its panel's edge; twoway's runs on over the next panel (47-06)",
       "plottype": "*",
-      "when": "*"
+      "when": "\\bby\\("
     },
     {
       "check": "rc",

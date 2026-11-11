@@ -37,6 +37,27 @@ from test_scheme_resolution import MODES, _draw  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 from conftest import drawn_renderers  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _FIX = os.path.join(os.path.dirname(__file__), "fixtures")
 with open(os.path.join(_FIX, "symbol_pattern_truth.json"),
           encoding="utf-8") as _fh:
@@ -390,8 +411,8 @@ def _label_rows(fig):
     y)."""
     import numpy as np
     n = 0
-    for a in list(fig.center) + list(fig.renderers):
-        if type(a).__name__ != "LabelSet":
+    for a in _mls_center(fig):
+        if type(a).__name__ not in ("LabelSet", "MarkerLabels"):
             continue
         d = a.source.data
         fx, fy = dr._dash_spec_field(a.x), dr._dash_spec_field(a.y)

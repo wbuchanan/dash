@@ -46,6 +46,27 @@ from test_mode_parity import _spec as _mp_spec  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 import test_unsupported_report_is_true as _uri  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _FIX = json.load(open(os.path.join(_HERE, "fixtures",
                                    "mlabvpos_truth.json"),
                       encoding="utf-8"))
@@ -113,7 +134,9 @@ def _served(spec, df=_DATA):
 
 def _models(mode, plots, go=None, bo=None, df=_DATA):
     spec = _spec(plots, go, bo)
-    return (_saved if mode == "saved" else _served)(spec, df)
+    ms = list((_saved if mode == "saved" else _served)(spec, df))
+    # WP-47 MS-15: the marker labels, read as the LabelSets they were.
+    return ms + mlabel_sets(ms)
 
 
 def _rows(ls, prop):
@@ -154,8 +177,9 @@ def _clock_of(xo, yo, align, baseline):
 def _clocks_of(models):
     """{label text: [clock, ...]} over every drawn label row."""
     out = {}
-    for ls in models:
-        if not isinstance(ls, LabelSet):
+    ms = [m for m in models if not isinstance(m, MarkerLabels)]
+    for ls in ms + mlabel_sets(ms):
+        if not isinstance(ls, _MLS):
             continue
         texts = list(ls.source.data[_field(ls.text)])
         xs = list(ls.source.data[_field(ls.x)])
@@ -528,7 +552,7 @@ class TestTheImmediateTypes:
 class TestNoLabelNoColumns:
     def test_without_mlabel_nothing_is_added(self):
         ms = _models("saved", [_plot("scatter", {"mlabvposition": "pos"})])
-        assert not [m for m in ms if isinstance(m, LabelSet)]
+        assert not [m for m in _mls_all(ms) if isinstance(m, _MLS)]
         for m in ms:
             if isinstance(m, ColumnDataSource):
                 assert not [c for c in m.data
@@ -542,7 +566,7 @@ class TestOffsetsArePhysical:
             for ls in _models("saved", [_plot("scatter", {
                     "mlabel": "lab", "mlabvposition": "pos"},
                     yvar=yvar, xvar=xvar)], df=df):
-                if isinstance(ls, LabelSet):
+                if isinstance(ls, _MLS):
                     out.append([list(_rows(ls, p)) for p in
                                 ("x_offset", "y_offset")])
             return out

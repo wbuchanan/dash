@@ -87,6 +87,27 @@ _ROW_TYPES = ["scatter", "line", "tsline", "connected", "area", "bar",
 from conftest import memo_build, render_models  # noqa: E402
 from conftest import drawn_renderers  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 
 def _run(code, args, cb_obj=None):
     """Run *code* under node with *args*; write what it left in every
@@ -122,7 +143,7 @@ def _profile(r):
     # every pcarrow case here passed (BUGS.md, 24sep2026).
     return [{"glyphs": f["glyphs"],
              "labels": [a for a in f["annotations"]
-                        if a["kind"] == "LabelSet"],
+                        if a["kind"] in ("LabelSet", "MarkerLabel")],
              "arrows": _arrows_of(f["annotations"])} for f in figs]
 
 
@@ -497,8 +518,8 @@ class TestTheCollectedCopies:
     def test_a_label_copy_is_listed(self):
         r = _render(_spec([plot_for("scatter", {"mlabel": "rep"},
                                     in_expr="3/8")]))
-        [labels] = [m for m in r.figures["g1"].center
-                    if isinstance(m, LabelSet)]
+        [labels] = [m for m in _mls_center(r.figures["g1"])
+                    if isinstance(m, _MLS)]
         assert any(s is labels.source
                    for s in r.derived_source_registry["g1"])
 

@@ -374,12 +374,16 @@ def _q4702(sp, dp, app):
     f = list(r.figures.values())[0]
     sets = [m for m in (list(f.center) + list(f.above) + list(f.below)
                         + list(f.left) + list(f.right) + list(f.renderers))
-            if isinstance(m, LabelSet)]
+            if isinstance(m, LabelSet)
+            or "dash_mlabel" in (getattr(m, "tags", None) or [])]
     labs = []
     for m in sets:
-        fld = getattr(m.text, "field", None) or m.text
-        if isinstance(fld, str) and fld in m.source.data:
-            labs.extend(str(v) for v in m.source.data[fld])
+        # WP-47 MS-15: a marker-label renderer reads its glyph's text from
+        # its data source, as a LabelSet read its own from its source.
+        g, src = (m, m.source) if isinstance(m, LabelSet) else (m.glyph, m.data_source)
+        fld = getattr(g.text, "field", None) or g.text
+        if isinstance(fld, str) and fld in src.data:
+            labs.extend(str(v) for v in src.data[fld])
     Macro.setGlobal("q4702", " ".join(out))
     Macro.setGlobal("q4702_seen", " ".join(seen))
     Macro.setGlobal("q4702_lab", "|".join(labs) or ".")
@@ -1172,6 +1176,102 @@ def _q4706r(svg, sp, dp, app):
            int((cover(sv[0]) != want).sum())]
     Macro.setGlobal("q4706r", " ".join(str(v) for v in out))
 end
+
+python:
+def _q4706_tw(svg):
+    import os
+    import sys
+    repo = os.path.dirname(os.path.abspath(os.getcwd()))
+    if os.path.join(repo, "scripts") not in sys.path:
+        sys.path.insert(0, os.path.join(repo, "scripts"))
+    import svg_truth
+    from sfi import Macro
+    doc = svg_truth.svg_document(svg)
+    pr = doc["plotregion"]
+    hon = [t for t in doc["texts"] if t["text"] == "Honduras"]
+    ok = 0
+    seen = "none"
+    if pr and len(hon) == 1:
+        t = hon[0]
+        # Helvetica's advance widths of "Honduras", per 1000 em.
+        left = t["x"] - 4341 * t["size"] / 1000.0
+        seen = "%s at %.1f, left %.1f, region left %.1f" % (
+            t["anchor"], t["x"], left, pr["left"])
+        ok = int(t["anchor"] == "end" and left < pr["left"] < t["x"]
+                 and "clip" not in open(svg, encoding="utf-8").read())
+    Macro.setGlobal("q4706_tw", str(ok))
+    Macro.setGlobal("q4706_tw_seen", seen)
+
+
+def _q4706_dash(sp, dp, app):
+    import os
+    import sys
+    import warnings
+    repo = os.path.dirname(os.path.abspath(os.getcwd()))
+    if repo not in sys.path:
+        sys.path.insert(0, repo)
+    import dash_render as dr
+    from bokeh.document import Document
+    from bokeh.models import GlyphRenderer, LabelSet, Text
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+        src = open(app, encoding="utf-8").read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        ns = dict(__name__="dash_q4706_app")
+        exec(compile(src.replace(attach, "pass"), "dash_q4706_app.py",
+                     "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    out = []
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+    for f in (list(r.figures.values())[0], sv[0]):
+        texts = [x for x in f.renderers if isinstance(x, GlyphRenderer)
+                 and isinstance(x.glyph, Text)
+                 and "dash_mlabel" in (x.glyph.tags or [])]
+        sets = [m for m in f.center if isinstance(m, LabelSet)]
+        out.append(str(int(len(texts) == 1
+                           and texts[0].level == "annotation")))
+        out.append(str(len(sets)))
+    Macro.setGlobal("q4706_dash", " ".join(out))
+end
+
+* ==== S06 MS-15: marker labels run past the plot region ====
+local only : env WP47_ONLY
+if inlist("`only'", "", "S06") & `: list posof "S06" in w47_run' {
+    display as text "S06 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4706-15: the calibration example (help marker_label_options):
+    // twoway draws Honduras, at 9 o'clock, from left of the plot region
+    // over the y axis's labels (measured live from its SVG, which clips
+    // nothing); dash draws each layer's labels with a Text glyph at the
+    // annotation level, which BokehJS does not clip to the frame, and
+    // no LabelSet, in the saved page and the served app.
+    // ------------------------------------------------------------
+    sysuse lifeexp, clear
+    generate pos = 3
+    replace pos = 9 if country == "Honduras"
+    quietly twoway scatter lexp gnppc if region==2, mlabel(country) mlabv(pos) xsca(range(35000)) name(q4706, replace)
+    cert_svg_export, name(q4706) file("`w47_work'/q4706_1.svg")
+    capture graph drop q4706
+    python: import __main__ as _m4706; _m4706._q4706_tw("`w47_work'/q4706_1.svg")
+    _w47_expect Q4706-15 "(${q4706_tw} == 1)" "twoway's Honduras [${q4706_tw_seen}] does not run past the plot region"
+    capture erase "`w47_work'/q4706_1.svg"
+    dash clear
+    capture noisily dash scatter lexp gnppc if region==2, mlabel(country) mlabv(pos) xsca(range(35000)) name(q1)
+    _w47_expect Q4706-15 "(_rc == 0)" "dash rc `=_rc'"
+    _dash_serve_spec, specpath("`w47_work'/q4706_1s.json") datapath("`w47_work'/q4706_1d.json")
+    python: import __main__ as _m4706; _m4706._q4706_dash("`w47_work'/q4706_1s.json", "`w47_work'/q4706_1d.json", "`w47_work'/q4706_1a.py")
+    _w47_expect Q4706-15 `"("${q4706_dash}" == "1 0 1 0")"' "saved and served (text renderers at annotation, LabelSets): ${q4706_dash}"
+    dash clear
+    _w47_done Q4706-15 "twoway runs Honduras past the plot region; dash's labels are drawn unclipped in both modes"
+    display as text "S06 end " c(current_date) " " c(current_time)
+}
+* ==== end S06 ====
 
 * ==== S06 PIC-17: rarea where a row misses one bound ====
 local only : env WP47_ONLY

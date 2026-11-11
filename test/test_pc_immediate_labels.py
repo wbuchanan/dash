@@ -33,6 +33,27 @@ import dash_render as dr  # noqa: E402
 from test_server_layer_defects import (make_spec, plot_for,  # noqa: E402
                                        served, standalone, _DF)
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _FIXTURE = os.path.join(_HERE, "fixtures", "immediate_label_truth.json")
 _MODES = ("saved", "served")
 #: pcarrowi's and pci's records as dash.ado writes
@@ -55,8 +76,8 @@ def _label_points(figs):
     position is finite (a NaN position draws nothing)."""
     out = set()
     for f in figs:
-        for ls in f.center:
-            if not isinstance(ls, LabelSet):
+        for ls in _mls_center(f):
+            if not isinstance(ls, _MLS):
                 continue
             d = ls.source.data
             xs, ys = d[_field(ls.x)], d[_field(ls.y)]

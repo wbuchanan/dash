@@ -57,6 +57,27 @@ from test_mode_parity import (_DF, _fire, _sc, _spec,  # noqa: E402
                               _widgets_of)
 from test_server_layer_defects import plot_for  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _FIXTURE = os.path.join(_HERE, "fixtures", "graph_text_truth.json")
 _EXTRACTOR = "scripts/extract_graph_text_truth.do"
 
@@ -858,7 +879,8 @@ class TestControlCodesAreEscapedAtEverySink:
 # ---------------------------------------------------------------------------
 
 def _labelsets(models):
-    return [m for m in _of(models, LabelSet)]
+    # WP-47 MS-15: the marker labels, read as the LabelSets they were.
+    return [m for m in _of(models, LabelSet)] + mlabel_sets(list(models))
 
 
 class TestMarkerLabels:
@@ -927,8 +949,8 @@ class TestMarkerLabels:
         ml = ["{c -(}bf:x{c )-}"] * len(_DF)
         spec = _spec([_sc(mlabel="ml"), _sc(mlabel="ml", msymbol="d")])
         r, _, _ = _saved(spec, _data(_df(ml)))
-        sets = [m for f in r.figures.values() for m in f.references()
-                if isinstance(m, LabelSet)]
+        sets = [m for f in r.figures.values() for m in list(f.references()) + mlabel_sets(f)
+                if isinstance(m, _MLS)]
         assert len(sets) == 2
         for ls in sets:
             assert set(ls.source.data[ls.text]) == {"{bf:x}"}
@@ -958,8 +980,8 @@ class TestAfterAFilterMove:
         w.value = [v for v, lab in w.options if lab == "αFor"][0]
         cb = r.filter_callbacks[r.filter_widgets.index(w)]
         _run(cb.code, cb.args)
-        ls = [m for f in r.figures.values() for m in f.references()
-              if isinstance(m, LabelSet)][0]
+        ls = [m for f in r.figures.values() for m in list(f.references()) + mlabel_sets(f)
+              if isinstance(m, _MLS)][0]
         d = ls.source.data
         assert list(d["__dash_mlabel_ml"]) == ["βb"] * 5
         assert list(d["__dash_mlabstyle_ml"]) == ["normal"] * 5
@@ -970,11 +992,11 @@ class TestAfterAFilterMove:
                      {"filter": "foreign, type(dropdown)"})
         doc, _, _ = _served(spec, _data(_df(ml)))
         w = [x for x in _widgets_of(doc) if isinstance(x, Select)][0]
-        ls = _of(list(doc.models), LabelSet)[0]
+        ls = _labelsets(doc.models)[0]
         for lab in ("Dom", "αFor", "All"):
             raw = [v for v, t in w.options if t == lab]
             _fire(w, raw[0])
-            ls = _of(list(doc.models), LabelSet)[0]
+            ls = _labelsets(doc.models)[0]
             assert {"__dash_mlabel_ml", "__dash_mlabstyle_ml"} <= set(
                 ls.source.data), lab
 

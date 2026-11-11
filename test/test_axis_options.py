@@ -35,6 +35,27 @@ from dash_render import DashRenderer, GlyphMapper, OptionTranslator, SchemeParse
 
 from conftest import make_dr, make_spec, make_data_json
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _FIXTURE = os.path.join(_HERE, "fixtures", "axis_truth.json")
 
 
@@ -881,7 +902,7 @@ class TestMarkerAndFillOptions:
                             "options": {"mlabel": "price",
                                         "mlabgap": "small"}}])
         from bokeh.models import LabelSet
-        labels = [r for r in fig.center if isinstance(r, LabelSet)]
+        labels = [r for r in _mls_center(fig) if isinstance(r, _MLS)]
         assert labels, "the marker labels were dropped"
         assert labels[0].x_offset not in (None, 0) or \
                labels[0].y_offset not in (None, 0)
@@ -1131,7 +1152,7 @@ class TestMlabelOnLines:
         })
         fig, _ = _fig([{"type": "connected", "yvar": "y", "xvar": "x",
                         "options": {"mlabel": "lab"}}], df=df)
-        labels = [r for r in fig.center if isinstance(r, LabelSet)]
+        labels = [r for r in _mls_center(fig) if isinstance(r, _MLS)]
         assert labels, "no marker labels were drawn"
         src = labels[0].source
         xs = list(src.data[labels[0].x])

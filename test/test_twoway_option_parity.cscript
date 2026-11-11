@@ -1103,12 +1103,15 @@ real scalar _ztp_count(string scalar path, string scalar needle)
     if (strlen(needle) == 0) return(0)
     return((strlen(s) - strlen(subinstr(s, needle, "", .))) / strlen(needle))
 }
-// How many LabelSet models a saved dashboard's document holds.
+// How many marker-label models a saved dashboard's document holds: each
+// names the tag dash_mlabel (a label layer's Text renderer and its three
+// glyphs).  Flipped (WP-47 MS-15): it counted LabelSet models, which drew
+// the labels until then; TP-09 reads only whether there are any.
 real scalar _ztp_labelsets(string scalar path)
 {
     string scalar q
     q = char(34)
-    return(_ztp_count(path, q + "name" + q + ":" + q + "LabelSet" + q))
+    return(_ztp_count(path, q + "dash_mlabel" + q))
 }
 // How many times a saved dashboard names the colour red (#ff0000), in any
 // case.  The page's own script holds no such colour, and the probes below

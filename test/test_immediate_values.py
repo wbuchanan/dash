@@ -59,9 +59,30 @@ _SEQ = itertools.count()
 
 from conftest import render_models  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 
 def _labelsets(fig):
-    return [r for r in fig.center if isinstance(r, LabelSet)]
+    return [r for r in _mls_center(fig) if isinstance(r, _MLS)]
 
 
 def _text_field(ls):
@@ -459,7 +480,7 @@ class TestBothModesDrawTheSame:
                                  "imm_%d" % next(_SEQ)))
         got = [(round(ls.x_offset, 4), round(ls.y_offset, 4),
                 list(ls.source.data[_text_field(ls)]))
-               for ls in doc.select({"type": LabelSet})]
+               for ls in _mls_select(doc)]
         # WP-30 P1.12a (Evidence E5, twoway measured): 9 o'clock is
         # -(radius + default gap), -(2.93334 + 2.66667) px.
         # Flipped (WP-30 P1.11b): {bf:X} is graph-text markup, which twoway

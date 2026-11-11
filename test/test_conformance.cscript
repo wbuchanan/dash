@@ -620,10 +620,14 @@ dash clear
 capture noisily dash pccapsym mpg weight m2 w2, msymbol(D) lcolor(navy) mlabel(make) saving("`c6a'", replace)
 assert _rc == 0
 confirm file "`c6a'"
-foreach nd in Segment Scatter LabelSet {
+foreach nd in Segment Scatter {
     cert_file_has "`c6a'", needle(`""name":"`nd'""')
     assert r(found) == 1
 }
+// Flipped (WP-47 MS-15): the marker labels are a Text glyph renderer
+// tagged dash_mlabel, where they were a LabelSet.
+cert_file_has "`c6a'", needle(`""dash_mlabel""')
+assert r(found) == 1
 cert_file_has "`c6a'", needle("AMC Concord")
 assert r(found) == 1
 // A %td label with a missing date.  The WP-22 review found the saved page
@@ -636,7 +640,8 @@ format c6date %td
 capture noisily dash pccapsym mpg weight m2 w2, mlabel(c6date) saving("`c6d'", replace)
 assert _rc == 0
 confirm file "`c6d'"
-cert_file_has "`c6d'", needle(`""name":"LabelSet""')
+// Flipped (WP-47 MS-15): the labels' Text renderer (tagged dash_mlabel).
+cert_file_has "`c6d'", needle(`""dash_mlabel""')
 assert r(found) == 1
 drop c6date
 capture erase "`c6d'"
@@ -645,10 +650,13 @@ assert _rc == 0
 confirm file "`c6b'"
 // Flipped (WP-31 C1): an Arrow with an OpenHead was the old head; twoway's
 // head is _gr_arrowhead's geometry, a MultiLine the page's script fills.
-foreach nd in Segment MultiLine LabelSet {
+foreach nd in Segment MultiLine {
     cert_file_has "`c6b'", needle(`""name":"`nd'""')
     assert r(found) == 1
 }
+// Flipped (WP-47 MS-15): the labels' Text renderer (tagged dash_mlabel).
+cert_file_has "`c6b'", needle(`""dash_mlabel""')
+assert r(found) == 1
 foreach nd in "VW Diesel" "Plymouth Arrow" {
     cert_file_has "`c6b'", needle("`nd'")
     assert r(found) == 1

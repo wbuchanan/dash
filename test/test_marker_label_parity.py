@@ -110,6 +110,7 @@ _TMP = tempfile.mkdtemp(prefix="dash_marker_label_parity_")
 
 
 from conftest import render_models  # noqa: E402
+from conftest import mlabel_sets  # noqa: E402
 from conftest import drawn_renderers  # noqa: E402
 
 
@@ -175,9 +176,11 @@ def _both(plots, df=_DF, value_labels=None, label_names=None, formats=None,
 
 
 def _labelsets(fig):
+    # WP-47 MS-15: the marker labels are Text glyph renderers, read as the
+    # LabelSets they were (conftest.MarkerLabels).
     return [x for x in (list(fig.center) + list(fig.above) + list(fig.below)
                         + list(fig.left) + list(fig.right))
-            if isinstance(x, LabelSet)]
+            if isinstance(x, LabelSet)] + mlabel_sets(fig)
 
 
 def _field(spec):

@@ -47,6 +47,27 @@ import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 from conftest import drawn_renderers  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _MODES = ("saved", "served")
 _TYPES = sorted(dr._dash_plot_type_names())
 
@@ -1090,7 +1111,7 @@ class TestTheSecondAxisIsItsOwn:
                                 plot_for("scatter", {"yaxis": "2",
                                                      "mlabel": "rep"},
                                          yvar="price")])
-        sets = [m for m in fig.center if isinstance(m, LabelSet)]
+        sets = [m for m in _mls_center(fig) if isinstance(m, _MLS)]
         assert sets and all(s.y_range_name == "y2" for s in sets), (
             [s.y_range_name for s in sets])
 

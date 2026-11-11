@@ -1,6 +1,6 @@
 # gaps4_id<TAB>check<TAB>plottype<TAB>when<TAB>note -- gaps4_id is <id>, <id> (documented) or <id> (residual); every item's closing commit (Fix, Document or Partly) deletes its plain <id> rows, keeps its (documented) and (residual) rows, then runs python3 scripts/corpus/ledger.py
 # when is a Python regex searched in the twoway command, or *; the first live row whose check, plottype and when match explains a difference (WP-33 33-05, D-33-05.e)
-MS-15	marker_labels	*	*	dash clips marker labels at the plot region; twoway lets them extend over the axis area (D50, 47-06)
+MS-15 (residual)	marker_labels	*	\bby\(	under by() a marker label stops at its panel's edge; twoway's runs on over the next panel (47-06)
 syn:SD-22 (documented)	rc	contour	\blevels?\(	twoway contour with levels() ignores options it does not know; dash refuses them (D54, 35-06)
 VF-4 (residual)	text_size	*	*	text is drawn at a fixed 2.88 pt relative size, 0.889x twoway's under stcolor (45-04)
 VF-4 (residual)	marker_size	*	*	marker sizes are relative sizes, 0.889x twoway's under stcolor (45-04)

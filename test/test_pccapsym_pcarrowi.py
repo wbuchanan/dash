@@ -41,6 +41,27 @@ import dash_render as dr  # noqa: E402
 from test_server_layer_defects import (make_spec, served,  # noqa: E402
                                        standalone)
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, is_mlabel, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 NAN = float("nan")
 # WP-30 P1.12a (Evidence E5, twoway measured): a pcarrowi label sits
 # (radius + gap) from the tail, the radius half the scheme's marker size
@@ -57,7 +78,7 @@ def _pc_source(**extra):
 
 
 def _labelsets(fig):
-    return [r for r in fig.center if isinstance(r, LabelSet)]
+    return [r for r in _mls_center(fig) if isinstance(r, _MLS)]
 
 
 def _col(renderer, attr):
@@ -479,7 +500,9 @@ class TestTheServedPcSourceCarriesTheLabel:
 def _glyphs(figs):
     out = []
     for f in figs:
-        for r in f.renderers:
+        # WP-47 MS-15: the marker labels (Text renderers) are compared
+        # below, as their LabelSets were.
+        for r in [r for r in f.renderers if not is_mlabel(r)]:
             g = getattr(r, "glyph", None)
             if g is None:
                 continue
@@ -496,7 +519,7 @@ def _labels(figs):
     return sorted((ls.x_offset, ls.y_offset,
                    tuple(str(v) for v in ls.source.data[
                        ls.text if isinstance(ls.text, str) else ls.text.field]))
-                  for f in figs for ls in f.center if isinstance(ls, LabelSet))
+                  for f in figs for ls in _mls_center(f) if isinstance(ls, _MLS))
 
 
 def _heads(figs):

@@ -600,6 +600,14 @@ def _drawn_text(v):
     return str(v)
 
 
+def _mlabel_renderers(fig):
+    """*fig*'s marker-label renderers (WP-47 MS-15): Text glyphs tagged
+    ``dash_mlabel``, in renderer order."""
+    return [r for r in fig.renderers
+            if type(getattr(r, "glyph", None)).__name__ == "Text"
+            and dr._DASH_MLABEL_TAG in (r.glyph.tags or [])]
+
+
 def _annotations(fig):
     """The annotations a figure carries, as comparable dicts.
 
@@ -620,15 +628,19 @@ def _annotations(fig):
     for side in ("center", "above", "below", "left", "right"):
         for r in getattr(fig, side):
             panel.setdefault(id(r), side)
-    for r in _sides(fig):
-        if isinstance(r, LabelSet):
+    # WP-47 MS-15: the marker labels are Text glyph renderers (tagged
+    # dash_mlabel), profiled as the LabelSets they were: kind "MarkerLabel".
+    for r in _sides(fig) + _mlabel_renderers(fig):
+        if isinstance(r, LabelSet) or r in _mlabel_renderers(fig):
             _, idx = _drawn(r)
+            _lr = not isinstance(r, LabelSet)
             # WP-22: the angle mlabangle() sets and the text each label
-            # draws -- the texts mlabformat() formats.  A LabelSet reads its
-            # rows from `source', not `data_source', so the texts are taken
-            # from there, as the browser draws them.
+            # draws -- the texts mlabformat() formats.  The texts are taken
+            # from the rows the model reads (a LabelSet's `source', a
+            # renderer's `data_source'), as the browser draws them.
+            _src = r.data_source if _lr else getattr(r, "source", None)
+            r = r.glyph if _lr else r
             _tf = _spec_of(r.text)
-            _src = getattr(r, "source", None)
             _col = (list(_src.data.get(_tf[1], []))
                     if _tf[0] == "field" and _src is not None else [])
             # WP-30 P1.24: mlabvposition() sets the offsets, align and
@@ -641,7 +653,8 @@ def _annotations(fig):
                             else str(x)
                             for x in list(_src.data.get(_sv[1], []))]
                 return None
-            out.append({"kind": "LabelSet", "text": _tf,
+            out.append({"kind": "MarkerLabel" if _lr else "LabelSet",
+                        "text": _tf,
                         "font": r.text_font_size,
                         "color": _spec_of(r.text_color),
                         # WP-30 P1.4b: the scheme's label opacity.
@@ -1833,6 +1846,11 @@ CORPUS = [
           {"ytitle": "Density"}),
     # ---- marker labels and hover -------------------------------------------
     _case("scatter with marker labels", [_sc(mlabel="foreign")]),
+    # WP-47 MS-15: labels at 9 o'clock that run past the plot region, by a
+    # Text renderer and its in-frame filter, the same in both modes.
+    _case("marker labels past the plot region (MS-15)",
+          [_sc(mlabel="weight", mlabposition="9",
+               mlabprefix="A long marker label ")]),
     _case("scatter with marker labels and a size",
           [_sc(mlabel="foreign", mlabsize="large")]),
     _case("line with marker labels", [plot_for("line", {"mlabel": "foreign"})]),
@@ -5008,8 +5026,10 @@ class TestAFilterMoveAgrees:
         assert len(std) == len(srv), f"{name}: figure counts differ"
         drawn = 0
         for i, (a, b) in enumerate(zip(std, srv)):
-            la = [x for x in a["annotations"] if x["kind"] == "LabelSet"]
-            lb = [x for x in b["annotations"] if x["kind"] == "LabelSet"]
+            la = [x for x in a["annotations"]
+                  if x["kind"] == "MarkerLabel"]
+            lb = [x for x in b["annotations"]
+                  if x["kind"] == "MarkerLabel"]
             drawn += len(la)
             diffs = _diff(la, lb)
             assert not diffs, _explain(name, f"figure {i} labels after the "
@@ -5292,7 +5312,7 @@ class TestALayersOwnQualifierAfterAMove:
         self._check(srv, entry, "the served app")
         if entry["labels"] is not None:
             (lab,) = [a for a in srv[0]["annotations"]
-                      if a["kind"] == "LabelSet"]
+                      if a["kind"] == "MarkerLabel"]
             assert lab["texts"] == entry["labels"], (
                 f"{entry['name']}: served labels {lab['texts']}; Stata "
                 f"writes {entry['labels']}")
@@ -5305,7 +5325,7 @@ class TestALayersOwnQualifierAfterAMove:
         self._check(std, entry, "the saved page")
         if entry["labels"] is not None and entry["parity"]:
             (lab,) = [a for a in std[0]["annotations"]
-                      if a["kind"] == "LabelSet"]
+                      if a["kind"] == "MarkerLabel"]
             assert lab["texts"] == entry["labels"], lab["texts"]
 
     def test_the_move_changes_what_the_layer_draws(self, entry):

@@ -5935,6 +5935,92 @@ _DASH_MLABEL_PREFIX = _DASH_RP + "_mlabel_"
 #: (the two differ at their 12th character).
 _DASH_MLABSTYLE_PREFIX = _DASH_RP + "_mlabstyle_"
 _DASH_MLABEL_VALUES = _DASH_RP + "_mlabel_values"
+#: The tag on every marker-label Text glyph (WP-47 MS-15).
+_DASH_MLABEL_TAG = "dash_mlabel"
+#: The marker labels' CDSView filter (WP-47 MS-15, a CustomJSFilter with
+#: no args; ``this`` is the filter, as CustomJSFilter calls its function as
+#: its own method): a label is drawn while its point lies within the
+#: ranges its renderer draws on, so a label runs past the frame's edge as
+#: twoway draws it, and a point a pan, zoom or range move takes out of the
+#: frame takes its label with it rather than leave it over the axes.  The
+#: renderer and its figure are found among the page's views (the renderer
+#: view whose model's view holds this filter): a model reference in the
+#: args would make a cycle (figure, renderer, view, filter), which the
+#: served page's document cannot load ("args is unset").  Until the views
+#: exist it keeps every label and looks again (100 times, 0.1 s apart).
+#: Each range the renderer uses is hooked once, so its change recomputes
+#: the view.  A coordinate is read as the glyph reads it (its field,
+#: through its transform); a range not yet computed, or a coordinate that
+#: is no finite number (a factor, a missing value), keeps its label, so
+#: the first view draws every label twoway draws.  Edges are kept, within
+#: 1e-9 of the range's span.
+_DASH_MLABEL_IN_FRAME_JS = """\
+const me = this;
+const get = (d, k) => (d == null ? undefined
+                       : (d instanceof Map ? d.get(k) : d[k]));
+const find = (v) => {
+    if (v == null) return null;
+    if (v.renderer_views != null && v.model != null) {
+        for (const rv of v.renderer_views.values()) {
+            const vw = rv.model.view;
+            if (vw != null && vw.filter === me) return [v.model, rv.model];
+        }
+    }
+    for (const c of (v.child_views || [])) {
+        const f = find(c);
+        if (f != null) return f;
+    }
+    return null;
+};
+const idx = (typeof Bokeh !== "undefined" && Bokeh.index != null)
+    ? Bokeh.index : {};
+let hit = null;
+for (const v of (idx instanceof Map ? idx.values() : Object.values(idx))) {
+    hit = find(v);
+    if (hit != null) break;
+}
+if (hit == null) {
+    me._dash_ml_tries = (me._dash_ml_tries || 0) + 1;
+    if (me._dash_ml_tries <= 100) setTimeout(() => me.change.emit(), 100);
+    return null;
+}
+const fig = hit[0], r = hit[1];
+const xr = r.x_range_name === "default" ? fig.x_range
+    : get(fig.extra_x_ranges, r.x_range_name);
+const yr = r.y_range_name === "default" ? fig.y_range
+    : get(fig.extra_y_ranges, r.y_range_name);
+if (me._dash_ml_hooked == null) me._dash_ml_hooked = new Set();
+for (const rg of [xr, yr]) {
+    if (rg != null && !me._dash_ml_hooked.has(rg)) {
+        me._dash_ml_hooked.add(rg);
+        rg.change.connect(() => me.change.emit());
+    }
+}
+const col = (spec) => {
+    if (spec == null || typeof spec !== "object" || spec.field == null)
+        return null;
+    const v = source.get_column(spec.field);
+    if (v == null) return null;
+    return spec.transform != null ? spec.transform.v_compute(v) : v;
+};
+const inside = (rg, v) => {
+    if (rg == null) return true;
+    const a = Number(rg.start), b = Number(rg.end);
+    const x = v == null ? NaN : Number(v);
+    if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(x))
+        return true;
+    const lo = Math.min(a, b), hi = Math.max(a, b), eps = (hi - lo) * 1e-9;
+    return !(x < lo - eps || x > hi + eps);
+};
+const xs = col(r.glyph.x), ys = col(r.glyph.y);
+const n = source.get_length() ?? 0;
+const out = new Array(n);
+for (let i = 0; i < n; i++) {
+    out[i] = inside(xr, xs == null ? NaN : xs[i])
+        && inside(yr, ys == null ? NaN : ys[i]);
+}
+return out;
+"""
 _DASH_MLABEL_X = _DASH_RP + "_mlabel_x"
 _DASH_MLABEL_Y = _DASH_RP + "_mlabel_y"
 _DASH_JITTER_X = _DASH_RP + "_xjit"
@@ -19220,12 +19306,22 @@ class GlyphMapper:
         vpos_col: "str | None" = None,
         layer_vars: "tuple | None" = None,
     ) -> None:
-        """Add a LabelSet annotation when the mlabel() option is set.
+        """Draw the marker labels when the mlabel() option is set.
 
         Reads ``mlabel``, ``mlabcolor``, ``mlabsize``, ``mlabposition``,
         ``mlabvposition``, ``mlabgap``, ``mlabangle`` and ``mlabformat``
-        from *options* and adds
-        a Bokeh ``LabelSet`` to *fig*, at (*xvar*, *yvar*) of each row.
+        from *options* and adds a Bokeh ``Text`` glyph renderer to *fig*,
+        at (*xvar*, *yvar*) of each row, at the ``annotation`` level: the
+        labels run past the plot region over the axes, to the figure's
+        edge, as twoway draws them (WP-47 MS-15; mlabel_clip_truth.json:
+        twoway clips no marker label).  A ``LabelSet`` in the figure's
+        centre is clipped to the frame (bokeh.js ``AnnotationView.
+        needs_clip``); a renderer is clipped only at the image, underlay
+        and glyph levels (``PlotView._paint_levels``).  The selection and
+        nonselection glyphs are copies of the glyph, so a selection does
+        not dim the labels, as it did not dim a LabelSet.  Its view's
+        ``_DASH_MLABEL_IN_FRAME_JS`` filter leaves out a label whose point
+        a pan, zoom or range move takes out of the frame.
 
         Which layers call this is each mapper's business, and follows what
         twoway draws (measured 23sep2026 from its SVG): scatter, connected,
@@ -19271,7 +19367,7 @@ class GlyphMapper:
                        *label_col*: a stacked source's derived x/y columns
                        must not stand in for it).
         """
-        from bokeh.models import LabelSet
+        from bokeh.models import GlyphRenderer, Text
 
         mlabel_var, _extras = _dash_mlabel_names(options)
         if _extras:
@@ -19582,14 +19678,31 @@ class GlyphMapper:
             # scalar one (noted_drawn_truth.json MV01, MV02).
             self._mlabel_layout(kwargs, options, source, _vp[1])
 
-        # mlabwidth: Stata label width in character units.  Bokeh's LabelSet
-        # does not support text wrapping, so this option is accepted but has
-        # no visual effect.  It is handled here to prevent an "unknown option"
-        # error if the user specifies it.
+        # mlabwidth: Stata label width in character units.  Bokeh's Text
+        # glyph does not wrap, so this option is accepted but has no visual
+        # effect.  It is handled here to prevent an "unknown option" error
+        # if the user specifies it.
         options.get("mlabwidth")  # consumed; no-op
 
-        ls = LabelSet(**kwargs)
-        fig.add_layout(ls)
+        # MS-15: a renderer at the annotation level, which BokehJS does not
+        # clip to the frame (a centre LabelSet it does).
+        # Its selected and brushed-away copies draw as the glyph does (a
+        # LabelSet ignored the selection); each copy is a model of its own,
+        # as every glyph's is, so the scale passes size each once.  The
+        # tag names the label glyphs for those passes (their offsets
+        # scale as a LabelSet's did) and for the page's plain font.
+        # A label is drawn while its point is in the frame's ranges
+        # (_DASH_MLABEL_IN_FRAME_JS): a pan or zoom that takes the point
+        # out takes the label too, never leaving it over the axes.
+        from bokeh.models import CDSView, CustomJSFilter
+        _src = kwargs.pop("source")
+        kwargs["tags"] = [_DASH_MLABEL_TAG]
+        _flt = CustomJSFilter(code=_DASH_MLABEL_IN_FRAME_JS)
+        fig.renderers.append(GlyphRenderer(
+            data_source=_src, glyph=Text(**kwargs),
+            selection_glyph=Text(**kwargs),
+            nonselection_glyph=Text(**kwargs), level="annotation",
+            view=CDSView(filter=_flt), tags=[_DASH_MLABEL_TAG]))
 
     #: mlabalignment()'s baseline below the label's anchor, in ems of its
     #: size (WP-47 basic:PT-11; noted_drawn_truth.json ML00-ML04: twoway
@@ -30596,6 +30709,9 @@ _DASH_WIDTH_SCALE_PROPS = {
     "Span": (("num", "line_width"),),
     "Arrow": (("num", "line_width"),),
     "Glyph": (("num", "line_width", "size"), ("css", "text_font_size")),
+    # A marker label's offsets from its point, as a LabelSet's scaled
+    # (WP-47 MS-15: the labels are a tagged Text glyph).
+    "MarkerLabel": (("num", "x_offset", "y_offset"),),
     # The plot region's outline (WP-41 41-05: twoway's scales with the
     # picture as its axis lines do, P1: both 1.73 px at 1400).
     "Plot": (("num", "outline_line_width"),),
@@ -30661,7 +30777,9 @@ def _dash_width_scale_entries(models):
         elif isinstance(m, Arrow):
             tables = ("Arrow",)
         elif type(m).__module__.startswith("bokeh.models.glyphs"):
-            tables = ("Glyph",)
+            tables = (("Glyph", "MarkerLabel")
+                      if _DASH_MLABEL_TAG in (getattr(m, "tags", None) or ())
+                      else ("Glyph",))
         elif isinstance(m, Plot):
             tables = ("Plot",)
         else:
@@ -41044,7 +41162,9 @@ def _dash_by_scale_panel(fig, m):
                      "hover_glyph", "muted_glyph"):
             g = getattr(r, slot, None)
             if g is not None and not isinstance(g, str):
-                scale(g, "glyph")
+                # A marker label scales its offsets, as a LabelSet did.
+                scale(g, "text" if _DASH_MLABEL_TAG in (
+                    getattr(g, "tags", None) or ()) else "glyph")
     models = []
     for place in ("center", "above", "below", "left", "right"):
         models += list(getattr(fig, place, []) or [])
@@ -44784,6 +44904,12 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     chrome = chrome or {}
     if default_level is None:
         default_level = _DEFAULT_LEVEL
+    # A layer's marker labels (WP-47 MS-15) are no part of its key, as
+    # their LabelSet was not: a key click leaves them as it left it.
+    plot_renderers = [
+        (p, [r for r in (rs or ())
+             if _DASH_MLABEL_TAG not in (getattr(r, "tags", None) or ())])
+        for p, rs in (plot_renderers or ())]
     # Before the early return: a sub-option dash has no reading for is
     # dropped whether or not this figure has a legend to apply it to.
     _dash_report_suboptions("legend", _dash_legend_unsupported(legend_opt),
@@ -52913,6 +53039,8 @@ _DASH_TRANSPOSE = {
     "Scatter": ("Scatter", (("x", "y"),)),
     "Line": ("Line", (("x", "y"),)),
     "Circle": ("Circle", (("x", "y"),)),
+    # WP-47 MS-15: a marker label, turned as its LabelSet was.
+    "Text": ("Text", (("x", "y"),)),
     "Patch": ("Patch", (("x", "y"),)),
     "Patches": ("Patches", (("xs", "ys"),)),
     "MultiLine": ("MultiLine", (("xs", "ys"),)),
@@ -56101,6 +56229,14 @@ def _dash_graph_text_models(fig):
                 for it in m.items:
                     if isinstance(it, Model):
                         out.append(it)
+    # WP-47 MS-15: the marker labels' Text glyphs, which hold no user
+    # text (it is a column) but take the page's plain font.
+    for r in getattr(fig, "renderers", None) or []:
+        for slot in ("glyph", "selection_glyph", "nonselection_glyph"):
+            g = getattr(r, slot, None)
+            if isinstance(g, Model) and _DASH_MLABEL_TAG in (
+                    getattr(g, "tags", None) or ()):
+                out.append(g)
     for tool in getattr(fig, "tools", None) or []:
         if isinstance(tool, HoverTool):
             out.append(tool)
@@ -81214,6 +81350,9 @@ class ServerAppBuilder:
                       "_DASH_MLABEL_VALUES", "_DASH_MLABEL_X",
                       "_DASH_MLABEL_Y", "_DASH_JITTER_X", "_DASH_JITTER_Y",
                       "_DASH_CVAR_PREFIX",
+                      # WP-47 MS-15: the marker-label glyphs' tag and
+                      # their in-frame filter.
+                      "_DASH_MLABEL_TAG", "_DASH_MLABEL_IN_FRAME_JS",
                       "_DASH_LABEL_SUFFIX",
                       # The plot-type categories.  The app used to carry its
                       # own copies inside an if/elif chain, which is how the

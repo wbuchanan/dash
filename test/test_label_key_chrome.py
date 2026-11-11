@@ -36,6 +36,27 @@ from test_scheme_resolution import MODES, _draw, _props_scheme  # noqa: E402
 from test_scheme_review_fixes import _user_scheme  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 T = dr.OptionTranslator
 FIXTURE = os.path.join(_HERE, "fixtures", "scheme_layer_truth.json")
 
@@ -80,8 +101,8 @@ def _close(a, b):
 
 def _labels(drawn):
     """The LabelSets of each figure, in the order the layers drew them."""
-    return [m for f in drawn.figures for m in f.center
-            if isinstance(m, LabelSet)]
+    return [m for f in drawn.figures for m in _mls_center(f)
+            if isinstance(m, _MLS)]
 
 
 def _key_chrome(cell):
@@ -366,7 +387,7 @@ class TestAfterAFilterMove:
         spec["build_options"]["scheme"] = "s1rcolor"
         doc = tlv._served_doc(tmp_path, spec)
         tlv._fire(doc, "foreign", "1")
-        (ls,) = doc.select({"type": LabelSet})
+        (ls,) = _mls_select(doc)
         # Flipped (WP-42 CV-3): the key was a ColorBar; it is a key cell.
         (cell,) = [p for p in doc.select({"tags": "dash_key_cell"})]
         bar = _key_chrome(cell)

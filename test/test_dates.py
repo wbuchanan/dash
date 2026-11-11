@@ -47,6 +47,27 @@ pytestmark = pytest.mark.skipif(
 
 from conftest import render_models  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 
 @pytest.fixture(scope="module")
 def truth():
@@ -798,7 +819,7 @@ class TestFacetAndMarkerLabels:
             formats={"date": "%td"})
         dr = _renderer(spec, data, tmp_path)
         fig = dr._build_figures()["g1"]
-        labels = [r for r in fig.center if isinstance(r, LabelSet)]
+        labels = [r for r in _mls_center(fig) if isinstance(r, _MLS)]
         assert labels, "no marker labels were drawn"
         col = labels[0].text
         src = labels[0].source
@@ -815,7 +836,7 @@ class TestFacetAndMarkerLabels:
               "options": {"mlabel": "y"}}])
         dr = _renderer(spec, data, tmp_path)
         fig = dr._build_figures()["g1"]
-        labels = [r for r in fig.center if isinstance(r, LabelSet)]
+        labels = [r for r in _mls_center(fig) if isinstance(r, _MLS)]
         # The values as they are, not dates.  (They are drawn from a column
         # derived beside the variable's -- every numeric label is, so a
         # missing value reads "." and a served filter's redraw keeps the

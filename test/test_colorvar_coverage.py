@@ -56,6 +56,27 @@ from js_runner import requires_node, run_js  # noqa: E402
 from test_server_layer_defects import (_figures_of, make_spec,  # noqa: E402
                                        plot_for)
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 _FIX = os.path.join(_HERE, "fixtures", "colorvar_types_truth.json")
 with open(_FIX, encoding="utf-8") as _fh:
     TRUTH = json.load(_fh)
@@ -502,9 +523,9 @@ def _labels_xy(fig):
     """[(x, y, text)] of every marker label the figure draws."""
     from bokeh.models import LabelSet
     out = []
-    for side in (fig.center, fig.above, fig.below, fig.left, fig.right):
-        for m in side:
-            if not isinstance(m, LabelSet):
+    for side in (_mls_center(fig), fig.above, fig.below, fig.left, fig.right):
+        for m in _mls_all(side):
+            if not isinstance(m, _MLS):
                 continue
             d = m.source.data
             for x, y, t in zip(d[m.x], d[m.y], d[m.text]):

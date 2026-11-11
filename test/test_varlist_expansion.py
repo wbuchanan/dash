@@ -51,6 +51,27 @@ from conftest import make_data_json, make_spec
 from conftest import render_models  # noqa: E402
 from conftest import drawn_renderers  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 
 def _render(plots, df, *, graph_if="", graph_in=""):
     """Render *plots* against *df* and return the DashRenderer.
@@ -132,8 +153,8 @@ def _visible_count(renderer):
 def _all_label_sets(fig):
     """Every LabelSet annotation attached to *fig*, wherever it was added."""
     out = []
-    for panel in (fig.center, fig.above, fig.below, fig.left, fig.right):
-        out.extend(a for a in panel if isinstance(a, LabelSet))
+    for panel in (_mls_center(fig), fig.above, fig.below, fig.left, fig.right):
+        out.extend(a for a in _mls_all(panel) if isinstance(a, _MLS))
     return out
 
 

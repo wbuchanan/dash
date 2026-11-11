@@ -414,6 +414,7 @@ GENERATORS = {
     "marker_linewidth_truth.json": "scripts/extract_marker_linewidth_truth.do",
     "mband_band_edges.json": "scripts/extract_mband_band_edges.do",
     "minor_tick_truth.json": "scripts/extract_minor_tick_truth.do",
+    "mlabel_clip_truth.json": "scripts/extract_mlabel_clip_truth.do",
     "mlabtextstyle_truth.json": "scripts/extract_mlabtextstyle_truth.do",
     "mlabvpos_truth.json": "scripts/extract_mlabvpos_truth.do",
     "named_style_truth.json": "scripts/extract_named_style_truth.do",

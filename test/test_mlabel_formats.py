@@ -24,6 +24,27 @@ sys.path.insert(0, os.path.dirname(_HERE))
 import dash_render as dr  # noqa: E402
 from test_varlabel_options import MODES, T, VL, figs  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 # auto's first five rows, in their own display formats.
 DF5 = pd.DataFrame({
     "mpg": [22.0, 17.0, 22.0, 20.0, 15.0],
@@ -42,9 +63,9 @@ CASES = {
 
 def _labels(fig):
     out = []
-    for r in (list(fig.center) + list(fig.above) + list(fig.below)
+    for r in (list(_mls_center(fig)) + list(fig.above) + list(fig.below)
               + list(fig.left) + list(fig.right) + list(fig.renderers)):
-        if isinstance(r, LabelSet):
+        if isinstance(r, _MLS):
             fld = getattr(r.text, "field", None) or r.text
             out.extend(str(v) for v in r.source.data[fld])
     return out

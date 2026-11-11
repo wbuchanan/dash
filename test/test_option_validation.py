@@ -138,6 +138,27 @@ _TOKEN = re.compile(
 
 from conftest import render_models  # noqa: E402
 
+# WP-47 MS-15: the marker labels are Text glyph renderers; a reader of the
+# LabelSets they were reads them as conftest.MarkerLabels, beside any
+# other LabelSet.
+from bokeh.models import LabelSet  # noqa: E402
+from conftest import MarkerLabels, mlabel_sets  # noqa: E402
+_MLS = (LabelSet, MarkerLabels)
+
+
+def _mls_center(fig):
+    return list(fig.center) + mlabel_sets(fig)
+
+
+def _mls_select(doc):
+    return list(doc.select({"type": LabelSet})) + mlabel_sets(doc)
+
+
+def _mls_all(objs):
+    objs = list(objs)
+    return objs + mlabel_sets(objs)
+
+
 
 def _ado():
     with open(_ADO, encoding="utf-8") as fh:
@@ -799,7 +820,7 @@ class TestTheDefaultIsWhatTheSchemeGives:
         r, _, _, _ = _both([plot_for("scatter", {"mlabel": "make",
                                                  "mlabposition": "13"})])
         fig = list(r.figures.values())[0]
-        ls = [x for x in fig.center if isinstance(x, LabelSet)]
+        ls = [x for x in _mls_center(fig) if isinstance(x, _MLS)]
         assert len(ls) == 1
         # WP-30 P1.12a: twoway's mlabgap default is 1.4 % of the 4-inch
         # reference, 5.6 px (it was 4); approx absorbs the 4e-6 px the
@@ -916,7 +937,7 @@ class TestTheSeedReader:
 
 class TestMlabelWithSeveralNamesUsesTheFirst:
     def _labelsets(self, fig):
-        return [x for x in fig.center if isinstance(x, LabelSet)]
+        return [x for x in _mls_center(fig) if isinstance(x, _MLS)]
 
     def test_labels_come_from_the_first_and_the_rest_are_named(self):
         r, doc, std_w, srv_w = _both(
@@ -1419,7 +1440,7 @@ class TestNumericOptionsFromASpec:
                         "data; drawing no labels."), line
         std, srv = _figures(r, doc)
         for fig in (std, srv):
-            assert not [x for x in fig.center if isinstance(x, LabelSet)]
+            assert not [x for x in _mls_center(fig) if isinstance(x, _MLS)]
 
 
 class TestUserTextIsEchoedThroughDashDisplay:
