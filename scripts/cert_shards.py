@@ -53,6 +53,10 @@ Usage:
           scripts and, with *, exactly the scripts that split themselves,
           gives each N the balanced assignment of its seconds, and every
           part of test_wp30_truth.cscript has a timed block
+  python3 scripts/cert_shards.py rebalance               rewrite the
+          table from its own seconds: the shards and the split scripts'
+          turns placed again, as after a split script's blocks or their
+          seconds changed (11nov2026)
   python3 scripts/cert_shards.py show                    each N's loads
           (the default tier's and every script's when there is a release
           tier)
@@ -487,7 +491,9 @@ def check(runner_text):
         got = {r[0]: r[3][n] for r in rows}
         if got != want:
             probs.append("the shards for N=%d are not the balanced "
-                         "assignment of the seconds" % n)
+                         "assignment of the seconds (a split script's "
+                         "blocks changed? python3 scripts/cert_shards.py "
+                         "rebalance)" % n)
     return probs
 
 
@@ -549,6 +555,24 @@ def main(argv):
                     "%d: %.0f s" % (k, sum(secs.get(b, 0) for b, p in
                                            parts.items() if p == k))
                     for k in range(1, n + 1))))
+        return 0
+    if argv[1:2] == ["rebalance"] and len(argv) == 2:
+        rows = read_table(runner)
+        seconds = {r[0]: r[1] for r in rows}
+        every = {r[0] for r in rows if is_every(r[3][COUNTS[0]])}
+        block = runner[runner.index(BEGIN):runner.index(END)]
+        m = re.search(r"^// Seconds: (.*?)\nlocal _cert_shards", block,
+                      re.M | re.S)
+        source = " ".join(m.group(1).replace("//", " ").split()) if m \
+            else "the table's own seconds"
+        new = render_table(seconds, {r[0] for r in rows if r[2]}, source,
+                           every, set(read_release(runner)),
+                           _split_texts(every))
+        with open(RUNNER, "w", encoding="utf-8") as fh:
+            fh.write(runner[:runner.index(BEGIN)] + new
+                     + runner[runner.index(END):])
+        print("cert_shards: placed the table's %d scripts again"
+              % len(seconds))
         return 0
     if argv[1:2] == ["write"] and len(argv) in (3, 4):
         with open(argv[2], encoding="utf-8", errors="replace") as fh:

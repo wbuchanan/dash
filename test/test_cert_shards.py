@@ -327,6 +327,20 @@ class TestTheCommandLine:
         assert r.returncode == 1
         assert "not the balanced assignment" in r.stdout
 
+    def test_rebalance_places_a_hand_edited_table_again(self, tmp_path):
+        tree, log = self._tree(tmp_path)
+        assert self._run(tree, "write", str(log)).returncode == 0
+        path = tree / "test" / "run_all_cscripts.do"
+        good = path.read_text()
+        bad = re.sub(r"(test_b\.cscript\s+1\.0 0  )(\d)", lambda m: m.group(1)
+                     + ("1" if m.group(2) == "2" else "2"), good)
+        path.write_text(bad)
+        assert self._run(tree, "check").returncode == 1
+        r = self._run(tree, "rebalance")
+        assert r.returncode == 0 and "placed the table" in r.stdout
+        assert self._run(tree, "check").returncode == 0
+        assert path.read_text() == good
+
     def test_check_finds_a_wrong_port_mark(self, tmp_path):
         tree, log = self._tree(tmp_path)
         assert self._run(tree, "write", str(log)).returncode == 0
