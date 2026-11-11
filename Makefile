@@ -12,7 +12,7 @@
 PYTHON      ?= python3
 STATA_BIN   ?= /usr/local/bin/stata-mp
 PYTEST_ARGS ?= -q -p no:cacheprovider
-# The certification suite's Stata sessions, side by side (1 to 4; WP-30).
+# The certification suite's Stata sessions, side by side (1 to 8; WP-30).
 DASH_CERT_SESSIONS ?= 3
 
 ifeq ($(origin STATA),command line)
@@ -27,9 +27,9 @@ help:
 	@echo "make test-dev  pytest under the development interpreter ($(PYTHON)), strict"
 	@echo "make test-release  the release tier, the tests marked release, which make test and make test-dev leave out"
 	@echo "make test-batch  the batch tier (test_mode_parity.py), which make test and make test-dev leave out"
-	@echo "make test-all  the batch-end suite: pytest with the batch tier, then the certification scripts, never more than 8 workers at once (PYTEST_WORKERS, default 8; DASH_CERT_SESSIONS, default 3)"
+	@echo "make test-all  the batch-end suite: pytest with the batch tier, then the certification scripts, never more than 8 workers at once (PYTEST_WORKERS, default 8; DASH_CERT_SESSIONS, default 8)"
 	@echo "make test-floor  one floor-matrix leg, run by hand (not part of make gate): FLOOR_VENV=<dir> FLOOR_BASELINE=<name>"
-	@echo "make cert      the certification suite, through the console binary, as DASH_CERT_SESSIONS (default 3, 1 to 4) sessions side by side; DASH_CERT_REMEASURE=1 asks twoway again (release)"
+	@echo "make cert      the certification suite, through the console binary, as DASH_CERT_SESSIONS (default 3, 1 to 8) sessions side by side; DASH_CERT_REMEASURE=1 asks twoway again (release)"
 	@echo "make cert-release  the certification suite's release tier alone: the closed work packages' truth scripts (test_wp29/30/31_truth), which make cert and make test-all leave out"
 	@echo "make cert-all  every certification script, both tiers (a work package's closeout)"
 	@echo "make gate      net install, then every example and scheme from the install, then the certification scripts (GATE_CERT_TIER, default all; make release runs the release tier, its make check having run the default)"

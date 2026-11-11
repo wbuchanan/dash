@@ -65,13 +65,24 @@ class TestTheRealTable:
         release = set(S.read_release(_runner()))
         rows = [r for r in rows if r[0] not in release]
         seconds = {r[0]: r[1] for r in rows}
+        port = {r[0] for r in rows if r[2]}
+        every = {r[0] for r in rows if S.is_every(r[3][2])}
+        units = [sum(seconds[s] for s in port)] + [
+            v for s, v in seconds.items() if s not in port | every]
         for n in S.COUNTS:
             shards = {r[0]: r[3][n] for r in rows}
-            assert set(shards.values()) - {S.EVERY} == set(range(1, n + 1))
-            ld = S.loads(seconds, shards, n)
-            # Within a tenth of each other: the longest single unit (the
-            # fixed-port scripts, about 110 s) is under a shard's share.
-            assert max(ld) <= 1.1 * min(ld), (n, ld)
+            assert {v for v in shards.values() if not S.is_every(v)} == \
+                set(range(1, n + 1))
+            # The split scripts' parts, turned as the table says
+            # (11nov2026), counted where they run.
+            parts = S.parts_of(seconds, every, n, S._cscript_text)
+            ld = S.loads(seconds, shards, n, parts)
+            assert abs(sum(ld) - sum(seconds.values())) < 1e-6
+            # Within a tenth of the best a shard can do: the even share,
+            # or the longest single script or part where that is longer.
+            longest = max(units + [v for p in parts.values() for v in p])
+            best = max(sum(ld) / n, longest)
+            assert max(ld) <= 1.1 * best, (n, ld)
 
     def test_the_closed_truth_scripts_are_the_release_tier(self):
         assert S.read_release(_runner()) == [
@@ -91,13 +102,15 @@ class TestTheRealTable:
 
     def test_the_wp30_script_runs_in_every_shard_split_by_its_blocks(self):
         rows = {r[0]: r[3] for r in S.read_table(_runner())}
-        assert rows["test_wp30_truth.cscript"] == {n: S.EVERY
-                                                   for n in S.COUNTS}
+        assert all(S.is_every(v)
+                   for v in rows["test_wp30_truth.cscript"].values())
+        assert set(rows["test_wp30_truth.cscript"]) == set(S.COUNTS)
         # ["test_wp30_truth.cscript"] -> plus test_wp31_truth.cscript:
         # WP-31 S01 adds the second script that splits itself; plus
         # test_wp33_truth.cscript: WP-33 33-01 adds the third.
         # old -> new: plus test_wp34_truth.cscript (WP-34 W0)
-        assert [s for s, k in rows.items() if S.EVERY in k.values()] == [
+        assert [s for s, k in rows.items()
+                if any(S.is_every(v) for v in k.values())] == [
             "test_wp30_truth.cscript", "test_wp31_truth.cscript",
             "test_wp33_truth.cscript", "test_wp34_truth.cscript",
             "test_wp35_truth.cscript",  # old -> new: plus wp35 (WP-35 W0)
@@ -327,7 +340,7 @@ class TestTheCommandLine:
             "local k : environment DASH_CERT_SHARD\n")
         assert self._run(tree, "write", str(log)).returncode == 0
         path = tree / "test" / "run_all_cscripts.do"
-        assert re.search(r"test_b\.cscript\s+1\.0 0  \* \* \* ///$",
+        assert re.search(r"test_b\.cscript\s+1\.0 0  \* \* \* \* \* \* \* ///$",
                          path.read_text(), re.M)
         assert self._run(tree, "check").returncode == 0
         (tree / "test" / "test_b.cscript").write_text("display 1\n")
@@ -412,7 +425,7 @@ class TestTheRunnerRunsOnlyItsShard:
         sel = src[src.index("// ---- selection: begin"):
                   src.index("// ---- selection: end ----")]
         assert "local _cert_sh : environment DASH_CERT_SHARD" in sel
-        assert '"^[1-4]/[1-4]$"' in sel
+        assert '"^[1-8]/[1-8]$"' in sel
         assert "local _cert_only : environment DASH_CERT_ONLY" in sel
         assert '"^[ A-Za-z0-9_.]*$"' in sel
         # Checked in Mata, on the local's value, before either is expanded.
@@ -444,7 +457,9 @@ class TestTheRunnerRunsOnlyItsShard:
 
     def test_a_star_row_runs_in_every_shard(self):
         sel = _runner()
-        assert ('    if "`_cert_at\'" == "*" | "`_cert_at\'" == "`_cert_k\'" '
+        # "*" or "*r" (a split script's parts turned, 11nov2026).
+        assert ('    if substr("`_cert_at\'", 1, 1) == "*" | '
+                '"`_cert_at\'" == "`_cert_k\'" '
                 "local _cert_run `_cert_run' `_cert_s'") in sel
 
     def test_the_log_says_which_shard_and_plan(self):
@@ -479,3 +494,90 @@ class TestTheTableIsOneStataCommand:
         assert S.continuation_problems(bad) == [
             "the table's last row, test_c.cscript's, continues "
             "into the next line"]
+
+
+class TestTheSplitScriptsAreTurned:
+    """11nov2026: every split script's part 1 is its longest, and with
+    eight sessions all of them ran in session 1 (542 s, session 8 168 s).
+    The table turns each script's parts so that the sessions even out."""
+
+    def test_the_parts_are_the_scripts_own_rule(self):
+        text = ("local w99_secs S00 1 S01 9 S02 23 S03 29\n"
+                "    sec = J(rows(ids), 1, 1)\n"
+                "* ==== S00 a ====\n* ==== S01 b ====\n"
+                "* ==== S02 c ====\n* ==== S03 d ====\n* ==== S04 e ====\n")
+        # Longest first onto the least loaded part; S04 is not listed and
+        # counts the script's default, 1 s.
+        assert S.split_parts(text, 2) == [31.0, 32.0]
+        assert S.split_parts(text, 3) == [29.0, 23.0, 11.0]
+        assert S.split_parts(text, 8) == [29.0, 23.0, 9.0, 1.0, 1.0,
+                                          0.0, 0.0, 0.0]
+        # Scaled to the table's seconds.
+        assert S.split_parts(text, 3, 126.0) == [58.0, 46.0, 22.0]
+        # No blocks: an even share.
+        assert S.split_parts("", 4, 8.0) == [2.0] * 4
+
+    def test_the_real_scripts_parts_cover_their_seconds(self):
+        rows = S.read_table(_runner())
+        seconds = {r[0]: r[1] for r in rows}
+        every = {r[0] for r in rows if S.is_every(r[3][2])}
+        for n in S.COUNTS:
+            for s, p in S.parts_of(seconds, every, n, S._cscript_text).items():
+                assert len(p) == n
+                assert abs(sum(p) - seconds[s]) < 1e-6, (s, n)
+
+    def test_a_turn_puts_the_longest_part_on_the_least_loaded_session(self):
+        r, load = S._turn([10.0, 0.0, 0.0], [5.0, 1.0, 0.0], 3)
+        assert r == 1 and load == [10.0, 5.0, 1.0]
+        # Equal loads: no turn.
+        assert S._turn([0.0, 0.0], [3.0, 1.0], 2) == (0, [3.0, 1.0])
+
+    def test_two_like_scripts_are_turned_apart(self):
+        seconds = {"test_a.cscript": 10.0, "test_b.cscript": 10.0}
+        parts = {"test_a.cscript": [10.0, 0.0],
+                 "test_b.cscript": [10.0, 0.0]}
+        out = S.assign(seconds, set(), 2, set(seconds), frozenset(), parts)
+        assert sorted(out.values()) == ["*", "*1"]
+        assert S.loads(seconds, out, 2, parts) == [10.0, 10.0]
+        # Without the parts, the old even share.
+        out = S.assign(seconds, set(), 2, set(seconds))
+        assert out == {"test_a.cscript": "*", "test_b.cscript": "*"}
+        assert S.loads(seconds, out, 2) == [10.0, 10.0]
+
+    def test_a_turned_row_reads_back(self):
+        seconds = {"test_a.cscript": 10.0, "test_b.cscript": 10.0,
+                   "test_c.cscript": 4.0}
+        every = {"test_a.cscript", "test_b.cscript"}
+        texts = {s: "* ==== S00 x ====\n* ==== S01 y ====\n"
+                    "local w1_secs S00 9 S01 1\n" for s in every}
+        text = (S.render_table(seconds, set(), "a run", every,
+                               text_of=texts.__getitem__) + S.END + "\n")
+        rows = {r[0]: r[3] for r in S.read_table(text)}
+        assert set(rows) == set(seconds)
+        # Like parts, so one of the two is turned for every N.
+        for n in S.COUNTS:
+            assert {rows["test_a.cscript"][n], rows["test_b.cscript"][n]} \
+                != {S.EVERY}, n
+            assert S.is_every(rows["test_a.cscript"][n])
+            assert 0 <= S.turn_of(rows["test_b.cscript"][n]) < n
+        assert V.every_shard_scripts(text) == ["test_a.cscript",
+                                               "test_b.cscript"]
+
+    def test_every_split_script_asks_for_its_turned_part(self):
+        helpers = open(os.path.join(_HERE, "cert_helpers.do")).read()
+        assert "program define cert_split_part, rclass" in helpers
+        assert "return(mod(k - 1 - r + n, n) + 1)" in helpers
+        rows = S.read_table(_runner())
+        every = sorted(r[0] for r in rows if S.is_every(r[3][2]))
+        assert len(every) >= 16
+        for name in every + ["templates/wp_truth_template.cscript"]:
+            text = open(os.path.join(_HERE, name)).read()
+            m = re.search(r'^cert_split_part "(test_wp[\w@]+_truth\.cscript)"'
+                          r" `(w[\w@]+)_k' `\2_N'\nlocal \2_p = r\(part\)\n"
+                          r'mata: _\2_part\("\1", st_local\("\2_secs"\), '
+                          r"`\2_p', `\2_N'\)$", text, re.M)
+            assert m, name
+            if not name.startswith("templates/"):
+                assert m.group(1) == name
+            # After cert_helpers.do is loaded.
+            assert text.index('do "cert_helpers.do"') < m.start(), name

@@ -17,11 +17,13 @@ def _dry(**env):
 
 
 class TestTheWorkerBudget:
-    def test_the_default_is_eight_pytest_workers_then_three_sessions(self):
+    def test_the_default_is_eight_pytest_workers_then_eight_sessions(self):
+        # Eight sessions since 11nov2026 (the shard table turns the split
+        # scripts' parts so that eight finish together).
         r = _dry()
         assert r.returncode == 0, r.stdout + r.stderr
         assert "-n 8" in r.stdout
-        assert "DASH_CERT_SESSIONS=3" in r.stdout
+        assert "DASH_CERT_SESSIONS=8" in r.stdout
         # The batch-end suite keeps the batch tier (test_mode_parity.py).
         assert "DASH_TEST_TIER=batch" in r.stdout
 
@@ -32,11 +34,11 @@ class TestTheWorkerBudget:
         assert "pytest:" not in r.stdout
 
     def test_eight_exactly_is_allowed(self):
-        r = _dry(PYTEST_WORKERS="8", DASH_CERT_SESSIONS="4")
+        r = _dry(PYTEST_WORKERS="8", DASH_CERT_SESSIONS="8")
         assert r.returncode == 0 and "-n 8" in r.stdout
 
-    def test_more_than_four_sessions_is_refused(self):
-        r = _dry(PYTEST_WORKERS="1", DASH_CERT_SESSIONS="5")
+    def test_more_than_eight_sessions_is_refused(self):
+        r = _dry(PYTEST_WORKERS="1", DASH_CERT_SESSIONS="9")
         assert r.returncode == 2
 
     def test_a_count_that_is_not_a_number_is_refused(self):

@@ -3,10 +3,13 @@
 # (test_mode_parity.py), then the certification scripts -- never using
 # more than DASH_MAX_WORKERS (8) workers at once:
 # PYTEST_WORKERS pytest workers (default 8), then DASH_CERT_SESSIONS Stata
-# sessions (default 3).  They run one after the other: run side by side
-# (measured 07oct2026, 6 + 2 workers) pytest's serve tests and the
-# certification scripts that serve on fixed ports fought over ports and
-# CPU, and seven serve tests failed.  The run fails if either half failed.
+# sessions (default 8 since 11nov2026; 3 before, 717 s against 353 s).
+# They run one after the other: run side by side (measured 07oct2026, 6 + 2
+# workers) pytest's serve tests and the certification scripts that serve on
+# fixed ports fought over ports and CPU, and seven serve tests failed; again
+# on 11nov2026 (7 + 5) six serve tests timed out, and the run took 900 s
+# against about 930 s one after the other -- the machine is busy on every
+# core either way.  The run fails if either half failed.
 # Their logs are kept in a fresh folder under TMPDIR, named at the end.
 # pytest lists every test phase of a second or more, writes every test's
 # time to pytest_timing.json (test/suite_timing.py), and
@@ -18,14 +21,14 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 PYTHON="${PYTHON:-python3}"
 max="${DASH_MAX_WORKERS:-8}"
 pw="${PYTEST_WORKERS:-8}"
-cs="${DASH_CERT_SESSIONS:-3}"
+cs="${DASH_CERT_SESSIONS:-8}"
 for v in "$max" "$pw" "$cs"; do
     case "$v" in
         ''|*[!0-9]*) echo "run_all_tests: worker counts must be whole numbers"; exit 2 ;;
     esac
 done
-if [ "$pw" -lt 1 ] || [ "$cs" -lt 1 ] || [ "$cs" -gt 4 ]; then
-    echo "run_all_tests: PYTEST_WORKERS must be at least 1 and DASH_CERT_SESSIONS 1 to 4"
+if [ "$pw" -lt 1 ] || [ "$cs" -lt 1 ] || [ "$cs" -gt 8 ]; then
+    echo "run_all_tests: PYTEST_WORKERS must be at least 1 and DASH_CERT_SESSIONS 1 to 8"
     exit 2
 fi
 if [ "$pw" -gt "$max" ] || [ "$cs" -gt "$max" ]; then

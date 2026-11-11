@@ -305,10 +305,17 @@ foreach f of global MLG_CALLED {
         "Missing:") > 0))
     if `_named' local refused6 "`refused6' `f'"
     capture mata: mata describe `f'()
-    if _rc != 0 local notback6 "`notback6' `f'"
-    // The whole library back before the next function is dropped.
-    capture mata: mata clear
-    capture _dash_require_mata
+    local back_f = (_rc == 0)
+    if !`back_f' local notback6 "`notback6' `f'"
+    // The whole library back before the next function is dropped.  A
+    // guard that mended it has just run dash_parse.mata again over the
+    // dropped library, so the library is whole; it is cleared and loaded
+    // again only when the mend failed (about 30 s of the script's
+    // reloads, 11nov2026).
+    if `rc_f' != 0 | `_named' | !`back_f' {
+        capture mata: mata clear
+        capture _dash_require_mata
+    }
 }
 capture erase "`guardlog6'"
 if "`refused6'" != "" {

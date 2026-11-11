@@ -6,7 +6,7 @@ so that scripts/run_cert_suite.sh can run N sessions side by side.  Which
 script is in which shard is the table between the runner's
 ``// ---- shards: begin`` and ``// ---- shards: end`` lines: one row a
 script, with the seconds it took in a timed run, whether it runs
-``dash serve`` on a fixed port, and its shard for N = 2, 3 and 4.
+``dash serve`` on a fixed port, and its shard for N = 2 to 8.
 
 The shards are balanced by longest processing time first: the scripts, from
 the longest, each go to the least loaded shard (the lowest numbered of
@@ -18,12 +18,19 @@ noisily or quietly, is ``dash serve`` or ``_dash_serve`` and which names one
 of those ports or no port().
 
 A script that splits itself -- it reads DASH_CERT_SHARD (``local <name> :
-env[ironment] DASH_CERT_SHARD``) and runs only its own part k of N, as
+env[ironment] DASH_CERT_SHARD``) and runs only its own part of N, as
 test_wp30_truth.cscript does with its blocks -- runs in every shard: its
-row's shards are ``*``, and it counts its seconds divided by N in every
-shard when the others are balanced.  test_wp30_truth.cscript's parts are
-the same longest-first rule over its blocks' seconds (its ``parts``
-section, which wp30_parts mirrors).
+row's shards are ``*``.  Its parts are the same longest-first rule over
+its blocks' seconds (its ``parts`` section, which split_parts mirrors), so
+part 1 is always its longest; with eight sessions every script's longest
+part fell to session 1, which ran 542 s while session 8 ran 168 s
+(11nov2026).  So the table turns each split script's parts: ``*r`` for N
+sessions has session k run part ((k - 1 - r) mod N) + 1, and the turns
+are chosen, longest parts first, to even the sessions' loads (each part
+counted at its blocks' share of the script's seconds) before the other
+scripts are placed on top.  cert_helpers.do's cert_split_part reads the
+turn from this table.  Without the scripts' texts (the parts unknown), a
+split script counts its seconds divided by N in every shard, as before.
 
 The release tier (22oct2026; the ``local _cert_release`` line under the
 table, which cert_verdict.release_scripts reads) is left out of a default
@@ -62,8 +69,9 @@ RUNNER = os.path.join(_REPO, "test", "run_all_cscripts.do")
 sys.path.insert(0, _HERE)
 import cert_verdict  # noqa: E402
 
-#: The shard counts the table assigns (run_cert_suite.sh runs at most 4).
-COUNTS = (2, 3, 4)
+#: The shard counts the table assigns (run_cert_suite.sh runs at most 8;
+#: 11nov2026, so that the certification leg fits beside pytest's).
+COUNTS = (2, 3, 4, 5, 6, 7, 8)
 FIXED_PORTS = ("5006", "5097", "5098", "5099")
 BEGIN = "// ---- shards: begin (scripts/cert_shards.py writes this block) ----"
 END = "// ---- shards: end ----"
@@ -122,20 +130,78 @@ def splits_itself(text):
                for ln in logical_lines(text))
 
 
-def assign(seconds, port, n, every=frozenset(), release=frozenset()):
+def is_every(v):
+    """Whether a table entry runs its script in every shard: ``*`` or
+    ``*r`` (the script's parts turned by r)."""
+    return isinstance(v, str) and v.startswith(EVERY)
+
+
+def turn_of(v):
+    """The turn r of an entry ``*r`` (0 for ``*``)."""
+    return int(v[1:] or 0)
+
+
+def _every_entry(r):
+    return EVERY if r == 0 else "%s%d" % (EVERY, r)
+
+
+def _turn(load, parts, n):
+    """The turn r (0..n-1) that adds *parts* (part 1's seconds first) to
+    *load* most evenly: the least largest load, then the least sum of
+    squares, then the least r.  Session k runs part ((k - 1 - r) mod n) + 1,
+    so part p lands on session ((p - 1 + r) mod n) + 1."""
+    best = None
+    for r in range(n):
+        new = list(load)
+        for p, sec in enumerate(parts):
+            new[(p + r) % n] += sec
+        key = (round(max(new), 6), round(sum(v * v for v in new), 6), r)
+        if best is None or key < best[0]:
+            best = (key, r, new)
+    return best[1], best[2]
+
+
+def _place_split(out, load, split, n, parts):
+    """Turn each script in *split* onto *load*, the longest parts first:
+    with *parts* ({script: [part seconds]}) each gets its turn, without
+    them its seconds are shared out evenly (``*``)."""
+    if parts is None:
+        share = sum(split.values()) / n
+        for s in split:
+            out[s] = EVERY
+        return [v + share for v in load]
+    order = sorted(split, key=lambda s: (-max(parts[s] or [0.0]), s))
+    for s in order:
+        r, load = _turn(load, parts[s], n)
+        out[s] = _every_entry(r)
+    return load
+
+
+def _place_units(out, load, units, n):
+    units.sort(key=lambda u: (-u[0], u[1][0]))
+    for sec, scripts in units:
+        k = min(range(n), key=lambda i: (load[i], i))
+        load[k] += sec
+        for s in scripts:
+            out[s] = k + 1
+    return load
+
+
+def assign(seconds, port, n, every=frozenset(), release=frozenset(),
+           parts=None):
     """{script: shard (1..n)}: longest first onto the least loaded shard,
-    the fixed-port scripts one unit; each script in *every* is "*", its
-    seconds shared out over the n shards before the others are placed.
-    The scripts in *release* are placed after the others, on their loads:
-    see the module's docstring."""
+    the fixed-port scripts one unit; each script in *every* is ``*r``,
+    placed first (see _place_split; *parts* maps each to its part seconds
+    for this n, or None to share its seconds out evenly).  The scripts in
+    *release* are placed after the others, on their loads: see the
+    module's docstring."""
     if release:
         base = {s: v for s, v in seconds.items() if s not in release}
-        out = _assign(base, port, n, every)
-        load = loads(base, out, n)
+        out = _assign(base, port, n, every, parts)
+        load = loads(base, out, n, parts)
         rel = {s: v for s, v in seconds.items() if s in release}
-        share = sum(v for s, v in rel.items() if s in every) / n
-        load = [v + share for v in load]
-        out.update({s: EVERY for s in rel if s in every})
+        load = _place_split(out, load, {s: v for s, v in rel.items()
+                                        if s in every}, n, parts)
         rest = {s: v for s, v in rel.items() if s not in every}
         held = sorted(s for s in rest if s in port)
         at = sorted({out[s] for s in base if s in port and s not in every})
@@ -146,17 +212,12 @@ def assign(seconds, port, n, every=frozenset(), release=frozenset()):
                 load[at[0] - 1] += rest[s]
         elif held:
             units.append((sum(rest[s] for s in held), held))
-        units.sort(key=lambda u: (-u[0], u[1][0]))
-        for sec, scripts in units:
-            k = min(range(n), key=lambda i: (load[i], i))
-            load[k] += sec
-            for s in scripts:
-                out[s] = k + 1
+        _place_units(out, load, units, n)
         return out
-    return _assign(seconds, port, n, every)
+    return _assign(seconds, port, n, every, parts)
 
 
-def _assign(seconds, port, n, every=frozenset()):
+def _assign(seconds, port, n, every=frozenset(), parts=None):
     """assign with no release tier."""
     units = []
     together = sorted(s for s in seconds if s in port and s not in every)
@@ -164,27 +225,69 @@ def _assign(seconds, port, n, every=frozenset()):
         units.append((sum(seconds[s] for s in together), together))
     units += [(seconds[s], [s]) for s in seconds
               if s not in port and s not in every]
-    units.sort(key=lambda u: (-u[0], u[1][0]))
-    share = sum(seconds[s] for s in seconds if s in every) / n
-    load = [share] * n
-    out = {s: EVERY for s in seconds if s in every}
-    for sec, scripts in units:
-        k = min(range(n), key=lambda i: (load[i], i))
-        load[k] += sec
-        for s in scripts:
-            out[s] = k + 1
+    out = {}
+    load = _place_split(out, [0.0] * n, {s: v for s, v in seconds.items()
+                                         if s in every}, n, parts)
+    _place_units(out, load, units, n)
     return out
 
 
-def loads(seconds, shards, n):
-    """The seconds of each shard of n."""
+def loads(seconds, shards, n, parts=None):
+    """The seconds of each shard of n (a turned split script's parts where
+    *parts* has them, else its seconds shared out evenly)."""
     out = [0.0] * n
     for s, k in shards.items():
-        if k == EVERY:
-            out = [v + seconds[s] / n for v in out]
+        if is_every(k):
+            if parts is not None and s in parts:
+                r = turn_of(k)
+                for p, sec in enumerate(parts[s]):
+                    out[(p + r) % n] += sec
+            else:
+                out = [v + seconds[s] / n for v in out]
         else:
             out[k - 1] += seconds[s]
     return out
+
+
+def split_parts(text, n, total=None):
+    """[seconds of part 1, ..., part n] of a split script's text for n
+    sessions: its blocks (header lines ``* ==== S<NN> ...``, in file
+    order) longest first onto the least loaded part, the lowest numbered
+    of equals, by the seconds of its ``local w<NN>_secs`` table (a block
+    it does not list counting the script's default, ``sec = J(rows(ids),
+    1, <d>)``) -- what the script's own Mata computes.  With *total* the
+    parts are scaled to sum to it (the table's measured seconds)."""
+    ids = []
+    for m in re.finditer(r"^\* ==== (S\d+) ", text, re.M):
+        if m.group(1) not in ids:
+            ids.append(m.group(1))
+    m = re.search(r"sec = J\(rows\(ids\), 1, ([0-9.]+)\)", text)
+    default = float(m.group(1)) if m else 1.0
+    secs = {}
+    for line in logical_lines(text):
+        m = re.match(r"^local w\w+_secs\s+(.*)$", line)
+        if m:
+            toks = m.group(1).split()
+            secs = {toks[i]: float(toks[i + 1])
+                    for i in range(0, len(toks) - 1, 2)}
+            break
+    sec = [secs.get(i, default) for i in ids]
+    order = sorted(range(len(ids)), key=lambda i: (-sec[i], i))
+    load = [0.0] * n
+    for i in order:
+        k = min(range(n), key=lambda j: (load[j], j))
+        load[k] += sec[i]
+    if total is not None:
+        raw = sum(load)
+        load = ([v * total / raw for v in load] if raw > 0
+                else [total / n] * n)
+    return load
+
+
+def parts_of(seconds, every, n, text_of):
+    """{split script: its part seconds for n} at the table's seconds, from
+    each script's text (``text_of(name)``)."""
+    return {s: split_parts(text_of(s), n, seconds[s]) for s in every}
 
 
 def wp30_parts(text, n):
@@ -220,12 +323,12 @@ def read_table(runner_text):
         raise ValueError("the runner has no single shard table")
     block = runner_text[runner_text.index(BEGIN):runner_text.index(END)]
     rows = []
+    cols = r"\s+([1-8]|\*[0-7]?)" * len(COUNTS)
     for m in re.finditer(r"^\s+(test_\w+\.cscript)\s+([0-9.]+)\s+([01])"
-                         r"\s+([1-4*])\s+([1-4*])\s+([1-4*])\s*(?:///)?\s*$",
-                         block, re.M):
+                         + cols + r"\s*(?:///)?\s*$", block, re.M):
         rows.append((m.group(1), float(m.group(2)), m.group(3) == "1",
-                     dict(zip(COUNTS, (k if k == EVERY else int(k)
-                                       for k in m.group(4, 5, 6))))))
+                     dict(zip(COUNTS, (k if is_every(k) else int(k)
+                                       for k in m.groups()[3:])))))
     return rows
 
 
@@ -257,22 +360,29 @@ def read_release(runner_text):
 
 
 def render_table(seconds, port, source, every=frozenset(),
-                 release=frozenset()):
+                 release=frozenset(), text_of=None):
     """The block's text for these seconds, fixed-port scripts, scripts
-    that split themselves over every shard and release-tier scripts.  The
-    shards are those of the seconds as the table writes them, to a tenth,
-    so that check agrees."""
+    that split themselves over every shard and release-tier scripts; with
+    *text_of* (a script's name -> its text) the split scripts' parts are
+    turned (see the module's docstring).  The shards are those of the
+    seconds as the table writes them, to a tenth, so that check agrees."""
     seconds = {s: float("%.1f" % v) for s, v in seconds.items()}
-    shards = {n: assign(seconds, port, n, every, release) for n in COUNTS}
+    shards = {n: assign(seconds, port, n, every, release,
+                        None if text_of is None
+                        else parts_of(seconds, every, n, text_of))
+              for n in COUNTS}
     lines = [
         BEGIN,
         "// Each certification script: the seconds it takes, 1 when it runs",
         "// dash serve on a fixed port (5006, 5097, 5098, 5099), and its shard",
-        "// when DASH_CERT_SHARD splits the run in 2, 3 or 4: longest first",
-        "// onto the least loaded shard, the fixed-port scripts as one unit so",
-        "// that they never serve at once; * when a script runs in every shard",
-        "// and splits itself (it reads DASH_CERT_SHARD), its seconds shared",
-        "// out over them.  Unset, the run is every script, in this session.",
+        "// when DASH_CERT_SHARD splits the run in 2 to 8 (a column each):",
+        "// longest first onto the least loaded shard, the fixed-port scripts",
+        "// as one unit so that they never serve at once; *r when a script",
+        "// runs in every shard and splits itself (it reads DASH_CERT_SHARD),",
+        "// its parts turned by r (cert_helpers.do's cert_split_part: session",
+        "// k runs part ((k - 1 - r) mod N) + 1), the turns chosen to even the",
+        "// sessions before the other scripts are placed.  Unset, the run is",
+        "// every script, in this session.",
     ]
     lines += ["// " + ln for ln in textwrap.wrap(
         "Seconds: " + " ".join(source.split()), 72)]
@@ -280,9 +390,9 @@ def render_table(seconds, port, source, every=frozenset(),
     width = max(len(s) for s in seconds)
     names = sorted(seconds)
     for i, s in enumerate(names):
-        lines.append("    %-*s %7.1f %d  %s %s %s%s"
+        lines.append("    %-*s %7.1f %d  %s%s"
                      % (width, s, seconds[s], 1 if s in port else 0,
-                        shards[2][s], shards[3][s], shards[4][s],
+                        " ".join(str(shards[n][s]) for n in COUNTS),
                         " ///" if i < len(names) - 1 else ""))
     if release:
         lines += [
@@ -311,6 +421,14 @@ def _cscript_text(name):
     with open(os.path.join(_REPO, "test", name), encoding="utf-8",
               errors="replace") as fh:
         return fh.read()
+
+
+def _split_texts(every):
+    """_cscript_text when every split script is there to read, else None
+    (their seconds are then shared out evenly)."""
+    if all(os.path.exists(os.path.join(_REPO, "test", s)) for s in every):
+        return _cscript_text
+    return None
 
 
 def check(runner_text):
@@ -346,8 +464,10 @@ def check(runner_text):
         probs.append("the release tier names a script the runner does not "
                      "run: " + " ".join(sorted(set(release) - set(named))))
     release = set(release) & set(named)
-    starred = {r[0] for r in rows if EVERY in r[3].values()}
-    if any(set(r[3].values()) != {EVERY} for r in rows if r[0] in starred):
+    starred = {r[0] for r in rows if any(is_every(v)
+                                         for v in r[3].values())}
+    if any(not all(is_every(v) for v in r[3].values())
+           for r in rows if r[0] in starred):
         probs.append("a row is * for some N and not for every N")
     splits = {s for s in named if os.path.exists(os.path.join(
         _REPO, "test", s)) and splits_itself(_cscript_text(s))}
@@ -359,8 +479,11 @@ def check(runner_text):
                      "port: " + " ".join(sorted(starred & marked)))
     if "test_wp30_truth.cscript" in starred and os.path.exists(WP30):
         probs += wp30_check(_cscript_text("test_wp30_truth.cscript"))
+    text_of = _split_texts(starred)
     for n in COUNTS:
-        want = assign(seconds, marked, n, starred, release)
+        want = assign(seconds, marked, n, starred, release,
+                      None if text_of is None
+                      else parts_of(seconds, starred, n, text_of))
         got = {r[0]: r[3][n] for r in rows}
         if got != want:
             probs.append("the shards for N=%d are not the balanced "
@@ -405,13 +528,18 @@ def main(argv):
         if release:
             tiers = [(" default", [r for r in rows if r[0] not in release]),
                      (" all", rows)]
+        every = {r[0] for r in rows if is_every(r[3][COUNTS[0]])}
+        text_of = _split_texts(every)
         for label, these in tiers:
             seconds = {r[0]: r[1] for r in these}
             for n in COUNTS:
                 shards = {r[0]: r[3][n] for r in these}
+                parts = (None if text_of is None else parts_of(
+                    seconds, every & set(seconds), n, text_of))
                 print("N=%d%s: %s" % (n, label, "  ".join(
                     "%d: %.0f s" % (k + 1, v)
-                    for k, v in enumerate(loads(seconds, shards, n)))))
+                    for k, v in enumerate(loads(seconds, shards, n,
+                                                parts)))))
         if os.path.exists(WP30):
             text = _cscript_text("test_wp30_truth.cscript")
             secs = wp30_seconds(text)
@@ -444,7 +572,8 @@ def main(argv):
                 if serves_on_a_fixed_port(_cscript_text(s))}
         every = {s for s in scripts if splits_itself(_cscript_text(s))}
         source = argv[3] if len(argv) == 4 else os.path.basename(argv[2])
-        new = render_table(seconds, port, source, every, release)
+        new = render_table(seconds, port, source, every, release,
+                           _split_texts(every))
         start = runner.index(BEGIN)
         stop = runner.index(END)
         with open(RUNNER, "w", encoding="utf-8") as fh:

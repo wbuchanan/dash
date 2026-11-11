@@ -44,13 +44,14 @@ _RESULT = re.compile(r"^\[ (PASS|FAIL|SKIP)\] (\S+\.cscript)\b", re.M)
 _SUMMARY = re.compile(r"^ALL TESTS PASSED \((\d+) passed, (\d+) skipped\)\s*$",
                       re.M)
 _SHARD = re.compile(r"^\[SHARD\] ([1-9])/([1-9]):", re.M)
-# A shard-table row whose shards are "*": the script runs in every shard.
 _TIER = re.compile(r"^\[ TIER\] (\S+)", re.M)
 _RELEASE = re.compile(r"^local _cert_release\b([ \t\w.]*)$", re.M)
 #: The tiers a run can be of.
 TIERS = ("default", "release", "all")
-_EVERY = re.compile(r"^\s+(test_\w+\.cscript)\s+[0-9.]+\s+[01]\s+\*\s+\*"
-                    r"\s+\*\s*(?:///)?\s*$", re.M)
+# Every column (one per N, 2 to 8 since 11nov2026) is "*" or "*r", the
+# script's parts turned by r.
+_EVERY = re.compile(r"^\s+(test_\w+\.cscript)\s+[0-9.]+\s+[01]"
+                    r"(?:\s+\*[0-7]?)+\s*(?:///)?\s*$", re.M)
 
 
 def registered_scripts(runner_text):
@@ -59,7 +60,8 @@ def registered_scripts(runner_text):
 
 
 def every_shard_scripts(runner_text):
-    """The scripts the runner's shard table runs in every shard (``*``)."""
+    """The scripts the runner's shard table runs in every shard (``*``
+    or ``*r`` in every column)."""
     return _EVERY.findall(runner_text)
 
 

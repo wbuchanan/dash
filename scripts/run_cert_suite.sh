@@ -11,7 +11,7 @@
 # STATA_BIN names the console binary; PYTHON names the interpreter the
 # verdict script runs under.
 #
-# DASH_CERT_SESSIONS (default 3, at most 4; WP-30 test performance, C) runs
+# DASH_CERT_SESSIONS (default 3, at most 8 since 11nov2026; WP-30 test performance, C) runs
 # the suite as that many Stata sessions side by side, session k running
 # shard k (DASH_CERT_SHARD=k/N; the runner's shard table keeps every script
 # that serves on a fixed port in one shard), each in its own folder with its
@@ -38,8 +38,8 @@ case "$REPO" in
 esac
 n="${DASH_CERT_SESSIONS:-3}"
 case "$n" in
-  1|2|3|4) ;;
-  *) echo "certification suite: DASH_CERT_SESSIONS must be 1, 2, 3 or 4" >&2
+  1|2|3|4|5|6|7|8) ;;
+  *) echo "certification suite: DASH_CERT_SESSIONS must be a whole number from 1 to 8" >&2
      exit 2 ;;
 esac
 only="${DASH_CERT_ONLY:-}"

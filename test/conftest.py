@@ -635,15 +635,45 @@ def _app_block_code(text, flags, tail, line):
     return code
 
 
+#: id(block code) -> (the code, its plan): every code object nested in it,
+#: children before parents, each with the (index in co_consts, position in
+#: the plan) of the code objects it holds.  Walked once per block, not once
+#: per load: the recursive walk was a third of a load (11nov2026).
+_APP_CODE_PLAN = {}
+
+
+def _app_code_plan(code):
+    hit = _APP_CODE_PLAN.get(id(code))
+    if hit is not None and hit[0] is code:
+        return hit[1]
+    nodes = []
+
+    def walk(c):
+        kids = tuple((i, walk(k)) for i, k in enumerate(c.co_consts)
+                     if isinstance(k, types.CodeType))
+        nodes.append((c, kids))
+        return len(nodes) - 1
+
+    walk(code)
+    plan = tuple(nodes)
+    _app_cache_put(_APP_CODE_PLAN, id(code), (code, plan))
+    return plan
+
+
 def _app_code_in(code, filename):
     """*code* and every code object nested in it, as compiled from
     *filename*."""
-    consts = code.co_consts
-    if any(isinstance(c, types.CodeType) for c in consts):
-        consts = tuple(_app_code_in(c, filename)
-                       if isinstance(c, types.CodeType) else c
-                       for c in consts)
-    return code.replace(co_filename=filename, co_consts=consts)
+    out = []
+    for c, kids in _app_code_plan(code):
+        if kids:
+            consts = list(c.co_consts)
+            for i, k in kids:
+                consts[i] = out[k]
+            out.append(c.replace(co_filename=filename,
+                                 co_consts=tuple(consts)))
+        else:
+            out.append(c.replace(co_filename=filename))
+    return out[-1]
 
 
 def compile_app(source, filename):
@@ -995,7 +1025,17 @@ def load_app(path, name, draw=True):
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     with open(spec.origin, "rb") as fh:
-        source = importlib.util.decode_source(fh.read())
+        data = fh.read()
+    if b"\r" in data:
+        source = importlib.util.decode_source(data)
+    else:
+        # decode_source's newline translation has nothing to translate:
+        # the text in the encoding it detects, without its slow decoder
+        # (about 6 ms of a 3 MB app, 11nov2026).
+        import io
+        import tokenize
+        source = data.decode(tokenize.detect_encoding(
+            io.BytesIO(data).readline)[0])
     if not draw:
         source = undrawn_app(source)
     exec_app(source, spec.origin, module.__dict__)

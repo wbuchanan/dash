@@ -181,6 +181,80 @@ try:
 except Exception as _dash_e:
     _dash_dep_fail("bokeh", _dash_e)
 
+
+def _dash_fast_defaults():
+    """Let Bokeh work out each model class's immutable defaults once.
+
+    Bokeh computes a property's default afresh every time an unset property
+    is read -- the class's overrides looked up through its MRO, the default
+    copied, validated and prepared, and whether it is "unstable" asked of
+    every type parameter -- and the reads are most of a render: about half
+    of a saved by() page's time (measured 11nov2026, Stata's Python and the
+    suite's alike).  The answer depends only on the property and the model's
+    class, so this keeps it per (property, class): whether the default is
+    unstable, and the default itself when it is stable and immutable (None,
+    a bool, number or string, or a tuple of them) and no theme overrides it
+    on the instance.  A mutable or unstable default (a list, a dict, a model)
+    takes Bokeh's own path, every time, as before.  Patched once per process
+    (dash_render.py runs again on every dash call); a Bokeh whose descriptor
+    lacks either method is left alone.  Returns whether the patch is on.
+    """
+    try:
+        from bokeh.core.property.descriptors import PropertyDescriptor as _pd
+        from bokeh.core.property.singletons import Undefined as _undefined
+    except Exception:
+        return False
+    if getattr(_pd, "_dash_fast_defaults", False):
+        return True
+    real_default = getattr(_pd, "_get_default", None)
+    real_unstable = getattr(_pd, "has_unstable_default", None)
+    if not callable(real_default) or not callable(real_unstable):
+        return False
+    atoms = (type(None), bool, int, float, str)
+    unstable_of = {}
+    default_of = {}
+    miss = object()
+
+    def frozen(v):
+        if type(v) in atoms or v is _undefined:
+            return True
+        return type(v) is tuple and all(frozen(x) for x in v)
+
+    def has_unstable_default(self, obj):
+        key = (self, obj.__class__)
+        hit = unstable_of.get(key)
+        if hit is None:
+            if len(unstable_of) > 200000:
+                unstable_of.clear()
+            hit = unstable_of[key] = bool(real_unstable(self, obj))
+        return hit
+
+    def _get_default(self, obj):
+        themed = obj.themed_values()
+        if ((themed is not None and self.name in themed)
+                or self.name in obj._property_values):
+            return real_default(self, obj)
+        key = (self, obj.__class__)
+        hit = default_of.get(key, miss)
+        if hit is not miss:
+            return hit
+        value = real_default(self, obj)
+        if not has_unstable_default(self, obj) and frozen(value):
+            if len(default_of) > 200000:
+                default_of.clear()
+            default_of[key] = value
+        return value
+
+    _pd.has_unstable_default = has_unstable_default
+    _pd._get_default = _get_default
+    # Bokeh's own two, for test_fast_defaults.py to compare against.
+    _pd._dash_real_defaults = (real_default, real_unstable)
+    _pd._dash_fast_defaults = True
+    return True
+
+
+_dash_fast_defaults()
+
 #: dash_setup.ado's min_numpy and min_pandas hold the same
 #: (test_version_floor.py); below them is noted, not refused (register
 #: P1.32.1, A121).  bokeh's window is P1.30's (S41).
@@ -83506,6 +83580,14 @@ class ServerAppBuilder:
             "    from bokeh.models import Button as _DashButton, CustomJS as _DashCustomJS",
             "except Exception as _dash_e:",
             "    _dash_dep_fail('bokeh', _dash_e)",
+            "",
+        ]
+        # The renderer's per-class defaults (11nov2026), so a served
+        # document is drawn as cheaply as a saved page.
+        lines += _dash_copied_lines(_dash_fast_defaults)
+        lines += [
+            "",
+            "_dash_fast_defaults()",
             "",
             "# True only when ServerAppBuilder.build(trial=True) runs this module in",
             "# the building process to hear its notes (WP-30 P1.26b); the app then",

@@ -340,3 +340,53 @@ class TestTheCachesAreBounded:
             assert len(C._APP_BLOCK_INFO) <= 4
             assert len(C._APP_BLOCK_CODE) <= 4
         assert C.exec_app("A = 7\nB = A + 1\n", "bound.py", {})["B"] == 8
+
+
+class TestTheFilenameRewrite:
+    """11nov2026: each block's nested code objects are walked once (a plan
+    kept per block) and each load only puts its own file name on them."""
+
+    SRC = ("def f():\n    def g():\n        return [x for x in (1, 2)]\n"
+           "    return g\n\nclass K:\n    def m(self):\n"
+           "        return lambda: 3\n")
+
+    def _all(self, code):
+        out = [code]
+        for c in code.co_consts:
+            if isinstance(c, types.CodeType):
+                out += self._all(c)
+        return out
+
+    def test_every_nested_code_object_gets_the_file_name(self):
+        code = compile(self.SRC, C._APP_PLACEHOLDER, "exec")
+        for fn in ("/a/app_1.py", "/b/app_2.py"):
+            got = C._app_code_in(code, fn)
+            want = compile(self.SRC, fn, "exec")
+            assert [c.co_filename for c in self._all(got)] == \
+                [fn] * len(self._all(want))
+            assert [c.co_name for c in self._all(got)] == \
+                [c.co_name for c in self._all(want)]
+            assert got == want
+
+    def test_the_plan_is_walked_once_per_block(self):
+        code = compile(self.SRC, C._APP_PLACEHOLDER, "exec")
+        plan = C._app_code_plan(code)
+        assert C._app_code_plan(code) is plan
+        # Children before parents; the block itself last.
+        assert plan[-1][0] is code
+        assert len(plan) == len(self._all(code))
+
+    def test_a_text_without_a_carriage_return_is_read_as_the_import_reads_it(
+            self, tmp_path):
+        for text in ("X = 'caf\u00e9'\nY = 2\n", "\ufeffX = 'a'\r\nY = 2\r\n",
+                     "# -*- coding: latin-1 -*-\nX = 'caf\u00e9'\n"):
+            enc = "latin-1" if "latin-1" in text else "utf-8"
+            p = tmp_path / "m.py"
+            p.write_bytes(text.encode(enc))
+            mod = C.load_app(str(p), "_crtest")
+            spec = importlib.util.spec_from_file_location("_crref", str(p))
+            ref = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(ref)
+            assert _public(vars(mod)) == _public(vars(ref)), text
+            assert (mod.X, getattr(mod, "Y", None)) == \
+                (ref.X, getattr(ref, "Y", None)), text

@@ -64,7 +64,7 @@ if `"`macval(_dash_pyx)'"' != "" {
 
 // ---- selection: begin (WP-30 test performance, C) ----
 // Which scripts this session runs.  DASH_CERT_SHARD=k/N runs shard k of N
-// (N 2 to 4, the table below), so that scripts/run_cert_suite.sh can run N
+// (N 2 to 8, the table below), so that scripts/run_cert_suite.sh can run N
 // sessions side by side; DASH_CERT_ONLY="test_a test_b" runs only the
 // scripts it names (a subset, by hand, whatever their tier).
 // DASH_CERT_TIER (22oct2026) picks the tier: default (or unset), every
@@ -79,100 +79,101 @@ if `"`macval(_dash_pyx)'"' != "" {
 // ---- shards: begin (scripts/cert_shards.py writes this block) ----
 // Each certification script: the seconds it takes, 1 when it runs
 // dash serve on a fixed port (5006, 5097, 5098, 5099), and its shard
-// when DASH_CERT_SHARD splits the run in 2, 3 or 4: longest first
-// onto the least loaded shard, the fixed-port scripts as one unit so
-// that they never serve at once; * when a script runs in every shard
-// and splits itself (it reads DASH_CERT_SHARD), its seconds shared
-// out over them.  Unset, the run is every script, in this session.
-// Seconds: the batch-end gate of 22oct2026 (batch 33.6), three sessions
-// (its [ TIME] lines; test_mata_autoload, which prints none, 0.5 s as
-// before); a split script's seconds are its three parts' sum, shared out
-// over the sessions
+// when DASH_CERT_SHARD splits the run in 2 to 8 (a column each):
+// longest first onto the least loaded shard, the fixed-port scripts
+// as one unit so that they never serve at once; *r when a script
+// runs in every shard and splits itself (it reads DASH_CERT_SHARD),
+// its parts turned by r (cert_helpers.do's cert_split_part: session
+// k runs part ((k - 1 - r) mod N) + 1), the turns chosen to even the
+// sessions before the other scripts are placed.  Unset, the run is
+// every script, in this session.
+// Seconds: an eight-session run of 11nov2026 under set rmsg on (its [
+// TIME] lines summed; test_mata_autoload, which prints none, 0.5 s; the
+// release tier keeps its seconds)
 local _cert_shards ///
-    test_abbreviations.cscript           66.5 0  1 3 4 ///
-    test_ado_loads.cscript                0.2 0  1 2 2 ///
-    test_adversarial.cscript             30.1 0  1 2 4 ///
-    test_alias_semantics.cscript         14.9 0  2 2 2 ///
-    test_bug_regressions.cscript         17.9 1  2 2 2 ///
-    test_by_suboptions.cscript           49.9 0  2 1 2 ///
-    test_caller_version.cscript           1.1 0  2 3 1 ///
-    test_ci_band_options.cscript          7.8 0  1 1 2 ///
-    test_clear_registry.cscript           0.2 0  1 3 4 ///
-    test_conformance.cscript             11.6 0  2 1 1 ///
-    test_custom_scheme.cscript            9.7 0  1 1 1 ///
-    test_e2e_filters.cscript             12.2 0  1 3 2 ///
-    test_e2e_kpi.cscript                  1.0 0  1 1 4 ///
-    test_e2e_multi.cscript               10.1 0  1 3 4 ///
-    test_e2e_serve.cscript                7.1 1  2 2 2 ///
-    test_e2e_single.cscript               7.2 0  2 3 1 ///
-    test_echo_text.cscript                1.7 0  2 2 1 ///
-    test_env_guards.cscript              62.8 1  2 2 2 ///
-    test_examples_run.cscript            26.0 0  2 1 2 ///
-    test_export.cscript                   6.4 0  1 2 2 ///
-    test_filter_label.cscript             0.8 0  2 3 1 ///
-    test_gaps2_truth.cscript             20.5 0  2 1 2 ///
-    test_graph_option_scope.cscript       0.7 0  1 2 2 ///
-    test_help_claims_1.cscript           15.0 0  1 1 1 ///
-    test_help_claims_2.cscript           14.9 0  1 3 4 ///
-    test_help_claims_3.cscript            7.7 0  1 2 3 ///
-    test_help_claims_4.cscript           11.6 1  2 2 2 ///
-    test_help_claims_5.cscript           14.6 0  2 1 3 ///
-    test_help_claims_6.cscript           11.2 0  2 2 4 ///
-    test_help_claims_7.cscript           13.4 0  1 1 4 ///
-    test_help_claims_8.cscript            8.3 0  2 2 2 ///
-    test_help_examples.cscript           23.5 0  1 2 1 ///
-    test_json_escaping.cscript           35.9 0  1 2 4 ///
-    test_mata_autoload.cscript            0.5 0  2 3 3 ///
-    test_mata_library_guard.cscript      30.4 0  2 1 1 ///
-    test_nodraw_honoured.cscript          0.9 0  2 2 3 ///
-    test_option_report_paren.cscript      0.3 0  1 2 1 ///
-    test_option_surface.cscript          13.6 0  2 3 2 ///
-    test_option_validation.cscript       66.0 0  2 2 4 ///
-    test_parser.cscript                  51.2 0  1 3 3 ///
-    test_parser_integrity.cscript         1.3 0  1 1 3 ///
-    test_path_validation.cscript         14.1 0  1 2 1 ///
-    test_program_coverage.cscript        15.4 0  1 3 3 ///
-    test_qualifier_in_stata.cscript     166.0 0  1 1 1 ///
-    test_qualifier_literals.cscript      35.5 0  1 3 3 ///
-    test_registry_collision.cscript       6.5 0  2 1 4 ///
-    test_render_locate.cscript            4.8 1  2 2 2 ///
-    test_render_log_clean.cscript         2.6 0  1 1 1 ///
-    test_resource_limits.cscript          5.4 0  2 3 4 ///
-    test_serve_browser.cscript            2.8 1  2 2 2 ///
-    test_serve_launch.cscript            16.9 1  2 2 2 ///
-    test_serve_options.cscript            1.8 0  1 1 3 ///
-    test_server_build.cscript             2.1 0  1 2 3 ///
-    test_setup_honesty.cscript           18.5 0  2 2 3 ///
-    test_setup_injection.cscript          0.0 0  1 2 3 ///
-    test_setup_python_gate.cscript        0.0 0  1 2 3 ///
-    test_setup_version_gate.cscript       0.3 0  2 1 3 ///
-    test_statistical_options.cscript     12.9 0  2 2 3 ///
-    test_string_values.cscript           26.7 0  2 3 3 ///
-    test_suboption_reporting.cscript     22.6 0  1 3 4 ///
-    test_textbox_multiline.cscript        0.4 0  2 3 1 ///
-    test_theme_escaping.cscript           0.7 0  1 1 4 ///
-    test_tokenizer.cscript                0.1 0  2 1 2 ///
-    test_twoway_option_parity.cscript    86.7 0  2 3 3 ///
-    test_utf8_validation.cscript          0.1 0  2 1 1 ///
-    test_varlist_expansion.cscript        8.3 0  2 3 3 ///
-    test_wp29_truth.cscript             138.4 1  2 2 2 ///
-    test_wp30_truth.cscript             628.1 0  * * * ///
-    test_wp31_truth.cscript             520.1 0  * * * ///
-    test_wp33_truth.cscript              66.5 0  * * * ///
-    test_wp34_truth.cscript               1.0 0  * * * ///
-    test_wp35_truth.cscript               1.0 0  * * * ///
-    test_wp36_truth.cscript               1.0 0  * * * ///
-    test_wp37_truth.cscript               1.0 0  * * * ///
-    test_wp38_truth.cscript               1.0 0  * * * ///
-    test_wp40_truth.cscript               1.0 0  * * * ///
-    test_wp41_truth.cscript               1.0 0  * * * ///
-    test_wp42_truth.cscript               1.0 0  * * * ///
-    test_wp43_truth.cscript               1.0 0  * * * ///
-    test_wp44_truth.cscript               1.0 0  * * * ///
-    test_wp45_truth.cscript               1.0 0  * * * ///
-    test_wp46_truth.cscript               1.0 0  * * * ///
-    test_wp47_truth.cscript               1.0 0  * * * ///
-    test_wp49_truth.cscript               1.0 0  * * *
+    test_abbreviations.cscript          119.8 0  2 2 3 2 5 7 5 ///
+    test_ado_loads.cscript                0.2 0  1 3 2 5 1 2 2 ///
+    test_adversarial.cscript             21.6 0  2 2 4 2 4 4 2 ///
+    test_alias_semantics.cscript         20.9 0  2 1 1 1 3 1 4 ///
+    test_bug_regressions.cscript         22.5 1  1 1 3 4 1 3 4 ///
+    test_by_suboptions.cscript           72.0 0  1 1 4 2 3 6 8 ///
+    test_caller_version.cscript           1.3 0  1 2 2 1 2 2 6 ///
+    test_ci_band_options.cscript          8.7 0  1 1 4 5 5 7 5 ///
+    test_clear_registry.cscript           0.4 0  2 1 4 3 4 7 5 ///
+    test_conformance.cscript             19.4 0  2 1 2 3 3 2 7 ///
+    test_custom_scheme.cscript           16.5 0  1 3 4 5 4 4 8 ///
+    test_e2e_filters.cscript             10.3 0  1 1 3 3 5 7 1 ///
+    test_e2e_kpi.cscript                  5.8 0  1 2 4 5 2 2 3 ///
+    test_e2e_multi.cscript               10.2 0  2 1 1 4 3 1 5 ///
+    test_e2e_serve.cscript               18.3 1  1 1 3 4 1 3 4 ///
+    test_e2e_single.cscript               6.8 0  1 3 2 4 6 6 8 ///
+    test_echo_text.cscript                2.8 0  2 1 1 3 1 6 2 ///
+    test_env_guards.cscript              11.8 1  1 1 3 4 1 3 4 ///
+    test_examples_run.cscript            28.0 0  1 2 3 1 3 1 3 ///
+    test_export.cscript                  10.0 0  2 3 3 3 1 5 1 ///
+    test_filter_label.cscript             1.1 0  2 1 2 4 6 2 6 ///
+    test_gaps2_truth.cscript             20.4 0  2 3 2 4 1 3 3 ///
+    test_graph_option_scope.cscript       1.3 0  2 3 4 1 5 7 4 ///
+    test_help_claims_1.cscript           21.3 0  1 3 3 5 5 7 5 ///
+    test_help_claims_2.cscript           20.7 0  1 2 4 3 2 2 8 ///
+    test_help_claims_3.cscript            8.4 0  2 2 1 1 3 1 4 ///
+    test_help_claims_4.cscript           12.9 1  1 1 3 4 1 3 4 ///
+    test_help_claims_5.cscript           17.1 0  2 2 1 2 1 3 3 ///
+    test_help_claims_6.cscript           20.2 0  1 1 3 2 6 4 2 ///
+    test_help_claims_7.cscript           20.1 0  2 2 1 5 4 6 1 ///
+    test_help_claims_8.cscript           10.2 0  1 2 2 2 2 2 7 ///
+    test_help_examples.cscript           27.6 0  2 3 1 3 2 3 7 ///
+    test_json_escaping.cscript           29.6 0  2 2 1 4 1 6 1 ///
+    test_mata_autoload.cscript            0.5 0  1 2 1 3 3 1 1 ///
+    test_mata_library_guard.cscript      29.4 0  1 3 2 2 5 7 4 ///
+    test_nodraw_honoured.cscript          1.2 0  1 2 3 5 2 1 5 ///
+    test_option_report_paren.cscript      0.4 0  2 2 1 1 2 4 4 ///
+    test_option_surface.cscript          28.5 0  2 1 4 5 4 2 8 ///
+    test_option_validation.cscript      139.7 0  1 1 4 3 2 1 2 ///
+    test_parser.cscript                  86.6 0  2 3 2 4 3 2 1 ///
+    test_parser_integrity.cscript         1.6 0  1 3 3 5 4 4 8 ///
+    test_path_validation.cscript          5.1 0  2 3 4 3 1 4 6 ///
+    test_program_coverage.cscript        22.8 0  1 1 2 4 1 6 1 ///
+    test_qualifier_in_stata.cscript     210.7 0  2 3 1 1 6 5 6 ///
+    test_qualifier_literals.cscript      39.2 0  2 2 1 5 1 6 3 ///
+    test_registry_collision.cscript      13.8 0  2 2 2 1 6 6 2 ///
+    test_render_locate.cscript            9.6 1  1 1 3 4 1 3 4 ///
+    test_render_log_clean.cscript         3.8 0  2 2 3 2 6 5 3 ///
+    test_resource_limits.cscript          6.4 0  2 1 3 2 4 3 7 ///
+    test_serve_browser.cscript            3.5 1  1 1 3 4 1 3 4 ///
+    test_serve_launch.cscript            24.3 1  1 1 3 4 1 3 4 ///
+    test_serve_options.cscript            3.1 0  1 3 1 4 3 3 7 ///
+    test_server_build.cscript             4.6 0  1 1 2 1 5 5 2 ///
+    test_setup_honesty.cscript           32.3 0  2 3 2 5 4 3 8 ///
+    test_setup_injection.cscript          0.0 0  1 1 1 5 4 7 2 ///
+    test_setup_python_gate.cscript        0.0 0  1 1 1 5 4 7 2 ///
+    test_setup_version_gate.cscript       0.5 0  2 2 2 1 5 7 8 ///
+    test_statistical_options.cscript     19.8 0  1 3 4 1 5 7 5 ///
+    test_string_values.cscript           34.3 0  1 2 4 3 5 2 3 ///
+    test_suboption_reporting.cscript     31.1 0  1 1 3 3 2 4 3 ///
+    test_textbox_multiline.cscript        0.5 0  1 3 3 5 3 1 6 ///
+    test_theme_escaping.cscript           0.8 0  1 3 4 2 4 4 8 ///
+    test_tokenizer.cscript                0.2 0  1 1 3 4 5 2 1 ///
+    test_twoway_option_parity.cscript   125.8 0  1 2 2 5 4 4 7 ///
+    test_utf8_validation.cscript          0.2 0  2 3 4 2 6 6 8 ///
+    test_varlist_expansion.cscript       17.2 0  1 3 3 4 2 1 4 ///
+    test_wp29_truth.cscript             138.4 1  1 1 3 4 1 3 4 ///
+    test_wp30_truth.cscript             628.1 0  * * * * *3 *6 * ///
+    test_wp31_truth.cscript             520.1 0  * * *1 *2 *1 *4 *7 ///
+    test_wp33_truth.cscript              76.3 0  *1 *2 *1 *4 *4 *5 *6 ///
+    test_wp34_truth.cscript              55.2 0  * *1 * *3 *1 *2 *7 ///
+    test_wp35_truth.cscript              70.7 0  * *1 *3 *2 *5 *6 *4 ///
+    test_wp36_truth.cscript               4.8 0  * *2 * * *5 *4 *3 ///
+    test_wp37_truth.cscript              33.9 0  * *2 *2 *3 *5 *3 *2 ///
+    test_wp38_truth.cscript               6.3 0  * *2 * *4 *4 *4 *5 ///
+    test_wp40_truth.cscript              36.2 0  *1 * *1 *1 *3 *1 *1 ///
+    test_wp41_truth.cscript              19.1 0  * *1 * *2 *1 *4 *5 ///
+    test_wp42_truth.cscript             101.6 0  * * *2 *1 *2 *3 *2 ///
+    test_wp43_truth.cscript             164.4 0  * * * * * * * ///
+    test_wp44_truth.cscript             104.6 0  * *2 *1 * *2 *4 *3 ///
+    test_wp45_truth.cscript             105.7 0  * *2 *2 *3 * *1 *7 ///
+    test_wp46_truth.cscript               8.2 0  * *1 *2 *2 *3 *6 *5 ///
+    test_wp47_truth.cscript              42.1 0  *1 *2 *2 *4 *5 * *
 // The release tier: the closed work packages' truth scripts,
 // which a default run (make cert, make test-all) leaves out and
 // DASH_CERT_TIER=release or all runs (make cert-release, make
@@ -181,7 +182,7 @@ local _cert_shards ///
 local _cert_release test_wp29_truth.cscript test_wp30_truth.cscript test_wp31_truth.cscript
 // ---- shards: end ----
 local _cert_sh : environment DASH_CERT_SHARD
-mata: st_local("_cert_ok", strofreal(st_local("_cert_sh") == "" | ustrregexm(st_local("_cert_sh"), "^[1-4]/[1-4]$")))
+mata: st_local("_cert_ok", strofreal(st_local("_cert_sh") == "" | ustrregexm(st_local("_cert_sh"), "^[1-8]/[1-8]$")))
 local _cert_k 1
 local _cert_N 1
 if `_cert_ok' & "`_cert_sh'" != "" {
@@ -189,7 +190,7 @@ if `_cert_ok' & "`_cert_sh'" != "" {
     local _cert_N = real(substr("`_cert_sh'", 3, 1))
 }
 if !`_cert_ok' | `_cert_k' > `_cert_N' {
-    display as error "run_all_cscripts.do: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 4"
+    display as error "run_all_cscripts.do: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 8"
     exit 198
 }
 local _cert_only : environment DASH_CERT_ONLY
@@ -212,13 +213,13 @@ while `"`_cert_rest'"' != "" {
     gettoken _cert_s _cert_rest : _cert_rest
     gettoken _cert_t _cert_rest : _cert_rest
     gettoken _cert_p _cert_rest : _cert_rest
-    gettoken _cert_2 _cert_rest : _cert_rest
-    gettoken _cert_3 _cert_rest : _cert_rest
-    gettoken _cert_4 _cert_rest : _cert_rest
+    forvalues _cert_n = 2/8 {
+        gettoken _cert_`_cert_n' _cert_rest : _cert_rest
+    }
     local _cert_all `_cert_all' `_cert_s'
     local _cert_at 1
     if `_cert_N' > 1 local _cert_at `_cert_`_cert_N''
-    if "`_cert_at'" == "*" | "`_cert_at'" == "`_cert_k'" local _cert_run `_cert_run' `_cert_s'
+    if substr("`_cert_at'", 1, 1) == "*" | "`_cert_at'" == "`_cert_k'" local _cert_run `_cert_run' `_cert_s'
 }
 if "`_cert_only'" != "" {
     local _cert_want ""

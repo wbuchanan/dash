@@ -219,7 +219,7 @@ class TestEveryRunnerUsesTheWrapper:
         'printf "PWD=%s\\n" "$(pwd)"; '
         'for a in "$@"; do printf "ARG=%s\\n" "$a"; done; } > "$f"\n')
 
-    @pytest.mark.parametrize("sessions", ["2", "3", "4", None])
+    @pytest.mark.parametrize("sessions", ["2", "3", "4", "8", None])
     def test_run_cert_suite_runs_its_shards_side_by_side(self, tmp_path,
                                                          sessions):
         # WP-30 test performance, C: N sessions (default 3), session k
@@ -274,7 +274,7 @@ class TestEveryRunnerUsesTheWrapper:
         assert "no log to judge" in r.stdout
 
     @pytest.mark.parametrize("var,value", [
-        ("DASH_CERT_SESSIONS", "0"), ("DASH_CERT_SESSIONS", "5"),
+        ("DASH_CERT_SESSIONS", "0"), ("DASH_CERT_SESSIONS", "9"),
         ("DASH_CERT_SESSIONS", "x"), ("DASH_CERT_SESSIONS", "3 "),
         ("DASH_CERT_ONLY", "test_a;rm"), ("DASH_CERT_ONLY", "a\tb"),
         ("DASH_CERT_ONLY", "$HOME"), ("DASH_CERT_TIER", "nightly"),

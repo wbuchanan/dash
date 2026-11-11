@@ -113,9 +113,9 @@ local w30_secs ///
     S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 7 ///
     S48 11 S49 4 S50 5 S51 4 S52 3 S53 7 S54 3 S55 3 S56 3 S57 3
 local w30_sh : environment DASH_CERT_SHARD
-mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
+mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-8]/[1-8]$")))
 if !`w30_ok' {
-    display as error "test_wp30_truth: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 4"
+    display as error "test_wp30_truth: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 8"
     exit 198
 }
 local w30_k 1
@@ -130,7 +130,7 @@ if `"`macval(w30_only)'"' != "" | `w30_N' == 1 {
     local w30_N 1
 }
 if `w30_k' > `w30_N' {
-    display as error "test_wp30_truth: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 4"
+    display as error "test_wp30_truth: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 8"
     exit 198
 }
 capture confirm file "test_wp30_truth.cscript"
@@ -180,8 +180,13 @@ void _w30_part(string scalar file, string scalar table, real scalar k,
     st_local("w30_run", strtrim(run))
 }
 end
-mata: _w30_part("test_wp30_truth.cscript", st_local("w30_secs"), `w30_k', `w30_N')
-display as text "test_wp30_truth: part `w30_k'/`w30_N' runs `: word count `w30_run'' blocks: `w30_run'"
+// The part this session runs: the runner's shard table may turn the
+// parts (cert_helpers.do's cert_split_part, 11nov2026), so that
+// each script's longest part lands on a different session.
+cert_split_part "test_wp30_truth.cscript" `w30_k' `w30_N'
+local w30_p = r(part)
+mata: _w30_part("test_wp30_truth.cscript", st_local("w30_secs"), `w30_p', `w30_N')
+display as text "test_wp30_truth: session `w30_k'/`w30_N' runs part `w30_p', `: word count `w30_run'' blocks: `w30_run'"
 // ---- parts: end ----
 
 // WP-47 MS-15: a layer's marker labels are a Text glyph renderer tagged

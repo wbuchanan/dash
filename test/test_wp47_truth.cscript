@@ -100,9 +100,9 @@ if _rc {
 // counts 1 s.
 local w47_secs S00 1 S01 1 S02 17 S03 1 S04 4 S05 4 S06 4
 local w47_sh : environment DASH_CERT_SHARD
-mata: st_local("w47_ok", strofreal(st_local("w47_sh") == "" | ustrregexm(st_local("w47_sh"), "^[1-4]/[1-4]$")))
+mata: st_local("w47_ok", strofreal(st_local("w47_sh") == "" | ustrregexm(st_local("w47_sh"), "^[1-8]/[1-8]$")))
 if !`w47_ok' {
-    display as error "test_wp47_truth: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 4"
+    display as error "test_wp47_truth: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 8"
     exit 198
 }
 local w47_k 1
@@ -117,7 +117,7 @@ if `"`macval(w47_only)'"' != "" | `w47_N' == 1 {
     local w47_N 1
 }
 if `w47_k' > `w47_N' {
-    display as error "test_wp47_truth: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 4"
+    display as error "test_wp47_truth: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 8"
     exit 198
 }
 capture confirm file "test_wp47_truth.cscript"
@@ -167,8 +167,13 @@ void _w47_part(string scalar file, string scalar table, real scalar k,
     st_local("w47_run", strtrim(run))
 }
 end
-mata: _w47_part("test_wp47_truth.cscript", st_local("w47_secs"), `w47_k', `w47_N')
-display as text "test_wp47_truth: part `w47_k'/`w47_N' runs `: word count `w47_run'' blocks: `w47_run'"
+// The part this session runs: the runner's shard table may turn the
+// parts (cert_helpers.do's cert_split_part, 11nov2026), so that
+// each script's longest part lands on a different session.
+cert_split_part "test_wp47_truth.cscript" `w47_k' `w47_N'
+local w47_p = r(part)
+mata: _w47_part("test_wp47_truth.cscript", st_local("w47_secs"), `w47_p', `w47_N')
+display as text "test_wp47_truth: session `w47_k'/`w47_N' runs part `w47_p', `: word count `w47_run'' blocks: `w47_run'"
 // ---- parts: end ----
 
 * ==== S00 scaffold: the helpers load and a twoway SVG is read ====

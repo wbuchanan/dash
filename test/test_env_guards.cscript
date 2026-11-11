@@ -159,15 +159,19 @@ real scalar _env_code_has(string scalar fn, string scalar needle)
 // The logical lines of an ado or do file: `///' continuations joined, a
 // trailing ` //' comment cut, comment lines dropped -- the unit a command is
 // written in, so a probe split over two lines is one line here.  The
-// markers are built from char(47) rather than typed.
+// markers are built from char(47) rather than typed.  The lines are kept
+// in a vector that doubles as it fills: appended one at a time (out = out
+// \ t), each call copied the vector once per line and took about 2.5 s on
+// dash.ado, about 90 s of this script's calls (11nov2026).
 string colvector _env_logical(string scalar fn)
 {
-    real scalar      fh, p
+    real scalar      fh, p, n
     string scalar    line, t, cur, c2, c3
     string colvector out
     c2  = char(47) + char(47)
     c3  = c2 + char(47)
-    out = J(0, 1, "")
+    out = J(1024, 1, "")
+    n   = 0
     cur = ""
     fh  = fopen(fn, "r")
     while ((line = fget(fh)) != J(0, 0, "")) {
@@ -181,11 +185,16 @@ string colvector _env_logical(string scalar fn)
         cur = ""
         p = strpos(t, " " + c2)
         if (p) t = strtrim(substr(t, 1, p - 1))
-        out = out \ t
+        if (++n > rows(out)) out = out \ J(rows(out), 1, "")
+        out[n] = t
     }
-    if (cur != "") out = out \ strtrim(cur)
+    if (cur != "") {
+        if (++n > rows(out)) out = out \ J(1, 1, "")
+        out[n] = strtrim(cur)
+    }
     fclose(fh)
-    return(out)
+    if (n == 0) return(J(0, 1, ""))
+    return(out[|1 \ n|])
 }
 
 // How many logical lines of fn decide whether PYTHON is available by

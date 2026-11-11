@@ -216,3 +216,45 @@ program define cert_file_count, rclass
     }
     return scalar count = scalar(`res')
 end
+
+// cert_split_part <script> <k> <N>: the part of its blocks session k of N
+// runs, for a script that splits itself (it reads DASH_CERT_SHARD), in
+// r(part).  The runner's shard table (scripts/cert_shards.py) may turn a
+// script's parts, "*r" in its column for N: session k then runs part
+// ((k - 1 - r) mod N) + 1, so that each script's longest part (always its
+// part 1) lands on a different session (11nov2026: with eight sessions
+// every script's part 1 ran in session 1).  "*", no table, no row or N 1:
+// part k.  Read from run_all_cscripts.do beside the script (the runner
+// runs every script from test/).
+capture mata: mata drop _cert_split_part()
+mata:
+real scalar _cert_split_part(string scalar runner, string scalar script,
+                             real scalar k, real scalar n)
+{
+    string colvector l
+    string rowvector t
+    real scalar      i, r
+    if (n <= 1 | !fileexists(runner)) return(k)
+    l = cat(runner)
+    for (i = 1; i <= rows(l); i++) {
+        t = tokens(l[i])
+        if (cols(t) < n + 2) continue
+        if (t[1] != script) continue
+        if (substr(t[n + 2], 1, 1) != "*") return(k)
+        r = strtoreal(substr(t[n + 2], 2, .))
+        if (r >= . | r < 0 | r >= n | r != trunc(r)) r = 0
+        return(mod(k - 1 - r + n, n) + 1)
+    }
+    return(k)
+}
+end
+
+capture program drop cert_split_part
+program define cert_split_part, rclass
+    version 16.0
+    args script k n
+    tempname p
+    mata: st_numscalar("`p'", _cert_split_part("run_all_cscripts.do", ///
+        st_local("script"), `k', `n'))
+    return scalar part = scalar(`p')
+end
