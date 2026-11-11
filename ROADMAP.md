@@ -5417,6 +5417,27 @@ Summarised from .ultraplan/sections/index.md (WP-46) and the section decisions D
 - **Left open:** the unknown-name note for two different yx names on a two-y layer (BUGS.md "recast() with two different yx names on a two-y layer: twoway's note runs the names together, once per y; dash's names them apart, once", S3); the mangle() and barbsize() notes (BUGS.md "pcarrow mangle(abc) and barbsize(abc) print no note; twoway names each unknown style", S3).
 - **Gate (09nov2026):** `make test-all` on d95dbad: pytest 44,659 passed (746 s), cert 79 of 79 (683 s), 1,429 s in all; `make cert-release` on d95dbad: 3 of 3 (the WP-29/30/31 truth scripts, 586 s). The two run about 34 minutes, over the 5-minute rule (CLAUDE.md 11); the cuts are proposed as their own work.
 
+## WP-47 · Plot-option fidelity (P15) — DONE
+
+**GAPS4 closed:** basic:PT-1, MS-7, MS-2, MS-3, MS-5, basic:PT-3, basic:PT-4, basic:PT-6, basic:PT-5, basic:PT-10, PIC-2, PIC-9, PIC-10, DG-12, PIC-16, DG-7 · **partly closed:** basic:PT-11, PIC-17, MS-15, basic:PT-15
+
+As a Stata user who styles a layer with twoway's plot options (labels, outlines, markers, dots and the older spellings in my do-files), I want each option read and drawn as twoway draws it, so that a dashboard layer looks like the graph twoway makes from the same command: labels where twoway puts them, outlines and markers the size twoway strokes them, and no option only named in a note when twoway draws it.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (WP-47) and the section decisions D-47-01.a..D-47-06.g, which hold them in full.
+
+- **Immediate and pc labels (47-01).** headlabel on pcscatter, pccapsym and pcarrowi puts the labels at the second point; pci and scatteri labels survive recast(); mlabel(nosuch) on scatteri is taken as twoway takes it.
+- **Variable labels and formats (47-02).** yvarlabel()/xvarlabel() reach every plot type, yvarlabel("") gives the variable name, a relabel holds graph-wide; xvarformat()/yvarformat() reach the marker labels; mlabel() naming several variables draws none; emptied and unfittable layers take twoway's titles and keys.
+- **Outline alignment (47-03).** Bars, bins, areas and rbar stroked inside under lalign() as twoway strokes them (an outline-only Quad over the fill); markers sized by mlalign(); dots sized by dlalign().
+- **Older spellings (47-04).** symbol(), msymangle(), mlabels(), bcolor(), bfintensity(), blwidth(), blpattern(), afcolor(), afintensity() and bmsize() on arrows drawn as the options they stand for, with twoway's precedence.
+- **Noted options drawn (47-05).** Back markers, mlabalignment, mlabjustification, bartype(spanning), dropto(), numkeys(), omitanymiss and the other options twoway draws, drawn rather than noted.
+- **Markers, dots, bins and labels (47-06).** twoway's marker shapes and msymbol(invisible); empty histogram bins draw nothing; a dot row for a missing y; zero- and missing-weight markers drawn; dot sizes floored on fill plus outline; rarea over twoway's span; marker labels past the plot region, leaving with their point on pan or zoom.
+
+- **Entries.** 20 WP-47 entries; 16 closed, 0 documented, 4 partly closed; BUGS.md holds 52 open entries.
+- **Left open:** omitanymiss on lpolyci, area under nodropbase, the contour outline (BUGS.md "lpolyci under omitanymiss draws its fit line one vertex short; twoway draws area under nodropbase without its drops to the base; any plot option on contour changes how twoway strokes one blue outline", S3); rarea under the stair connections and an unsorted outline (BUGS.md "rarea under connect(stairstep) or connect(stepstair) leaves a row missing one bound out of both bounds; an unsorted rarea's outline spikes at such a row", S3); by() panel edges (BUGS.md "Under by(), a marker label stops at its panel's edge; twoway's runs on over the next panel", S3); rarea closing edges, a scheme file twoway refuses, {col #:text} (BUGS.md "rarea's short closing edges are not drawn; a scheme file without the keys twoway needs is drawn where twoway refuses it; {col #:text} is drawn as typed", S3).
+- **Gate (10nov2026 and 11nov2026):** `make test-all` on ef353da: pytest 45,776 passed, 1 failed (647 s), cert 77 of 80 (717 s), 1,376 s in all; the four stale readers fixed in fa59d04 and re-run alone. `make cert-release` on fa59d04: the WP-29 and WP-30 truth scripts passed; the WP-31 readers left stale by the outline-only Quad, @dash_diamond and the 0.2 px floor fixed in 17710f9, and blocks S41 and S60 re-run alone and passed. PIC-17 (13d929d) and MS-15 (cec0bf7) landed after the gate, each with its covering tests and truth blocks, not under a second gate. The two run about 35 minutes, over the 5-minute rule (CLAUDE.md 11); the cuts are proposed as their own work.
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.

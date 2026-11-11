@@ -98,7 +98,7 @@ if _rc {
 // Seconds: each block's start/end lines in the WP's last measured
 // certification run, rounded up, at least 1; a block not listed
 // counts 1 s.
-local w47_secs S00 1
+local w47_secs S00 1 S01 1 S02 17 S03 1 S04 4 S05 4 S06 4
 local w47_sh : environment DASH_CERT_SHARD
 mata: st_local("w47_ok", strofreal(st_local("w47_sh") == "" | ustrregexm(st_local("w47_sh"), "^[1-4]/[1-4]$")))
 if !`w47_ok' {
