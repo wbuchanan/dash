@@ -1043,7 +1043,7 @@ class TestTheAxisRouteKnowsDashsSpellings:
     def test_the_seven_graph_key_lists_agree(self):
         src = _read(ADO_PATH)
         lists = []
-        for m in re.finditer(r"foreach (?:gk|gkey) in ((?:[^{]|\n)*?)\{",
+        for m in re.finditer(r"(?:foreach (?:gk|gkey) in |local _gk_all )((?:[^{]|\n)*?)(?:\{|\n    mata:)",
                              src):
             words = m.group(1).replace("///", " ").split()
             lists.append(tuple(words))

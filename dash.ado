@@ -517,7 +517,7 @@ program define _dash_require_mata
         _dash_fit_panel_key _dash_fit_panel_add ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals _dash_scale_untransformable ///
         _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_style_word _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
-        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_blank_words _dash_stylelist_paren _dash_stylelist_eqlead _dash_subopt_colour_comma _dash_colour_comma _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
+        _dash_stylelist_keys _dash_sset_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_blank_words _dash_stylelist_paren _dash_stylelist_eqlead _dash_subopt_colour_comma _dash_colour_comma _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
         _dash_connect_canon ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
         _dash_hz_order ///
@@ -548,7 +548,14 @@ program define _dash_require_mata
     // function defined by hand -- passed, and the first command died in
     // Mata with r(3499), "_dash_split_segs() not found" (measured 24sep2026;
     // test_env_guards.cscript ENV-23).  Asking for all of them costs 0.13
-    // ms a command (measured, 1000 runs).
+    // ms a command (measured, 1000 runs).  With the whole library in
+    // memory each look costs more: about 4 ms a command for the list of
+    // 200 (11nov2026), so all are asked for in one `mata describe', which
+    // fails when any one is missing, and only then one by one, to name
+    // the missing ones.
+    mata: st_local("_all", invtokens(tokens(st_local("_needed")) :+ "()"))
+    quietly capture mata: mata describe `_all'
+    if _rc == 0 exit
     local _missing ""
     foreach f of local _needed {
         quietly capture mata: mata describe `f'()
@@ -3761,13 +3768,18 @@ program define _dash_stylelist_check
     version 19
     args ptype nser
     mata: st_local("_sl_keys", _dash_stylelist_keys())
+    // The keys this plot set, in the list's order: every check below
+    // passes an unset (empty) value, and nothing here changes s(), so
+    // only these are walked (11nov2026: walking all 52 keys four times
+    // was about 12 ms of each plot's parse).
+    mata: st_local("_sl_set", _dash_sset_keys(st_local("_sl_keys")))
     // A value twoway's string cannot bind is refused first, as
     // _dash_refuse_unbound refuses it on the other options: these keys are
     // string asis, which binds msize(x"' _dup(3) "INJ" `") where twoway
     // refuses it, "type mismatch", r(109) (test_adversarial P20-18b).  Only
     // a value holding a double quote can fail to bind.  Read by value; the
     // value reaches the probe's command line only through macval().
-    foreach key of local _sl_keys {
+    foreach key of local _sl_set {
         mata: st_local("_sl_v", st_global("s(" + st_local("key") + ")"))
         mata: st_local("_sl_q", strofreal(strpos(st_local("_sl_v"), char(34)) > 0))
         if !`_sl_q' continue
@@ -3780,7 +3792,7 @@ program define _dash_stylelist_check
             "() has a value Stata cannot read, as twoway reads it: " + st_local("why") + ".")
         exit `_sl_rc'
     }
-    foreach key of local _sl_keys {
+    foreach key of local _sl_set {
         mata: st_local("_sl_bad", strofreal(_dash_stylelist_bad(st_global("s(" + st_local("key") + ")"))))
         if `_sl_bad' {
             mata: _dash_say("err", st_local("key") + "(", st_global("s(" + st_local("key") + ")"), "):  invalid syntax")
@@ -3790,7 +3802,7 @@ program define _dash_stylelist_check
     // An element opening with "(" is read by twoway as an option and
     // refused, "option(s) ( red ) not allowed"; one led by a glued "="
     // is refused with a class path (WP-31 E4, measured 16oct2026).
-    foreach key of local _sl_keys {
+    foreach key of local _sl_set {
         mata: st_local("_sl_p", _dash_stylelist_paren(st_global("s(" + st_local("key") + ")")))
         if `"`macval(_sl_p)'"' != "" {
             mata: _dash_say("err", "option(s) ", st_local("_sl_p"), " not allowed")
@@ -3802,7 +3814,7 @@ program define _dash_stylelist_check
             exit 198
         }
     }
-    foreach key of local _sl_keys {
+    foreach key of local _sl_set {
         mata: st_local("_sl_j", strofreal(_dash_stylelist_blank(st_global("s(" + st_local("key") + ")"), `nser')))
         if `_sl_j' {
             // twoway's line first (WP-45 ST-22), then dash's hint.
@@ -3812,6 +3824,9 @@ program define _dash_stylelist_check
             exit 198
         }
     }
+    // Each element a y uses is held to its option's rule; with no key set
+    // there is no element.
+    if !`: length local _sl_set' exit
     _dash_option_rules
     local typed ""
     foreach tok of local _dash_rules_plot {
@@ -3836,7 +3851,7 @@ program define _dash_stylelist_check
         local o    = substr("`body'", 1, `eq' - 1)
         local spec = substr("`body'", `eq' + 1, .)
         if !`at' & `: list o in typed' continue
-        if !`: list o in _sl_keys' continue
+        if !`: list o in _sl_set' continue
         forvalues i = 1/`nser' {
             mata: st_local("e", _dash_stylelist_pick(st_global("s(" + st_local("o") + ")"), `i'))
             if !`: length local e' continue
@@ -5931,6 +5946,9 @@ program define _dash_validate_opts, sclass
     foreach tok of local _dash_rules_applies {
         local at    = strpos("`tok'", "@")
         local o     = substr("`tok'", 1, `at' - 1)
+        // Unset (not among s()'s names at entry, _keys): nothing to
+        // check (11nov2026: these loops were most of the program).
+        if !`: list o in _keys' continue
         local types = substr("`tok'", `at' + 1, .)
         local types : subinstr local types "|" " ", all
         if `: list ptype in types' continue
@@ -5957,13 +5975,18 @@ program define _dash_validate_opts, sclass
     foreach tok of local _dash_rules_plot {
         local at = strpos("`tok'", "@")
         if `at' {
+            local o = substr("`tok'", 1, strpos("`tok'", "=") - 1)
+            if !`: list o in _keys' continue
             local types = substr("`tok'", `at' + 1, .)
             local types : subinstr local types "|" " ", all
-            local o = substr("`tok'", 1, strpos("`tok'", "=") - 1)
             if `: list ptype in types' local typed "`typed' `o'"
         }
     }
     foreach tok of local _dash_rules_plot {
+        local o = substr("`tok'", 1, strpos("`tok'", "=") - 1)
+        // Unset (not among s()'s names at entry, _keys): nothing to
+        // check (11nov2026: these loops were most of the program).
+        if !`: list o in _keys' continue
         local body "`tok'"
         local at = strpos("`tok'", "@")
         if `at' {
@@ -6017,6 +6040,7 @@ program define _dash_validate_opts, sclass
     // (per_type rc 0: the picture is the reference's, read by rc alone on
     // contourline and lowess, which twoway draws differently each time).
     foreach _lo in jitter jitterseed barwidth n lwidth mlwidth msangle {
+        if !`: list _lo in _keys' continue
         if "`_lo'" == "n" & "`ptype'" != "mband" continue
         local _lb ""
         if inlist("`_lo'", "lwidth", "mlwidth", "msangle") {
@@ -6086,6 +6110,8 @@ program define _dash_validate_opts, sclass
     foreach tok of local _dash_rules_graph {
         local eq   = strpos("`tok'", "=")
         local o    = substr("`tok'", 1, `eq' - 1)
+        local _go g_`o'
+        if !`: list _go in _keys' continue
         local spec = substr("`tok'", `eq' + 1, .)
         mata: st_local("v", st_global("s(g_" + st_local("o") + ")"))
         if !`: length local v' continue
@@ -6446,7 +6472,10 @@ program define _dash_plot_opts_to_json, rclass
     // and an unweighted segment writes neither key, so its "options" text
     // is byte-identical to what it was.  clcolor, clpattern and clwidth
     // (WP-22) are non-empty only on the types _dash_fold_cl keeps them for.
-    foreach key in mcolor msymbol msize msangle mfcolor mlcolor mlabel mlabcolor ///
+    // Only the keys whose s() is set are walked, in the list's order: an
+    // unset one gives an empty value on every branch below and writes
+    // nothing (11nov2026: walking all of them was about 5 ms a record).
+    local _oj_all mcolor msymbol msize msangle mfcolor mlcolor mlabel mlabcolor ///
                    mlabsize mlabposition mlabgap mlabwidth mlalign malpha marker lcolor ///
                    lwidth lpattern lalpha fcolor fintensity falpha barwidth base mwidth ///
                    blcolor bfcolor jitter jseed yaxis xaxis colorvar colpalette ///
@@ -6476,7 +6505,9 @@ program define _dash_plot_opts_to_json, rclass
                    bmsymbol bmcolor bmsize bmlcolor bmlwidth bmlalign bmlpattern ///
                    mlabalignment mlabjustification zvarlabel ///
                    bartype numkeys omit omit_n noback below ///
-                   weight wexp {
+                   weight wexp
+    mata: st_local("_oj_set", _dash_sset_keys(st_local("_oj_all")))
+    foreach key of local _oj_set {
         // Read by value and measured, never copied or compared in quotes: a
         // copy through them expanded a macro in the value again --
         // mcolor("\$G") was stored as $G's value (measured 24sep2026;
@@ -8276,14 +8307,18 @@ program define _dash_process_segment, rclass
     // merges a repeated option (_dash_rep_merge).  They were c_local'ed
     // over the accumulator, so a later group's legend(label(2 "B")) threw
     // away an earlier group's legend(label(1 "A")), which twoway keeps.
-    foreach gkey in title subtitle note caption name saving xtitle ytitle xlabel ///
+    // Only the keys this segment set are walked, in the list's order: an
+    // unset one hands nothing on (11nov2026: about 1.5 ms a segment).
+    local _gk_all title subtitle note caption name saving xtitle ytitle xlabel ///
             ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
             plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
             xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
             scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
             t2title b1title b2title l1title l2title r1title r2title ///
-            zlabel ztitle zscale ztick zmlabel zmtick aspectplacement xoverhangs yoverhangs nodraw play replace table {
+            zlabel ztitle zscale ztick zmlabel zmtick aspectplacement xoverhangs yoverhangs nodraw play replace table
+    mata: st_local("_gk_set", _dash_sset_keys(st_local("_gk_all"), "g_"))
+    foreach gkey of local _gk_set {
         mata: st_local("gval", st_global("s(g_" + st_local("gkey") + ")"))
         if `: length local gval' {
             c_local _sg_`gkey' : copy local gval

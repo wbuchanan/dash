@@ -574,7 +574,7 @@ class TestTtext:
         ado = _read(_ADO)
         assert ado.count("TTEXT(string asis)") == 2
         assert "sreturn local ttext " in ado and "sreturn local g_ttext " in ado
-        lists = re.findall(r"foreach (?:gk|gkey) in ((?:[^{]|\n)*?)\{", ado)
+        lists = re.findall(r"(?:foreach (?:gk|gkey) in |local _gk_all )((?:[^{]|\n)*?)(?:\{|\n    mata:)", ado)
         assert len(lists) == 7 and all(" text ttext " in " ".join(
             x.replace("///", " ").split()) + " " for x in lists)
         assert 'if inlist("`gk\'", "text", "ttext") continue' in ado

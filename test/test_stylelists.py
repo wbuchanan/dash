@@ -279,7 +279,7 @@ class TestOneList:
 
     def test_every_listed_key_reaches_the_json_writer(self):
         body = _program_body(_read(_ADO), "_dash_plot_opts_to_json")
-        keys = re.search(r"foreach key in (.*?)\{", body, re.S).group(1)
+        keys = re.search(r"local _oj_all (.*?)\n    mata:", body, re.S).group(1)
         keys = set(keys.replace("///", " ").split())
         assert set(_STYLE_KEYS + _NAMED_KEYS + _JOIN_KEYS) <= keys
 

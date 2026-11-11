@@ -315,6 +315,10 @@
 *!   _dash_stylelist_keys()
 *!       The style options read as stylelists across an expanded varlist.
 *!
+*!   _dash_sset_keys(keys [, pre])
+*!       The words of keys whose s(<pre><word>) is set, in order: the
+*!       options a parse stored, so a loop walks only those.
+*!
 *!   _dash_tw_value_msg(opt, ptype, cls, value)
 *!       twoway's "<rc>|<first line>" for a value of class cls it refuses
 *!       in option opt on plot type ptype (_dash_tw_value_tab), or "".
@@ -7606,6 +7610,25 @@ string scalar _dash_stylelist_keys()
            "dstyle dlstyle bmlinestyle mlabtextstyle connect cmissing")
 }
 
+// _dash_sset_keys(keys [, pre]) -- the words of keys whose s(<pre><word>)
+// is set (not ""), in keys' order: the options a parse stored, for a loop
+// that does nothing with an unset one (_dash_stylelist_check,
+// _dash_plot_opts_to_json, _dash_process_segment's graph keys, pre "g_";
+// 11nov2026).
+string scalar _dash_sset_keys(string scalar keys, | string scalar pre)
+{
+    string rowvector k
+    string scalar    out
+    real scalar      i
+
+    k   = tokens(keys)
+    out = ""
+    for (i = 1; i <= cols(k); i++) {
+        if (st_global("s(" + pre + k[i] + ")") != "") out = out + (out == "" ? "" : " ") + k[i]
+    }
+    return(out)
+}
+
 // _dash_stylelist_elems(raw) -- the elements of a stylelist: a 2 x k
 // matrix whose row 1 is each element's text and row 2 "1" when it came
 // quoted ("..." or `"..."', one level of quotes removed) and "0" when
@@ -10397,8 +10420,13 @@ void _dash_unknown_scan(string scalar opts, string scalar unk,
         else if (anyof(("na", "nam", "asp", "aspe", "aspec", "title2",
                         "subtitle2"), nm)) cls = "short"
         else if (_dash_tw_refuses(toks[i], ptype, graph)) cls = "short"
-        else if (anyof(unames, nm) & !_dash_tw_takes(toks[i], ptype, graph))
-            cls = "cand"
+        // Nested (11nov2026): Mata's & (and &&) evaluates both sides, so
+        // _dash_tw_takes, which builds its table on each call, ran for
+        // every word, about 3 ms each; it decides only a word the
+        // catch-all holds.
+        else if (anyof(unames, nm)) {
+            if (!_dash_tw_takes(toks[i], ptype, graph)) cls = "cand"
+        }
         if (cls != "") go = 1
         st_local("_uk_tok" + si, toks[i])
         st_local("_uk_nm" + si, nm + (strpos(toks[i], "(") ? "()" : ""))

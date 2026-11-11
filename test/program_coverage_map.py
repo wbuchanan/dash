@@ -919,6 +919,7 @@ COVERAGE = {
         "_dash_colour_comma": ("test_option_validation.cscript:CG-09",),
         "_dash_stylelist_elems": ("test_varlist_expansion.cscript:SL-02",),
         "_dash_stylelist_keys": ("test_varlist_expansion.cscript:SL-01",),
+        "_dash_sset_keys": ("test_program_coverage.cscript:PC-32",),
         "_dash_stylelist_norm": ("test_varlist_expansion.cscript:SL-09",),
         "_dash_stylelist_pick": ("test_varlist_expansion.cscript:SL-03",),
         "_dash_stylelist_probe": ("test_varlist_expansion.cscript:SL-10",),

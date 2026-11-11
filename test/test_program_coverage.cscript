@@ -1441,6 +1441,36 @@ dash clear
 display "PC-31 PASS: an abbreviated variable, in a qualifier or its string literal, is read as the variable it names, on both routes, and a date's format comes back"
 
 // ================================================================
+// PC-32 -- _dash_sset_keys: the keys whose s() is set, in the list's
+//          order (11nov2026: _dash_stylelist_check walks only these)
+// ================================================================
+sreturn clear
+mata:
+_e = J(0, 1, .)
+_e = _e \ (_dash_sset_keys("mcolor lcolor msize") == "")
+_e = _e \ (_dash_sset_keys("") == "")
+st_global("s(lcolor)", "red")
+st_global("s(msize)", " ")
+_e = _e \ (_dash_sset_keys("mcolor lcolor msize") == "lcolor msize")
+_e = _e \ (_dash_sset_keys("msize mcolor lcolor") == "msize lcolor")
+st_global("s(mcolor)", char(34) + "a b" + char(34))
+_e = _e \ (_dash_sset_keys("mcolor lcolor msize nosuch") == "mcolor lcolor msize")
+// With a prefix: the graph keys a segment set, s(g_<key>).
+st_global("s(g_title)", "T")
+_e = _e \ (_dash_sset_keys("note title lcolor", "g_") == "title")
+_e = _e \ (_dash_sset_keys("note title lcolor", "") == "lcolor")
+st_local("pc32", strofreal(all(_e)))
+end
+sreturn clear
+assert `pc32' == 1
+// Every check of _dash_stylelist_check, and every reader of
+// _dash_plot_opts_to_json, passes an unset value, which is
+// why only the set keys are walked.
+mata: st_local("pc32b", strofreal(_dash_stylelist_bad("") == 0 & _dash_stylelist_paren("") == "" & _dash_stylelist_eqlead("") == "" & _dash_stylelist_blank("", 3) == 0 & _dash_stylelist_pick("", 1) == "" & _dash_stylelist_pick("", 3) == "" & _dash_varlabel_tail("", 1) == "" & _dash_varlabel_tail("", 2) == ""))
+assert `pc32b' == 1
+display "PC-32 PASS: _dash_sset_keys names the set keys in order, and every stylelist check passes an unset value"
+
+// ================================================================
 // PYF-01..02 -- the measured Python floor (WP-30 P1.33)
 // ================================================================
 // ---- PYF-01: venv() from a linked Python 3.12: created, installed,

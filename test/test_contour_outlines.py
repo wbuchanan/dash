@@ -119,7 +119,7 @@ class TestTheSpecCarriesThem:
 
     def test_the_writer_lists_them(self):
         body = _program("_dash_plot_opts_to_json")
-        keys = body.split("foreach key in", 1)[1].split("{", 1)[0]
+        keys = body.split("local _oj_all", 1)[1].split("mata:", 1)[0]
         words = set(re.findall(r"[a-z0-9_]+", keys))
         assert "outlines" in words
 

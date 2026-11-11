@@ -53,7 +53,7 @@ class TestMlalign:
                 "`\"`_dash_pending' mlalign\"'") not in body
         assert re.search(r"sreturn local mlalign\s+: copy local mlalign",
                          body)
-        keys = re.search(r"foreach key in (mcolor .*?)\{", src, re.S).group(1)
+        keys = re.search(r"local _oj_all (mcolor .*?)\n    mata:", src, re.S).group(1)
         assert "mlalign" in keys.replace("///", " ").split()
 
     def test_the_spellings_bind_as_twoways(self):

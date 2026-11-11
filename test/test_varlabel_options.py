@@ -258,7 +258,7 @@ class TestTheDeclarations:
         for o in ("yvarlabel", "xvarlabel"):
             assert re.search(r"sreturn local %s\s+: copy local %s" % (o, o),
                              ado), o
-        m = re.search(r"foreach key in mcolor msymbol(.*?)\{", ado, re.S)
+        m = re.search(r"local _oj_all mcolor msymbol(.*?)\n    mata:", ado, re.S)
         keys = m.group(1).replace("///", " ").split()
         assert {"yvarlabel", "xvarlabel"} <= set(keys)
         m = re.search(r"string scalar _dash_stylelist_keys\(\)\s*\{(.*?)\}",

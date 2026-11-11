@@ -177,7 +177,7 @@ class TestTheDeclarations:
             for opt in ("tmlabel", "tmtick"):
                 if f"length local {opt}' local _dash_pending" in body:
                     bad.append(f"{prog}: {opt} pending")
-        lists = re.findall(r"foreach gk(?:ey)? in (.*?)\{", src, re.S)
+        lists = re.findall(r"(?:foreach gk(?:ey)? in |local _gk_all )(.*?)(?:\{|\n    mata:)", src, re.S)
         lists = [l for l in lists if "xmlabel" in l]
         if len(lists) != 7:
             bad.append(f"{len(lists)} key lists")
@@ -202,7 +202,7 @@ class TestTheDeclarations:
                 if not re.search(r"sreturn local %s%s\s+: copy local %s\b"
                                  % (pre, opt, opt), body):
                     bad.append(f"{prog}: no sreturn of {opt}")
-        lists = [l for l in re.findall(r"foreach gk(?:ey)? in (.*?)\{", src,
+        lists = [l for l in re.findall(r"(?:foreach gk(?:ey)? in |local _gk_all )(.*?)(?:\{|\n    mata:)", src,
                                        re.S) if "xmlabel" in l]
         for i, l in enumerate(lists):
             words = l.replace("///", " ").split()
