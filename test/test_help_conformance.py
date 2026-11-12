@@ -1700,4 +1700,8 @@ class TestInternalLinksResolve:
         # old -> new: 203 -> 205 links, 60 -> 61 targets: Exporting and the
         # Stata graph commands paragraph link the iframe paragraph's new
         # marker iframe (WP-48 ECO-16).
-        assert len(refs) == 205 and len(set(refs)) == 61
+        # old -> new: 205 -> 210 links: the Description's two sentences
+        # and the Plot types sentence link Differences from twoway, and the
+        # Unsupported intro links dash's own options and Resource limits
+        # (WP-48 48-04, HR-1, HR-6, HR-7).
+        assert len(refs) == 210 and len(set(refs)) == 61

@@ -3,9 +3,12 @@
 `dash` converts Stata `twoway` plot syntax into interactive dashboards
 powered by the Bokeh visualization library: forty-four twoway plot types,
 multi-graph layouts, linked brushing, filter widgets
-(dropdown/multi/slider/range) and KPI cards. Most twoway options are
-honoured; the rest are accepted and named in a note -- see `help dash`,
-Unsupported Stata twoway options.
+(dropdown/multi/slider/range) and KPI cards. Options are written as for
+twoway: what twoway refuses is refused, the options dash draws are drawn,
+and the few it does not draw are named in a note -- see `help dash`,
+Differences from twoway and Unsupported Stata twoway options; dash adds
+two options of its own, hover() and table (see `help dash`, dash's own
+options).
 
 A saved dashboard is one self-contained HTML file, with BokehJS embedded,
 that opens offline, without a server or an internet connection; it is
@@ -60,7 +63,7 @@ dash (scatter mpg weight) (lfit mpg weight), title("MPG vs Weight") saving(fit.h
 
 ## Documentation
 
-- `help dash` -- the syntax, every difference from `twoway`, and the
+- `help dash` -- the syntax, the differences from `twoway`, and the
   dashboard options.
 - `help dash_setup` -- installing and checking the Python dependencies.
 - [CHANGELOG.md](CHANGELOG.md) -- what changed in each release.

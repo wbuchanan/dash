@@ -188,8 +188,9 @@ draws it; an axis option there is refused as {cmd:twoway} refuses it,
 {title:Description}
 
 {pstd}
-{cmd:dash} accepts the same syntax as {helpb twoway} and produces an
-interactive HTML file instead of a static Stata graph window.
+{cmd:dash} reads {cmd:twoway}'s syntax and produces an interactive HTML
+file instead of a Stata graph window; where it reads or draws something
+differently, {help dash##differences:Differences from twoway} says so.
 The HTML file works offline -- no server, internet connection, or special
 software is required.  {cmd:dash} is tested in Google Chrome; a page that
 misbehaves in another browser is outside what {cmd:dash} supports.
@@ -203,8 +204,9 @@ the file it wrote in {cmd:r(filename)}; see {help dash##export:Exporting} and
 does after {cmd:dash}.
 
 {pstd}
-For plot types, marker/line/axis options, and {it:if}/{it:in} qualifiers,
-{cmd:dash} accepts the same syntax as {helpb twoway}.
+Plot types, plot and graph options and {it:if}/{it:in} qualifiers are
+written as for {helpb twoway} (see
+{help dash##differences:Differences from twoway} for the exceptions).
 A graph with {cmd:name()} is registered for {cmd:dash build} instead of
 drawn, and no Stata graph is made: see
 {help dash##graphintegration:Stata graph integration}.
@@ -312,8 +314,9 @@ name -- {cmd:sc} for {cmd:scatter}, {cmd:li} for {cmd:line}, {cmd:con} for
 and {cmd:fun} for {cmd:function} -- and two by another name, {cmd:mbands}
 for {cmd:mband} and {cmd:fn} for {cmd:function}; every other type only by
 its full name.  {cmd:dash} takes all of these.  What each draws is
-described in {manhelp twoway G-2:graph twoway}; where {cmd:dash} differs,
-this file says so under the option concerned.
+described in {manhelp twoway G-2:graph twoway}; where {cmd:dash} differs
+from {cmd:twoway} by design, this file says so, under the option concerned
+or under {help dash##differences:Differences from twoway}.
 
 {synoptset 22}{...}
 {synoptline}
@@ -7734,12 +7737,15 @@ directory, and is refused when there is none.
 
 {pstd}
 The options below are {it:accepted and not honoured}.  None of them given
-once is an error (given twice, one {cmd:twoway} takes once is refused as
-{cmd:twoway} refuses it, as {it:Differences from twoway} says), so a
-command copy-pasted from a do-file always runs -- every one that is
-supplied and not drawn is named in that command's note, and an option
-{cmd:twoway} refuses on a plot type is refused as {cmd:twoway} refuses it
-({cmd:r(198)}, {cmd:option X() not allowed}):
+once is an error, so a command that uses them runs, and each that is
+supplied and not drawn is named in that command's note; an option
+{cmd:twoway} refuses is refused as {cmd:twoway} refuses it
+({cmd:r(198)}, {cmd:option X() not allowed}; given twice, one {cmd:twoway}
+takes once is refused the same way, as {it:Differences from twoway} says),
+except {cmd:dash}'s own {opt hover()} and {opt table}
+(see {help dash##dashonly:dash's own options}); a value {cmd:twoway} refuses is
+refused with {cmd:twoway}'s return code; and the limits under
+{help dash##limits:Resource limits} apply:
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
 {p 12 12 2}{cmd:. dash scatter mpg weight, bmcolor(red) bmlcolor(red)}{p_end}

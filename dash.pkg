@@ -4,9 +4,12 @@ d
 d dash converts Stata twoway plot syntax into interactive dashboards
 d powered by the Bokeh visualization library: forty-four twoway plot types,
 d multi-graph layouts, linked brushing, filter widgets
-d (dropdown/multi/slider/range) and KPI cards.  Most twoway options are
-d honoured; the rest are accepted and named in a note -- see
-d -help dash-, Unsupported Stata twoway options.
+d (dropdown/multi/slider/range) and KPI cards.  Options are written as
+d for twoway: what twoway refuses is refused, the options dash draws are
+d drawn, and the few it does not draw are named in a note -- see
+d -help dash-, Differences from twoway and Unsupported Stata twoway
+d options; dash adds two options of its own, hover() and table (see
+d -help dash-, dash's own options).
 d
 d A saved dashboard is one self-contained HTML file, with BokehJS
 d embedded, that opens offline, without a server or an internet

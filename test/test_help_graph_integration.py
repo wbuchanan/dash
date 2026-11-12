@@ -150,14 +150,19 @@ class TestNameRegisters:
     def test_the_description_caveat(self):
         """Appendix B HR-2, help part: the drop-in sentence names its
         limit beside it, and the sentences around it stay."""
+        # Flipped (WP-48 48-04, HR-1): the sentence before the caveat said
+        # "dash accepts the same syntax as twoway", which the audit found
+        # false; it now says the syntax is written as for twoway, with the
+        # exceptions under Differences.
         d = _description()
-        assert ("{cmd:dash} accepts the same syntax as {helpb twoway}. "
+        assert ("{help dash##differences:Differences from twoway} for the "
+                "exceptions). "
                 "A graph with {cmd:name()} is registered for {cmd:dash build} "
                 "instead of drawn, and no Stata graph is made: see "
                 + _LINK + ". See {manhelp twoway G-2:graph twoway} for the "
                 "full reference.") in d
-        assert ("For plot types, marker/line/axis options, and "
-                "{it:if}/{it:in} qualifiers,") in d
+        assert ("Plot types, plot and graph options and "
+                "{it:if}/{it:in} qualifiers are") in d
 
     def test_the_sub_point(self):
         line = _sub_point("name() registers.")
