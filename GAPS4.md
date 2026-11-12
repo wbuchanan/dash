@@ -552,7 +552,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **GW-22 Tracked:** Open (WP-48 section 48-01).
 - **syn:SD-15 Tracked:** Open (WP-48 section 48-02).
 - **RH-15 Tracked:** Open (WP-48 section 48-02).
-- **DT-29 Tracked:** Closed in WP-48, BUGS.md "dash_setup help contradicts itself on versions/ceilings; 0.1.0 CHANGELOG lists reversed behaviour; TWOWAY_COVERAGE_AUDIT rows stale; GAPS3 H5/I1/K1/K5 lack Tracked lines; DROPIN P2.34/P2.64 unmapped; rejected_options.json narratives", commit pending.
+- **DT-29 Tracked:** Closed in WP-48, BUGS.md "dash_setup help contradicts itself on versions/ceilings; 0.1.0 CHANGELOG lists reversed behaviour; TWOWAY_COVERAGE_AUDIT rows stale; GAPS3 H5/I1/K1/K5 lack Tracked lines; DROPIN P2.34/P2.64 unmapped; rejected_options.json narratives", commit 606c88a.
 - **ECO-16 Tracked:** Open (WP-48 section 48-02).
 - **DT-28 Tracked:** Open (WP-48 section 48-02).
 - **plot:PT-7 Tracked:** Open (WP-49 section 49-01).
