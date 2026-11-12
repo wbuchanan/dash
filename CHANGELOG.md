@@ -1021,6 +1021,7 @@ and now matches Stata.
 
 - The tracking documents and dash_setup's help agree with the code (WP-48, DT-29)
 - The help says a misspelled option and the words that are no twoway option are refused, as dash refuses them; it said they reached the note (WP-48, LT-27)
+- The help no longer describes graph as a prefix read before twoway; dash refuses it in every position, as twoway does (WP-48, plot:PT-5)
 
 ### Fixed in WP-47
 

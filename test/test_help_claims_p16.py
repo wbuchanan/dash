@@ -75,3 +75,19 @@ class TestTypoParagraph:
                      "lockaspect, zoom() and ddensity are options of no "
                      "Stata graph command"):
             assert word in p, word
+
+
+class TestGraphPrefix:
+    """plot:PT-5: dash refuses graph in every position, as twoway refuses
+    twoway graph ... (Q4801-3); the Differences paragraph that called it a
+    prefix read before twoway, refused as "unrecognised plot type
+    'graph'", is gone."""
+
+    def test_no_prefix_paragraph(self):
+        h = _help()
+        flat = re.sub(r"\s+", " ", h)
+        assert "unrecognised plot type" not in flat
+        assert "graph is read only before twoway" not in flat
+        p = _prose(_between(h, "{marker syntax}", "{marker description}"))
+        assert ("so are tw, two, twow, twowa, graph, gr, gra and grap, in "
+                "any case, before a plot, alone or before options") in p

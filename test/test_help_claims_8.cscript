@@ -1002,6 +1002,19 @@ foreach w in xreverse yreverse xalternate yalternate xcommon ycommon "margin(sma
 }
 _hc_done "Q4801-2" "xreverse, xcommon, margin(), lockaspect and the rest refused as twoway refuses them"
 
+// Q4801-3 -- graph after dash is refused as twoway refuses twoway graph,
+// "graph is not a twoway plot type", r(198); no "unrecognised plot type".
+_hc_run "" "twoway graph scatter mpg weight"
+local trc = r(rc)
+_hc_log "Q4801-3" "`r(logfile)'" "graph is not a twoway plot type" 1 1
+_hc_run "" "dash graph scatter mpg weight, name(q4801c, replace)"
+local drc = r(rc)
+local lf "`r(logfile)'"
+_hc_expect "Q4801-3" "(`drc' == 198 & `trc' == 198)" "dash rc `drc', twoway rc `trc'"
+_hc_log "Q4801-3" "`lf'" "graph is not a twoway plot type" 1 1
+_hc_log "Q4801-3" "`lf'" "unrecognised plot type" 0
+_hc_done "Q4801-3" "dash graph scatter is refused in twoway's words"
+
 // ----------------------------------------------------------------
 cd "`hc_home'"
 set scheme `hc_scheme0'

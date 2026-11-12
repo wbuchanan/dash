@@ -547,7 +547,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **DG-7 Tracked:** Closed in WP-47, BUGS.md "Titles and keys of emptied or unfittable layers differ ('Fitted values' vs 'mpg', histogram x 'x')", commit f157037.
 - **basic:PT-15 Tracked:** Partly closed in WP-47 (section 47-06, commit 6d94b2a): half-missing pc rows, pcarrow mlabangle, date mlabel value labels and the trailing immediate-value notes are drawn as twoway draws them; the other cases are closed by their sections; open: rarea closing edges, a scheme file twoway refuses, {col #:text} (BUGS.md "rarea's short closing edges are not drawn; a scheme file without the keys twoway needs is drawn where twoway refuses it; {col #:text} is drawn as typed").
 - **LT-27 Tracked:** Closed in WP-48, BUGS.md "The 'typo is reported as ignored ... titel(x) appears in the note' paragraph is stale; the paragraph before it (xreverse, xcommon, lockaspect ... reach the note) is stale too", commit pending.
-- **plot:PT-5 Tracked:** Open (WP-48 section 48-01).
+- **plot:PT-5 Tracked:** Closed in WP-48, BUGS.md "'graph is a prefix before twoway' / 'unrecognised plot type graph' is stale", commit pending.
 - **basic:PT-16 Tracked:** Open (WP-48 section 48-01).
 - **GW-22 Tracked:** Open (WP-48 section 48-01).
 - **syn:SD-15 Tracked:** Open (WP-48 section 48-02).

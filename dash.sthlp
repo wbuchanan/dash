@@ -990,12 +990,6 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:asis} saves
     a drawn graph and {cmd:nodraw} draws none.
 
-{phang2}    {ul:graph is read only before twoway.}  After {cmd:dash},
-    {cmd:graph} is a prefix only when {cmd:twoway} follows it; before any
-    other word it is read as a plot type and refused, "unrecognised plot
-    type 'graph'", {cmd:r(198)}, where {cmd:graph} followed by a word that
-    is not one of its subcommands gives {cmd:r(4023)}.
-
 {phang2}    {ul:Plot-type names in lower case only.}  Capitalised plot-type
     names twoway takes on a case-insensitive file system ({cmd:Scatter})
     are refused; see {help dash##plottypes:Plot types}.

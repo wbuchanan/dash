@@ -1036,8 +1036,10 @@ class TestTheParsersFoundSomething:
         # among the forms dash refuses (it draws no labels, as twoway).
         # old -> new: 471 -> 470, basic:PT-11 the Unsupported entry
         # Marker-label text layout goes: both options drawn (WP-47 47-05).
-        assert len(defs) == 470, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 470 "
+        # old -> new: 470 -> 469, plot:PT-5 the Differences sub-point graph
+        # is read only before twoway goes: it was false (WP-48 48-01).
+        assert len(defs) == 469, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 469 "
             f"measured 08nov2026")
         # Flipped (WP-35 DT-15): the entry of plotbgcolor() and pbgc() left
         # the help, as dash refuses both as twoway refuses them (P4-7).
