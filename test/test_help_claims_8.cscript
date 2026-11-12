@@ -73,6 +73,8 @@
 *!   Q4802-7 .. Q4802-9, Q4802-11 (ECO-16) -- the three recipes of Commands
 *!           that draw through twoway run as shown; Stata's graph commands
 *!           find no dash graph in graph memory.
+*!   Q4802-10 (DT-28) -- a zero-weight plot under nodraw is r(198), as the
+*!           drawn twoway refuses it.
 *!
 *! Every command runs with its log captured and read back with Stata's
 *! wrapped lines re-joined, as test_custom_scheme.cscript does.  The cases
@@ -1315,6 +1317,21 @@ _hc_expect "Q4802-9" "(`rc' == 0)" "the sts graph recipe: rc `rc'"
 capture confirm file "`hc_dir'/q4802_9.html"
 _hc_expect "Q4802-9" "(_rc == 0)" "the sts graph recipe wrote no page"
 _hc_done "Q4802-9" "sts graph's survivor function drawn with dash after stset"
+
+// Q4802-10 (DT-28) -- a plot with no weight above zero: dash stops it
+// under nodraw, r(198), as the drawn twoway stops it; twoway's own nodraw,
+// which draws nothing, takes it.
+sysuse auto, clear
+quietly generate zero = 0
+_hc_run "" "dash scatter mpg weight [fw=zero], nodraw"
+local drc = r(rc)
+_hc_tw "twoway scatter mpg weight [fw=zero]"
+local trc = r(rc)
+_hc_tw "twoway scatter mpg weight [fw=zero], nodraw"
+local nrc = r(rc)
+_hc_expect "Q4802-10" "(`drc' == 198 & `trc' == 198)" "zero weights: dash nodraw rc `drc', drawn twoway rc `trc'"
+_hc_expect "Q4802-10" "(`nrc' == 0)" "zero weights: twoway nodraw rc `nrc'"
+_hc_done "Q4802-10" "a zero-weight plot under nodraw is r(198), as the drawn twoway refuses it"
 
 // Q4802-11 (ECO-16) -- Stata's graph commands after dash ..., name(g1):
 // no graph memory holds g1.  A bare graph replays the last graph command

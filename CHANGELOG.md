@@ -1027,6 +1027,7 @@ and now matches Stata.
 - The help's Unsupported list names every option dash notes, checked against twoway's own tables (WP-48, syn:SD-15)
 - The help's orientation and recast paragraphs state what dash draws (WP-48, RH-15)
 - The help names the Stata graph commands and report tools a dashboard cannot serve and gives recipes for histogram, marginsplot and sts graph (WP-48, ECO-16)
+- The help's statements that a dashboard is an HTML page and that a zero-weight graph is refused under nodraw as twoway refuses it are pinned (WP-48, DT-28)
 
 ### Fixed in WP-47
 

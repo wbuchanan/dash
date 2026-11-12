@@ -26,6 +26,8 @@ WP-48 section 48-02:
 * ECO-16 (TestEcosystem): the Stata graph commands and reports paragraph,
   the iframe link, the three recipes and the README caveat (Q4802-7 ..
   Q4802-9, Q4802-11).
+* DT-28 (TestDocumentedPremise): Differences item 1 and the zero-weight
+  sentence, reviewed and needing no change (Q4802-10).
 
 The Stata half -- what dash does when the sentence's command is run -- is
 test_help_claims_8.cscript's Q4801 and Q4802 blocks.
@@ -424,3 +426,22 @@ class TestEcosystem:
         assert r.count("A dashboard is an HTML page, not a Stata graph: see "
                        "`help dash`, Stata graph integration.") == 1
         assert r.index("A dashboard is an HTML page, not a Stata graph") > i
+
+
+class TestDocumentedPremise:
+    """DT-28 (syn:SD-19), reviewed and needing no change: a dashboard is an
+    HTML page, not a Stata graph (Differences item 1), and a plot with no
+    weight above zero stops the graph, r(198), as the drawn twoway stops it
+    -- under nodraw too (test_help_claims_8.cscript Q4802-10)."""
+
+    def test_output_is_html(self):
+        diff = _between(_help(), "{marker differences}",
+                        "{phang2}2.  {ul:The {cmd:name()} option")
+        assert diff.count("{phang2}1.  {ul:Output is interactive HTML, not a "
+                          "Stata graph window.}") == 1
+        assert "The file can be shared, emailed, or opened offline in a " \
+            "browser" in _prose(diff)
+
+    def test_zero_weight_sentence(self):
+        assert _has("a plot with no weight above zero stops the graph, "
+                    "r(198), without a word, as twoway stops it")

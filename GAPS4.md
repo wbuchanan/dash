@@ -554,7 +554,7 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **RH-15 Tracked:** Closed in WP-48, BUGS.md "Horizontal/recast help claims ('as twoway draws it', 'judged after recast()', 'one x unit wide') are contradicted or undocumented differences", commit pending.
 - **DT-29 Tracked:** Closed in WP-48, BUGS.md "dash_setup help contradicts itself on versions/ceilings; 0.1.0 CHANGELOG lists reversed behaviour; TWOWAY_COVERAGE_AUDIT rows stale; GAPS3 H5/I1/K1/K5 lack Tracked lines; DROPIN P2.34/P2.64 unmapped; rejected_options.json narratives", commit 606c88a.
 - **ECO-16 Tracked:** Closed in WP-48, BUGS.md "Help and README understate ecosystem losses (graph display/use/replay, putpdf, putexcel, markdown, iframe note unlinked); no recipes for commands that draw through twoway (histogram, marginsplot, sts graph)", commit pending.
-- **DT-28 Tracked:** Open (WP-48 section 48-02).
+- **DT-28 Tracked:** Documented in WP-48, BUGS.md "Reviewed and needing no change: HTML output is the package's premise; a zero-weight graph refused under nodraw matches the drawn twoway", commit pending.
 - **plot:PT-7 Tracked:** Open (WP-49 section 49-01).
 - **basic:PT-12 Tracked:** Open (WP-49 section 49-02).
 - **LT-25 Tracked:** Open (WP-49 section 49-02).
