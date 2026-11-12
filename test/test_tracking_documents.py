@@ -3520,6 +3520,27 @@ def _gaps4_closure_problems(open_ids, entries):
     return bad
 
 
+def _gaps4_pd4_problems(open_ids, entries):
+    """Every id no longer open has a closed entry naming (WP-NN, <id> whose
+    Resolution holds PD-4's two clauses: 'Pinned by ' and 'Closes GAPS4 <id> '
+    ('<id> in part' for a partly closed item)."""
+    bad = []
+    for pid in GAPS4_ALL:
+        if pid in open_ids:
+            continue
+        tag = "(%s, %s" % (GAPS4_WP[pid], pid)
+        mine = [e["fields"].get("Resolution", "") for e in entries
+                if e["closed"] and any(
+                    tag + c in e["fields"].get("Resolution", "")
+                    for c in ");,")]
+        if not any("Pinned by " in r and "Closes GAPS4 %s " % pid in r
+                   for r in mine):
+            bad.append("%s: no closed BUGS.md entry naming %s) says both "
+                       "'Pinned by ...' and 'Closes GAPS4 %s ...'"
+                       % (pid, tag, pid))
+    return bad
+
+
 def _gaps4_problems(rows, tracked, dupes, open_ids, entries, sha_exists):
     """Every id has one row in its own section and one Tracked line in one
     of PD-3's four forms, consistent with BUGS.md."""
@@ -3656,6 +3677,33 @@ class TestGaps4Tracking:
     def test_a_closed_entry_names_its_closure(self, bugs):
         bad = _gaps4_closure_problems(set(GAPS4_OPEN), bugs[0])
         assert not bad, "\n".join(bad)
+
+    def test_a_closed_entry_states_its_pin_and_closure(self, bugs):
+        # PD-4's closed and documented forms end "Pinned by <node> ...
+        # Closes GAPS4 <id> (WP-NN, <id>)."; 18 WP-47 entries and four of
+        # WP-41/43 left them out (found by the WP-48 48-04 sweep).
+        bad = _gaps4_pd4_problems(set(GAPS4_OPEN), bugs[0])
+        assert not bad, "\n".join(bad)
+
+    def test_the_pin_and_closure_reader(self):
+        pid = next(p for p in GAPS4_ALL if p not in GAPS4_OPEN)
+        tag = "(%s, %s)" % (GAPS4_WP[pid], pid)
+        others = set(GAPS4_ALL) - {pid}
+
+        def entry(text):
+            return {"closed": True,
+                    "fields": {"Resolution": "  - Resolution: Fixed "
+                               "01jan2026 %s. %s" % (tag, text)}}
+        good = entry("Pinned by test/x.py. Closes GAPS4 %s %s." % (pid, tag))
+        part = entry("Pinned by test/x.py. Closes GAPS4 %s in part %s."
+                     % (pid, tag))
+        assert _gaps4_pd4_problems(others, [good]) == []
+        assert _gaps4_pd4_problems(others, [part]) == []
+        assert _gaps4_pd4_problems(others, [entry("test/x.py.")]) != []
+        assert _gaps4_pd4_problems(
+            others, [entry("Pinned by test/x.py.")]) != []
+        assert _gaps4_pd4_problems(
+            others, [entry("Closes GAPS4 %s %s." % (pid, tag))]) != []
 
     def test_every_item_has_one_tracked_line(self, bugs):
         rows, tracked, dupes = _parse_gaps4(_read("GAPS4.md"))
