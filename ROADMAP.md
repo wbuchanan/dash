@@ -5438,6 +5438,26 @@ Summarised from .ultraplan/sections/index.md (WP-47) and the section decisions D
 - **Left open:** omitanymiss on lpolyci, area under nodropbase, the contour outline (BUGS.md "lpolyci under omitanymiss draws its fit line one vertex short; twoway draws area under nodropbase without its drops to the base; any plot option on contour changes how twoway strokes one blue outline", S3); rarea under the stair connections and an unsorted outline (BUGS.md "rarea under connect(stairstep) or connect(stepstair) leaves a row missing one bound out of both bounds; an unsorted rarea's outline spikes at such a row", S3); by() panel edges (BUGS.md "Under by(), a marker label stops at its panel's edge; twoway's runs on over the next panel", S3); rarea closing edges, a scheme file twoway refuses, {col #:text} (BUGS.md "rarea's short closing edges are not drawn; a scheme file without the keys twoway needs is drawn where twoway refuses it; {col #:text} is drawn as typed", S3).
 - **Gate (10nov2026 and 11nov2026):** `make test-all` on ef353da: pytest 45,776 passed, 1 failed (647 s), cert 77 of 80 (717 s), 1,376 s in all; the four stale readers fixed in fa59d04 and re-run alone. `make cert-release` on fa59d04: the WP-29 and WP-30 truth scripts passed; the WP-31 readers left stale by the outline-only Quad, @dash_diamond and the 0.2 px floor fixed in 17710f9, and blocks S41 and S60 re-run alone and passed. PIC-17 (13d929d) and MS-15 (cec0bf7) landed after that gate; a second gate on 141356b (11-12nov2026) passed: `make test-all` cert 80 of 80 (712 s) with its pytest leg re-run under Python 3.14 (45,946 passed, 603 s; the target's python3 had become 3.15, which has no pytest), and `make cert-release` 3 of 3 (589 s). The two run about 35 minutes, over the 5-minute rule (CLAUDE.md 11); the cuts are proposed as their own work.
 
+## WP-48 · Help, README and tracker accuracy (P16) — DONE
+
+**GAPS4 closed:** LT-27, plot:PT-5, basic:PT-16, GW-22, DT-29, syn:SD-15, RH-15, ECO-16 · **documented:** DT-28
+
+As a Stata user who reads dash's help, README and package description before pasting a twoway command, I want every sentence there to say what dash does, so that I learn what a pasted command keeps and loses from the help rather than from the dashboard: which options are refused as twoway refuses them, which are drawn, which are only named in a note, and which Stata graph commands a dashboard cannot serve.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (WP-48) and the section decisions D-48-01.a..D-48-04.c, which hold them in full.
+
+- **Stale help paragraphs (48-01).** The typo and refusal paragraphs, the graph-prefix paragraph, the passages on headlabel, recast() on dot, degree() above 7, fpfit's smoothing options, the area colours, merged keys and the by() subtitle box, and the units and drawn-options sentences say what dash does, each measured against twoway and pinned.
+- **Unsupported list and recast claims (48-02).** The Unsupported list is checked against twoway's own tables of the options it takes (142 probes, none noted and missing); the orientation and recast paragraphs state what WP-46 landed (an rbar recast to a bar-like type drawn upright); the help names what each graph command does after dash and gives recipes for histogram, marginsplot and sts graph; DT-28's two facts are pinned.
+- **Tracking documents (48-03).** dash_setup's help, the 0.1.0 CHANGELOG lines, TWOWAY_COVERAGE_AUDIT.md, GAPS3 and DROPIN agree with the code; test/fixtures/rejected_options.json is regenerated.
+- **False sentences (48-04).** The audit's 22 false sentences (HR-1..HR-22) are corrected or verified, one test each in test/test_false_sentences.py (HR-17 is 49-01's); README.md and dash.pkg say options are written as for twoway and name the two dash-only options.
+- **Closure clauses.** 22 closed BUGS.md entries (18 of WP-47, four of WP-41/43) gained PD-4's Pinned by and Closes GAPS4 clauses after each was checked closed, and a tracking test now requires both.
+
+- **Entries.** 9 WP-48 entries; 8 closed, 1 documented, 0 partly closed; BUGS.md holds 43 open entries.
+- **Left open:** none of WP-48's rows. HR-17's sentence check is 49-01's (WP-49).
+- **Gate (12nov2026):** `make test-all` on 53fc062: pytest 46,014 passed (613 s), cert 80 of 80 (696 s), 1,320 s in all; `make cert-release` on 53fc062: 3 of 3 (the WP-29/30/31 truth scripts, 590 s); all green first time. The two run about 32 minutes, over the 5-minute rule (CLAUDE.md 11); the cuts are proposed as their own work.
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.
