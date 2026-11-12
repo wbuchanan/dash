@@ -432,6 +432,13 @@ class TestHR10:
         assert "a range() that widens the ticks" not in _help_prose()
         assert "exact at build through S45's embedded ticks" not in \
             _root("ROADMAP.md")
+        by_title = {e["title"]: e for e in _entries()}
+        nat = [t for t in by_title
+               if t.startswith("The natscale model misses three")]
+        assert len(nat) == 1, nat
+        text = re.sub(r"\s+", " ", by_title[nat[0]]["text"])
+        assert "every axis a page built in Stata draws is Stata's own" \
+            not in text
 
 
 class TestHR11:
