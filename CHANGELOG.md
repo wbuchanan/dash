@@ -1017,6 +1017,8 @@ and now matches Stata.
   3.12, as on 3.13. (WP-30, P1.33)
 - Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64, and measured on MP only. Every dash and dash_setup program declared version 16.0, which implied Stata 16 support that was never tested; all 91 now declare version 19. (WP-30, P1.35)
 
+### Fixed in WP-48
+
 ### Fixed in WP-47
 
 - headlabel moves the marker labels of pcscatter and pccapsym and the labels of pcarrowi (plain or recast()) to the second point, as twoway does, and is never named in the note; pcscatter mpg weight trunk turn, mlabel(make) headlabel drew AMC Concord at (2930, 22), now at (40, 11) (WP-47, basic:PT-1)
