@@ -550,11 +550,11 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **plot:PT-5 Tracked:** Closed in WP-48, BUGS.md "'graph is a prefix before twoway' / 'unrecognised plot type graph' is stale", commit 8349d60.
 - **basic:PT-16 Tracked:** Closed in WP-48, BUGS.md "Stale passages: :332 and :3472-3475 headlabel/mangle 'named'; :3611 recast on dot; :3676 degree() >7 refused; :3977-3985 fpfit bwidth accepted; :4084 acolor named; :1239 mlabel(t*) refused; :240-246 shadowed x/y; :3635 merged keys; :3179 rescale note; :3290 subtitle box; :4782/:6573/:6597 lalign/dlalign/'every type'; TWOWAY_COVERAGE_AUDIT:71/81/84; _dot_style docstring; test_lpoly_degree.py:16", commit 72185f3.
 - **GW-22 Tracked:** Closed in WP-48, BUGS.md "Units paragraph says xsize/ysize do not change the size reference (they do); pcycle()/clegend() 'named in the note' when drawn", commit f5d60e5.
-- **syn:SD-15 Tracked:** Closed in WP-48, BUGS.md "The Unsupported list is not checked against the tw_takes table, so p#(), ztick/zmlabel/zmtick are missing", commit pending.
-- **RH-15 Tracked:** Closed in WP-48, BUGS.md "Horizontal/recast help claims ('as twoway draws it', 'judged after recast()', 'one x unit wide') are contradicted or undocumented differences", commit pending.
+- **syn:SD-15 Tracked:** Closed in WP-48, BUGS.md "The Unsupported list is not checked against the tw_takes table, so p#(), ztick/zmlabel/zmtick are missing", commit b3c96880.
+- **RH-15 Tracked:** Closed in WP-48, BUGS.md "Horizontal/recast help claims ('as twoway draws it', 'judged after recast()', 'one x unit wide') are contradicted or undocumented differences", commit c7b5be18.
 - **DT-29 Tracked:** Closed in WP-48, BUGS.md "dash_setup help contradicts itself on versions/ceilings; 0.1.0 CHANGELOG lists reversed behaviour; TWOWAY_COVERAGE_AUDIT rows stale; GAPS3 H5/I1/K1/K5 lack Tracked lines; DROPIN P2.34/P2.64 unmapped; rejected_options.json narratives", commit 606c88a.
-- **ECO-16 Tracked:** Closed in WP-48, BUGS.md "Help and README understate ecosystem losses (graph display/use/replay, putpdf, putexcel, markdown, iframe note unlinked); no recipes for commands that draw through twoway (histogram, marginsplot, sts graph)", commit pending.
-- **DT-28 Tracked:** Documented in WP-48, BUGS.md "Reviewed and needing no change: HTML output is the package's premise; a zero-weight graph refused under nodraw matches the drawn twoway", commit pending.
+- **ECO-16 Tracked:** Closed in WP-48, BUGS.md "Help and README understate ecosystem losses (graph display/use/replay, putpdf, putexcel, markdown, iframe note unlinked); no recipes for commands that draw through twoway (histogram, marginsplot, sts graph)", commit 802256b6.
+- **DT-28 Tracked:** Documented in WP-48, BUGS.md "Reviewed and needing no change: HTML output is the package's premise; a zero-weight graph refused under nodraw matches the drawn twoway", commit d47458d3.
 - **plot:PT-7 Tracked:** Open (WP-49 section 49-01).
 - **basic:PT-12 Tracked:** Open (WP-49 section 49-02).
 - **LT-25 Tracked:** Open (WP-49 section 49-02).
