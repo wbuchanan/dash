@@ -64,6 +64,9 @@
 *!           says every dependency is satisfied.
 *!   HC8-20  twoway joins a line across a missing y by default and breaks
 *!           it with cmissing(n).
+*!   Q4801-1 .. Q4801-10 (WP-48 48-01) -- the behaviour each corrected help
+*!           sentence states: a sub-option note names the token as typed;
+*!           the words of no twoway option refused as twoway refuses them.
 *!
 *! Every command runs with its log captured and read back with Stata's
 *! wrapped lines re-joined, as test_custom_scheme.cscript does.  The cases
@@ -969,6 +972,35 @@ mata: st_local("m1", strofreal(_hc_svg_moves(st_local("hc_dir") + "/hc20a.svg"))
 mata: st_local("m2", strofreal(_hc_svg_moves(st_local("hc_dir") + "/hc20b.svg")))
 _hc_expect "HC8-20" "(`m1' == 1 & `m2' == 2)" "default drew `m1' piece(s), cmissing(n) `m2'"
 _hc_done "HC8-20" "one unbroken line by default, two pieces with cmissing(n)"
+
+// ================================================================
+* WP-48 48-01: probes for the corrected sentences
+// ================================================================
+// Q4801-1 -- a sub-option note names the token as typed, value and all
+// (the typo paragraph's "never the values supplied" is gone).  The
+// misspelled titel(x) itself is HC8-06.
+_hc_run "" `"dash scatter mpg weight, legend(note("HCQ1"))"'
+local rc = r(rc)
+local lf "`r(logfile)'"
+_hc_expect "Q4801-1" "(`rc' == 0)" "legend(note()): rc `rc'"
+_hc_log "Q4801-1" "`lf'" `"legend() sub-option(s) not implemented and ignored: note("HCQ1")"' 1
+_hc_done "Q4801-1" "a sub-option note prints the token as typed"
+
+// Q4801-2 -- the words of no twoway option are refused as twoway refuses
+// them, its line and r(198), in dash and twoway alike.
+foreach w in xreverse yreverse xalternate yalternate xcommon ycommon "margin(small)" "region(fcolor(red))" altaxis "addplot(scatter mpg weight)" lockaspect "zoom(2)" ddensity {
+    local o = regexr(`"`w'"', "\(.*$", "")
+    if strpos(`"`w'"', "(") local o "`o'()"
+    _hc_run "" `"twoway scatter mpg weight, `w'"'
+    local trc = r(rc)
+    _hc_log "Q4801-2" "`r(logfile)'" "option `o' not allowed" 1 1
+    _hc_run "" `"dash scatter mpg weight, `w' name(q4801b, replace)"'
+    local drc = r(rc)
+    local lf "`r(logfile)'"
+    _hc_expect "Q4801-2" "(`drc' == 198 & `trc' == 198)" `"`w': dash rc `drc', twoway rc `trc'"'
+    _hc_log "Q4801-2" "`lf'" "option `o' not allowed" 1 1
+}
+_hc_done "Q4801-2" "xreverse, xcommon, margin(), lockaspect and the rest refused as twoway refuses them"
 
 // ----------------------------------------------------------------
 cd "`hc_home'"

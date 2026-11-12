@@ -1020,6 +1020,7 @@ and now matches Stata.
 ### Fixed in WP-48
 
 - The tracking documents and dash_setup's help agree with the code (WP-48, DT-29)
+- The help says a misspelled option and the words that are no twoway option are refused, as dash refuses them; it said they reached the note (WP-48, LT-27)
 
 ### Fixed in WP-47
 

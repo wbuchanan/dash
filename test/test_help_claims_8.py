@@ -1632,7 +1632,9 @@ class TestTheUnsupportedSectionSaysWhatTwowayDoes:
         # says dash refuses all eight as twoway does.
         # 5 -> 7: WP-32 the play() paragraph's two refusals.
         # 7 -> 8: WP-35 basic:PT-8 two omit options in one command refused.
-        assert s.count("r(198)") == 8, s.count("r(198)")
+        # 8 -> 9: WP-48 LT-27 the typo paragraph says titel(x) is refused,
+        # r(198), where it said a typo appears in the note.
+        assert s.count("r(198)") == 9, s.count("r(198)")
 
     def test_the_other_commands_named_are_statas(self):
         """ciopts() is marginsplot's and sts graph's, lineopts() the stcox

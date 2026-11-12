@@ -7813,8 +7813,9 @@ it.  {cmd:mlabangle()} and {cmd:mlabformat()} are honoured too; see
 {help dash##marker_labels:Marker Label Options}.
 
 {pstd}
-Some names that reach the note are not {cmd:twoway} options where they were
-written, and {cmd:twoway} itself refuses them with {cmd:r(198)}: it spells
+Some names are not {cmd:twoway} options where they are written, and
+{cmd:dash} refuses them as {cmd:twoway} refuses them,
+{cmd:option xreverse not allowed}, {cmd:r(198)}: {cmd:twoway} spells
 {cmd:xreverse} and {cmd:yreverse} as {cmd:xscale(reverse)} and
 {cmd:yscale(reverse)}, which {cmd:dash} honours, and {cmd:xalternate} and
 {cmd:yalternate} as {cmd:xscale(alt)} and {cmd:yscale(alt)}, which
@@ -7867,11 +7868,9 @@ so play it on the graph {cmd:twoway} draws.  {cmd:play()} empty plays
 nothing, as in {cmd:twoway}.
 
 {pstd}
-Two further notes on the note itself.  It names option {it:names}, never the
-values supplied.  And because an unknown option cannot be told apart from a
-misspelled supported one, a typo is reported as ignored rather than
-rejected: {cmd:titl(x)} abbreviates {cmd:title()} and works, while
-{cmd:titel(x)} appears in the note.
+A misspelled option is refused as {cmd:twoway} refuses it: {cmd:titl(x)}
+abbreviates {cmd:title()} and works, {cmd:titel(x)} is
+{cmd:option titel() not allowed}, {cmd:r(198)}.
 
 
 

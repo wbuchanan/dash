@@ -6066,11 +6066,11 @@
   - Suggested fix: A Segment renderer over rarea's source drawing each run's first and last rows (inset by 47-03's g under inside and outside, kept on a move: _rarea_closing_edges, _DASH_CLOSING_EDGE_JS); refuse a scheme twoway refuses, in its words; read {col #:text} as twoway repeats it.
   - Resolution: Not fixed because the WP-47 47-06 time box ended. Graded S3 (WP-47): drop-in audit package 15, minor.
 
-- [ ] Title: The 'typo is reported as ignored ... titel(x) appears in the note' paragraph is stale; the paragraph before it (xreverse, xcommon, lockaspect ... reach the note) is stale too
+- [x] Title: The 'typo is reported as ignored ... titel(x) appears in the note' paragraph is stale; the paragraph before it (xreverse, xcommon, lockaspect ... reach the note) is stale too
   - File Names and Line Numbers: dash.sthlp:6629-6640, 6682-6687 against 1024-1029
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 16 (minor): ids LT-27, GW-24, syn:SD-14, ECO-10, DT-05, TR-21, sil:SD-15; confirmed; tracked: untracked. Registered as GAPS4 LT-27 (WP-48, section 48-01, Fix).
   - Suggested fix: Rewrite both and pin them with help-claim tests
-  - Resolution: Not fixed because WP-48 section 48-01 has not landed. Graded S3 (WP-48): drop-in audit package 16, minor.
+  - Resolution: Fixed 12nov2026 (WP-48, LT-27). The two paragraphs at the end of dash.sthlp's Unsupported section are rewritten: the one naming xreverse, xcommon, margin(), region(), altaxis, addplot(), lockaspect, zoom() and ddensity now says dash refuses them as twoway refuses them, option xreverse not allowed, r(198), with twoway's own spellings (it said they reach the note); the typo paragraph is one sentence, titl(x) abbreviates title() and works, titel(x) is option titel() not allowed, r(198) (it said a typo appears in the note), and its "never the values supplied" is gone, since a sub-option note prints the token as typed (legend(note("N")) is named note("N")). Help only; ids GW-24, syn:SD-14, ECO-10, DT-05, TR-21 and sil:SD-15 close with it. Pinned by test/test_help_claims_p16.py::TestTypoParagraph, test/test_help_claims_8.cscript HC8-06, Q4801-1, Q4801-2. Closes GAPS4 LT-27 (WP-48, LT-27).
 
 - [ ] Title: 'graph is a prefix before twoway' / 'unrecognised plot type graph' is stale
   - File Names and Line Numbers: dash.sthlp:854-858 against 156-163; dash.ado:106-119
