@@ -1697,4 +1697,7 @@ class TestInternalLinksResolve:
         # old -> new: 201 -> 203 links: the Orientation paragraph links
         # Recast and Differences from twoway for histogram and rbar under
         # recast() and horizontal (WP-48 RH-15).
-        assert len(refs) == 203 and len(set(refs)) == 60
+        # old -> new: 203 -> 205 links, 60 -> 61 targets: Exporting and the
+        # Stata graph commands paragraph link the iframe paragraph's new
+        # marker iframe (WP-48 ECO-16).
+        assert len(refs) == 205 and len(set(refs)) == 61

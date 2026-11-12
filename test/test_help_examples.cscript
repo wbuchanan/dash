@@ -87,7 +87,8 @@
 *!            to type, with the reason it is not run and the check that
 *!            stands in: python (compiled), outside (python app.py, whose
 *!            app an example writes), described (an example runs it),
-*!            placeholder or fragment (accounted for only).  One the reader
+*!            placeholder or fragment (accounted for only), recipe (a
+*!            test_help_claims_8.cscript case runs it).  One the reader
 *!            finds with no shown pin fails.
 *!
 *! A pin that names nothing in the help stops the script too.
@@ -163,7 +164,7 @@ void _hx_pin_add(string scalar kind, string scalar value, string scalar text)
     if (kind == "special") ok = (value == "serve")
     if (kind == "expect")  ok = ustrregexm(value, "^[1-9][0-9]*$")
     if (kind == "check")   ok = (value == "titled" | value == "bygroups" | value == "pyapp")
-    if (kind == "shown")   ok = (value == "outside" | value == "python" | value == "placeholder" | value == "fragment" | value == "described" | value == "install")
+    if (kind == "shown")   ok = (value == "outside" | value == "python" | value == "placeholder" | value == "fragment" | value == "described" | value == "install" | value == "recipe")
     if (!ok) {
         printf("{err}HX: no handler for the pin %s %s\n", _hx_safe(kind), _hx_safe(value))
         exit(198)
@@ -603,6 +604,12 @@ _hx_pin shown fragment `"dash scatter mpg weight, name(g1)"'
 //   3,000,000 observations, which no example loads; S01 of
 //   test_wp40_truth.cscript runs it on 200,000 (Q4001-1)
 _hx_pin shown fragment `"dash scatter y x in 1/100"'
+//   recipe  (WP-48 ECO-16) the dash line of a recipe block in Commands
+//           that draw through twoway; test_help_claims_8.cscript
+//           Q4802-7 .. Q4802-9 run each recipe as shown
+_hx_pin shown recipe `"dash (histogram mpg) (function normalden(x, mpg_mean, mpg_sd), range(mpg))"'
+_hx_pin shown recipe `"dash (rcap ll ul at1) (connected b at1)"'
+_hx_pin shown recipe `"dash line s _t, sort connect(J)"'
 
 mata: _hx_pins_check()
 if `hx_badpins' > 0 exit 9

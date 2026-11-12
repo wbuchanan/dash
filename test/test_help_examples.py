@@ -552,7 +552,9 @@ class TestTheShownCommands:
         # dash build, server (the served app's ticks asked at build).
         # old -> new: 13 -> 14: WP-40 plat:PT-7, the What dash exports
         # sentence's dash scatter y x in 1/100.
-        assert forms.count(("dash.sthlp", "inline")) == 14
+        # old -> new: 14 -> 17: WP-48 ECO-16, the dash lines of the three
+        # recipes in Commands that draw through twoway.
+        assert forms.count(("dash.sthlp", "inline")) == 17
         # 7 -> 8: WP-32 I3, the hash-checked pip line naming the lock.
         assert forms.count(("dash_setup.sthlp", "line")) == 8
         # dash_setup.sthlp once also named `python set exec` inline, in the
@@ -569,7 +571,8 @@ class TestTheShownCommands:
         # 17 -> 19: WP-31 I2, the Installation section's two lines.
         # 19 -> 20: WP-32 I3, the hash-checked pip line.
         # old -> new: 20 -> 21: WP-40 plat:PT-7, What dash exports.
-        assert len({s.text for s in shown}) == 21
+        # old -> new: 21 -> 24: WP-48 ECO-16, the three recipes' dash lines.
+        assert len({s.text for s in shown}) == 24
 
     def test_the_two_line_pip_commands_are_joined(self, shown):
         # WP-29 P0.19: the recipes became one-line shell commands that name
@@ -627,6 +630,13 @@ class TestCheckShown:
         (p,) = hx.check_shown(item, "described", [])
         assert "no example runs" in p
 
+    def test_recipe_is_run_by_a_claims_case(self):
+        # WP-48 ECO-16: a recipe line is in test_help_claims_8.cscript.
+        item = self._item("dash line s _t, sort connect(J)")
+        assert hx.check_shown(item, "recipe", []) == []
+        (p,) = hx.check_shown(self._item("dash nosuch recipe"), "recipe", [])
+        assert "test_help_claims_8.cscript case runs" in p
+
     @pytest.mark.parametrize("kind", ["placeholder", "fragment"])
     def test_accounted_for_only(self, kind):
         assert hx.check_shown(self._item("anything"), kind, []) == []
@@ -647,8 +657,9 @@ _HANDLERS = {
     "special": {"serve"},
     "check": {"titled", "bygroups", "pyapp"},
     # "install": WP-31 I2, the Installation section's two lines.
+    # "recipe": WP-48 ECO-16, the recipe lines test_help_claims_8 runs.
     "shown": {"outside", "python", "placeholder", "fragment", "described",
-              "install"},
+              "install", "recipe"},
 }
 
 
@@ -684,14 +695,16 @@ class TestThePinnedLists:
         # 27 -> 28: WP-32 I3, the hash-checked pip line's pin.
         # old -> new: 28 -> 29: WP-40 plat:PT-7, What dash exports'
         # dash scatter y x in 1/100 fragment pin.
-        assert len(lines) == len(pins) == 29
+        # old -> new: 29 -> 32: WP-48 ECO-16, the three recipe pins.
+        assert len(lines) == len(pins) == 32
         kinds = [k for k, _v, _t in pins]
         # expect 4 -> 3: WP-31 A5, as above.  shown 17 -> 16: WP-31 B4b.
         # shown 16 -> 17: WP-31 H2k, as above.  17 -> 19: WP-31 I2.
         # 19 -> 20: WP-32 I3, the hash-checked pip line.
         # old -> new: shown 20 -> 21: WP-40 plat:PT-7, as above.
+        # old -> new: shown 21 -> 24: WP-48 ECO-16, as above.
         assert (kinds.count("special"), kinds.count("expect"),
-                kinds.count("check"), kinds.count("shown")) == (1, 3, 4, 21)
+                kinds.count("check"), kinds.count("shown")) == (1, 3, 4, 24)
 
     def test_every_pin_names_what_the_help_holds(self, pins, groups, shown):
         texts = [c.text for c in _commands(groups)]

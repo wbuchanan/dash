@@ -61,6 +61,10 @@ import unicodedata
 
 HELP_FILES = ("dash.sthlp", "dash_setup.sthlp")
 
+#: The cscript whose cases run the help's recipe blocks as shown (the
+#: ``recipe`` shown pin; WP-48 ECO-16).
+RECIPE_SCRIPT = "test_help_claims_8.cscript"
+
 
 class HelpExampleError(ValueError):
     """The help holds an example line this reader cannot read faithfully."""
@@ -742,7 +746,9 @@ def check_shown(item, kind, groups):
     ``python``: the Python after ``python:`` compiles (it is not run).
     ``outside``: the file the command runs is one an example writes.
     ``described``: an example runs the command the sentence describes (its
-    text begins with this one).  ``placeholder`` and ``fragment`` are not
+    text begins with this one).  ``recipe``: a line of a recipe the help
+    shows as a block, run as shown by a case of test_help_claims_8.cscript
+    (its text is in that script).  ``placeholder`` and ``fragment`` are not
     commands a test can run -- a path to fill in, a subcommand with an
     option -- and are only accounted for.
     """
@@ -767,6 +773,16 @@ def check_shown(item, kind, groups):
     elif kind == "described":
         if not any(t.startswith(item.text) for t in cmds):
             problems.append("no example runs the command it describes")
+    elif kind == "recipe":
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            RECIPE_SCRIPT)
+        try:
+            with open(path, encoding="utf-8") as fh:
+                ran = item.text in fh.read()
+        except OSError:
+            ran = False
+        if not ran:
+            problems.append("no %s case runs the recipe line" % RECIPE_SCRIPT)
     elif kind not in ("placeholder", "fragment", "install"):
         problems.append("no check for the kind %r" % kind)
     return problems

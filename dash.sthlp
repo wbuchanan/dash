@@ -2159,6 +2159,8 @@ Every dashboard can save its figures as a PNG image, with the save button
 on the toolbar (see {help dash##toolbar:The toolbar}).  With {cmd:csv} it
 can also give you its data.  What Stata's graph commands do after
 {cmd:dash} is in {help dash##graphintegration:Stata graph integration}.
+A saved page can be shown inside another web page; see
+{help dash##iframe:Framing a saved page}.
 
 {pstd}
 {ul:graph export.}  A dashboard is drawn in the browser, not in a Stata
@@ -2281,6 +2283,21 @@ memory is not enough).  {cmd:dash} returns the page's path in
 SVG; see {help dash##export:Exporting}).
 
 {pstd}
+{ul:Stata graph commands and reports.}  A graph {cmd:dash} draws or
+registers is in no graph memory, so after {cmd:dash} ...{cmd:, name(g1)}
+{cmd:graph describe g1}, {cmd:graph rename g1 g2}, {cmd:graph copy g1 g3},
+{cmd:graph drop g1} and {cmd:graph display g1} stop with "graph g1 not
+found", {cmd:r(111)}; {cmd:graph replay g1} prints the same words and
+replays nothing; {cmd:graph use g1} looks for a file, "file g1.gph not
+found", {cmd:r(601)}; and a bare {cmd:graph}, which replays the last graph
+command, replays no {cmd:dash} command: with no graph drawn in the session
+it is "no existing graph command to replay", {cmd:r(198)}.  {cmd:webdoc},
+like {cmd:dyndoc} and markdown, embeds an image file a graph command
+wrote, so it cannot embed a dashboard; a web page can show a saved
+dashboard in a frame instead (see
+{help dash##iframe:Framing a saved page}).
+
+{pstd}
 {ul:A registered graph keeps no data.}  {cmd:name()} stores the command and
 the frame it was registered in, not its data: {cmd:dash build} draws every
 registered graph from that frame's data as they are when the build runs,
@@ -2332,6 +2349,51 @@ with {cmd:saving()} or {cmd:s(g_name)} after a named graph, and others an
 option sets.  They are {cmd:dash}'s working values, not results: read
 {cmd:r(filename)} (see {help dash##results:Stored results}), and do not rely
 on {cmd:s()} after either command.
+
+{pstd}
+{ul:Commands that draw through twoway.}  {cmd:dash} takes the place of
+{cmd:twoway} only where a command is typed as {cmd:twoway} (or as one of
+its plot types); {cmd:histogram}, {cmd:kdensity} and {cmd:lowess} typed
+as commands, {cmd:marginsplot} and {cmd:sts graph} draw a Stata graph
+through {cmd:twoway} as before.  Their pictures can be drawn with
+{cmd:dash} from the numbers they plot.  {cmd:histogram mpg, normal}, the
+mean and standard deviation held in scalars first, because {cmd:dash}'s
+own commands may replace {cmd:r()} before the function is drawn:
+
+{p 8 8 2}
+{cmd:sysuse auto, clear}{break}
+{cmd:summarize mpg}{break}
+{cmd:scalar mpg_mean = r(mean)}{break}
+{cmd:scalar mpg_sd = r(sd)}{break}
+{cmd:dash (histogram mpg) (function normalden(x, mpg_mean, mpg_sd), range(mpg))}
+{p_end}
+
+{pstd}
+{cmd:marginsplot}, after {cmd:margins}: {cmd:r(table)} holds the margins
+and their limits and {cmd:r(at)} the values they are at; {cmd:svmat} takes
+a matrix name, not an expression, so each is copied to a matrix first:
+
+{p 8 8 2}
+{cmd:sysuse auto, clear}{break}
+{cmd:regress mpg weight}{break}
+{cmd:margins, at(weight=(2000(500)4500))}{break}
+{cmd:matrix T = r(table)'}{break}
+{cmd:matrix A = r(at)}{break}
+{cmd:svmat T, names(col)}{break}
+{cmd:svmat A, names(at)}{break}
+{cmd:dash (rcap ll ul at1) (connected b at1)}
+{p_end}
+
+{pstd}
+{cmd:sts graph}: {cmd:sts generate} needs {cmd:stset} data, so the data
+are set first:
+
+{p 8 8 2}
+{cmd:sysuse cancer, clear}{break}
+{cmd:stset studytime, failure(died)}{break}
+{cmd:sts generate s = s}{break}
+{cmd:dash line s _t, sort connect(J)}
+{p_end}
 
 
 {marker accessibility}{...}
@@ -3465,6 +3527,7 @@ policies, and the page's own refuses an injected script.
 {cmd:bokeh serve app.py} sends none of these headers, so its page carries
 the policy but can be framed.
 
+{marker iframe}{...}
 {pstd}
 A saved page can be shown inside another page with an {cmd:<iframe>}: its
 policy, carried in the page itself, has no {cmd:frame-ancestors} directive

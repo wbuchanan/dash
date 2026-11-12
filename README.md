@@ -15,6 +15,7 @@ with the `server` option writes such an app for you to launch.
 
 `dash` takes the place of `twoway` (on Stata 19 and later): write
 `dash scatter mpg weight` where you would write `twoway scatter mpg weight`.
+A dashboard is an HTML page, not a Stata graph: see `help dash`, Stata graph integration.
 It has been tested on macOS arm64 with StataNow 19.5, run from the console.
 
 Beyond the graphs, a dashboard can carry:

@@ -70,6 +70,9 @@
 *!   Q4802-1 .. Q4802-6 (WP-48 48-02, RH-15) -- horizontal and vertical
 *!           under recast() judged and drawn as the Orientation and Recast
 *!           paragraphs say (the saved figure read through dash_render).
+*!   Q4802-7 .. Q4802-9, Q4802-11 (ECO-16) -- the three recipes of Commands
+*!           that draw through twoway run as shown; Stata's graph commands
+*!           find no dash graph in graph memory.
 *!
 *! Every command runs with its log captured and read back with Stata's
 *! wrapped lines re-joined, as test_custom_scheme.cscript does.  The cases
@@ -1270,6 +1273,80 @@ foreach t in bar area {
     _hc_expect "Q4802-6" "(${q4802_xhi} < 6 & ${q4802_yhi} >= 6)" "scatteri recast(`t') horizontal not turned: x ${q4802_xlo}..${q4802_xhi}, y ${q4802_ylo}..${q4802_yhi}"
 }
 _hc_done "Q4802-6" "scatteri recast(bar) and recast(area) take horizontal and are turned"
+
+// Q4802-7 .. Q4802-9 (ECO-16) -- the recipes of Commands that draw through
+// twoway, each run as the help shows it, its dash line writing a page.
+capture erase "`hc_dir'/q4802_7.html"
+sysuse auto, clear
+summarize mpg
+scalar mpg_mean = r(mean)
+scalar mpg_sd = r(sd)
+_hc_run "" `"dash (histogram mpg) (function normalden(x, mpg_mean, mpg_sd), range(mpg)), saving("`hc_dir'/q4802_7.html", replace)"'
+local rc = r(rc)
+_hc_expect "Q4802-7" "(`rc' == 0)" "the histogram recipe: rc `rc'"
+capture confirm file "`hc_dir'/q4802_7.html"
+_hc_expect "Q4802-7" "(_rc == 0)" "the histogram recipe wrote no page"
+_hc_done "Q4802-7" "histogram mpg, normal drawn with dash from summarize's mean and sd"
+
+capture erase "`hc_dir'/q4802_8.html"
+sysuse auto, clear
+quietly regress mpg weight
+quietly margins, at(weight=(2000(500)4500))
+matrix T = r(table)'
+matrix A = r(at)
+svmat T, names(col)
+svmat A, names(at)
+_hc_run "" `"dash (rcap ll ul at1) (connected b at1), saving("`hc_dir'/q4802_8.html", replace)"'
+local rc = r(rc)
+_hc_expect "Q4802-8" "(`rc' == 0)" "the marginsplot recipe: rc `rc'"
+capture confirm file "`hc_dir'/q4802_8.html"
+_hc_expect "Q4802-8" "(_rc == 0)" "the marginsplot recipe wrote no page"
+quietly count if !missing(b, ll, ul, at1)
+_hc_expect "Q4802-8" "(r(N) == 6)" "svmat gave `r(N)' rows of margins, not 6"
+_hc_done "Q4802-8" "marginsplot's margins drawn with dash from r(table) and r(at)"
+
+capture erase "`hc_dir'/q4802_9.html"
+sysuse cancer, clear
+stset studytime, failure(died)
+sts generate s = s
+_hc_run "" `"dash line s _t, sort connect(J) saving("`hc_dir'/q4802_9.html", replace)"'
+local rc = r(rc)
+_hc_expect "Q4802-9" "(`rc' == 0)" "the sts graph recipe: rc `rc'"
+capture confirm file "`hc_dir'/q4802_9.html"
+_hc_expect "Q4802-9" "(_rc == 0)" "the sts graph recipe wrote no page"
+_hc_done "Q4802-9" "sts graph's survivor function drawn with dash after stset"
+
+// Q4802-11 (ECO-16) -- Stata's graph commands after dash ..., name(g1):
+// no graph memory holds g1.  A bare graph replays the last graph command
+// Stata ran, the same before dash and after it (this session has drawn
+// twoway graphs; in a session with none it is "no existing graph command
+// to replay", r(198), measured 12nov2026).
+sysuse auto, clear
+capture graph drop _all
+_hc_run "" "graph"
+local rc0 = r(rc)
+_hc_run "" "dash scatter mpg weight, name(g1)"
+_hc_expect "Q4802-11" "(r(rc) == 0)" "dash name(g1): rc `r(rc)'"
+foreach c in "graph describe g1" "graph rename g1 g2" "graph copy g1 g3" "graph drop g1" "graph display g1" {
+    _hc_run "" "`c'"
+    local rc = r(rc)
+    local lf "`r(logfile)'"
+    _hc_expect "Q4802-11" "(`rc' == 111)" "`c': rc `rc'"
+    _hc_log "Q4802-11" "`lf'" "graph g1 not found" 1 1
+}
+_hc_run "" "graph replay g1"
+local rc = r(rc)
+_hc_expect "Q4802-11" "(`rc' == 0)" "graph replay g1: rc `rc'"
+_hc_log "Q4802-11" "`r(logfile)'" "graph g1 not found" 1 1
+_hc_run "" "graph use g1"
+local rc = r(rc)
+_hc_expect "Q4802-11" "(`rc' == 601)" "graph use g1: rc `rc'"
+_hc_log "Q4802-11" "`r(logfile)'" "file g1.gph not found" 1 1
+_hc_run "" "graph"
+_hc_expect "Q4802-11" "(r(rc) == `rc0')" "bare graph: rc `rc0' before dash, `r(rc)' after"
+capture graph drop _all
+capture dash clear
+_hc_done "Q4802-11" "graph describe, rename, copy, drop, display, replay, use and a bare graph find no dash graph"
 
 // ----------------------------------------------------------------
 cd "`hc_home'"

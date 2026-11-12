@@ -1026,6 +1026,7 @@ and now matches Stata.
 - The help's units sentence and its list of noted options say what dash draws (WP-48, GW-22)
 - The help's Unsupported list names every option dash notes, checked against twoway's own tables (WP-48, syn:SD-15)
 - The help's orientation and recast paragraphs state what dash draws (WP-48, RH-15)
+- The help names the Stata graph commands and report tools a dashboard cannot serve and gives recipes for histogram, marginsplot and sts graph (WP-48, ECO-16)
 
 ### Fixed in WP-47
 

@@ -23,6 +23,9 @@ WP-48 section 48-02:
 
 * RH-15 (TestRecastClaims): the Orientation and Recast paragraphs, held to
   what WP-46 landed (Q4802-1 .. Q4802-6).
+* ECO-16 (TestEcosystem): the Stata graph commands and reports paragraph,
+  the iframe link, the three recipes and the README caveat (Q4802-7 ..
+  Q4802-9, Q4802-11).
 
 The Stata half -- what dash does when the sentence's command is run -- is
 test_help_claims_8.cscript's Q4801 and Q4802 blocks.
@@ -345,3 +348,79 @@ class TestRecastClaims:
             assert s in para, s
         assert ("A histogram or rbar recast with horizontal is drawn as the "
                 "exact transpose") not in para
+
+
+class TestEcosystem:
+    """ECO-16 (ECO-8): the Stata graph integration section names the graph
+    commands and report tools a dashboard cannot serve, with what each says
+    (test_help_claims_8.cscript Q4802-11), links the iframe note from
+    Exporting, gives recipes for commands that draw through twoway
+    (Q4802-7 .. Q4802-9 run them), and the README says a dashboard is no
+    Stata graph."""
+
+    @staticmethod
+    def _section():
+        return _prose(_between(_help(), "{marker graphintegration}",
+                               "{marker accessibility}"))
+
+    def test_names_every_command(self):
+        sec = self._section()
+        i = sec.index("Stata graph commands and reports.")
+        para = sec[i:sec.index("A registered graph keeps no data.", i)]
+        for s in ("graph describe g1", "graph rename g1 g2",
+                  "graph copy g1 g3", "graph drop g1", "graph display g1",
+                  'stop with "graph g1 not found", r(111)',
+                  "graph replay g1 prints the same words and replays nothing",
+                  'graph use g1 looks for a file, "file g1.gph not found", '
+                  "r(601)",
+                  'a bare graph, which replays the last graph command, '
+                  "replays no dash command",
+                  '"no existing graph command to replay", r(198)',
+                  "webdoc, like dyndoc and markdown, embeds an image file"):
+            assert s in para, s
+        for s in ("graph use", "graph display", "putpdf image", "putexcel",
+                  "dyndoc"):
+            assert s in sec, s
+
+    def test_iframe_is_linked(self):
+        h = _help()
+        i = h.index("{marker iframe}{...}\n{pstd}\nA saved page can be shown "
+                    "inside another page with an {cmd:<iframe>}")
+        assert h.count("{marker iframe}") == 1 and i > 0
+        exp = _between(h, "{marker export}", "{ul:graph export.}")
+        assert "{help dash##iframe:" in exp
+        assert "{help dash##iframe:" in _between(
+            h, "{marker graphintegration}", "{marker accessibility}")
+
+    def test_recipes_present(self):
+        sec = _between(_help(), "{ul:Commands that draw through twoway.}",
+                       "{marker accessibility}")
+        recipes = (
+            ("sysuse auto, clear", "summarize mpg",
+             "scalar mpg_mean = r(mean)", "scalar mpg_sd = r(sd)",
+             "dash (histogram mpg) (function normalden(x, mpg_mean, "
+             "mpg_sd), range(mpg))"),
+            ("sysuse auto, clear", "regress mpg weight",
+             "margins, at(weight=(2000(500)4500))", "matrix T = r(table)'",
+             "matrix A = r(at)", "svmat T, names(col)",
+             "svmat A, names(at)", "dash (rcap ll ul at1) (connected b at1)"),
+            ("sysuse cancer, clear", "stset studytime, failure(died)",
+             "sts generate s = s", "dash line s _t, sort connect(J)"))
+        for lines in recipes:
+            block = "".join("{cmd:%s}{break}\n" % ln for ln in lines[:-1]) \
+                + "{cmd:%s}\n{p_end}" % lines[-1]
+            assert block in sec, lines[-1]
+        p = _prose(sec)
+        assert "dash takes the place of twoway only where a command is typed" \
+            " as twoway" in p
+        assert "held in scalars first" in p
+        assert "svmat takes a matrix name, not an expression" in p
+        assert "sts generate needs stset data" in p
+
+    def test_readme_caveat(self):
+        r = _read(os.path.join(_ROOT, "README.md"))
+        i = r.index("`dash scatter mpg weight` where you would write "
+                    "`twoway scatter mpg weight`.")
+        assert r.count("A dashboard is an HTML page, not a Stata graph: see "
+                       "`help dash`, Stata graph integration.") == 1
+        assert r.index("A dashboard is an HTML page, not a Stata graph") > i
