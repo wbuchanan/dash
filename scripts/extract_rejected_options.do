@@ -81,10 +81,11 @@ def G(k):
 # Task 05-01's annotations, keyed by option / probe id (constants).
 NOTES = {"schema_version": 1,
  "plan_task": "05-01",
- "purpose": ("Definitive, MEASURED set of twoway options that Stata accepts and "
-             "dash rejects. Counter-example set for the dash.sthlp:668-673 claim "
-             "that \x22No error is produced for unknown options, so existing Stata "
-             "graph commands copy-pasted into dash will still run\x22."),
+ "purpose": ("Measured record of the twoway options and syntax task 05-01 found dash "
+             "refusing: each probe runs one option under twoway and under dash on the "
+             "same command and records both return codes, dash\x27s message and dash\x27s "
+             "spec JSON, remeasured from test/fixtures/twoway_corpus.do whenever this "
+             "script runs."),
  "method": {"per_probe": ("1) run \x60twoway <spec>, <opts> nodraw\x60 under -capture- and "
                           "record rc; a non-zero rc means the probe is not legal Stata and "
                           "was fixed, not recorded. 2) \x60dash clear\x60. 3) run \x60dash "
@@ -101,22 +102,17 @@ NOTES = {"schema_version": 1,
                          "to the plottype.")},
  "environment_data": ("sysuse auto (cross-sectional probes); synthetic 60-month tsset panel "
                       "(t* probes)"),
- "root_cause": ("dash.ado:230 (_dash_parse_graph_opts) and dash.ado:293 (_dash_parse_plot_opts) "
-                "are closed \x60syntax [, ...]\x60 allow-lists. Neither call site "
-                "wraps them in -capture-, and neither declares a catch-all, so any "
-                "option key outside the list makes -syntax- exit r(198) \x22option "
-                "X() not allowed\x22 and abort the calling do-file. The help text "
-                "is false by construction, not by accident."),
- "dash_only_note": ("Section 27 of the corpus. Keys dash accepts that real twoway does "
-                    "not have (twoway_rc==198): mlabwidth, malpha, lalpha, falpha, jseed, "
-                    "colpalette, colornlevels, colormissing, marker, plotbgcolor, link, "
-                    "filter, and the secondary-axis *2 family. Three of the suspects "
-                    "turned out to BE real twoway options (blcolor, bfcolor, bgcolor), "
-                    "so they are not dash-only. Where dash invented a spelling for something "
-                    "Stata already names -- jseed vs Stata jitterseed, colornlevels vs "
-                    "colorlevels, colormissing vs colorformissing -- the Stata spelling "
-                    "appears in rejected_options above, so a user gets neither the feature "
-                    "nor a working copy-paste."),
+ "root_cause": ("dash\x27s option parsers are closed syntax allow-lists that declare every "
+                "twoway option this corpus probes, so each probe twoway draws runs in "
+                "dash (dash_rc 0) but play(), which dash refuses as its help documents, "
+                "and an option dash takes without drawing is named in the command\x27s "
+                "note and listed in dash.sthlp\x27s Unsupported section."),
+ "dash_only_note": ("Section 27 of the corpus: every key dash once took that twoway does "
+                    "not is now refused as twoway refuses it (dash_rc 198), the synonyms "
+                    "with a second line naming twoway\x27s spelling (DECISIONS P4-7, D53) and "
+                    "mlabwidth(), link() and filter() on a plot as options twoway does not "
+                    "take there; blcolor(), bfcolor() and bgcolor() are twoway options, "
+                    "taken by both."),
  "accepted_option_keys_probed": ["aspectratio",
                                  "barwidth",
                                  "base",
@@ -170,17 +166,11 @@ NOTES = {"schema_version": 1,
                                  "ytitle"],
  "blocking_defect": {"id": "version-regex-blocker",
                      "severity": "blocker",
-                     "summary": ("Any do-file whose effective \x60version\x60 is 17.0 or lower cannot "
-                                 "register ANY dash graph. _dash_register_graph (dash.ado:857) validates "
-                                 "the graph name with regexm(\x22\x60name\x27\x22, \x22^[a-zA-Z_][a-zA-Z0-9_]{0,31}\x24\x22). "
-                                 "The {0,31} interval quantifier is only understood by the regex engine "
-                                 "Stata selects under version >= 18, so under version <= 17 regexm() "
-                                 "returns 0 for a legal name such as g1 and dash exits r(198) \x22dash: "
-                                 "invalid graph name\x22. dash.ado itself declares \x60version 16.0\x60, "
-                                 "i.e. the package\x27s own declared minimum version is one under "
-                                 "which it cannot function at all. The same regex appears twice (dash.ado:857 "
-                                 "for \x60dash <spec>, name()\x60 and dash.ado:1088 for \x60dash kpi "
-                                 "..., name()\x60), so KPI tiles are blocked too."),
+                     "summary": ("The graph-name check that refused every graph under an "
+                                 "older version statement no longer depends on the "
+                                 "regular-expression engine that statement selects: dash "
+                                 "registers g1 under each version measured below "
+                                 "(dash_rc 0)."),
                      "note": ("This must be measured with STRAIGHT-LINE \x60version\x60 statements. "
                               "Inside a -foreach- loop the body is compiled under the ambient version, "
                               "so c(version) reads 16 while regexm() still uses the new engine "

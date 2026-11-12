@@ -588,7 +588,7 @@ and now matches Stata.
   (S11).
 - New plot types `pcarrowi` and `pccapsym`. `contour`, `contourline`,
   `rpcap` and `rpspike` are refused by name, with what to use
-  instead. (WP-22)
+  instead. (WP-22) (Superseded in 0.1.0: `contour` and `contourline` are drawn as twoway draws them since WP-31 B4b, and `rpcap` and `rpspike` since WP-31 B1.)
 - Weights `[aw= fw= pw=]` work on the statistical layers, with twoway's
   per-type rules. (WP-18)
 - New options `discrete` (`histogram`), `stdp`/`stdf`/`stdr` (`lfitci`,
@@ -619,7 +619,7 @@ and now matches Stata.
   percentile may be any `pNN` strictly between 0 and 100, and the twoway
   abbreviations `mbands` and `fn` are accepted (WP-23).
 
-- The time-axis options `tlabel()`, `ttick()`, `ttitle()`, `tscale()` and `tline()` (and `tlabel2()`-style and `axis(2)` forms) are drawn on every twoway graph, with date literals in the axis's own unit: `dash tsline y, tlabel(2000m1(12)2004m1) tline(2002m1)` named them in a note and drew neither, and now draws labels at 2000m1-2004m1 and a line at 2002m1, as twoway does, before and after filter moves; `tmlabel()` and `tmtick()` are accepted and named until minor ticks are drawn. (WP-30, P1.6)
+- The time-axis options `tlabel()`, `ttick()`, `ttitle()`, `tscale()` and `tline()` (and `tlabel2()`-style and `axis(2)` forms) are drawn on every twoway graph, with date literals in the axis's own unit: `dash tsline y, tlabel(2000m1(12)2004m1) tline(2002m1)` named them in a note and drew neither, and now draws labels at 2000m1-2004m1 and a line at 2002m1, as twoway does, before and after filter moves; `tmlabel()` and `tmtick()` are accepted and named until minor ticks are drawn. (WP-30, P1.6) (Superseded in 0.1.0: `tmlabel()` and `tmtick()` are drawn as twoway draws them, WP-31 D1.)
 - Time-series operators in plot varlists are drawn, as twoway draws them: `dash line D.close date`, `dash tsline D.close`, `dash lfit close L.close` and `dash scatter L(1/2).close t` were refused r(101) and now draw in both modes on scatter, line, connected, area, bar, spike, dropline, dot, the lfit/qfit/mspline/mband fits, the range and paired types, tsline and tsrline; each series is computed by Stata at build under tsset, titles and keys read "Closing price, D", and the CSV column is headed D.close. (WP-30, P1.7)
 - `text()` and `ttext()` are drawn in both modes and after filter moves: `dash scatter mpg weight, text(30 3000 "AAA")` named `text()` as unsupported and drew nothing, and now draws AAA at that data point as twoway does, with placement, justification, orientation, size, colour, box, axis 2, date axes and every by() panel; repeated copies keep their own options; `ttext(12 2001m1 "event")` places a date literal in the x axis's own units. A new limit, `$dash_max_added_text` (default 1,000 texts times panels), bounds them. (WP-30, P1.10)
 - Six more StataCorp schemes, twenty-six in all: meta, stcolor_meta, stcolor_mv, stcoloralias, stgcolor_meta and stgcolor_mv. scheme(meta) and the others were refused r(198), and a session set to one of them (set scheme stcolor_meta) was drawn as s2color with a warning; each is now drawn as twoway draws it in both modes (stcolor_meta's solid #c10534 yline(), stgcolor_meta's 3.987 x 2.392 proportions, meta's 8-point tick labels and legend at 4 o'clock), and an #include of one of them in a scheme file of yours resolves. stcoloralias is drawn as stcolor: its zyx2rule colorvar is not read, and twoway draws a colorvar() scatter the same under both. (WP-30, P1.25a)
@@ -732,13 +732,13 @@ and now matches Stata.
   entry point, not a warning. An unknown session `c(scheme)` still warns and
   uses s2color. (WP-17)
 - Option values are validated as twoway validates them. A bad value such as
-  `lwidth(-1)` or `yaxis(3)` is r(198) or r(111), naming the option. A style
+  `lwidth(-1)` or `yaxis(3)` is r(198) or r(111), naming the option. (Superseded in 0.1.0: `yaxis(3)` to `yaxis(9)` are drawn as twoway draws them, WP-31 C10c.) A style
   name dash cannot draw, such as `msize(abc)`, is noted and drawn, as in twoway (WP-15).
   `mlabel()` on `mspline` or `mband` is r(103), as in twoway (4ede074).
 - `iweight` is refused with r(101) wherever twoway refuses it. So are
   weights on `lowess`, `aweight`/`pweight` on `histogram`, and `pweight` on
   `kdensity`, `lpoly` and `lpolyci`. A weight expression such as
-  `[aw=price+1]` is r(198): generate the variable first. (WP-18)
+  `[aw=price+1]` is r(198): generate the variable first. (WP-18) (Superseded in 0.1.0: a weight expression is evaluated as twoway evaluates it, WP-31 A5.)
 - `dash bar price` or `dash scatter mpg` with a single variable is r(102) at
   registration. (WP-16)
 - Naming rules:
@@ -865,7 +865,7 @@ and now matches Stata.
 - colorvar() and by() with a time-series operator (colorvar(L.mpg), by(L.foreign)) are refused r(101), "factor-variable and time-series operators not allowed", as twoway refuses them; they were r(198) on tsset data and r(111) otherwise. mlabel(L.make) is r(111) "variable L not found", as in twoway; it was r(198) on tsset data. (WP-31, A6)
 - A date literal in a y label, tick or scale option is refused as twoway refuses it: dash scatter mpg weight, ylabel(2000m1) drew, and is now refused, r(198), "invalid label specifier, :  2000m1:", as are ytick(), ymlabel(), ymtick() and their axis(2) forms; yscale(range(2000m1)) is r(121), "range() invalid -- invalid numlist"; a %tm y variable does not change it, as in twoway. (WP-31, A8)
 - The thirteen shorter plot-type names only dash took -- ar, ba, sp, lfi, qfi, low, lpo, fp, kde, dr, tsl, tsrl and msp, and their longer prefixes short of the full name -- are refused, r(198), with twoway's line "lfi is not a twoway plot type"; dash drew them as area, bar, spike, lfit, qfit, lowess, lpoly, fpfit, kdensity, dropline, tsline, tsrline and mspline.  An unknown plot type is refused in the same words, followed by dash's Supported: list; it said "dash: unrecognised plot type '<word>'". (WP-31, A2)
-- mlalign() is declared with twoway's minimum, mlal(): mlal(inside) was named in the note as mlal() and is now named as mlalign() until it is drawn; mla() and ml() stay mlabel(), as twoway binds them (measured: twoway scatter mpg weight, mla(center) says "variable center not found", r(111), as dash does). (WP-31, A4)
+- mlalign() is declared with twoway's minimum, mlal(): mlal(inside) was named in the note as mlal() and is now named as mlalign() until it is drawn; mla() and ml() stay mlabel(), as twoway binds them (measured: twoway scatter mpg weight, mla(center) says "variable center not found", r(111), as dash does). (WP-31, A4) (Superseded in 0.1.0: mlalign(inside) and mlalign(center) are taken in silence since WP-31 E3, and center and outside are drawn as twoway draws them since WP-47 basic:PT-6.)
 - title2() and subtitle2() are refused, "option title2() not allowed" and "option subtitle2() not allowed", r(198), as twoway refuses them, after the comma, inside a plot's parentheses and after a || segment's comma; dash named them as unsupported and drew the graph. (WP-31, D2)
 - The axis label forms twoway refuses -- ylabel("a"), ylabel(1 "a" "b"), ylabel(#3 #4) and ylabel(1(1)) -- are refused, r(198), with twoway's "invalid label specifier, : <the part>:"; dash drew them. (WP-31, D6)
 - dash rscatter lo hi weight, mlabel(lo) (any range type labelled by one of its own variables) is refused as twoway refuses it, "rscatter requires 3 variables: lo hi weight", r(102); rpcap and rpspike "you must specify four variables with twoway rpcap", r(102) (WP-31, C14)
@@ -1018,6 +1018,8 @@ and now matches Stata.
 - Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64, and measured on MP only. Every dash and dash_setup program declared version 16.0, which implied Stata 16 support that was never tested; all 91 now declare version 19. (WP-30, P1.35)
 
 ### Fixed in WP-48
+
+- The tracking documents and dash_setup's help agree with the code (WP-48, DT-29)
 
 ### Fixed in WP-47
 
@@ -1282,7 +1284,7 @@ Follow-ups to WP-31 the maintainer ruled on 18oct2026 (DECISIONS D39).
 - A lowess, qfit, fpfit, lpoly or lpolyci that draws no point (one or two observations, or a smooth missing over its grid) scales its x axis over the observations it evaluates, and a histogram of no observations runs its y axis from -1 to 1, as twoway draws them, in the saved page and the served app and after a filter move; dash drew both axes empty, or an lpoly's x over the one point it drew. (WP-32)
 - A fit drawn from Stata's own points (lfit, lfitci and the other fits with estopts(), predopts() or estcmd()) shows the saved page's stale cue in `dash serve` after a filter move that removes observations: its legend key reads "(unfiltered)", the graph shows "Marked layers were computed before the filter" and a status line under the filters says it is not recomputed; the served page showed nothing and wrote a note only to the server's log. (WP-32)
 - `by(..., style(rescale) noyrescale)` (or `noxrescale`, `norescale`, and the same beside `style(combine)`) keeps that axis shared across the panels, as twoway draws it; the style's rescale used to override the word. (WP-32, K4)
-- The test suite counts the served app's plot-type branches from its syntax tree, checks every scheme key SchemeParser parses for a reader, checks the scheme CSS in the served app and computes the WP-31 closeout counts ROADMAP.md states; five scheme keys read by nothing and three natscale model misses are filed as open BUGS.md entries. (WP-32, K4)
+- The test suite counts the served app's plot-type branches from its syntax tree, checks every scheme key SchemeParser parses for a reader, checks the scheme CSS in the served app and computes the WP-31 closeout counts ROADMAP.md states; five scheme keys read by nothing and three natscale model misses are filed as open BUGS.md entries. (WP-32, K4) (Superseded in 0.1.0: the five scheme keys are read, WP-32; the three natscale misses stay open as BUGS.md "The natscale model misses three of the 264 axes twoway drew".)
 - Save as SVG and Save dashboard draw each open data table where it sits in the grid -- its column titles and the rows it shows -- where the image left it blank and said "Data tables are not included" (WP-32, D-53d)
 - Printing a dashboard with tabs() prints every tab, each on a page of its own scaled to fit the paper (the tab's graphs and open tables and the tab strip with it marked), where it printed only the tab that was showing (WP-32, D-53e)
 - A dash_render installed without its source file (a .pyc alone) writes a served app for dash build, server and dash serve, where the build failed with "OSError: source code not available"; the app runs under the Python that wrote it (WP-32, K2)
@@ -1290,7 +1292,7 @@ Follow-ups to WP-31 the maintainer ruled on 18oct2026 (DECISIONS D39).
 - The help says dash serve and python app.py are the supported way to serve a dashboard, and that under bokeh serve each session's dashboard is drawn on the server's event loop, so other readers wait while it is drawn: Bokeh 3.8 and 3.9 give a bokeh serve app no hook they await before a session (WP-32, H3)
 - A served process (dash serve, python app.py, a bokeh serve session) holds every catch_warnings block -- pandas', numpy's and Bokeh's as well as dash's -- under one lock, so a block on a build or recompute thread can no longer interleave with one on the loop and leave a warning filter swapped (WP-32, H3)
 - A brush made on a served graph while a filter move waits for its recompute is kept, on the rows the move keeps, where drawing the move cleared it (WP-32, H3)
-- The scheme visual truth is generated: scripts/extract_scheme_visual_truth.do renders a scatter, line, connected and histogram graph under all 26 shipped schemes and records what twoway drew, and the test compares dash's scheme colours, symbols, patterns, sizes, opacities, regions, legend, text and histogram bars with it for every scheme (it held four schemes, measured by hand, and no histogram); meta's legend outline, which dash draws and twoway does not, is filed as an open BUGS.md entry. (WP-32, K3)
+- The scheme visual truth is generated: scripts/extract_scheme_visual_truth.do renders a scatter, line, connected and histogram graph under all 26 shipped schemes and records what twoway drew, and the test compares dash's scheme colours, symbols, patterns, sizes, opacities, regions, legend, text and histogram bars with it for every scheme (it held four schemes, measured by hand, and no histogram); meta's legend outline, which dash draws and twoway does not, is filed as an open BUGS.md entry. (WP-32, K3) (Superseded in 0.1.0: meta's legend is drawn without an outline, as twoway draws it, WP-32.)
 - A scheme's `gridringstyle by_legend_ring` places by()'s legend as the same legend(ring()) does, and ring(1) is drawn as ring(0), as twoway draws them; the scheme's ring was read by nothing. (WP-32)
 - `dash line y x, colorvar(z) zscale(log)` with a continuous z was split into the log colour bar's 256 bins (101 lines for z = 1 to 101); it is cut at the levels twoway draws, the same as without zscale(log) (the key's labels, any below the minimum dropped), and the log key is drawn in those levels' colours. (WP-32)
 - `clegend(ring(0))` without position() drew the colour key outside the plot, and a scheme's `gridringstyle zyx2legend_ring` was read by nothing; ring(0) draws the key inside the plot at the scheme's position (3 o'clock), the scheme's ring is the default, and a ring inside the legend's 3 draws the key between the plot and the legend, as twoway draws them. (WP-32)

@@ -416,6 +416,7 @@ One line per WP-31 entry (.ultraplan/sections/index.md, A4), rewritten in place 
 `Open (WP-31 section NN).`, `Closed in WP-31, BUGS.md "<title>", commit <sha>.`, or
 `Partly closed in WP-31 (section NN, commit <sha>): <what is closed>; open: <what remains> (BUGS.md "<residual title>").`
 A closing commit writes `commit pending`; the merger's step k.3b replaces it with the landed sha on s3-bugs (DECISIONS A11).
+H5, I1, K1 and K5 are residuals the WP-31 index expected; where each is tracked now: H5: not tracked: design residuals with no BUGS.md entry, listed in ROADMAP.md's WP-31 residuals (the CSP's two allowances are stated in dash.sthlp); I1: GAPS4 plat:PT-5 and GAPS4 plat:PT-12 (Documented in WP-36); K1: not tracked: a list of pins to flip, each flipped with its item's fix (WP-31 C1, B5b and C18; WP-32 for the drew-nothing notes), and the layout fallback it names pins dash's own layout(), which twoway does not have; K5: not tracked: the module split has no BUGS.md entry and no planned work, listed in ROADMAP.md's WP-31 residuals.
 
 - **A1 Tracked:** Closed in WP-31, BUGS.md "dash twoway with nothing after it is refused r(198) where twoway draws an empty graph", commit 4b1be95.
 - **A2 Tracked:** Closed in WP-31, BUGS.md "Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's", commit 9319ed5.

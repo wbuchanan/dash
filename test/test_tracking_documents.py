@@ -2928,7 +2928,6 @@ GAPS4_OPEN = {
     'GW-22': "Units paragraph says xsize/ysize do not change the size reference (they do); pcycle()/clegend() 'named in the note' when drawn",
     'syn:SD-15': 'The Unsupported list is not checked against the tw_takes table, so p#(), ztick/zmlabel/zmtick are missing',
     'RH-15': "Horizontal/recast help claims ('as twoway draws it', 'judged after recast()', 'one x unit wide') are contradicted or undocumented differences",
-    'DT-29': 'dash_setup help contradicts itself on versions/ceilings; 0.1.0 CHANGELOG lists reversed behaviour; TWOWAY_COVERAGE_AUDIT rows stale; GAPS3 H5/I1/K1/K5 lack Tracked lines; DROPIN P2.34/P2.64 unmapped; rejected_options.json narratives',
     'ECO-16': 'Help and README understate ecosystem losses (graph display/use/replay, putpdf, putexcel, markdown, iframe note unlinked); no recipes for commands that draw through twoway (histogram, marginsplot, sts graph)',
     'DT-28': "Reviewed and needing no change: HTML output is the package's premise; a zero-weight graph refused under nodraw matches the drawn twoway",
     'plot:PT-7': "Refusals add a second line ('twoway does not take this option here', the after-comma hint, 'takes this option once') and a six-line Supported list; value refusals use dash's words; the full option name is printed instead of the typed spelling (bands() for ba())",

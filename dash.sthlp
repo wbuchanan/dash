@@ -7909,8 +7909,9 @@ yourself -- Stata finds it, or uses the one {cmd:python set exec} names:
 {phang2}{ul:Python packages, required} -- bokeh>=3.8,<3.10, numpy>=2.3,
     pandas>=2.3.  {cmd:dash} was verified on bokeh 3.8 and 3.9 (any patch
     release of either); under a newer bokeh it draws and prints a note, and
-    under one older than 3.8 it stops and names {helpb dash_setup}.  Only
-    bokeh has a ceiling.  {helpb dash_setup} reports a numpy or pandas
+    under one older than 3.8 it stops and names {helpb dash_setup}.  bokeh,
+    numpy and pandas have ceilings (see {helpb dash_setup}); only bokeh's
+    is reported.  {helpb dash_setup} reports a numpy or pandas
     older than its minimum and does not upgrade it.
 
 {phang2}{ul:Python packages, optional} -- none.  Every statistical

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_utc": "2026-10-18T14:42:14Z",
+  "generated_utc": "2026-11-12T06:29:08Z",
   "plan_task": "05-01",
-  "purpose": "Definitive, MEASURED set of twoway options that Stata accepts and dash rejects. Counter-example set for the dash.sthlp:668-673 claim that \"No error is produced for unknown options, so existing Stata graph commands copy-pasted into dash will still run\".",
+  "purpose": "Measured record of the twoway options and syntax task 05-01 found dash refusing: each probe runs one option under twoway and under dash on the same command and records both return codes, dash's message and dash's spec JSON, remeasured from test/fixtures/twoway_corpus.do whenever this script runs.",
   "corpus": "test/fixtures/twoway_corpus.do",
   "method": {
     "per_probe": "1) run `twoway <spec>, <opts> nodraw` under -capture- and record rc; a non-zero rc means the probe is not legal Stata and was fixed, not recorded. 2) `dash clear`. 3) run `dash <spec>, <opts> name(g1)` under -capture noisily- and record rc plus the exact error line. 4) on success, record ${dash_json_g1}, the spec JSON handed to dash_render.py.",
@@ -10,15 +10,15 @@
     "controls": "41 zero-option plottype controls establish the per-plottype baseline, so a non-zero dash rc below is attributable to the option and not to the plottype."
   },
   "environment": {
-    "stata": "Stata 19.5 (born 12 Aug 2026), batch through scripts/stata_slot.sh",
-    "dash_branch": "wp31-s60",
+    "stata": "Stata 19.5 (born 04 Nov 2026), batch through scripts/stata_slot.sh",
+    "dash_branch": "wp48-s03",
     "data": "sysuse auto (cross-sectional probes); synthetic 60-month tsset panel (t* probes)"
   },
-  "root_cause": "dash.ado:230 (_dash_parse_graph_opts) and dash.ado:293 (_dash_parse_plot_opts) are closed `syntax [, ...]` allow-lists. Neither call site wraps them in -capture-, and neither declares a catch-all, so any option key outside the list makes -syntax- exit r(198) \"option X() not allowed\" and abort the calling do-file. The help text is false by construction, not by accident.",
+  "root_cause": "dash's option parsers are closed syntax allow-lists that declare every twoway option this corpus probes, so each probe twoway draws runs in dash (dash_rc 0) but play(), which dash refuses as its help documents, and an option dash takes without drawing is named in the command's note and listed in dash.sthlp's Unsupported section.",
   "summary": {
     "commands_probed": 299,
     "bad_probes_twoway_rejected": 0,
-    "dash_failures": 0,
+    "dash_failures": 16,
     "distinct_rejected_option_keys": 115,
     "rejected_syntax_constructs": 3,
     "accepted_but_discarded": 9,
@@ -39,7 +39,7 @@
     {
       "id": "version-regex-blocker",
       "severity": "blocker",
-      "summary": "Any do-file whose effective `version` is 17.0 or lower cannot register ANY dash graph. _dash_register_graph (dash.ado:857) validates the graph name with regexm(\"`name'\", \"^[a-zA-Z_][a-zA-Z0-9_]{0,31}$\"). The {0,31} interval quantifier is only understood by the regex engine Stata selects under version >= 18, so under version <= 17 regexm() returns 0 for a legal name such as g1 and dash exits r(198) \"dash: invalid graph name\". dash.ado itself declares `version 16.0`, i.e. the package's own declared minimum version is one under which it cannot function at all. The same regex appears twice (dash.ado:857 for `dash <spec>, name()` and dash.ado:1088 for `dash kpi ..., name()`), so KPI tiles are blocked too.",
+      "summary": "The graph-name check that refused every graph under an older version statement no longer depends on the regular-expression engine that statement selects: dash registers g1 under each version measured below (dash_rc 0).",
       "measured": {
         "version_14.0": {
           "regexm_matches_g1": 0,
@@ -70,28 +70,28 @@
       "probe_id": "only_mlabwidth",
       "options": "mlabel(make) mlabwidth(2)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     },
     {
       "probe_id": "only_malpha",
       "options": "malpha(50)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     },
     {
       "probe_id": "only_lalpha",
       "options": "lalpha(50)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     },
     {
       "probe_id": "only_falpha",
       "options": "falpha(50)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     },
     {
@@ -112,35 +112,35 @@
       "probe_id": "only_jseed",
       "options": "jitter(5) jseed(42)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     },
     {
       "probe_id": "only_colpalette",
       "options": "colorvar(price) colpalette(viridis)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     },
     {
       "probe_id": "only_colornlevels",
       "options": "colorvar(price) colornlevels(4)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     },
     {
       "probe_id": "only_colormissing",
       "options": "colorvar(rep78) colormissing(gs8)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     },
     {
       "probe_id": "only_marker",
       "options": "marker(1)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     },
     {
@@ -154,46 +154,46 @@
       "probe_id": "only_plotbgcolor",
       "options": "plotbgcolor(white)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     },
     {
       "probe_id": "only_link",
       "options": "link(g2)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     },
     {
       "probe_id": "only_filter",
       "options": "filter(foreign)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     },
     {
       "probe_id": "only_ytitle2",
       "options": "ytitle2(Second)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     },
     {
       "probe_id": "only_ylabel2",
       "options": "ylabel2(0 10 20)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     },
     {
       "probe_id": "only_yscale2",
       "options": "yscale2(log)",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "is_real_twoway_option": false
     }
   ],
-  "dash_only_note": "Section 27 of the corpus. Keys dash accepts that real twoway does not have (twoway_rc==198): mlabwidth, malpha, lalpha, falpha, jseed, colpalette, colornlevels, colormissing, marker, plotbgcolor, link, filter, and the secondary-axis *2 family. Three of the suspects turned out to BE real twoway options (blcolor, bfcolor, bgcolor), so they are not dash-only. Where dash invented a spelling for something Stata already names -- jseed vs Stata jitterseed, colornlevels vs colorlevels, colormissing vs colorformissing -- the Stata spelling appears in rejected_options above, so a user gets neither the feature nor a working copy-paste.",
+  "dash_only_note": "Section 27 of the corpus: every key dash once took that twoway does not is now refused as twoway refuses it (dash_rc 198), the synonyms with a second line naming twoway's spelling (DECISIONS P4-7, D53) and mlabwidth(), link() and filter() on a plot as options twoway does not take there; blcolor(), bfcolor() and bgcolor() are twoway options, taken by both.",
   "rejected_options": [
     {
       "option": "acolor",
@@ -1754,7 +1754,7 @@
       "option": "play",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "dash_message": "option play() not allowed",
       "disposition": "accept-and-report",
       "reason": "replays a Graph Editor recording against a .gph graph. No HTML equivalent.",
@@ -1764,7 +1764,7 @@
           "command": "twoway scatter mpg weight, play(dashprobe_rec) nodraw",
           "dash_command": "dash scatter mpg weight, play(dashprobe_rec) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 0
+          "dash_rc": 198
         }
       ]
     },
@@ -3890,12 +3890,12 @@
     {
       "id": "play",
       "twoway_rc": 0,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "scatter mpg weight",
       "options": "play(dashprobe_rec)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"play\":\"dashprobe_rec\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "play(): dashprobe_rec.grec is a Graph Editor recording, and dash cannot apply its Graph Editor edits to a dashboard; play it on the graph twoway draws"
     },
     {
       "id": "scheme",
@@ -4534,7 +4534,7 @@
       "plotspec": "lfitci mpg weight",
       "options": "alalign(inside)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"lfitci\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"lfitci\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"lalign\":\"inside\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
@@ -5590,42 +5590,42 @@
     {
       "id": "only_mlabwidth",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "scatter mpg weight",
       "options": "mlabel(make) mlabwidth(2)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"mlabel\":\"make\",\"mlabwidth\":\"2\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "twoway does not take this option here."
     },
     {
       "id": "only_malpha",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "scatter mpg weight",
       "options": "malpha(50)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"malpha\":\"50\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "use mcolor(<color>%<#>)"
     },
     {
       "id": "only_lalpha",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "line mpg weight",
       "options": "lalpha(50)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"line\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"lalpha\":\"50\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "use lcolor(<color>%<#>)"
     },
     {
       "id": "only_falpha",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "area mpg weight",
       "options": "falpha(50)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"area\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"falpha\":\"50\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "use fcolor(<color>%<#>)"
     },
     {
       "id": "only_blcolor",
@@ -5650,52 +5650,52 @@
     {
       "id": "only_jseed",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "scatter mpg weight",
       "options": "jitter(5) jseed(42)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"jitter\":\"5\",\"jseed\":\"42\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "use jitterseed()"
     },
     {
       "id": "only_colpalette",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "scatter mpg weight",
       "options": "colorvar(price) colpalette(viridis)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"colorvar\":\"price\",\"colpalette\":\"viridis\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "use colorlist() or colorrule()"
     },
     {
       "id": "only_colornlevels",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "scatter mpg weight",
       "options": "colorvar(price) colornlevels(4)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"colorvar\":\"price\",\"colornlevels\":\"4\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "use colorlevels()"
     },
     {
       "id": "only_colormissing",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "scatter rep78 weight",
       "options": "colorvar(rep78) colormissing(gs8)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"rep78\",\"xvar\":\"weight\",\"options\":{\"colorvar\":\"rep78\",\"colormissing\":\"gs8\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "use colorformissing()"
     },
     {
       "id": "only_marker",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "scatter mpg weight",
       "options": "marker(1)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"marker\":\"1\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "use msymbol()"
     },
     {
       "id": "only_bgcolor",
@@ -5710,69 +5710,69 @@
     {
       "id": "only_plotbgcolor",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "scatter mpg weight",
       "options": "plotbgcolor(white)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"plotbgcolor\":\"white\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "use plotregion(fcolor())"
     },
     {
       "id": "only_link",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "scatter mpg weight",
       "options": "link(g2)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"link\":\"g2\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "twoway does not take this option here."
     },
     {
       "id": "only_filter",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "scatter mpg weight",
       "options": "filter(foreign)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"filter\":\"foreign\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "twoway does not take this option here."
     },
     {
       "id": "only_ytitle2",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "scatter mpg weight",
       "options": "ytitle2(Second)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"ytitle2\":\"Second\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "use ytitle(..., axis(2))"
     },
     {
       "id": "only_ylabel2",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "scatter mpg weight",
       "options": "ylabel2(0 10 20)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"ylabel2\":\"0 10 20\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "use ylabel(..., axis(2))"
     },
     {
       "id": "only_yscale2",
       "twoway_rc": 198,
-      "dash_rc": 0,
+      "dash_rc": 198,
       "plotspec": "scatter mpg weight",
       "options": "yscale2(log)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\",\"yscale2\":\"log\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
-      "dash_message": "dash: graph 'g1' registered."
+      "spec_json": "",
+      "dash_message": "use yscale(..., axis(2))"
     }
   ],
   "_meta": {
     "stata_version": "19.5",
-    "born_date": "12 Aug 2026",
-    "dash_commit": "49958e73431201f098946201a79eb0b5ff420d61",
-    "extracted": "18 Oct 2026 10:42:14",
+    "born_date": "04 Nov 2026",
+    "dash_commit": "04a43bd0af52a2de856e07187434c9737c70e078",
+    "extracted": "12 Nov 2026 01:29:08",
     "source": "scripts/extract_rejected_options.do",
     "corpus": "test/fixtures/twoway_corpus.do",
     "missing_probes": []

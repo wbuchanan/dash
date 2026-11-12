@@ -127,8 +127,8 @@ the packages {cmd:dash} needs, for a Python that refuses {cmd:pip}
 installs.  {it:path} may be relative to the working directory and may start
 with {cmd:~}.  {cmd:dash_setup} creates the environment with the linked
 Python's {cmd:venv} module, or reuses one already at {it:path}; installs
-packaging, bokeh, numpy and pandas at their minimums, bokeh within the
-verified range, into it; checks their versions, and that {cmd:dash}'s
+packaging, bokeh, numpy and pandas from the hash-pinned lock (see
+{help dash_setup##lock:The hash-pinned lock}) into it; checks their versions, and that {cmd:dash}'s
 schemes can be read, inside it; and prints
 the command that links Stata to it, such as
 
