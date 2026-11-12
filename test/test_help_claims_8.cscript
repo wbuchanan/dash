@@ -1015,6 +1015,71 @@ _hc_log "Q4801-3" "`lf'" "graph is not a twoway plot type" 1 1
 _hc_log "Q4801-3" "`lf'" "unrecognised plot type" 0
 _hc_done "Q4801-3" "dash graph scatter is refused in twoway's words"
 
+// Q4801-4 -- headlabel on pcscatter and pccapsym is drawn, never noted;
+// off the paired-coordinate types it is refused as twoway refuses it.
+foreach t in pcscatter pccapsym {
+    _hc_run "" "dash `t' mpg weight price length, headlabel mlabel(make)"
+    local rc = r(rc)
+    local lf "`r(logfile)'"
+    _hc_expect "Q4801-4" "(`rc' == 0)" "`t' headlabel: rc `rc'"
+    _hc_log "Q4801-4" "`lf'" "note:" 0
+}
+_hc_run "" "dash scatter mpg weight, headlabel name(q4801d, replace)"
+local rc = r(rc)
+_hc_log "Q4801-4" "`r(logfile)'" "option headlabel not allowed" 1 1
+_hc_expect "Q4801-4" "(`rc' == 198)" "scatter headlabel: rc `rc'"
+_hc_done "Q4801-4" "headlabel taken in silence on pcscatter and pccapsym, refused on scatter"
+
+// Q4801-5 -- recast() on dot is taken in silence.
+_hc_run "" "dash dot mpg weight, recast(line)"
+local rc = r(rc)
+local lf "`r(logfile)'"
+_hc_expect "Q4801-5" "(`rc' == 0)" "dot recast(line): rc `rc'"
+_hc_log "Q4801-5" "`lf'" "note:" 0
+_hc_done "Q4801-5" "recast(line) on dot: rc 0, no note"
+
+// Q4801-6 -- lpoly degree(8) is drawn, with the help's note.
+_hc_run "" "dash lpoly mpg weight, degree(8)"
+local rc = r(rc)
+local lf "`r(logfile)'"
+_hc_expect "Q4801-6" "(`rc' == 0)" "lpoly degree(8): rc `rc'"
+_hc_log "Q4801-6" "`lf'" "(note:  dash: lpoly degree(8) is drawn; above degree 7 the result can differ from Stata's.)" 1 1
+_hc_done "Q4801-6" "degree(8) drawn with the note"
+
+// Q4801-7 -- fpfit refuses bwidth(), degree() and kernel() as twoway
+// refuses them.
+foreach o in "bwidth(2)" "degree(2)" "kernel(gaussian)" {
+    local nm = regexr("`o'", "\(.*$", "")
+    _hc_run "" "twoway fpfit mpg weight, `o'"
+    local trc = r(rc)
+    _hc_log "Q4801-7" "`r(logfile)'" "option `nm'() not allowed" 1 1
+    _hc_run "" "dash fpfit mpg weight, `o' name(q4801g, replace)"
+    local drc = r(rc)
+    _hc_log "Q4801-7" "`r(logfile)'" "option `nm'() not allowed" 1 1
+    _hc_expect "Q4801-7" "(`drc' == 198 & `trc' == 198)" "fpfit `o': dash rc `drc', twoway rc `trc'"
+}
+_hc_done "Q4801-7" "fpfit bwidth(), degree() and kernel() refused, r(198), in twoway's words"
+
+// Q4801-8 -- acolor() and its outline twins on scatter are taken in
+// silence.
+_hc_run "" "dash scatter mpg weight, acolor(red) alcolor(red) alwidth(thick) alpattern(dash)"
+local rc = r(rc)
+local lf "`r(logfile)'"
+_hc_expect "Q4801-8" "(`rc' == 0)" "scatter acolor(): rc `rc'"
+_hc_log "Q4801-8" "`lf'" "note:" 0
+_hc_done "Q4801-8" "acolor(), alcolor(), alwidth(), alpattern() on scatter: no note"
+
+// Q4801-10 -- by()'s style(rescale) and subtitle()'s box words are drawn
+// with no note.
+foreach o in "by(foreign, style(rescale))" "by(foreign) subtitle(, fcolor(red) lcolor(blue))" "by(foreign) subtitle(, nobox)" {
+    _hc_run "" "dash scatter mpg weight, `o'"
+    local rc = r(rc)
+    local lf "`r(logfile)'"
+    _hc_expect "Q4801-10" "(`rc' == 0)" "`o': rc `rc'"
+    _hc_log "Q4801-10" "`lf'" "note:" 0
+}
+_hc_done "Q4801-10" "style(rescale) and subtitle(, fcolor() lcolor() nobox) under by(): no note"
+
 // ----------------------------------------------------------------
 cd "`hc_home'"
 set scheme `hc_scheme0'

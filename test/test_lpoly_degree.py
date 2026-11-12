@@ -13,8 +13,8 @@ fits a polynomial of degree 9 or 10 in raw powers of x there, and its
 float64 round-off on that ill-conditioned fit is not reproduced (auto:
 0.96% on every kernel, the same ratio, so the constants are right and the
 global fit is Stata's round-off).  The constants stop at pe = 7, so
-degree(8) -- which twoway draws -- stays dash's own bound, said in the
-refusal.
+degree(8) -- which twoway draws -- is drawn with a note that the result
+can differ from Stata's (WP-31 D35; dash.sthlp's degree() entry).
 """
 import json
 import os

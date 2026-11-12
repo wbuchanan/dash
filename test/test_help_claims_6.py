@@ -455,9 +455,10 @@ class TestFpfitciStdp:
 
 class TestFpfitReportsTheSmoothingOptions:
     """twoway fpfit and fpfitci refuse bwidth(), degree() and kernel(),
-    r(198) (HC6-30).  dash accepts them so a pasted command still runs and
-    says they were ignored -- bwidth() and degree() always did; kernel()
-    was accepted and dropped in silence."""
+    r(198) (HC6-30), and so does dash.ado (test_help_claims_8.cscript
+    Q4801-7).  The renderer, handed a spec that carries one, still says it
+    was ignored -- bwidth() and degree() always did; kernel() was accepted
+    and dropped in silence."""
 
     @pytest.mark.parametrize("layer", ["fpfit", "fpfitci"])
     @pytest.mark.parametrize("opt,val", [("bwidth", "1"), ("degree", "2"),
@@ -1173,7 +1174,9 @@ class TestTheEntriesSayWhatTakesThem:
     @pytest.mark.parametrize("opt,bound", [
         ("degree", "any whole number from 0 up"),
         # Flipped (WP-31 C10b): degree 4-7 are drawn.
-        ("degree", "refuses more than 7"),
+        # Flipped (WP-48 basic:PT-16): "refuses more than 7" was false
+        # because degree() above 7 is drawn with a note (WP-31 D35, Q4801-6).
+        ("degree", "above 7, where Stata's rule-of-thumb constants stop, it is drawn with the note"),
         # Flipped (WP-31 C10a): n(1) and lowess's every bwidth() are
         # twoway's.
         ("n", "1 to 10000"), ("n", "any whole number from 1 up"),

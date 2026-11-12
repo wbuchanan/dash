@@ -4411,10 +4411,12 @@ end
 // scheme where a STYLE NAME (symbol, size, line width, pattern, angle,
 // clock position, intensity) is unknown; an unknown colour is drawn black
 // with the note, as twoway draws it (WP-30 P1.13a).  Every bound below was
-// measured against twoway (22sep2026, StataNow 19.5).  Four bounds are
+// measured against twoway (22sep2026, StataNow 19.5).  Two bounds are
 // dash's own rather than twoway's AND say so in a second sentence of the
-// refusal (yaxis/xaxis take twoway's 1..9 since WP-31 C10c): degree 0..7, bin 1..1000, n 2..10000 (mspline's
-// n 1..300 and bands 1..200 are twoway's) and the lowess bwidth (0,1].  The other dash-own bounds -- colornlevels 2..256,
+// refusal (yaxis/xaxis take twoway's 1..9 since WP-31 C10c, degree() every
+// whole number from 0 since WP-31 D35, drawn with a note above 7, and
+// lowess's bwidth() any number since WP-31 C10a): bin 1..1000 and n up to
+// 10000 (mspline's n 1..300 and bands 1..200 are twoway's).  The other dash-own bounds -- colornlevels 2..256,
 // jitter 0..100, level strictly inside 0..100, barwidth > 0, aspectratio
 // >= 0, jitterseed()/jseed() >= 0, kdensity bwidth > 0 -- are refused with
 // the one sentence only.

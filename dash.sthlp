@@ -275,8 +275,9 @@ for them under {cmd:c(maxvar)}, in a temporary frame beside only the
 variables the dashboard exports, and {cmd:r(900)} is given only when even
 those leave no room; and a variable named like a
 glyph field a plot derives ({cmd:x}, {cmd:y}, {cmd:top}, {cmd:count},
-{cmd:density} and the like) draws its own values as a plot variable but is
-shadowed by the derived field in {cmd:hover()} and {cmd:mlabel()}.
+{cmd:density} and the like) draws its own values as a plot variable and in
+{cmd:hover()} and {cmd:mlabel()} too, which read it under the alias
+{cmd:__dashu_}{it:name} rather than the derived field.
 
 {pstd}
 This help file documents only the features that differ from or extend
@@ -4042,8 +4043,8 @@ holding several quoted parts is drawn one line per part, as in
 As in {cmd:twoway}, the label is drawn in the scheme's filled box across
 the top of the panel's plot region (s2color bluish gray, stcolor light gray,
 s1color khaki outlined in black), the Total panel's too; {cmd:subtitle()}'s
-{cmd:fcolor()}, {cmd:lcolor()} and {cmd:nobox} do not restyle it in
-{cmd:dash} and are named in a note.
+{cmd:fcolor()}, {cmd:lcolor()} and {cmd:nobox} restyle it, with no
+note, as said below.
 {cmd:by()}'s own {cmd:title()}, {cmd:subtitle()}, {cmd:note()} and
 {cmd:caption()} are drawn once over the panels, placed on the panels and
 their axes as in {cmd:twoway} (a title centred over them, a note at
@@ -4412,8 +4413,8 @@ class prints {cmd:twoway}'s two notes and falls back -- a yx type to
 {cmd:histogram} takes the yx names in full only, as {cmd:twoway}'s
 y2xtype does: {cmd:rline} {it:y1 y2 x}{cmd:, recast(sc)} prints the two
 notes and draws {cmd:rspike}.  On {cmd:dot},
-{cmd:recast()} is taken and named in the note: {cmd:twoway} reads it
-there and draws the dot graph unchanged.  On {cmd:lfitci}, {cmd:qfitci}, {cmd:lpolyci} and
+{cmd:recast()} is taken in silence: {cmd:twoway} reads it
+there and draws the dot graph unchanged, and so does {cmd:dash}.  On {cmd:lfitci}, {cmd:qfitci}, {cmd:lpolyci} and
 {cmd:fpfitci} {cmd:recast()} and {cmd:recastas()}, and {cmd:type()}
 typed in full, are refused, r(198), as {cmd:twoway} refuses them, and so
 is a spelling of {cmd:recast()} shorter than its name; the shorter
@@ -4457,8 +4458,9 @@ are titled differently, the axis takes the first region's title
 followed by {cmd:...} -- {cmd:(scatter mpg weight) (scatter price length, yaxis(2))}
 titles its x axis {cmd:Weight (lbs.)...} -- and a y axis so shared is
 untitled.  The rule holds for each axis, {cmd:yaxis(2)} and
-{cmd:xaxis(2)} included, and on every {cmd:by()} panel.  Keys {cmd:twoway} merges into one and the legend it leaves off
-a graph of histograms alone are still drawn by {cmd:dash}.
+{cmd:xaxis(2)} included, and on every {cmd:by()} panel.  Keys {cmd:twoway} merges into one are merged by {cmd:dash} as
+{cmd:twoway} merges them -- two histograms in one style are one key and draw
+no legend (see {ul:When a legend appears} under the legend options).
 
 {synoptset 20}{...}
 {synopt:{opt bwidth(#)}}the bandwidth of {cmd:lpoly}, {cmd:lpolyci},
@@ -4498,10 +4500,10 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     spelling{p_end}
 {synopt:{opt degree(#)}}{cmd:lpoly} and {cmd:lpolyci}: the degree of the
     local polynomial -- 0, the Nadaraya-Watson kernel estimator (the
-    default); 1, local linear; 2, local quadratic; 3, local cubic; up to
-    7.  {cmd:twoway} takes any whole number from 0 up; {cmd:dash} refuses
-    more than 7, r(198), because Stata's rule-of-thumb constants stop
-    there{p_end}
+    default); 1, local linear; 2, local quadratic; 3, local cubic; and so
+    on.  {cmd:twoway} takes any whole number from 0 up, and so does
+    {cmd:dash}: above 7, where Stata's rule-of-thumb constants stop, it is
+    drawn with the note {cmd:(note:  dash: lpoly degree(8) is drawn; above degree 7 the result can differ from Stata's.)}{p_end}
 {synopt:{opt kernel(name)}}{cmd:lpoly}, {cmd:lpolyci} and {cmd:kdensity}:
     {cmd:epanechnikov} (the default), {cmd:epan2}, {cmd:biweight},
     {cmd:cosine}, {cmd:gaussian}, {cmd:parzen}, {cmd:rectangle} or
@@ -4831,8 +4833,8 @@ their range (measured).
 {cmd:fpfitci} with r(198) -- a fractional polynomial has no bandwidth or
 kernel at all, and its degree is spelled {cmd:estopts(degree(#))}, which
 {cmd:dash} honours (see {ul:Fit options} above).
-{cmd:dash} accepts the three so a pasted command still runs, and reports
-that they were ignored.
+{cmd:dash} refuses them as Stata does, {cmd:option bwidth() not allowed},
+{cmd:r(198)}.
 
 {pstd}
 {cmd:histogram}'s bin count is {cmd:bin()}, or {cmd:bins()}, which is
@@ -4945,8 +4947,9 @@ A colour's {cmd:%}{it:#} is its opacity, and a colour without one keeps
 the style's; {cmd:none} draws no fill or no outline.  {cmd:clcolor()},
 {cmd:clwidth()} and {cmd:clpattern()} style the line alone.  On the other
 plot types {cmd:acolor()}, {cmd:alcolor()}, {cmd:alwidth()} and
-{cmd:alpattern()} are named in the note (see
-{help dash##unsupported:Unsupported Stata twoway options});
+{cmd:alpattern()} are drawn as the fill and line options they stand for,
+or taken in silence where {cmd:twoway} draws nothing different with them
+(see {help dash##unsupported:Unsupported Stata twoway options});
 {cmd:pstyle()} is not.  {cmd:astyle()}, {cmd:alstyle()}, {cmd:bstyle()},
 {cmd:blstyle()} and {cmd:lstyle()} style the band in {cmd:twoway}'s order
 (see {help dash##namedstyles:Named styles}).
@@ -7781,8 +7784,10 @@ in either direction.
     {cmd:function} and the immediate types are taken in silence, as
     {cmd:twoway} draws nothing different with them.
     Where {cmd:twoway} draws the same picture with an option of this
-    list as without it -- measured on every plot type, graph export
-    SVG -- {cmd:dash} takes it in silence, as {cmd:twoway} does; it is
+    list as without it -- measured with graph export SVG on each of the
+    44 plot types for every option
+    {cmd:test/fixtures/noted_option_truth.json} probes -- {cmd:dash} takes
+    it in silence, as {cmd:twoway} does; it is
     named only where {cmd:twoway} draws something different.  Stata's {cmd:nodraw} is not in
     this list: written on a graph it is honoured, on an immediate render
     and, once the graph is registered, on {cmd:dash build} and
