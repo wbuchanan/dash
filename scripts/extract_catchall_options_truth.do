@@ -1,10 +1,15 @@
 *! extract_catchall_options_truth.do -- WP-31 section 56 (J1): measure which
 *! twoway option names dash accepts once and names in its "ignoring
 *! unsupported option(s)" note without a pending declaration -- the names
-*! that reach the catch-all.  The candidates are the yxview options and the
-*! type-specific options of research/stata-ground-truth.md sections 1.2-1.3
-*! that dash.ado does not declare, and the undeclared rows of
-*! _dash_rep_und_tab (dash_parse.mata).  Every probe runs the same command
+*! that reach the catch-all.  WP-48 syn:SD-15: the candidates are read from
+*! twoway's own tables in dash_parse.mata -- every row's full name of
+*! _dash_tw_takes_tab() (the words twoway takes, measured in
+*! unknown_option_truth.json) and every row's full spelling of
+*! _dash_rep_und_tab() -- not typed by hand, so a word twoway takes cannot
+*! reach dash's note unprobed.  The typed form of each candidate (the plot
+*! and the option as typed) is the table below; a candidate with no typed
+*! form, or one typed on a plot type its row does not name, stops the run.
+*! Every probe runs the same command
 *! under twoway (nodraw) and under dash, each under capture noisily with its
 *! own log; the return codes and the names dash's note gives are recorded.
 *! The output changes when dash starts drawing or refusing one of them.
@@ -65,10 +70,15 @@ gen yh = mpg + 1
 gen t = _n
 tsset t
 
-* One probe per name: name ; plot ; option as typed (appended one
-* at a time in compound quotes, so each keeps its own quotes).  The plot is one that
-* twoway's parser takes the option on (section 1.2's yxview options on
-* scatter, the bar-derived ones on bar, the rest on their own type).
+* The typed form of each candidate: name ; plot ; option as typed
+* (appended one at a time in compound quotes, so each keeps its own
+* quotes).  The plot is one of the types the candidate's table row names
+* (checked below): the type the option is drawn on where twoway draws it
+* on some types only (the bar-derived ones on bar or dot, the line
+* alignments on line), else scatter.  WP-48 syn:SD-15 keeps the plots the
+* hand list chose, so the 110 earlier measurements do not move, and puts
+* each new row on the first type it names ("*", every type, is scatter;
+* play(), taken only after the comma, on scatter).
 local probes ""
 local probes `"`probes' "afcolor;scatter mpg weight;afcolor(red)""'
 local probes `"`probes' "afintensity;scatter mpg weight;afintensity(50)""'
@@ -182,6 +192,100 @@ local probes `"`probes' "mlabstyle;scatter mpg weight;mlabel(make) mlabstyle(p1)
 local probes `"`probes' "lalign;line mpg weight;lalign(inside)""'
 local probes `"`probes' "yvarlabel;scatter mpg weight;yvarlabel(a)""'
 local probes `"`probes' "xvarlabel;scatter mpg weight;xvarlabel(a)""'
+* WP-48 syn:SD-15: the rows of the two tables the hand list did not hold.
+local probes `"`probes' "aspect;scatter mpg weight;aspect(1)""'
+local probes `"`probes' "aspectratio;scatter mpg weight;aspectratio(1)""'
+local probes `"`probes' "bgcolor;scatter mpg weight;bgcolor(white)""'
+local probes `"`probes' "fxsize;scatter mpg weight;fxsize(50)""'
+local probes `"`probes' "fysize;scatter mpg weight;fysize(50)""'
+local probes `"`probes' "graphregion;scatter mpg weight;graphregion(color(white))""'
+local probes `"`probes' "play;scatter mpg weight;play(dash_no_such_recording)""'
+local probes `"`probes' "plotregion;scatter mpg weight;plotregion(color(white))""'
+local probes `"`probes' "scale;scatter mpg weight;scale(1.2)""'
+local probes `"`probes' "scheme;scatter mpg weight;scheme(s2color)""'
+local probes `"`probes' "tlabel;scatter mpg weight;tlabel(#3)""'
+local probes `"`probes' "tline;scatter mpg weight;tline(3000)""'
+local probes `"`probes' "tmlabel;scatter mpg weight;tmlabel(#3)""'
+local probes `"`probes' "tmtick;scatter mpg weight;tmtick(#3)""'
+local probes `"`probes' "tscale;scatter mpg weight;tscale(range(1000 5000))""'
+local probes `"`probes' "ttick;scatter mpg weight;ttick(#3)""'
+local probes `"`probes' "ttitle;scatter mpg weight;ttitle(t)""'
+local probes `"`probes' "xaxis;scatter mpg weight;xaxis(1)""'
+local probes `"`probes' "xoverhangs;scatter mpg weight;xoverhangs""'
+local probes `"`probes' "xsize;scatter mpg weight;xsize(5)""'
+local probes `"`probes' "yaxis;scatter mpg weight;yaxis(1)""'
+local probes `"`probes' "yoverhangs;scatter mpg weight;yoverhangs""'
+local probes `"`probes' "ysize;scatter mpg weight;ysize(4)""'
+local probes `"`probes' "zlabel;scatter mpg weight;zlabel(#3)""'
+local probes `"`probes' "zmlabel;scatter mpg weight;zmlabel(#3)""'
+local probes `"`probes' "zmtick;scatter mpg weight;zmtick(#3)""'
+local probes `"`probes' "zscale;scatter mpg weight;zscale(range(0 10))""'
+local probes `"`probes' "ztick;scatter mpg weight;ztick(#3)""'
+local probes `"`probes' "ztitle;scatter mpg weight;ztitle(z)""'
+local probes `"`probes' "smoothplot;lpolyci mpg weight;smoothplot(lcolor(red))""'
+local probes `"`probes' "logit;lowess foreign weight;logit""'
+local probes `"`probes' "nologit;lowess foreign weight;nologit""'
+
+* The candidates (WP-48 syn:SD-15): every full name of _dash_tw_takes_tab()
+* and every full spelling of _dash_rep_und_tab(), first appearance kept,
+* each with the plot types its row names; then the names the hand list
+* probed that neither table holds (mlabfontface, which twoway refuses;
+* subchar and symbol, which dash declares), kept so their records stay.
+mata:
+void _zk_candidates()
+{
+    string matrix a, b
+    string colvector nm, ty
+    string scalar out
+    real scalar i
+    transmorphic scalar seen
+
+    a = _dash_tw_takes_tab()
+    b = _dash_rep_und_tab()
+    nm = a[., 1] \ b[., 2]
+    ty = a[., 4] \ b[., 5]
+    seen = asarray_create()
+    out = ""
+    for (i = 1; i <= rows(nm); i++) {
+        if (asarray_contains(seen, nm[i])) continue
+        asarray(seen, nm[i], 1)
+        out = out + " " + nm[i]
+        st_global("ZK_TY_" + nm[i], ty[i] == "" ? "after-comma" : ty[i])
+    }
+    st_local("cands", strtrim(out))
+}
+_zk_candidates()
+end
+local extra "mlabfontface subchar symbol"
+foreach nm of local extra {
+    global ZK_TY_`nm' "*"
+}
+local cands "`cands' `extra'"
+
+* Each candidate's typed form, in candidate order; a missing form or a plot
+* its row does not name stops the run.
+local forms `"`probes'"'
+local probes ""
+foreach nm of local cands {
+    local hit ""
+    foreach p of local forms {
+        gettoken pn : p, parse(";")
+        if "`pn'" == "`nm'" local hit `"`p'"'
+    }
+    if `"`hit'"' == "" {
+        display as error "extract_catchall_options_truth.do: no typed form for `nm'; add one to the table"
+        exit 198
+    }
+    gettoken pn rest : hit, parse(";")
+    gettoken semi rest : rest, parse(";")
+    gettoken pt : rest, parse(" ;,")
+    local types "${ZK_TY_`nm'}"
+    if !inlist("`types'", "*", "after-comma") & !`: list pt in types' {
+        display as error "extract_catchall_options_truth.do: `nm' is typed on `pt', not one of its row's types (`types')"
+        exit 198
+    }
+    local probes `"`probes' `"`hit'"'"'
+}
 
 local k 0
 foreach p of local probes {
@@ -289,6 +393,7 @@ out = {"_meta": {"stata_version": G("ZK_VERSION"), "born_date": G("ZK_BORN"),
                  "dash_commit": commit, "extracted": G("ZK_WHEN"),
                  "source": "scripts/extract_catchall_options_truth.do"},
        "options": sorted(options), "twoway_refuses": sorted(refused),
+       "source_tables": ["_dash_tw_takes_tab", "_dash_rep_und_tab"],
        "probes": probes}
 with open(G("ZK_OUT"), "w", encoding="utf-8") as fh:
     json.dump(out, fh, indent=1, sort_keys=True)

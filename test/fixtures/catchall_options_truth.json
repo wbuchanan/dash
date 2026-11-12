@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "04 Nov 2026",
-  "dash_commit": "90f015d485e0231b524d6b121209584024b13f94",
-  "extracted": "10 Nov 2026 13:57:37",
+  "dash_commit": "02feea9d7b3d0552de06263c904efe2d298256fe",
+  "extracted": "12 Nov 2026 04:00:51",
   "source": "scripts/extract_catchall_options_truth.do",
   "stata_version": "19.5"
  },
@@ -54,6 +54,22 @@
   },
   "alalign": {
    "cmd": "scatter mpg weight, alalign(inside)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "aspect": {
+   "cmd": "scatter mpg weight, aspect(1)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "aspectratio": {
+   "cmd": "scatter mpg weight, aspectratio(1)",
    "dash_message": "",
    "dash_rc": 0,
    "noted": [],
@@ -132,6 +148,14 @@
   },
   "bfintensity": {
    "cmd": "scatter mpg weight, bfintensity(50)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "bgcolor": {
+   "cmd": "scatter mpg weight, bgcolor(white)",
    "dash_message": "",
    "dash_rc": 0,
    "noted": [],
@@ -524,6 +548,22 @@
    "twoway_message": "",
    "twoway_rc": 0
   },
+  "fxsize": {
+   "cmd": "scatter mpg weight, fxsize(50)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "fysize": {
+   "cmd": "scatter mpg weight, fysize(50)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
   "gap": {
    "cmd": "histogram mpg, gap(10)",
    "dash_message": "",
@@ -534,6 +574,14 @@
   },
   "gaussian": {
    "cmd": "kdensity mpg, gaussian",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "graphregion": {
+   "cmd": "scatter mpg weight, graphregion(color(white))",
    "dash_message": "",
    "dash_rc": 0,
    "noted": [],
@@ -573,6 +621,14 @@
    "noted": [
     "logging"
    ],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "logit": {
+   "cmd": "lowess foreign weight, logit",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
    "twoway_message": "",
    "twoway_rc": 0
   },
@@ -714,6 +770,14 @@
    "twoway_message": "",
    "twoway_rc": 0
   },
+  "nologit": {
+   "cmd": "lowess foreign weight, nologit",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
   "norefscheme": {
    "cmd": "scatter mpg weight, norefscheme",
    "dash_message": "",
@@ -818,8 +882,24 @@
    "twoway_message": "",
    "twoway_rc": 0
   },
+  "play": {
+   "cmd": "scatter mpg weight, play(dash_no_such_recording)",
+   "dash_message": "recording dash_no_such_recording not found in either PERSONAL or working directory",
+   "dash_rc": 601,
+   "noted": [],
+   "twoway_message": "recording dash_no_such_recording not found in either PERSONAL or working directory",
+   "twoway_rc": 601
+  },
   "plegend": {
    "cmd": "scatter mpg weight, plegend(off)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "plotregion": {
+   "cmd": "scatter mpg weight, plotregion(color(white))",
    "dash_message": "",
    "dash_rc": 0,
    "noted": [],
@@ -870,6 +950,30 @@
    "twoway_message": "",
    "twoway_rc": 0
   },
+  "scale": {
+   "cmd": "scatter mpg weight, scale(1.2)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "scheme": {
+   "cmd": "scatter mpg weight, scheme(s2color)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "smoothplot": {
+   "cmd": "lpolyci mpg weight, smoothplot(lcolor(red))",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
   "subchar": {
    "cmd": "function y = x, range(0 1) subchar(x)",
    "dash_message": "",
@@ -896,8 +1000,64 @@
    "twoway_message": "",
    "twoway_rc": 0
   },
+  "tlabel": {
+   "cmd": "scatter mpg weight, tlabel(#3)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "tline": {
+   "cmd": "scatter mpg weight, tline(3000)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "tmlabel": {
+   "cmd": "scatter mpg weight, tmlabel(#3)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "tmtick": {
+   "cmd": "scatter mpg weight, tmtick(#3)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
   "triangle": {
    "cmd": "kdensity mpg, triangle",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "tscale": {
+   "cmd": "scatter mpg weight, tscale(range(1000 5000))",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "ttick": {
+   "cmd": "scatter mpg weight, ttick(#3)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "ttitle": {
+   "cmd": "scatter mpg weight, ttitle(t)",
    "dash_message": "",
    "dash_rc": 0,
    "noted": [],
@@ -920,8 +1080,32 @@
    "twoway_message": "",
    "twoway_rc": 0
   },
+  "xaxis": {
+   "cmd": "scatter mpg weight, xaxis(1)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
   "xlog": {
    "cmd": "lfit mpg weight, xlog",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "xoverhangs": {
+   "cmd": "scatter mpg weight, xoverhangs",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "xsize": {
+   "cmd": "scatter mpg weight, xsize(5)",
    "dash_message": "",
    "dash_rc": 0,
    "noted": [],
@@ -944,8 +1128,80 @@
    "twoway_message": "",
    "twoway_rc": 0
   },
+  "yaxis": {
+   "cmd": "scatter mpg weight, yaxis(1)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "yoverhangs": {
+   "cmd": "scatter mpg weight, yoverhangs",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "ysize": {
+   "cmd": "scatter mpg weight, ysize(4)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
   "yvarlabel": {
    "cmd": "scatter mpg weight, yvarlabel(a)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "zlabel": {
+   "cmd": "scatter mpg weight, zlabel(#3)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "zmlabel": {
+   "cmd": "scatter mpg weight, zmlabel(#3)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "zmtick": {
+   "cmd": "scatter mpg weight, zmtick(#3)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "zscale": {
+   "cmd": "scatter mpg weight, zscale(range(0 10))",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "ztick": {
+   "cmd": "scatter mpg weight, ztick(#3)",
+   "dash_message": "",
+   "dash_rc": 0,
+   "noted": [],
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "ztitle": {
+   "cmd": "scatter mpg weight, ztitle(z)",
    "dash_message": "",
    "dash_rc": 0,
    "noted": [],
@@ -971,5 +1227,9 @@
    "twoway_rc": 0
   }
  },
+ "source_tables": [
+  "_dash_tw_takes_tab",
+  "_dash_rep_und_tab"
+ ],
  "twoway_refuses": []
 }

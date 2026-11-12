@@ -1024,6 +1024,7 @@ and now matches Stata.
 - The help no longer describes graph as a prefix read before twoway; dash refuses it in every position, as twoway does (WP-48, plot:PT-5)
 - Stale help passages on taken, noted and refused options state what dash does (WP-48, basic:PT-16)
 - The help's units sentence and its list of noted options say what dash draws (WP-48, GW-22)
+- The help's Unsupported list names every option dash notes, checked against twoway's own tables (WP-48, syn:SD-15)
 
 ### Fixed in WP-47
 
