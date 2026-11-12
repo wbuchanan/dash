@@ -67,6 +67,9 @@
 *!   Q4801-1 .. Q4801-10 (WP-48 48-01) -- the behaviour each corrected help
 *!           sentence states: a sub-option note names the token as typed;
 *!           the words of no twoway option refused as twoway refuses them.
+*!   Q4802-1 .. Q4802-6 (WP-48 48-02, RH-15) -- horizontal and vertical
+*!           under recast() judged and drawn as the Orientation and Recast
+*!           paragraphs say (the saved figure read through dash_render).
 *!
 *! Every command runs with its log captured and read back with Stata's
 *! wrapped lines re-joined, as test_custom_scheme.cscript does.  The cases
@@ -1097,6 +1100,176 @@ foreach o in "by(foreign, style(rescale))" "by(foreign) subtitle(, fcolor(red) l
     _hc_log "Q4801-10" "`lf'" "note:" 0
 }
 _hc_done "Q4801-10" "style(rescale) and subtitle(, fcolor() lcolor() nobox) under by(): no note"
+
+// ================================================================
+// WP-48 48-02: probes
+// ================================================================
+// Q4802-1 .. Q4802-6 (RH-15) record what the Orientation and Recast
+// paragraphs state: twoway's and dash's return codes, and the saved
+// page's figure (glyph kinds, ranges, axis titles, bar widths) read
+// through dash_render from the spec dash wrote.
+python:
+import os as _q48_os, sys as _q48_sys
+from sfi import Macro as _q48_M
+_q48_p = _q48_os.path.abspath(_q48_os.path.join(_q48_M.getLocal("hc_home"),
+                                                ".."))
+if _q48_p not in _q48_sys.path:
+    _q48_sys.path.insert(0, _q48_p)
+
+
+def _q4802_fig(sp, dp):
+    """The saved figure of one spec, summarised into $q4802_* globals."""
+    import warnings
+    import dash_render as dr
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    figs = list(r.figures.values())
+    Macro.setGlobal("q4802_nfig", str(len(figs)))
+    if not figs:
+        return
+    fig = figs[0]
+    kinds, widths = set(), []
+    for g in fig.renderers:
+        gl = getattr(g, "glyph", None)
+        if gl is None or not getattr(g, "visible", True):
+            continue
+        tags = list(getattr(g, "tags", []) or [])
+        if "dash_bound_extent" in tags:
+            continue
+        nm = type(gl).__name__
+        kinds.add(nm)
+        w = None
+        if nm == "VBar":
+            w = gl.width
+        elif nm == "HBar":
+            w = gl.height
+        if isinstance(w, (int, float)):
+            widths.append(float(w))
+        elif w is not None and getattr(g, "data_source", None) is not None:
+            col = getattr(w, "field", None) or (w.get("field")
+                                                if isinstance(w, dict)
+                                                else None)
+            if col and col in g.data_source.data:
+                widths.extend(float(v) for v in g.data_source.data[col])
+    Macro.setGlobal("q4802_kinds", " ".join(sorted(kinds)))
+    Macro.setGlobal("q4802_bw", "%.6g" % widths[0] if widths else ".")
+    Macro.setGlobal("q4802_bwn", str(len(set(round(v, 9) for v in widths))))
+    for ax, rg in (("x", fig.x_range), ("y", fig.y_range)):
+        lo, hi = sorted((float(rg.start), float(rg.end)))
+        Macro.setGlobal("q4802_%slo" % ax, "%.9g" % lo)
+        Macro.setGlobal("q4802_%shi" % ax, "%.9g" % hi)
+    Macro.setGlobal("q4802_xt", fig.xaxis[0].axis_label or "")
+    Macro.setGlobal("q4802_yt", fig.yaxis[0].axis_label or "")
+end
+
+// _q4802_fig <k> <command>: twoway's rc for `twoway <command>' in
+// $q4802_trc, dash's in $q4802_drc, and (dash rc 0) its saved figure.
+capture program drop _q4802_fig
+program define _q4802_fig
+    version 19
+    gettoken k 0 : 0
+    foreach g in nfig bw bwn xlo xhi ylo yhi {
+        global q4802_`g' "."
+    }
+    foreach g in kinds xt yt {
+        global q4802_`g' ""
+    }
+    capture graph drop _all
+    capture noisily twoway `0' nodraw
+    global q4802_trc = _rc
+    capture graph drop _all
+    capture dash clear
+    capture noisily dash `0' name(zq4802`k')
+    global q4802_drc = _rc
+    if ${q4802_drc} exit
+    capture erase "`c(pwd)'/q4802s`k'.json"
+    capture erase "`c(pwd)'/q4802d`k'.json"
+    _dash_serve_spec, specpath("`c(pwd)'/q4802s`k'.json") datapath("`c(pwd)'/q4802d`k'.json")
+    python: import __main__ as _q4802_m; _q4802_m._q4802_fig(r"`c(pwd)'/q4802s`k'.json", r"`c(pwd)'/q4802d`k'.json")
+    capture dash clear
+end
+
+sysuse auto, clear
+quietly generate yl = mpg - 1
+quietly generate yh = mpg + 1
+
+// Q4802-1 (RH-1) -- a range type recast to line, scatter or connected
+// takes horizontal and vertical and is turned by horizontal: the mpg
+// bounds run across, weight up the y axis.
+_q4802_fig 1 rarea yl yh weight, recast(line) horizontal
+_hc_expect "Q4802-1" "(${q4802_trc} == 0 & ${q4802_drc} == 0)" "recast(line) horizontal: twoway rc ${q4802_trc}, dash rc ${q4802_drc}"
+_hc_expect "Q4802-1" "(${q4802_yhi} > 1000 & ${q4802_xhi} < 100)" "recast(line) horizontal not turned: x ${q4802_xlo}..${q4802_xhi}, y ${q4802_ylo}..${q4802_yhi}"
+foreach t in scatter connected {
+    _q4802_fig 1 rcap yl yh weight, recast(`t') vertical
+    _hc_expect "Q4802-1" "(${q4802_trc} == 0 & ${q4802_drc} == 0)" "recast(`t') vertical: twoway rc ${q4802_trc}, dash rc ${q4802_drc}"
+    _hc_expect "Q4802-1" "(${q4802_xhi} > 1000)" "recast(`t') vertical turned: x ${q4802_xlo}..${q4802_xhi}"
+}
+// rbar too, and recast to a range type (rcap) it is turned.
+foreach t in line rcap {
+    _q4802_fig 1 rbar yl yh weight, recast(`t') horizontal
+    _hc_expect "Q4802-1" "(${q4802_trc} == 0 & ${q4802_drc} == 0)" "rbar recast(`t') horizontal: twoway rc ${q4802_trc}, dash rc ${q4802_drc}"
+    _hc_expect "Q4802-1" "(${q4802_yhi} > 1000 & ${q4802_xhi} < 100)" "rbar recast(`t') horizontal not turned: x ${q4802_xlo}..${q4802_xhi}, y ${q4802_ylo}..${q4802_yhi}"
+}
+_hc_done "Q4802-1" "a range type recast to line, scatter or connected takes both flags and is turned by horizontal"
+
+// Q4802-2 (RH-1, RH-2) -- recast to bar, area, spike, dropline or dot
+// a range type takes horizontal and is drawn upright, as twoway draws it.
+foreach t in bar area spike dropline dot {
+    _q4802_fig 2 rarea yl yh weight, recast(`t') horizontal
+    _hc_expect "Q4802-2" "(${q4802_trc} == 0 & ${q4802_drc} == 0)" "recast(`t') horizontal: twoway rc ${q4802_trc}, dash rc ${q4802_drc}"
+    _hc_expect "Q4802-2" "(${q4802_xhi} > 1000 & ${q4802_yhi} < 100)" "recast(`t') horizontal turned: x ${q4802_xlo}..${q4802_xhi}, y ${q4802_ylo}..${q4802_yhi}"
+}
+_q4802_fig 2 rbar yl yh weight, recast(bar) horizontal
+_hc_expect "Q4802-2" "(${q4802_trc} == 0 & ${q4802_drc} == 0)" "rbar recast(bar) horizontal: twoway rc ${q4802_trc}, dash rc ${q4802_drc}"
+_hc_expect "Q4802-2" "(${q4802_xhi} > 1000 & ${q4802_yhi} < 100)" "rbar recast(bar) horizontal turned: x ${q4802_xlo}..${q4802_xhi}, y ${q4802_ylo}..${q4802_yhi}"
+_hc_done "Q4802-2" "a range type recast to a bar-like type takes horizontal and is drawn upright, rbar too"
+
+// Q4802-3 (RH-3) -- a range type drawn as a yx type draws its first
+// bound and keeps both on the axis and in its title.
+_q4802_fig 3 rline yl yh weight, recast(line)
+_hc_expect "Q4802-3" "(${q4802_trc} == 0 & ${q4802_drc} == 0)" "rline recast(line): twoway rc ${q4802_trc}, dash rc ${q4802_drc}"
+_hc_expect "Q4802-3" "(${q4802_yhi} >= 42 & ${q4802_ylo} <= 11)" "the y range ${q4802_ylo}..${q4802_yhi} leaves out a bound (11..42)"
+_hc_expect "Q4802-3" `"("${q4802_yt}" == "yl/yh")"' "the y title is ${q4802_yt}"
+_hc_expect "Q4802-3" `"("${q4802_kinds}" == "Line")"' "drawn as ${q4802_kinds}"
+_hc_done "Q4802-3" "rline recast(line) draws its first bound and keeps both on the axis and in its title"
+
+// Q4802-4 (RH-5, RH-6) -- histogram recast(bar) is one bin wide (mpg's
+// eight bins are 3.625 wide); kdensity and scatteri recast(bar) one x
+// unit wide, as twoway's bar_size of 1 draws them (yxview.class).
+_q4802_fig 4 histogram mpg, recast(bar)
+_hc_expect "Q4802-4" "(${q4802_trc} == 0 & ${q4802_drc} == 0)" "histogram recast(bar): twoway rc ${q4802_trc}, dash rc ${q4802_drc}"
+_hc_expect "Q4802-4" "(abs(${q4802_bw} - 3.625) < 1e-6 & ${q4802_bwn} == 1)" "histogram recast(bar) width ${q4802_bw} (${q4802_bwn} widths)"
+_hc_expect "Q4802-4" "(${q4802_ylo} <= 0)" "histogram recast(bar) height axis from ${q4802_ylo}"
+foreach c in "kdensity mpg, recast(bar)" "scatteri 1 2 3 4 5 6, recast(bar)" {
+    _q4802_fig 4 `c'
+    _hc_expect "Q4802-4" "(${q4802_trc} == 0 & ${q4802_drc} == 0)" "`c': twoway rc ${q4802_trc}, dash rc ${q4802_drc}"
+    _hc_expect "Q4802-4" "(abs(${q4802_bw} - 1) < 1e-9 & ${q4802_bwn} == 1)" "`c' width ${q4802_bw} (${q4802_bwn} widths)"
+}
+_hc_done "Q4802-4" "histogram recast(bar) is one bin wide, kdensity and scatteri recast(bar) one x unit"
+
+// Q4802-5 (RH-9) -- on dot only a bar-like recast typed in full takes
+// the flags; recast(b) takes neither on any type; as twoway judges them.
+foreach c in "dot mpg weight, recast(line) horizontal" "dot mpg weight, recast(b) horizontal" "scatter mpg weight, recast(b) horizontal" "scatter mpg weight, recast(b) vertical" {
+    _q4802_fig 5 `c'
+    _hc_expect "Q4802-5" "(${q4802_trc} == 198 & ${q4802_drc} == 198)" "`c': twoway rc ${q4802_trc}, dash rc ${q4802_drc}"
+}
+foreach t in bar area dot dropline spike {
+    _q4802_fig 5 dot mpg weight, recast(`t') horizontal
+    _hc_expect "Q4802-5" "(${q4802_trc} == 0 & ${q4802_drc} == 0)" "dot recast(`t') horizontal: twoway rc ${q4802_trc}, dash rc ${q4802_drc}"
+}
+_hc_done "Q4802-5" "the flags on dot and under recast(b) are judged as twoway judges them"
+
+// Q4802-6 (RH-9 RH-10) -- scatteri recast to bar or area takes the flags
+// and is turned.
+foreach t in bar area {
+    _q4802_fig 6 scatteri 1 2 3 4 5 6, recast(`t') horizontal
+    _hc_expect "Q4802-6" "(${q4802_trc} == 0 & ${q4802_drc} == 0)" "scatteri recast(`t') horizontal: twoway rc ${q4802_trc}, dash rc ${q4802_drc}"
+    _hc_expect "Q4802-6" "(${q4802_xhi} < 6 & ${q4802_yhi} >= 6)" "scatteri recast(`t') horizontal not turned: x ${q4802_xlo}..${q4802_xhi}, y ${q4802_ylo}..${q4802_yhi}"
+}
+_hc_done "Q4802-6" "scatteri recast(bar) and recast(area) take horizontal and are turned"
 
 // ----------------------------------------------------------------
 cd "`hc_home'"

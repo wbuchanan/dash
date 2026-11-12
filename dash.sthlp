@@ -438,7 +438,10 @@ them and is turned; an abbreviation of {cmd:bar}, such as
 outline of {cmd:pstyle(p1)}, not that of a bar); on {cmd:dot} only a
 recast to {cmd:bar}, {cmd:area}, {cmd:dot}, {cmd:dropline} or
 {cmd:spike} typed in full takes them.  The two together are "may not
-combine options horizontal and vertical", r(198).
+combine options horizontal and vertical", r(198).  A {cmd:histogram} or
+{cmd:rbar} recast with {cmd:horizontal}, which {cmd:twoway} draws as a
+broken picture, is drawn as {help dash##recast:Recast} says; see
+{help dash##differences:Differences from twoway}.
 
 {pstd}
 {ul:Time-series operators.}  A plot variable may carry {cmd:L.}, {cmd:F.},
@@ -1383,8 +1386,9 @@ there, is an invalid point.  The literal is read as data and never run.
 {phang2}
     {ul:recast() with horizontal on histogram and rbar.}  {cmd:histogram}
     and {cmd:rbar} with {cmd:recast()} and {cmd:horizontal} are drawn
-    turned; {cmd:twoway} draws a broken picture there -- see
-    {help dash##recast:Recast}.
+    turned (an {cmd:rbar} recast to {cmd:bar}, {cmd:area}, {cmd:spike},
+    {cmd:dropline} or {cmd:dot} upright); {cmd:twoway} draws a broken
+    picture there -- see {help dash##recast:Recast}.
 
 {marker validation}
 {phang2}    {ul:Option values.}  A value is refused where {cmd:twoway}
@@ -4424,9 +4428,13 @@ there and draws the dot graph unchanged, and so does {cmd:dash}.  On {cmd:lfitci
 typed in full, are refused, r(198), as {cmd:twoway} refuses them, and so
 is a spelling of {cmd:recast()} shorter than its name; the shorter
 spellings {cmd:ty} and {cmd:typ} of {cmd:type()} are taken there and drawn
-as {cmd:ciplot()} draws them, as in {cmd:twoway}.  A {cmd:histogram} or
-{cmd:rbar} recast with {cmd:horizontal} is drawn as the exact transpose
-of the upright layer; {cmd:twoway} draws a broken picture there:
+as {cmd:ciplot()} draws them, as in {cmd:twoway}.  A {cmd:histogram}
+recast with {cmd:horizontal}, and an {cmd:rbar} recast with it to
+{cmd:line}, {cmd:scatter}, {cmd:connected} or a range type, is drawn as
+the exact transpose of the upright layer (an {cmd:rbar} recast to
+{cmd:bar}, {cmd:area}, {cmd:spike}, {cmd:dropline} or {cmd:dot} is drawn
+upright, as every range type recast to one is); {cmd:twoway} draws a
+broken picture there:
 {cmd:histogram mpg, recast(bar) horizontal} (auto data) draws its
 bars on an x axis running from -1.81 to 1.91 under labels 0 to .1, and
 {cmd:rbar} {it:lo hi x}{cmd:, recast(rcap) horizontal} draws {it:lo}

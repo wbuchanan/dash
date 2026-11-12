@@ -19,8 +19,13 @@ and coverage-audit rows that repeated them, held to what dash does.
 * GW-22 (TestUnitsAndDrawnOptions): the units sentence and the
   options-given-twice sub-point (Q4801-9).
 
+WP-48 section 48-02:
+
+* RH-15 (TestRecastClaims): the Orientation and Recast paragraphs, held to
+  what WP-46 landed (Q4802-1 .. Q4802-6).
+
 The Stata half -- what dash does when the sentence's command is run -- is
-test_help_claims_8.cscript's Q4801 block.
+test_help_claims_8.cscript's Q4801 and Q4802 blocks.
 """
 import os
 import re
@@ -282,3 +287,61 @@ class TestUnitsAndDrawnOptions:
                 "plegend(), pcycle() and the kernel are drawn and not "
                 "named") in para
         assert "the graph-wide settings the Unsupported list names" in para
+
+
+# ---------------------------------------------------------------------------
+# WP-48 section 48-02
+# ---------------------------------------------------------------------------
+
+def _orientation():
+    p = _help_prose()
+    i = p.index("Orientation. horizontal draws a plot on its side")
+    return p[i:p.index("Time-series operators.", i)]
+
+
+def _recast():
+    p = _help_prose()
+    i = p.index("Recast. recast(plottype)")
+    return p[i:p.index("Legend keys and default axis titles.", i)]
+
+
+class TestRecastClaims:
+    """RH-15: the Orientation and Recast paragraphs state what WP-46 landed
+    (test_help_claims_8.cscript Q4802-1 .. Q4802-6): horizontal judged on
+    the recast target; a range type recast to line, scatter or connected
+    turned, to a bar-like type upright (rbar too); scatteri recast to bar
+    or area turned; a range type drawn as a yx type keeps both bounds;
+    histogram recast(bar) a bin wide, the others one x unit wide; and the
+    broken picture twoway draws for histogram and rbar under recast() and
+    horizontal linked, not restated."""
+
+    def test_orientation_paragraph(self):
+        para = _orientation()
+        for s in ("judged on the type recast() names, as twoway judges it",
+                  "a range type recast to line, scatter or connected takes "
+                  "both and is turned",
+                  "recast to bar, area, spike, dropline or dot it takes them "
+                  "and is drawn upright",
+                  "scatteri recast to bar or area takes them and is turned",
+                  "on dot only a recast to bar, area, dot, dropline or spike "
+                  "typed in full takes them",
+                  "A histogram or rbar recast with horizontal, which twoway "
+                  "draws as a broken picture, is drawn as Recast says; see "
+                  "Differences from twoway."):
+            assert s in para, s
+        assert "judged after recast()" not in para
+
+    def test_recast_paragraph(self):
+        para = _recast()
+        for s in ("a range type named as a yx type draws its first bound and "
+                  "keeps both on the axis, in its title and key",
+                  "(histogram: one bin wide; the others: one x unit wide)",
+                  "A histogram recast with horizontal, and an rbar recast "
+                  "with it to line, scatter, connected or a range type, is "
+                  "drawn as the exact transpose of the upright layer (an "
+                  "rbar recast to bar, area, spike, dropline or dot is drawn "
+                  "upright, as every range type recast to one is); twoway "
+                  "draws a broken picture there:"):
+            assert s in para, s
+        assert ("A histogram or rbar recast with horizontal is drawn as the "
+                "exact transpose") not in para

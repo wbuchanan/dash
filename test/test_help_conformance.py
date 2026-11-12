@@ -1694,4 +1694,7 @@ class TestInternalLinksResolve:
         # old -> new: 199 -> 201 links: the options-given-twice sub-point
         # links colorvar and unsupported for the options it says are drawn
         # or named (WP-48 GW-22).
-        assert len(refs) == 201 and len(set(refs)) == 60
+        # old -> new: 201 -> 203 links: the Orientation paragraph links
+        # Recast and Differences from twoway for histogram and rbar under
+        # recast() and horizontal (WP-48 RH-15).
+        assert len(refs) == 203 and len(set(refs)) == 60

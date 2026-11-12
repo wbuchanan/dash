@@ -254,10 +254,15 @@ class TestRecastHorizontalDifference:
         text = _help()
         diff = _flat(_between(text, "{marker differences}",
                               "{marker validation}"))
+        # Flipped (WP-48 RH-15): "are drawn turned" alone was wrong
+        # because an rbar recast to a bar-like type is drawn upright, as
+        # every range type recast to one is (test_help_claims_8.cscript
+        # Q4802-2).
         assert ("{cmd:histogram} and {cmd:rbar} with {cmd:recast()} and "
-                "{cmd:horizontal} are drawn turned; {cmd:twoway} draws a "
-                "broken picture there -- see {help dash##recast:Recast}"
-                ) in diff
+                "{cmd:horizontal} are drawn turned (an {cmd:rbar} recast to "
+                "{cmd:bar}, {cmd:area}, {cmd:spike}, {cmd:dropline} or "
+                "{cmd:dot} upright); {cmd:twoway} draws a broken picture "
+                "there -- see {help dash##recast:Recast}") in diff
         assert "{marker recast}" in text
         rec = _flat(_between(text, "{marker recast}", "{it:Legend keys"))
         assert ("{cmd:histogram mpg, recast(bar) horizontal}" in rec

@@ -1025,6 +1025,7 @@ and now matches Stata.
 - Stale help passages on taken, noted and refused options state what dash does (WP-48, basic:PT-16)
 - The help's units sentence and its list of noted options say what dash draws (WP-48, GW-22)
 - The help's Unsupported list names every option dash notes, checked against twoway's own tables (WP-48, syn:SD-15)
+- The help's orientation and recast paragraphs state what dash draws (WP-48, RH-15)
 
 ### Fixed in WP-47
 
