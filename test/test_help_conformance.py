@@ -1656,4 +1656,7 @@ class TestInternalLinksResolve:
         # item takes (WP-45 WE; the item is now 22).
         # old -> new: 198 -> 199 links, 59 -> 60 targets: WP-46 RH-8 the
         # Differences line links the Recast paragraph's new marker recast.
-        assert len(refs) == 199 and len(set(refs)) == 60
+        # old -> new: 199 -> 201 links: the options-given-twice sub-point
+        # links colorvar and unsupported for the options it says are drawn
+        # or named (WP-48 GW-22).
+        assert len(refs) == 201 and len(set(refs)) == 60

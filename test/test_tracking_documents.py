@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'GW-22': "Units paragraph says xsize/ysize do not change the size reference (they do); pcycle()/clegend() 'named in the note' when drawn",
     'syn:SD-15': 'The Unsupported list is not checked against the tw_takes table, so p#(), ztick/zmlabel/zmtick are missing',
     'RH-15': "Horizontal/recast help claims ('as twoway draws it', 'judged after recast()', 'one x unit wide') are contradicted or undocumented differences",
     'ECO-16': 'Help and README understate ecosystem losses (graph display/use/replay, putpdf, putexcel, markdown, iframe note unlinked); no recipes for commands that draw through twoway (histogram, marginsplot, sts graph)',

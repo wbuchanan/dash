@@ -1069,6 +1069,24 @@ _hc_expect "Q4801-8" "(`rc' == 0)" "scatter acolor(): rc `rc'"
 _hc_log "Q4801-8" "`lf'" "note:" 0
 _hc_done "Q4801-8" "acolor(), alcolor(), alwidth(), alpattern() on scatter: no note"
 
+// Q4801-9 -- the options twoway takes once, given once: clegend(),
+// plegend(), pcycle(), atobs, nofit, fitplot(), ciplot() and a kernel
+// written as an option of its own are drawn with no note; a graph-wide
+// setting of the Unsupported list (titling) is named.
+foreach c in "scatter mpg weight, clegend(on)" "scatter mpg weight, plegend(on)" "scatter mpg weight, pcycle(2)" "lfit mpg weight, atobs" "lfitci mpg weight, nofit" "lfitci mpg weight, fitplot(line) ciplot(rline)" "lpoly mpg weight, gaussian" {
+    _hc_run "" "dash `c'"
+    local rc = r(rc)
+    local lf "`r(logfile)'"
+    _hc_expect "Q4801-9" "(`rc' == 0)" "`c': rc `rc'"
+    _hc_log "Q4801-9" "`lf'" "note:" 0
+}
+_hc_run "" "dash scatter mpg weight, titling"
+local rc = r(rc)
+local lf "`r(logfile)'"
+_hc_expect "Q4801-9" "(`rc' == 0)" "titling: rc `rc'"
+_hc_log "Q4801-9" "`lf'" "(note:  dash: ignoring unsupported option(s): titling)" 1 1
+_hc_done "Q4801-9" "clegend(), plegend(), pcycle() and the fit options drawn with no note; titling named"
+
 // Q4801-10 -- by()'s style(rescale) and subtitle()'s box words are drawn
 // with no note.
 foreach o in "by(foreign, style(rescale))" "by(foreign) subtitle(, fcolor(red) lcolor(blue))" "by(foreign) subtitle(, nobox)" {

@@ -6,6 +6,18 @@ and coverage-audit rows that repeated them, held to what dash does.
   ``titel(x)`` "appears in the note" and that xreverse, xcommon, lockaspect
   and the like "reach the note"; dash refuses each as twoway refuses it,
   r(198) (test_help_claims_8.cscript HC8-06, Q4801-1, Q4801-2).
+* plot:PT-5 (TestGraphPrefix): a Differences sub-point called graph a
+  prefix read before twoway and quoted "unrecognised plot type 'graph'";
+  dash refuses graph in every position, as twoway does (Q4801-3).
+* basic:PT-16 (TestStalePassages): passages on headlabel, mangle(),
+  recast() on dot, degree() above 7, fpfit's bwidth(), the ci outline
+  options, mlabel(t*), derived-field names, merged keys, by()'s rescale
+  and label box, lalign(), dlalign() and the Not drawn entry's scope, with
+  the coverage-audit rows and two docstrings that repeated them
+  (Q4801-4 .. Q4801-8, Q4801-10).  Those an earlier section corrected are
+  pinned here too.
+* GW-22 (TestUnitsAndDrawnOptions): the units sentence and the
+  options-given-twice sub-point (Q4801-9).
 
 The Stata half -- what dash does when the sentence's command is run -- is
 test_help_claims_8.cscript's Q4801 block.
@@ -246,3 +258,27 @@ class TestStalePassages:
         assert "stays dash's own bound" not in doc
         assert "degree(8) -- which twoway draws -- is drawn with a note" \
             in doc
+
+
+class TestUnitsAndDrawnOptions:
+    """GW-22: the units sentence converts #pt, #in and #cm at the smaller of
+    xsize() and ysize() (_dash_ref_in; sizing_truth.json ref_*), and the
+    options-given-twice sentence does not call clegend(), plegend() or
+    pcycle() named in the note (Q4801-9: each given once draws, no note)."""
+
+    def test_units_reference(self):
+        assert not _has("(xsize() and ysize() do not change it)")
+        assert _has("#pt, #in and #cm, which are converted at the scheme's "
+                    "smaller graphsize side (the smaller of xsize() and "
+                    "ysize() when either is given, as twoway converts them)")
+
+    def test_drawn_not_noted(self):
+        p = _help_prose()
+        i = p.index("So are atobs on the fits")
+        para = p[i:p.index("An option written in upper case", i)]
+        assert "still named in the note" not in para
+        assert "dash names in its note that twoway takes once" not in para
+        assert ("Given once, atobs, nofit, fitplot(), ciplot(), clegend(), "
+                "plegend(), pcycle() and the kernel are drawn and not "
+                "named") in para
+        assert "the graph-wide settings the Unsupported list names" in para

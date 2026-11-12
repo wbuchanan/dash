@@ -1023,6 +1023,7 @@ and now matches Stata.
 - The help says a misspelled option and the words that are no twoway option are refused, as dash refuses them; it said they reached the note (WP-48, LT-27)
 - The help no longer describes graph as a prefix read before twoway; dash refuses it in every position, as twoway does (WP-48, plot:PT-5)
 - Stale help passages on taken, noted and refused options state what dash does (WP-48, basic:PT-16)
+- The help's units sentence and its list of noted options say what dash draws (WP-48, GW-22)
 
 ### Fixed in WP-47
 

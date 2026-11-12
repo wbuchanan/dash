@@ -1122,19 +1122,24 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:boundary}, {cmd:nodropbase}, {cmd:baroffset()} on {cmd:rbar} --
     given twice is refused as {cmd:twoway} refuses it:
     {cmd:option scheme() not allowed}, {cmd:r(198)}.  So are
-    {cmd:atobs} on the fits, {cmd:nofit}, {cmd:fitplot()} and
-    {cmd:ciplot()}, which are drawn, the options
-    {cmd:dash} names in its note that {cmd:twoway} takes once, and a
-    kernel written as an option of its own ({cmd:gaussian}):
-    {cmd:clegend()}, {cmd:plegend()}, {cmd:pcycle()} and the other
-    {cmd:colorvar()} and graph-wide options {cmd:twoway} declares:
+    {cmd:atobs} on the fits, {cmd:nofit}, {cmd:fitplot()},
+    {cmd:ciplot()}, {cmd:clegend()}, {cmd:plegend()}, {cmd:pcycle()} and
+    the other {cmd:colorvar()} and graph-wide options {cmd:twoway}
+    declares, and a kernel written as an option of its own
+    ({cmd:gaussian}):
     {cmd:atobs} given twice on {cmd:lfit} is
     {cmd:option atobs not allowed}, {cmd:r(198)}, naming the second copy as
     typed (the {cmd:no} copy of a pair such as {cmd:dropbase} and
     {cmd:nodropbase}, which are one option), and the graph-wide ones
-    are refused in a second plot group or {cmd:||} segment too.  Each one
-    given once is still named in the note, but for the kernel, which is
-    drawn (see {cmd:kernel()}).
+    are refused in a second plot group or {cmd:||} segment too.  Given
+    once, {cmd:atobs}, {cmd:nofit}, {cmd:fitplot()}, {cmd:ciplot()},
+    {cmd:clegend()}, {cmd:plegend()}, {cmd:pcycle()} and the kernel are
+    drawn and not named (see {help dash##colorvar:colorvar()} for the three
+    graph options and {cmd:kernel()}); of the graph-wide ones, the
+    graph-wide settings the Unsupported list names ({cmd:titling},
+    {cmd:copyscheme}, {cmd:logging} and the others there) are named in the
+    note
+    (see {help dash##unsupported:Unsupported Stata twoway options}).
     An option written in upper case -- {cmd:ATOBS}, {cmd:MCOLOR(red)},
     {cmd:Title(x)}, and {cmd:dash}'s own {cmd:HOVER()} -- is no option,
     since option names are lower case, and is refused as {cmd:twoway}
@@ -7429,8 +7434,8 @@ number, the {cmd:symbolsize} and {cmd:gsize} keywords (case-sensitive,
 {cmd:vhuge} and {cmd:ehuge} included for markers), {it:#}{cmd:rs},
 {cmd:*}{it:#} (times the size drawn there otherwise) and
 {it:#}{cmd:pt}, {it:#}{cmd:in} and {it:#}{cmd:cm}, which are converted at
-the scheme's smaller {cmd:graphsize} side ({cmd:xsize()} and {cmd:ysize()}
-do not change it).  An unknown or wrong-case name draws the class's
+the scheme's smaller {cmd:graphsize} side (the smaller of {cmd:xsize()} and
+{cmd:ysize()} when either is given, as {cmd:twoway} converts them).  An unknown or wrong-case name draws the class's
 {cmd:medium} with a note, as in {cmd:twoway}; a marker draws the scheme's
 own default size ({cmd:large} under {cmd:economist}).  A negative size
 draws nothing.  A
