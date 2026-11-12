@@ -42,7 +42,7 @@ class TestTheRealTable:
         rows = S.read_table(_runner())
         names = [r[0] for r in rows]
         assert sorted(names) == sorted(V.registered_scripts(_runner()))
-        assert len(names) == len(set(names)) == 83  # 82 -> 83: test_wp47_truth.cscript (WP-47 W0); 81 -> 82: test_wp46_truth.cscript (WP-46 W0); 80 -> 81: test_wp45_truth.cscript (WP-45 W0); 79 -> 80: test_wp44_truth.cscript (WP-44 W0); 78 -> 79: test_wp43_truth.cscript (WP-43 W0); 77 -> 78: test_wp42_truth.cscript (WP-42 W0); 76 -> 77: test_wp41_truth.cscript (WP-41 W0); 75 -> 76: test_wp40_truth.cscript (WP-40 W0); 74 -> 75: test_wp38_truth.cscript (WP-38 W0); 73 -> 74: test_wp37_truth.cscript (WP-37 W0); 72 -> 73: test_wp36_truth.cscript (WP-36 W0); 71 -> 72: test_wp35_truth.cscript (WP-35 W0); 70 -> 71: test_wp34_truth.cscript (WP-34 W0); 68 -> 69: test_wp31_truth.cscript (WP-31 S01); 69 -> 70: test_wp33_truth.cscript (WP-33 33-01)
+        assert len(names) == len(set(names)) == 84  # 83 -> 84: test_wp49_truth.cscript (WP-49 W0); 82 -> 83: test_wp47_truth.cscript (WP-47 W0); 81 -> 82: test_wp46_truth.cscript (WP-46 W0); 80 -> 81: test_wp45_truth.cscript (WP-45 W0); 79 -> 80: test_wp44_truth.cscript (WP-44 W0); 78 -> 79: test_wp43_truth.cscript (WP-43 W0); 77 -> 78: test_wp42_truth.cscript (WP-42 W0); 76 -> 77: test_wp41_truth.cscript (WP-41 W0); 75 -> 76: test_wp40_truth.cscript (WP-40 W0); 74 -> 75: test_wp38_truth.cscript (WP-38 W0); 73 -> 74: test_wp37_truth.cscript (WP-37 W0); 72 -> 73: test_wp36_truth.cscript (WP-36 W0); 71 -> 72: test_wp35_truth.cscript (WP-35 W0); 70 -> 71: test_wp34_truth.cscript (WP-34 W0); 68 -> 69: test_wp31_truth.cscript (WP-31 S01); 69 -> 70: test_wp33_truth.cscript (WP-33 33-01)
 
     def test_the_fixed_port_scripts_share_a_shard_for_every_n(self):
         rows = S.read_table(_runner())
@@ -111,7 +111,8 @@ class TestTheRealTable:
             "test_wp44_truth.cscript",  # old -> new: plus wp44 (WP-44 W0)
             "test_wp45_truth.cscript",  # old -> new: plus wp45 (WP-45 W0)
             "test_wp46_truth.cscript",  # old -> new: plus wp46 (WP-46 W0)
-            "test_wp47_truth.cscript"]  # old -> new: plus wp47 (WP-47 W0)
+            "test_wp47_truth.cscript",  # old -> new: plus wp47 (WP-47 W0)
+            "test_wp49_truth.cscript"]  # old -> new: plus wp49 (WP-49 W0)
         with open(S.WP30, encoding="utf-8") as fh:
             text = fh.read()
         secs = S.wp30_seconds(text)

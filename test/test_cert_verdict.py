@@ -310,7 +310,8 @@ class TestTheTiers:
         # old -> new: 77 -> 78: test_wp45_truth.cscript (WP-45 W0)
         # old -> new: 78 -> 79: test_wp46_truth.cscript (WP-46 W0)
         # old -> new: 79 -> 80: test_wp47_truth.cscript (WP-47 W0)
-        assert len(default) == 80  # 83 registered, less the three
+        # old -> new: 80 -> 81: test_wp49_truth.cscript (WP-49 W0)
+        assert len(default) == 81  # 84 registered, less the three
         assert set(default) | set(V.release_scripts(text)) == set(
             V.registered_scripts(text))
 

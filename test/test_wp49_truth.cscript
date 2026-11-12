@@ -1,0 +1,242 @@
+*! test_wp49_truth.cscript
+*! WP-49's ONE certification script (.ultraplan/sections/index.md PD-6):
+*! every comparison with twoway's drawing or with Stata's own values that
+*! WP-49's sections need lives here, one block per GAPS4 row (or per
+*! harness tool), appended above the "append new blocks above this line"
+*! marker in section order.  Refusal, message and return-code checks join
+*! the EXISTING script for their area (merge rule R1).
+*!
+*! Made from test/templates/wp_truth_template.cscript (49 -> the WP's
+*! number).  S00 is the scaffold smoke (Q4900-1).  A section appends
+*! `* ==== S<MM> <lead id>: <what> ====` ... `* ==== end S<MM> ====` (or
+*! `S<MM> tool: <what>` for a section with no item), its helper programs
+*! directly above its first header, and writes only inside its own
+*! blocks.  Case ids are Q49<MM>-<k> (PD-5).
+*!
+*! Usage: via run_all_cscripts.do.  One block alone: WP49_ONLY=S<MM> in
+*! the driver's environment.  Each block prints "S<MM> start" and "S<MM>
+*! end" with the date and time.  The suite runs it in every session;
+*! DASH_CERT_SHARD=k/N runs part k of N of the blocks; a part with no
+*! block ends 0.
+
+cscript "WP-49 truth: twoway comparisons" adodir ".."
+
+clear all
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
+set more off
+
+
+do "cert_helpers.do"
+quietly do "cert_svg.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+global dash_nobrowser 1
+
+// ----------------------------------------------------------------
+// Tally helpers -- test_wp29_truth.cscript's _w29_expect/_w29_done,
+// renamed _w49_ for this script.  A case is any number of
+// _w49_expect lines closed by one _w49_done.
+// ----------------------------------------------------------------
+global w49_nfail    = 0
+global w49_faillist ""
+global w49_bad      = 0
+global w49_ncase    = 0
+
+capture program drop _w49_expect
+program define _w49_expect
+    version 19
+    args id cond msg
+    if !(`cond') {
+        display as error `"`id' FAIL: `macval(msg)'"'
+        global w49_bad = 1
+    }
+end
+
+capture program drop _w49_done
+program define _w49_done
+    version 19
+    args id msg
+    if ${w49_bad} {
+        global w49_nfail    = ${w49_nfail} + 1
+        global w49_faillist "${w49_faillist} `id'"
+    }
+    else display as text `"`id' PASS: `macval(msg)'"'
+    global w49_bad   = 0
+    global w49_ncase = ${w49_ncase} + 1
+end
+
+// A fresh directory for this run's files, never one that already exists:
+// a fixed name in a shared temp directory could be planted by another
+// account (rule 1), so a name Stata has not handed out before is made and
+// the run fails if it cannot be.  Every block writes only under it.
+tempfile w49_base
+local w49_work "`w49_base'_w49"
+capture mkdir "`w49_work'"
+if _rc {
+    display as error "test_wp49_truth: cannot create the work directory `w49_work' (rc `=_rc')"
+    exit 9
+}
+
+// ---- parts: begin (WP-49 test performance) ----
+// The certification suite runs this script in every one of its sessions
+// (its row in run_all_cscripts.do's shard table is "* * *"); with
+// DASH_CERT_SHARD=k/N set, the session runs part k of N of the blocks.
+// The parts are balanced longest first onto the least loaded part (the
+// lowest numbered of equals), by the seconds below -- a block not listed
+// counts 1 s (section-01 D-01.f) -- the rule scripts/cert_shards.py uses
+// for the scripts.  Unset, or with WP49_ONLY set
+// (which keeps its precedence), every block runs.  A block runs when its
+// gate finds its id in w49_run.
+// Seconds: each block's start/end lines in the WP's last measured
+// certification run, rounded up, at least 1; a block not listed
+// counts 1 s.
+local w49_secs S00 1
+local w49_sh : environment DASH_CERT_SHARD
+mata: st_local("w49_ok", strofreal(st_local("w49_sh") == "" | ustrregexm(st_local("w49_sh"), "^[1-4]/[1-4]$")))
+if !`w49_ok' {
+    display as error "test_wp49_truth: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 4"
+    exit 198
+}
+local w49_k 1
+local w49_N 1
+if "`w49_sh'" != "" {
+    local w49_k = real(substr("`w49_sh'", 1, 1))
+    local w49_N = real(substr("`w49_sh'", 3, 1))
+}
+local w49_only : env WP49_ONLY
+if `"`macval(w49_only)'"' != "" | `w49_N' == 1 {
+    local w49_k 1
+    local w49_N 1
+}
+if `w49_k' > `w49_N' {
+    display as error "test_wp49_truth: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 4"
+    exit 198
+}
+capture confirm file "test_wp49_truth.cscript"
+if _rc {
+    display as error "test_wp49_truth: run it from test/, where it reads its own blocks"
+    exit 601
+}
+capture mata: mata drop _w49_part()
+mata:
+// The ids of the blocks (their header lines, in file order), and those of
+// part k of n: longest first onto the least loaded part.
+void _w49_part(string scalar file, string scalar table, real scalar k,
+               real scalar n)
+{
+    string colvector lines, ids
+    string rowvector tok
+    real colvector sec, o, at
+    real rowvector load
+    real scalar i, j, p, best
+    string scalar run
+
+    lines = cat(file)
+    ids = J(0, 1, "")
+    for (i = 1; i <= rows(lines); i++) {
+        if (ustrregexm(lines[i], "^\* ==== (S[0-9]+) ")) {
+            if (!anyof(ids, ustrregexs(1))) ids = ids \ ustrregexs(1)
+        }
+    }
+    sec = J(rows(ids), 1, 1)
+    tok = tokens(table)
+    for (j = 1; j + 1 <= cols(tok); j = j + 2) {
+        for (i = 1; i <= rows(ids); i++) {
+            if (ids[i] == tok[j]) sec[i] = strtoreal(tok[j + 1])
+        }
+    }
+    o = order((-sec, (1::rows(ids))), (1, 2))
+    load = J(1, n, 0)
+    at = J(rows(ids), 1, 0)
+    for (i = 1; i <= rows(o); i++) {
+        best = 1
+        for (p = 2; p <= n; p++) if (load[p] < load[best]) best = p
+        load[best] = load[best] + sec[o[i]]
+        at[o[i]] = best
+    }
+    run = ""
+    for (i = 1; i <= rows(ids); i++) if (at[i] == k) run = run + " " + ids[i]
+    st_local("w49_run", strtrim(run))
+}
+end
+mata: _w49_part("test_wp49_truth.cscript", st_local("w49_secs"), `w49_k', `w49_N')
+display as text "test_wp49_truth: part `w49_k'/`w49_N' runs `: word count `w49_run'' blocks: `w49_run'"
+// ---- parts: end ----
+
+* ==== S00 scaffold: the helpers load and a twoway SVG is read ====
+local only : env WP49_ONLY
+if inlist("`only'", "", "S00") & `: list posof "S00" in w49_run' {
+    display as text "S00 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4900-1: cert_svg_export and cert_svg_texts on one twoway scatter,
+    // and dash's own programs are loaded from this tree.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    quietly twoway scatter mpg weight, name(w49s01, replace)
+    cert_svg_export, name(w49s01) file("`w49_work'/w49s01.svg")
+    local s01_rc   = r(rc)
+    local s01_file "`r(file)'"
+    _w49_expect Q4900-1 "(`s01_rc' == 0)" "cert_svg_export rc `s01_rc'"
+    capture confirm file "`s01_file'"
+    _w49_expect Q4900-1 "(_rc == 0)" "r(file) `s01_file' does not exist"
+    cert_svg_texts, file("`s01_file'")
+    local s01_n    = r(n)
+    local s01_list "`r(list)'"
+    _w49_expect Q4900-1 "(`s01_n' > 0)" "cert_svg_texts found no text elements"
+    capture program list _dash_serve
+    _w49_expect Q4900-1 "(_rc == 0)" "dash.ado's _dash_serve is not loaded"
+    _w49_done Q4900-1 "a twoway SVG was written and read (`s01_n' texts); dash is loaded"
+
+    capture erase "`s01_file'"
+    capture erase "`s01_list'"
+    capture graph drop w49s01
+    display as text "S00 end " c(current_date) " " c(current_time)
+}
+* ==== end S00 ====
+
+* ==== append new blocks above this line ====
+
+// ----------------------------------------------------------------
+// Summary (test_wp29_truth.cscript's shape)
+// ----------------------------------------------------------------
+capture graph drop _all
+capture dash clear
+capture rmdir "`w49_work'"
+local nfail    = ${w49_nfail}
+local faillist "${w49_faillist}"
+local ncase    = ${w49_ncase}
+local only : env WP49_ONLY
+macro drop w49_nfail w49_faillist w49_bad w49_ncase
+display as text ""
+display as text "============================================================"
+if `ncase' == 0 {
+    if `w49_N' > 1 & `"`macval(only)'"' == "" & "`w49_run'" == "" {
+        display as text "test_wp49_truth: part `w49_k'/`w49_N' has no block to run"
+        display as text "============================================================"
+        exit 0
+    }
+    // A WP49_ONLY that names no block, or only a stub, ran nothing:
+    // that is not a pass.
+    display as error "  test_wp49_truth: no case ran (WP49_ONLY=`only')"
+    display as text "============================================================"
+    exit 9
+}
+else if `nfail' == 0 {
+    display as text "  test_wp49_truth: ALL CHECKS PASSED"
+    display as text "============================================================"
+}
+else {
+    display as error "  test_wp49_truth: `nfail' CHECK(S) FAILED"
+    display as error "  failing:`faillist'"
+    display as text "============================================================"
+    exit 9
+}
