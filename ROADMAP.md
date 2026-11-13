@@ -5477,9 +5477,26 @@ Summarised from .ultraplan/sections/index.md (WP-49) and the section decisions D
 - **Left open:** basic:PT-12's residual, BUGS.md "mlabalignment() and mlabjustification() without marker labels, zvarlabel() off contour, xscale()'s noreverse and ring(), and the catch-all words after the plot groups' comma are named where twoway draws the same picture" (S3).
 - **Gate (12nov2026):** `make test-all` on c3bb39e: pytest 46,066 passed, 9 failed (628 s), cert 78 of 81 (703 s), 1,343 s in all; the 12 readers left stale by 49-02's silence and notes (controls now taken in silence, the colour and gsize notes in twoway's words, a DROPIN mapping) were flipped in 94ab013, with no code change, and re-run alone: their 7 pytest files 606 passed, test_render_log_clean, test_option_report_paren and test_wp47_truth S04/S05 passed. `make cert-release` on c3bb39e: 3 of 3 (the WP-29/30/31 truth scripts, 592 s). The two run about 32 minutes, over the 5-minute rule (CLAUDE.md 11); the cuts are WP-50's.
 
-## WP-50 · Test-suite speed
+## WP-50 · Test-suite speed — DONE
+
+**GAPS4 closed:** none (infrastructure; no audit item)
+
+As a dash developer, I want `make test` to finish in at most five minutes and `make test-all` to take as little time as its coverage allows, so that I run the suite before every batch without waiting on it and no test is dropped to get there.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (WP-50, M3, Q29) and the sections 50-01..50-04, which hold them in full.
+
+- **Profile first (50-01).** `scripts/suite_profile.py` reads the timing plugin's JSON and the certification logs and names the bottlenecks, the slowest groups, collection time and a projection against 300 s; the profile is .ultraplan/handoff/wp50-profile.txt.
+- **Certification (50-02).** Every certification script loads dash with `run`; the template-made truth scripts run whole and only scripts over SPLIT_MIN (wp30, wp31) split into parts; 8 sessions side by side, their shards balanced on measured seconds (`cert_shards.py rebalance` and `add`).
+- **pytest (50-03).** One BLAS thread per worker, shared sweeps in three server files, and the 52 files ruled at 50-01-04 moved to the batch tier, which `make test-all` still runs; no test case is dropped (test_suite_cases_kept.py).
+- **Recorded (50-04).** `make test` at most 300 s, or a bottleneck record (PRD §8; rule 11).
 
 **Suite speed.** make test 1,056 s -> 285 s (8 workers, Stata's Python); make test-all pytest 627 s -> 583 s, cert 703 s (3 sessions) -> 238 s (8 sessions) wall. make test: 285 s wall (24,397 passed), at or under the five-minute target (CLAUDE.md rule 11, PRD §8), with the 52 files ruled at 50-01-04 moved to the batch tier and, applied at sign-off (377bb3be, 13nov2026), the batch tier's files left uncollected; before that fix it was 306 s. The fix was for the last bottleneck, 21.0 s of collection before the first test (16.1 s after; .ultraplan/handoff/wp50-profile.txt).
+
+- **Entries.** 0 WP-50 entries; 0 closed, 0 documented, 0 partly closed; BUGS.md holds 39 open entries.
+- **Left open:** none.
+- **Gate (13nov2026):** `make test-all` on 8105131: pytest 46,334 passed (555 s), cert 81 of 81 (8 sessions, 234 s), 802 s in all, green first time. `make cert-release` on 8105131: 3 of 3 (the WP-29/30/31 truth scripts, 547 s). `make test-all` is about 13 minutes, over the five-minute rule, which binds `make test` (285 s).
 
 ## Traceability matrix
 
