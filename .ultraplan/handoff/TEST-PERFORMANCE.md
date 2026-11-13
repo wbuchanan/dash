@@ -1,5 +1,58 @@
 # Test suite performance: where the time goes and how to reach 5 minutes
 
+## 0. WP-50 result (13nov2026)
+
+Measured by WP-50's batch-end runs (50-01 before, 50-04 after; full profile in
+.ultraplan/handoff/wp50-profile.txt).
+
+| | Before (50-01) | After (50-04) |
+|---|---|---|
+| `make test` wall (Stata's Python, 8 workers) | 1,056.4 s (34,833 tests, 3 failed) | 306.1 s (24,385 passed) |
+| `make test` test-seconds | 8,138.9 | 2,160.8 |
+| `make test` longest item | 149.1 s (test_contour_gen malformed_object[std]) | 14.5 s (test_test_integrity, group test-integrity-suite 14.7 s) |
+| `make test` collection (session start to first test) | 22.2 s | 21.0 s |
+| `make test-all` pytest wall (python3.14, batch tier) | 627.5 s (46,075 tests; WP-49 gate, c3bb39e) | 583.2 s (46,322 passed) |
+| `make test-all` pytest test-seconds | 4,737.5 | 4,366.1 |
+| `make test-all` cert wall | 703 s (3 sessions; 694.9 / 697.9 / 582.2 s summed) | 238 s (8 sessions; 182.9-234.4 s summed each) |
+| cert script runs per session | 35 / 42 / 34 | 9 / 11 / 8 / 8 / 12 / 8 / 8 / 17 |
+| dash loads per session (echoed load lines) | 30 / 38 / 32 | 8 / 9 / 8 / 6 / 9 / 7 / 7 / 16 |
+| WP truth scripts | 15 split in every session | all template-made ones whole; wp30/wp31 split (release tier) |
+| `make test-all` whole | 1,343 s | 835 s |
+
+Levers taken:
+- **Speed branch, merged first (ruled 13nov2026):** `Cut the batch-end suite's cost: Bokeh defaults once per class, eight balanced cert sessions` (eacb68f2), `Add cert_shards.py rebalance and place the table again after WP-47's blocks` (96784d1e), `Parse a dash command in about half the time: walk only the options it set` (c1cd1c41), `Bring the speed branch up to WP-48 and WP-49 (WP-50)` (f11d6c86). Cert 703 s on 3 sessions -> 238 s on 8.
+- **50-03:** `Run numpy's BLAS on one thread per test worker (WP-50 50-03)` (887c2c1d): Stata's Python runs numpy on OpenBLAS, and 8 workers x 12 threads oversubscribed the cores; the four contour files went from 175 s to 12.3 s wall, and the three time-bound failures pass. `Share one render per type and mode across sweep methods (WP-50 50-03)` (e1144cb0). `Move the ruled tests out of make test into the batch tier (WP-50 50-03)` (8a9d5ae8): 52 files, 1,958 test-seconds at the WP-49 gate, run at every batch end.
+- **50-02:** `Load dash with run in the certification scripts (WP-50 50-02)` (845b818c); `Run short WP truth scripts in one session and balance parts on measured seconds (WP-50 50-02)` (2a3203a7): every template-made truth script runs whole (SPLIT_MIN 228 s), about 36 s summed saved.
+
+Levers not taken: splits (no item over 60 s once BLAS ran on one thread); the render cache F (77 of 704 help_claims renders repeat, at most 11%, under its 25% rule); pruning (WP-50 deletes no test).
+
+make test: 306 s wall (24,385 passed), 6 s over the five-minute target (CLAUDE.md rule 11, PRD §8), with the 52 files ruled at 50-01-04 moved to the batch tier; the bottleneck is recorded below.
+
+**Bottleneck record (D-50-04.b):**
+- Bottleneck: the start of the run, not the tests.  The workers are busy
+  268.5-272.8 s (imbalance 4.3 s; longest group 14.7 s), and 21.0 s pass
+  from the session's start to its first test (collection: every worker
+  collects all 46,322 items of the tree, then the tier hook deselects the
+  21,937 batch-tier ones -- test_mode_parity.py and the 52 ruled files).
+- Fix proposed (newly found): in a run that does not keep the batch tier,
+  skip collecting the batch-tier files (a pytest_ignore_collect hook in
+  test/conftest.py reading the file list test_test_tiers.py already pins as
+  _RULED_BATCH_FILES, plus test_mode_parity.py), so make test never imports
+  them.
+- Estimated saving: about 10 s (basis: collection time scales with the items
+  collected; the batch tier is 21,937 / 46,322 = 47% of them; 21.0 s x 0.47
+  = 9.9 s), which would bring make test to about 296 s.
+- Cost: no coverage moves (the files still run at every batch end); the risk
+  is the file list drifting from the files' marks, guarded by a test that
+  every ignored file carries the batch mark and every marked file is
+  ignored.  A second lever, -n 10 workers (07oct2026: -n 8 -> 10 took 94 ->
+  89 s, -5%), would save about 15 s but breaks the 8-worker budget
+  (scripts/run_all_tests.sh, the memory rule): a maintainer ruling.
+
+## History (07-10oct2026)
+
+The analysis below is the one WP-30..WP-32 worked from, kept as it was.
+
 Measured 07oct2026 on `wp30-p1`, from the following:
 - **pytest:** the batch-2 full run with `DASH_SUITE_TIMING` (commit a0978fa): 24,815 tests, 6 workers, 867 s wall.
 - **cscripts:** the timed certification run with timer 100 and `DASH_CERT_PROFILE` (commit ba34eef): 67 scripts, one Stata session, 914 s wall.

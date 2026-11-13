@@ -5477,6 +5477,10 @@ Summarised from .ultraplan/sections/index.md (WP-49) and the section decisions D
 - **Left open:** basic:PT-12's residual, BUGS.md "mlabalignment() and mlabjustification() without marker labels, zvarlabel() off contour, xscale()'s noreverse and ring(), and the catch-all words after the plot groups' comma are named where twoway draws the same picture" (S3).
 - **Gate (12nov2026):** `make test-all` on c3bb39e: pytest 46,066 passed, 9 failed (628 s), cert 78 of 81 (703 s), 1,343 s in all; the 12 readers left stale by 49-02's silence and notes (controls now taken in silence, the colour and gsize notes in twoway's words, a DROPIN mapping) were flipped in 94ab013, with no code change, and re-run alone: their 7 pytest files 606 passed, test_render_log_clean, test_option_report_paren and test_wp47_truth S04/S05 passed. `make cert-release` on c3bb39e: 3 of 3 (the WP-29/30/31 truth scripts, 592 s). The two run about 32 minutes, over the 5-minute rule (CLAUDE.md 11); the cuts are WP-50's.
 
+## WP-50 · Test-suite speed
+
+**Suite speed.** make test 1,056 s -> 306 s (8 workers, Stata's Python); make test-all pytest 627 s -> 583 s, cert 703 s (3 sessions) -> 238 s (8 sessions) wall. make test: 306 s wall (24,385 passed), 6 s over the five-minute target (CLAUDE.md rule 11, PRD §8), with the 52 files ruled at 50-01-04 moved to the batch tier; the bottleneck is recorded below. Bottleneck: 21.0 s of collection before the first test; proposed fix: skip collecting the batch-tier files in a run that leaves the tier out, about 10 s (.ultraplan/handoff/wp50-profile.txt).
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.

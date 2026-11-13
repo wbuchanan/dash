@@ -1,0 +1,853 @@
+WP-50 suite profile (50-01), 13nov2026, on s3-bugs 9523a44
+=========================================================
+
+Sources
+- make test: one run, 13nov2026, Stata's Python /opt/anaconda3/bin/python3,
+  DASH_SUITE_TIMING=timing-make-test.json (first pytest block below);
+  log make-test.log, rc 2 (3 failed, 34,830 passed, 1,056.6 s).
+- make test-all: not re-run.  The WP-49 gate (12nov2026, on c3bb39e, the
+  same product code as 9523a44; since then only test readers and the
+  profile tooling changed) already wrote its timing: pytest_timing.json
+  (second pytest block; recorded before 9523a44, so it has no groups or
+  collection) and the three cert session logs (the cert blocks).  Paths:
+    /var/folders/cr/mvfn7pfn5l92lmfs20vc46lw0000gn/T/dash_all_tests.q77LZp/pytest_timing.json
+    /var/folders/cr/mvfn7pfn5l92lmfs20vc46lw0000gn/T/dash_cert.3ECeIW/s1/run_all_cscripts.log
+    /var/folders/cr/mvfn7pfn5l92lmfs20vc46lw0000gn/T/dash_cert.3ECeIW/s2/run_all_cscripts.log
+    /var/folders/cr/mvfn7pfn5l92lmfs20vc46lw0000gn/T/dash_cert.3ECeIW/s3/run_all_cscripts.log
+  free disk before the run: 865 GiB.
+
+pytest timing-make-test.json: wall 1056.4 s, 34833 tests, 8138.9 test-seconds
+  phases: setup 219.6 s, call 5552.0 s, teardown 2367.4 s
+  workers: 8, busiest gw5 1019.8 s, least busy gw7 1013.9 s, imbalance 5.9 s
+  collection: 22.2 s
+  longest xdist group: horizontal:served 14.7 s (10 tests)
+  slowest files (test-seconds, tests):
+       397.3 s     34  test/test_contour_gen.py
+       268.4 s     55  test/test_contour_js.py
+       215.1 s     61  test/test_contour_layers.py
+       151.6 s     34  test/test_contour_interp.py
+       118.3 s     84  test/test_serve_token.py
+       104.9 s    113  test/test_estimator_cost.py
+       100.4 s    468  test/test_server.py
+       100.2 s   1503  test/test_js_fit_refit.py
+        96.6 s    156  test/test_date_axis_residuals.py
+        78.6 s     82  test/test_installed_layout.py
+        76.6 s   1292  test/test_label_sinks.py
+        66.6 s    732  test/test_help_claims_7.py
+        66.5 s     53  test/test_serve_lifecycle.py
+        65.2 s    394  test/test_saved_filter_layers.py
+        63.4 s     78  test/test_runner_portability.py
+        62.7 s    119  test/test_saved_stale_cue.py
+        59.8 s    129  test/test_lpolyci_band.py
+        58.2 s     90  test/test_named_styles.py
+        56.6 s     18  test/test_server_serves.py
+        55.8 s    228  test/test_qualifier_logic.py
+        55.2 s    105  test/test_size_units.py
+        55.0 s    210  test/test_unsupported_report_is_true.py
+        50.0 s     42  test/test_dependency_guards.py
+        49.5 s    205  test/test_embedded_rows.py
+        49.3 s    419  test/test_server_layer_defects.py
+        47.9 s    210  test/test_join_order.py
+        47.4 s     26  test/test_false_sentences.py
+        46.3 s    122  test/test_resource_limits.py
+        44.7 s    122  test/test_by_axes_keys.py
+        44.1 s     57  test/test_default_axes.py
+  slowest tests:
+      149.07 s  test/test_contour_gen.py::TestTheRenderer::test_a_malformed_object_falls_back[std]
+      147.75 s  test/test_contour_interp.py::TestTheCap::test_above_the_cap_is_a_100_grid
+       95.30 s  test/test_contour_js.py::TestStale::test_kind_and_tag
+       95.17 s  test/test_contour_gen.py::TestTheRenderer::test_a_malformed_object_falls_back[srv]
+       93.30 s  test/test_contour_js.py::TestTheBranch::test_cap_leaves_it
+       85.12 s  test/test_contour_layers.py::TestTheCap::test_note_and_frozen[served]
+       83.51 s  test/test_contour_layers.py::TestTheCap::test_note_and_frozen[saved]
+       71.38 s  test/test_contour_gen.py::TestTheHandOver::test_served_move_refits
+       41.76 s  test/test_estimator_cost.py::TestTheCostIsBounded::test_fpfit_is_several_times_faster_than_the_full_search
+       36.69 s  test/test_contour_gen.py::TestTheRenderer::test_a_panel_with_no_grid_is_fitted[std]
+       24.45 s  test/test_named_styles.py::TestRoles::test_against_stata
+       20.46 s  test/test_estimator_cost.py::TestLpolyciCost::test_the_band_costs_a_few_lpolys
+       19.40 s  test/test_dependency_guards.py::TestTheGuardOrder::test_the_loader_and_the_render_run_the_guard_first
+       18.53 s  test/test_by_contour_cuts.py::TestGridPanels::test_gridded_panels_keep_statas_cuts[served]
+       17.82 s  test/test_horizontal_moves.py::TestAfterASavedMove::test_a_turned_layer_stays_turned
+       17.61 s  test/test_saved_stale_cue.py::TestTheCueAppearsOnAMove::test_a_capped_contour_is_marked
+       17.29 s  test/test_serve_token.py::TestBokehServeAlwaysHasAKey::test_a_set_but_invalid_env_refuses_every_session
+       15.41 s  test/test_contour_gen.py::TestTheRenderer::test_a_panel_with_no_grid_is_fitted[srv]
+       14.83 s  test/test_horizontal_moves.py::TestAfterAServedMove::test_a_turned_layer_stays_turned
+       14.08 s  test/test_test_integrity.py::TestTheSuiteCanFail::test_no_test_catches_assertion_error@test-integrity-suite
+       13.56 s  test/test_contour_layers.py::TestAgainstTheFixture::test_level_sets[auto-shepard]
+       11.83 s  test/test_false_sentences.py::TestHR02::test_name_registers
+       11.74 s  test/test_by_grid.py::TestTheGridIsDrawn::test_every_probe[saved-foreign-rep78, total]
+       11.73 s  test/test_by_contour_cuts.py::TestGridPanels::test_gridded_panels_keep_statas_cuts[saved]
+       10.12 s  test/test_horizontal.py::TestHorizontalIsTheTranspose::test_type[served]@horizontal:served
+        9.98 s  test/test_by_grid.py::TestTheSizes::test_every_numeric_size_is_scaled
+        9.75 s  test/test_contour_js.py::TestParityWithContourpy::test_bands[auto-thinplatespline]
+        9.20 s  test/test_ts_operators.py::TestBothModesMatchTwoway::test_every_probe[served]
+        9.17 s  test/test_date_axis_residuals.py::TestTheKeyTextTruth::test_every_probe_keys_as_twoway[served]
+        8.82 s  test/test_tracking_documents.py::TestGaps4Tracking::test_the_gaps4_closeout_counts_are_computed
+pytest pytest_timing.json: wall 627.5 s, 46075 tests, 4737.5 test-seconds
+  phases: setup 180.8 s, call 4206.3 s, teardown 350.4 s
+  workers: 8, busiest gw7 596.2 s, least busy gw3 586.9 s, imbalance 9.3 s
+  collection: not recorded
+  longest xdist group: not recorded
+  slowest files (test-seconds, tests):
+       409.9 s  11096  test/test_mode_parity.py
+        89.4 s     84  test/test_serve_token.py
+        85.2 s   1292  test/test_label_sinks.py
+        84.9 s    468  test/test_server.py
+        80.1 s   1503  test/test_js_fit_refit.py
+        67.5 s     82  test/test_installed_layout.py
+        62.1 s    732  test/test_help_claims_7.py
+        55.8 s     78  test/test_runner_portability.py
+        53.7 s    394  test/test_saved_filter_layers.py
+        49.3 s    210  test/test_unsupported_report_is_true.py
+        49.3 s     90  test/test_named_styles.py
+        48.4 s    129  test/test_lpolyci_band.py
+        45.4 s     88  test/test_scheme_rendered_output.py
+        44.6 s     96  test/test_scheme_resolution.py
+        43.3 s     26  test/test_horizontal_moves.py
+        43.2 s    122  test/test_by_axes_keys.py
+        42.9 s     53  test/test_serve_lifecycle.py
+        42.8 s    105  test/test_size_units.py
+        38.7 s    419  test/test_server_layer_defects.py
+        35.5 s    149  test/test_help_claims_4.py
+        35.3 s    205  test/test_embedded_rows.py
+        34.1 s    122  test/test_resource_limits.py
+        33.5 s    253  test/test_legend_place.py
+        33.3 s    228  test/test_qualifier_logic.py
+        33.0 s    149  test/test_marker_label_parity.py
+        32.9 s    156  test/test_date_axis_residuals.py
+        31.4 s     18  test/test_server_serves.py
+        31.4 s    181  test/test_help_claims_5.py
+        30.9 s     29  test/test_horizontal.py
+        30.9 s    183  test/test_by_types.py
+  slowest tests:
+       23.61 s  test/test_named_styles.py::TestRoles::test_against_stata
+       18.06 s  test/test_horizontal_moves.py::TestAfterASavedMove::test_a_turned_layer_stays_turned
+       17.10 s  test/test_serve_token.py::TestTheServedAppRequiresItsToken::test_a_keyless_start_whose_link_cannot_be_written_prints_it_once_and_serves
+       16.54 s  test/test_horizontal_moves.py::TestAfterAServedMove::test_a_turned_layer_stays_turned
+       14.56 s  test/test_test_integrity.py::TestTheSuiteCanFail::test_no_test_catches_assertion_error@test-integrity-suite
+        9.76 s  test/test_horizontal.py::TestHorizontalIsTheTranspose::test_type[served]@horizontal:served
+        9.66 s  test/test_ts_operators.py::TestBothModesMatchTwoway::test_every_probe[served]
+        9.45 s  test/test_note_channel.py::TestTheRendererEntryPoint::test_the_sessions_filters_survive[server]
+        9.24 s  test/test_by_grid.py::TestTheSizes::test_every_numeric_size_is_scaled
+        8.77 s  test/test_dependency_guards.py::TestTheGuardOrder::test_the_loader_and_the_render_run_the_guard_first
+        7.73 s  test/test_layer_reports.py::TestAnEmptyDatasetKeepsItsVariables::test_hostile_variable_names_do_not_become_columns
+        7.50 s  test/test_scheme_rendered_output.py::TestTheGrids::test_the_minor_grid_is_drawn_only_where_the_scheme_says[served]@rendered:titles
+        7.20 s  test/test_serve_token.py::TestTheServedAppRequiresItsToken::test_a_keyless_show_start_whose_link_cannot_be_written_prints_it_once_and_serves
+        6.83 s  test/test_function_test_map.py::test_what_nothing_runs_is_kept_on_purpose
+        6.69 s  test/test_lpoly_constants_live.py::TestTheComment::test_every_row_is_reachable
+        6.65 s  test/test_style_names.py::TestAgainstStata::test_every_n_record
+        6.65 s  test/test_function_test_map.py::test_the_universe_is_the_whole_file
+        6.60 s  test/test_named_styles.py::TestTheEmptyPlanIsInert::test_the_corpus_draws_the_same_with_the_plan_bypassed
+        6.49 s  test/test_horizontal.py::TestUprightIsUntouched::test_every_type
+        6.17 s  test/test_ts_operators.py::TestTheDateAxisTicks::test_every_tick_probe[served]
+        6.08 s  test/test_scheme_rendered_output.py::TestTheLegend::test_an_explicit_position_and_cols_still_win[served]@rendered:legend_pos9
+        5.95 s  test/test_dash_only_words.py::TestTheRulings::test_kept_words_are_deliberate
+        5.91 s  test/test_scheme_resolution.py::TestEveryShippedSchemeResolves::test_by_name[served]
+        5.86 s  test/test_scheme_rendered_output.py::TestXlabelGridUsesTheSchemesGridColour::test_the_grid_the_option_turns_on_is_the_schemes[served]@rendered:xgrid
+        5.76 s  test/test_scheme_rendered_output.py::TestTheKpiCard::test_an_explicit_bgcolor_is_still_inline[served]@rendered:kpi_bg
+        5.69 s  test/test_scheme_resolution.py::TestEveryShippedSchemeResolves::test_as_the_session_scheme[served]
+        5.66 s  test/test_scheme_rendered_output.py::TestTheKpiCard::test_no_inline_background_without_bgcolor[served]@rendered:kpi
+        5.54 s  test/test_date_axes_p9.py::TestNumberFirst::test_each_type[served]
+        5.49 s  test/test_marker_label_parity.py::test_a_hand_written_second_name_is_as_silent_as_twoway
+        5.42 s  test/test_horizontal.py::TestTheAxesFollowTheLayer::test_titles_and_date_axes[served]@horizontal:served
+cert session s1: 35 scripts, 694.9 s summed
+       165.1 s  test_qualifier_in_stata.cscript
+        50.5 s  test_by_suboptions.cscript
+        48.7 s  test_mata_library_guard.cscript
+        48.2 s  test_wp33_truth.cscript
+        40.4 s  test_wp43_truth.cscript
+        32.2 s  test_wp42_truth.cscript
+        31.7 s  test_wp35_truth.cscript
+        30.4 s  test_wp45_truth.cscript
+        27.0 s  test_examples_run.cscript
+        26.3 s  test_wp34_truth.cscript
+        22.6 s  test_wp44_truth.cscript
+        20.7 s  test_gaps2_truth.cscript
+        19.2 s  test_wp40_truth.cscript
+        16.1 s  test_wp47_truth.cscript
+        15.6 s  test_help_claims_1.cscript
+        14.2 s  test_help_claims_5.cscript
+        13.0 s  test_help_claims_7.cscript
+        12.1 s  test_conformance.cscript
+        11.4 s  test_custom_scheme.cscript
+         9.0 s  test_wp37_truth.cscript
+         8.1 s  test_registry_collision.cscript
+         7.9 s  test_ci_band_options.cscript
+         6.0 s  test_e2e_kpi.cscript
+         5.3 s  test_wp41_truth.cscript
+         3.1 s  test_wp38_truth.cscript
+         2.7 s  test_wp46_truth.cscript
+         1.9 s  test_serve_options.cscript
+         1.6 s  test_render_log_clean.cscript
+         1.4 s  test_parser_integrity.cscript
+         0.8 s  test_theme_escaping.cscript
+         0.5 s  test_wp49_truth.cscript
+         0.5 s  test_wp36_truth.cscript
+         0.2 s  test_setup_version_gate.cscript
+         0.2 s  test_tokenizer.cscript
+         0.2 s  test_utf8_validation.cscript
+cert session s2: 42 scripts, 697.9 s summed
+       111.1 s  test_option_validation.cscript
+        96.8 s  test_env_guards.cscript
+        44.8 s  test_wp43_truth.cscript
+        40.5 s  test_adversarial.cscript
+        37.0 s  test_json_escaping.cscript
+        33.7 s  test_wp44_truth.cscript
+        30.8 s  test_wp45_truth.cscript
+        22.6 s  test_help_examples.cscript
+        21.1 s  test_serve_launch.cscript
+        20.9 s  test_setup_honesty.cscript
+        20.1 s  test_wp42_truth.cscript
+        19.0 s  test_path_validation.cscript
+        18.8 s  test_help_claims_8.cscript
+        18.7 s  test_bug_regressions.cscript
+        16.1 s  test_alias_semantics.cscript
+        13.8 s  test_statistical_options.cscript
+        13.1 s  test_wp33_truth.cscript
+        12.7 s  test_help_claims_6.cscript
+        12.6 s  test_help_claims_4.cscript
+        11.6 s  test_wp35_truth.cscript
+        11.3 s  test_wp47_truth.cscript
+         9.7 s  test_e2e_serve.cscript
+         8.6 s  test_help_claims_3.cscript
+         8.3 s  test_export.cscript
+         7.5 s  test_wp37_truth.cscript
+         6.9 s  test_wp34_truth.cscript
+         5.8 s  test_render_locate.cscript
+         4.7 s  test_wp40_truth.cscript
+         3.3 s  test_serve_browser.cscript
+         3.0 s  test_wp41_truth.cscript
+         2.8 s  test_wp46_truth.cscript
+         2.7 s  test_server_build.cscript
+         2.3 s  test_wp49_truth.cscript
+         1.6 s  test_echo_text.cscript
+         1.0 s  test_wp36_truth.cscript
+         1.0 s  test_nodraw_honoured.cscript
+         0.8 s  test_graph_option_scope.cscript
+         0.6 s  test_wp38_truth.cscript
+         0.2 s  test_ado_loads.cscript
+         0.2 s  test_option_report_paren.cscript
+         0.0 s  test_setup_injection.cscript
+         0.0 s  test_setup_python_gate.cscript
+cert session s3: 33 scripts, 582.2 s summed
+       101.7 s  test_twoway_option_parity.cscript
+        82.2 s  test_abbreviations.cscript
+        60.6 s  test_parser.cscript
+        39.4 s  test_wp43_truth.cscript
+        35.6 s  test_qualifier_literals.cscript
+        26.5 s  test_string_values.cscript
+        25.6 s  test_wp45_truth.cscript
+        24.7 s  test_wp44_truth.cscript
+        23.5 s  test_suboption_reporting.cscript
+        18.6 s  test_wp42_truth.cscript
+        16.8 s  test_help_claims_2.cscript
+        16.2 s  test_program_coverage.cscript
+        15.1 s  test_option_surface.cscript
+        14.4 s  test_wp49_truth.cscript
+        13.9 s  test_wp35_truth.cscript
+        10.5 s  test_varlist_expansion.cscript
+         9.9 s  test_e2e_filters.cscript
+         9.2 s  test_wp37_truth.cscript
+         6.6 s  test_resource_limits.cscript
+         6.0 s  test_wp47_truth.cscript
+         5.2 s  test_wp34_truth.cscript
+         5.0 s  test_e2e_multi.cscript
+         4.6 s  test_wp41_truth.cscript
+         3.1 s  test_wp33_truth.cscript
+         2.1 s  test_e2e_single.cscript
+         1.2 s  test_wp36_truth.cscript
+         1.1 s  test_caller_version.cscript
+         0.9 s  test_filter_label.cscript
+         0.6 s  test_wp46_truth.cscript
+         0.5 s  test_wp40_truth.cscript
+         0.4 s  test_textbox_multiline.cscript
+         0.3 s  test_clear_registry.cscript
+         0.1 s  test_wp38_truth.cscript
+truth-script blocks over 20 s:
+    test_wp33_truth.cscript S09 48 s
+    test_wp43_truth.cscript S05 40 s
+    test_wp35_truth.cscript S01 32 s
+    test_wp42_truth.cscript S03 32 s
+    test_wp45_truth.cscript S02 30 s
+    test_wp45_truth.cscript S03 30 s
+    test_wp43_truth.cscript S03 28 s
+    test_wp34_truth.cscript S09 26 s
+    test_wp44_truth.cscript S02 22 s
+    test_wp43_truth.cscript S02 21 s
+fixed cost (script seconds minus its blocks):
+    s3 test_wp42_truth.cscript: 18.6 s, blocks 17 s, fixed 1.6 s
+    s1 test_wp37_truth.cscript: 9.0 s, blocks 8 s, fixed 1.0 s
+    s3 test_wp35_truth.cscript: 13.9 s, blocks 13 s, fixed 0.9 s
+    s2 test_wp45_truth.cscript: 30.8 s, blocks 30 s, fixed 0.8 s
+    s3 test_wp44_truth.cscript: 24.7 s, blocks 24 s, fixed 0.7 s
+    s2 test_wp44_truth.cscript: 33.7 s, blocks 33 s, fixed 0.7 s
+    s3 test_wp41_truth.cscript: 4.6 s, blocks 4 s, fixed 0.6 s
+    s1 test_wp36_truth.cscript: 0.5 s, blocks 0 s, fixed 0.5 s
+    s2 test_wp37_truth.cscript: 7.5 s, blocks 7 s, fixed 0.5 s
+    s3 test_wp43_truth.cscript: 39.4 s, blocks 39 s, fixed 0.4 s
+    s1 test_wp45_truth.cscript: 30.4 s, blocks 30 s, fixed 0.4 s
+    s3 test_wp49_truth.cscript: 14.4 s, blocks 14 s, fixed 0.4 s
+    s1 test_wp43_truth.cscript: 40.4 s, blocks 40 s, fixed 0.4 s
+    s2 test_wp47_truth.cscript: 11.3 s, blocks 11 s, fixed 0.3 s
+    s1 test_wp41_truth.cscript: 5.3 s, blocks 5 s, fixed 0.3 s
+    s1 test_wp34_truth.cscript: 26.3 s, blocks 26 s, fixed 0.3 s
+    s2 test_wp49_truth.cscript: 2.3 s, blocks 2 s, fixed 0.3 s
+    s1 test_wp42_truth.cscript: 32.2 s, blocks 32 s, fixed 0.2 s
+    s1 test_wp40_truth.cscript: 19.2 s, blocks 19 s, fixed 0.2 s
+    s3 test_wp37_truth.cscript: 9.2 s, blocks 9 s, fixed 0.2 s
+    s3 test_wp34_truth.cscript: 5.2 s, blocks 5 s, fixed 0.2 s
+    s3 test_wp36_truth.cscript: 1.2 s, blocks 1 s, fixed 0.2 s
+    s1 test_wp33_truth.cscript: 48.2 s, blocks 48 s, fixed 0.2 s
+    s2 test_wp33_truth.cscript: 13.1 s, blocks 13 s, fixed 0.1 s
+    s1 test_wp47_truth.cscript: 16.1 s, blocks 16 s, fixed 0.1 s
+    s2 test_wp42_truth.cscript: 20.1 s, blocks 20 s, fixed 0.1 s
+    s3 test_wp33_truth.cscript: 3.1 s, blocks 3 s, fixed 0.1 s
+    s1 test_wp38_truth.cscript: 3.1 s, blocks 3 s, fixed 0.1 s
+    s3 test_wp47_truth.cscript: 6.0 s, blocks 6 s, fixed 0.0 s
+    s2 test_wp36_truth.cscript: 1.0 s, blocks 1 s, fixed 0.0 s
+    s2 test_wp41_truth.cscript: 3.0 s, blocks 3 s, fixed -0.0 s
+    s2 test_wp34_truth.cscript: 6.9 s, blocks 7 s, fixed -0.1 s
+    s2 test_wp46_truth.cscript: 2.8 s, blocks 3 s, fixed -0.2 s
+    s2 test_wp43_truth.cscript: 44.8 s, blocks 45 s, fixed -0.2 s
+    s2 test_wp40_truth.cscript: 4.7 s, blocks 5 s, fixed -0.3 s
+    s1 test_wp46_truth.cscript: 2.7 s, blocks 3 s, fixed -0.3 s
+    s1 test_gaps2_truth.cscript: 20.7 s, blocks 21 s, fixed -0.3 s
+    s1 test_wp35_truth.cscript: 31.7 s, blocks 32 s, fixed -0.3 s
+    s1 test_wp44_truth.cscript: 22.6 s, blocks 23 s, fixed -0.4 s
+    s3 test_wp45_truth.cscript: 25.6 s, blocks 26 s, fixed -0.4 s
+    s2 test_wp35_truth.cscript: 11.6 s, blocks 12 s, fixed -0.4 s
+    s3 test_wp46_truth.cscript: 0.6 s, blocks 1 s, fixed -0.4 s
+    s2 test_wp38_truth.cscript: 0.6 s, blocks 1 s, fixed -0.4 s
+    s1 test_wp49_truth.cscript: 0.5 s, blocks 1 s, fixed -0.5 s
+    s3 test_wp40_truth.cscript: 0.5 s, blocks 1 s, fixed -0.5 s
+make test: 1056 s against 300 s
+projection: (8139 - 4160) / (8 x 0.85) = 585 s against 300 s
+
+Levers (50-02, 50-03)
+---------------------
+Ranked by the seconds they address; each keeps every test.  Recorded, not put
+to approval.
+
+1. OpenBLAS threads under Stata's Python (new; 50-03).  make test runs under
+   /opt/anaconda3/bin/python3 (3.13.9, bokeh 3.8, numpy 2.3.5 on OpenBLAS
+   0.3.30 with pthreads, MAX_THREADS=128); each of the 8 workers opens a
+   12-thread BLAS pool on this 12-core machine.  The same tests took 4,327
+   test-seconds in the WP-49 gate (python3.14, numpy on Accelerate) and
+   8,139 here; teardown 2,367 s against 350 s.  Measured (targeted, -n 8,
+   anaconda): the four contour files 175 s -> 12 s wall with
+   OPENBLAS_NUM_THREADS=1; six other slowed files (date_axis_residuals,
+   saved_stale_cue, qualifier_logic, join_order, default_axes,
+   false_sentences) 41 s -> 29 s.  It also caused make test's 3 failures
+   (by_grid TestHostileInput::test_bounded at 3.76 s against 3 s;
+   estimator_cost TestTheJsTwinsAreBounded fpfit/fpfitci at 2,083 and
+   2,088 ms against 2,000): alone, all 14 tests of those classes pass in
+   6.3 s.  Lever: test/conftest.py sets OPENBLAS_NUM_THREADS,
+   OMP_NUM_THREADS, MKL_NUM_THREADS and VECLIB_MAXIMUM_THREADS to 1 (setdefault)
+   before numpy is imported, so the controller, the workers and their
+   subprocesses inherit it.  Estimate 3,400 test-seconds (about 90% of the
+   3,811 s gap; the rest is put to the Python and bokeh versions).
+2. Single items over 60 s (D-50-03.a; 50-03): eight, all contour tests
+   (test_contour_gen TestTheRenderer::test_a_malformed_object_falls_back[std]
+   149 s, [srv] 95 s, TestTheHandOver::test_served_move_refits 71 s;
+   test_contour_interp TestTheCap::test_above_the_cap_is_a_100_grid 148 s;
+   test_contour_js TestStale::test_kind_and_tag 95 s,
+   TestTheBranch::test_cap_leaves_it 93 s; test_contour_layers
+   TestTheCap::test_note_and_frozen[served] 85 s, [saved] 84 s).  The same
+   test alone takes 1.2 s (test_above_the_cap_is_a_100_grid), so lever 1
+   is their fix; no split is needed.  Longest xdist group: horizontal:served
+   14.7 s (10 tests), no group near the 60 s line.
+3. Render repeats, the spec-hash render cache F (50-03, D-50-03.c):
+   help_claims_7 (66.6 s in make test), help_claims_6 (24.8 s),
+   help_claims_8 (24.0 s) and the other help_claims files, the served
+   files.  Estimate 600 test-seconds (TEST-PERFORMANCE.md §3's low end,
+   600-800); taken only if the targeted measurement shows 25% or more.
+4. Class/module fixtures in one xdist group (S4; 50-03): estimate 100
+   (TEST-PRUNING-ANALYSIS.md S2 table, S4).
+5. Shared sweeps (S5; 50-03): server_layer_defects (49.3 s), server_facets
+   (34.6 s), saved_filter_layers (65.2 s): estimate 60 (S5, after S3/S6).
+6. test_mode_parity.py, 409.9 test-seconds, the largest file of make
+   test-all (batch tier only): the filter-move cache (S2/A4) is in its
+   TestAFilterMoveAgrees; estimate 150 test-seconds of the gate's pytest, none
+   of make test.
+7. Certification (50-02), 703 s wall of the gate on 3 sessions (694.9,
+   697.9 and 582.2 s summed; about 8 s per session outside the script
+   timers).  The floor is one script, test_qualifier_in_stata.cscript
+   165.1 s, then test_option_validation 111.1, test_twoway_option_parity
+   101.7, test_env_guards 96.8, test_abbreviations 82.2 s.  The WP truth
+   scripts' fixed cost (seconds minus their blocks) is at most 1.6 s per
+   script per session, so loading dash once per run instead of per
+   truth script saves little (under 25 s summed); their slow blocks are
+   wp33 S09 48 s, wp43 S05 40 s, wp35 S01 32 s, wp42 S03 32 s, wp45 S02/S03
+   30 s.  Lever: the shard rewrite with test_qualifier_in_stata split into
+   parts (or its own session), balancing the three sessions to about
+   1,975 / 3 = 658 s, or a fourth session (TEST-PRUNING C1 caps it at 4)
+   to about 500 s.  C3 (run instead of do for the loads) is bounded by the
+   8 s per session measured outside the timers plus the echo inside them;
+   estimate under 60 s summed.  None of this counts towards make test,
+   which runs no cscript.
+
+Measured: make test: 1056 s against 300 s (34,833 tests; 3 failed, all
+lever 1).  make test-all on c3bb39e (the WP-49 gate): pytest 627 s, cert
+703 s, 1,343 s in all.
+
+projection: (8139 - 4160) / (8 x 0.85) = 585 s against 300 s
+  estimates: 3,400 (lever 1, measured basis above), 600 (F,
+  TEST-PERFORMANCE.md §3), 100 (S4), 60 (S5).
+  Lever 1 alone: (8139 - 3400) / 6.8 = 697 s.
+
+Tier candidates (make test -> make test-all's batch tier; the projection
+is above 300 s, so 1,939 test-seconds must leave make test).  Seconds are
+the WP-49 gate's (python3.14, no BLAS contention), the closest to make test
+after lever 1; ranked by test-seconds, cumulative in the second column:
+    1    89.4 s     89.4 s     84 tests  test/test_serve_token.py
+    2    85.2 s    174.6 s   1292 tests  test/test_label_sinks.py
+    3    84.9 s    259.5 s    468 tests  test/test_server.py
+    4    80.1 s    339.7 s   1503 tests  test/test_js_fit_refit.py
+    5    67.5 s    407.1 s     82 tests  test/test_installed_layout.py
+    6    62.1 s    469.2 s    732 tests  test/test_help_claims_7.py
+    7    55.8 s    525.0 s     78 tests  test/test_runner_portability.py
+    8    53.7 s    578.7 s    394 tests  test/test_saved_filter_layers.py
+    9    49.3 s    628.0 s    210 tests  test/test_unsupported_report_is_true.py
+   10    49.3 s    677.3 s     90 tests  test/test_named_styles.py
+   11    48.4 s    725.7 s    129 tests  test/test_lpolyci_band.py
+   12    45.4 s    771.1 s     88 tests  test/test_scheme_rendered_output.py
+   13    44.6 s    815.7 s     96 tests  test/test_scheme_resolution.py
+   14    43.3 s    859.1 s     26 tests  test/test_horizontal_moves.py
+   15    43.2 s    902.3 s    122 tests  test/test_by_axes_keys.py
+   16    42.9 s    945.2 s     53 tests  test/test_serve_lifecycle.py
+   17    42.8 s    988.0 s    105 tests  test/test_size_units.py
+   18    38.7 s   1026.7 s    419 tests  test/test_server_layer_defects.py
+   19    35.5 s   1062.2 s    149 tests  test/test_help_claims_4.py
+   20    35.3 s   1097.5 s    205 tests  test/test_embedded_rows.py
+   21    34.1 s   1131.6 s    122 tests  test/test_resource_limits.py
+   22    33.5 s   1165.1 s    253 tests  test/test_legend_place.py
+   23    33.3 s   1198.3 s    228 tests  test/test_qualifier_logic.py
+   24    33.0 s   1231.3 s    149 tests  test/test_marker_label_parity.py
+   25    32.9 s   1264.2 s    156 tests  test/test_date_axis_residuals.py
+   26    31.4 s   1295.6 s     18 tests  test/test_server_serves.py
+   27    31.4 s   1326.9 s    181 tests  test/test_help_claims_5.py
+   28    30.9 s   1357.8 s     29 tests  test/test_horizontal.py
+   29    30.9 s   1388.7 s    183 tests  test/test_by_types.py
+   30    30.4 s   1419.1 s    326 tests  test/test_function_expr.py
+   31    29.7 s   1448.7 s    125 tests  test/test_layer_reports.py
+   32    29.7 s   1478.4 s    210 tests  test/test_join_order.py
+   33    29.2 s   1507.6 s     26 tests  test/test_note_channel.py
+   34    28.4 s   1535.9 s     54 tests  test/test_intensity_blend.py
+   35    25.7 s   1561.7 s    227 tests  test/test_graph_text.py
+   36    25.2 s   1586.9 s     53 tests  test/test_by_layout.py
+   37    24.8 s   1611.7 s    566 tests  test/test_ci_band_style.py
+   38    24.7 s   1636.4 s    134 tests  test/test_server_facets.py
+   39    24.3 s   1660.7 s     57 tests  test/test_default_axes.py
+   40    24.3 s   1685.0 s     42 tests  test/test_dependency_guards.py
+   41    24.2 s   1709.2 s     65 tests  test/test_by_remainder.py
+   42    23.8 s   1733.0 s     24 tests  test/test_ts_operators.py
+   43    23.2 s   1756.2 s    108 tests  test/test_help_claims_2.py
+   44    23.2 s   1779.4 s     77 tests  test/test_textbox_grammar.py
+   45    22.9 s   1802.2 s    123 tests  test/test_served_bs_layout.py
+   46    22.7 s   1825.0 s     51 tests  test/test_axis_format_fallback.py
+   47    22.7 s   1847.7 s    196 tests  test/test_help_claims_6.py
+   48    22.3 s   1870.0 s    100 tests  test/test_by_text.py
+   49    22.3 s   1892.2 s     81 tests  test/test_tracking_documents.py
+   50    22.2 s   1914.4 s    262 tests  test/test_scheme_consumption.py
+   51    22.0 s   1936.4 s    181 tests  test/test_help_claims_1.py
+   52    21.3 s   1957.7 s     34 tests  test/test_twenty_six_schemes.py
+  (52 files, 1958 test-seconds; the security files serve_token, label_sinks,
+  server and serve_lifecycle among them)
+
+Answered 13nov2026
+------------------
+(1) Move them: the 52 tier candidates above leave make test for make test-all's
+    batch tier (pytestmark = pytest.mark.batch); no test is deleted.  Files:
+    test/test_serve_token.py
+    test/test_label_sinks.py
+    test/test_server.py
+    test/test_js_fit_refit.py
+    test/test_installed_layout.py
+    test/test_help_claims_7.py
+    test/test_runner_portability.py
+    test/test_saved_filter_layers.py
+    test/test_unsupported_report_is_true.py
+    test/test_named_styles.py
+    test/test_lpolyci_band.py
+    test/test_scheme_rendered_output.py
+    test/test_scheme_resolution.py
+    test/test_horizontal_moves.py
+    test/test_by_axes_keys.py
+    test/test_serve_lifecycle.py
+    test/test_size_units.py
+    test/test_server_layer_defects.py
+    test/test_help_claims_4.py
+    test/test_embedded_rows.py
+    test/test_resource_limits.py
+    test/test_legend_place.py
+    test/test_qualifier_logic.py
+    test/test_marker_label_parity.py
+    test/test_date_axis_residuals.py
+    test/test_server_serves.py
+    test/test_help_claims_5.py
+    test/test_horizontal.py
+    test/test_by_types.py
+    test/test_function_expr.py
+    test/test_layer_reports.py
+    test/test_join_order.py
+    test/test_note_channel.py
+    test/test_intensity_blend.py
+    test/test_graph_text.py
+    test/test_by_layout.py
+    test/test_ci_band_style.py
+    test/test_server_facets.py
+    test/test_default_axes.py
+    test/test_dependency_guards.py
+    test/test_by_remainder.py
+    test/test_ts_operators.py
+    test/test_help_claims_2.py
+    test/test_textbox_grammar.py
+    test/test_served_bs_layout.py
+    test/test_axis_format_fallback.py
+    test/test_help_claims_6.py
+    test/test_by_text.py
+    test/test_tracking_documents.py
+    test/test_scheme_consumption.py
+    test/test_help_claims_1.py
+    test/test_twenty_six_schemes.py
+(2) Not answered; the certification scripts stay out of make test, as today
+    (no change).
+
+50-03 levers (13nov2026; landed on s3-bugs 887c2c1d..8a9d5ae8)
+- Lever 1 taken (887c2c1d): BLAS on one thread per worker; the four contour
+  files 175 s -> 12.3 s wall at -n 8 under Stata's Python; the 3 make-test
+  failures pass (5.1 s).
+- 50-03-02 not taken: no item over 60 s after lever 1 (contour files 12.3 s
+  wall; longest group 14.7 s).
+- F not taken: the three largest render repeaters, help_claims_6/_1/_2
+  (104.3 s), repeat 77 of 704 renders (10.9%), so at most about 11% saved,
+  under the 25% rule.
+- S5 taken (e1144cb0): server_facets, the server_layer_defects hover tests
+  and the saved_filter_layers move cases render once per type or case.
+- Tier moves taken (8a9d5ae8): the 52 ruled files, 1,958 test-seconds at the
+  WP-49 gate, to the batch tier.
+
+50-02 levers (13nov2026; landed on s3-bugs 845b818c, 2a3203a7; on top of
+the speed branch eacb68f2..f11d6c86, merged first as ruled 13nov2026: 8 cert
+sessions)
+- C3 taken (845b818c): 77 cscripts and the template load dash with run; none
+  reads its own load echo.  Not timed.
+- Whole runs taken (2a3203a7): SPLIT_MIN = 0.5 x 3,648.6 / 8 = 228.0 s; every
+  template-made truth script runs whole, only wp30/wp31 split.  Fixed cost f
+  from 50-01's logs 0.02-0.67 s per session (mean 0.34 s); projected saving
+  7 loads x 0.34 s x 15 scripts = about 36 s summed, about 4.5 s wall, plus
+  105 fewer script starts (not measured).  The default tier balances to
+  295-296 s per session under 8 sessions.
+- Lever 7 floor: test_qualifier_in_stata 210.7 s in the 8-session table
+  (165.1 s in 50-01's 3-session gate); unchanged.
+- Noticed, not filed: test_path_validation PV-22 fails under a long STATATMP
+  (the needle wraps across log lines); the base fails the same way.
+
+50-02 follow-ups
+(1) index.md W0.2's shard-row step for any WP after WP-50 becomes
+    `python3 scripts/cert_shards.py add test_wpNN_truth.cscript` (D-50-02.g):
+    the old `test_wpNN_truth.cscript 1.0 0 * * *` row no longer passes check;
+    the index is not edited here.
+(2) ../dash-wt/_tools/picks.sh and blockorder.py need no change: no truth
+    script, block or case id moved (A-3).
+(3) 50-02 saves certification time only: make test runs no cscript (R5-9).
+
+After (13nov2026, s3-bugs 2a3203a7)
+-----------------------------------
+Runs (D-50-04.a): make test with DASH_SUITE_TIMING=timing-make-test-after.json,
+rc 0, 306.13 s (pytest's figure; 314 s with the Stata lookup); then make
+test-all, rc 0, pytest 583.38 s, cert 238 s, 835 s wall (logs
+$TMPDIR/dash_all_tests.EfahtG, cert dash_cert.GBuN0X/s1..s8; copies in the
+scratchpad w50/after-s1..s8).  Free disk before: see after-df.txt.
+Before = 50-01's make test (13nov2026) and the WP-49 gate's test-all
+(12nov2026); make test is compared with make test, test-all with test-all.
+
+| | Before (50-01) | After (50-04) |
+|---|---|---|
+| `make test` wall (Stata's Python, 8 workers) | 1,056.4 s (34,833 tests, 3 failed) | 306.1 s (24,385 passed) |
+| `make test` test-seconds | 8,138.9 | 2,160.8 |
+| `make test` longest item | 149.1 s (test_contour_gen malformed_object[std]) | 14.5 s (test_test_integrity, group test-integrity-suite 14.7 s) |
+| `make test` collection (session start to first test) | 22.2 s | 21.0 s |
+| `make test-all` pytest wall (python3.14, batch tier) | 627.5 s (46,075 tests; WP-49 gate, c3bb39e) | 583.2 s (46,322 passed) |
+| `make test-all` pytest test-seconds | 4,737.5 | 4,366.1 |
+| `make test-all` cert wall | 703 s (3 sessions; 694.9 / 697.9 / 582.2 s summed) | 238 s (8 sessions; 182.9-234.4 s summed each) |
+| cert script runs per session | 35 / 42 / 34 | 9 / 11 / 8 / 8 / 12 / 8 / 8 / 17 |
+| dash loads per session (echoed load lines) | 30 / 38 / 32 | 8 / 9 / 8 / 6 / 9 / 7 / 7 / 16 |
+| WP truth scripts | 15 split in every session | all template-made ones whole; wp30/wp31 split (release tier) |
+| `make test-all` whole | 1,343 s | 835 s |
+
+make test: 306 s wall (24,385 passed), 6 s over the five-minute target (CLAUDE.md rule 11, PRD §8), with the 52 files ruled at 50-01-04 moved to the batch tier; the bottleneck is recorded below.
+
+Bottleneck record (D-50-04.b):
+- Bottleneck: the start of the run, not the tests.  The workers are busy
+  268.5-272.8 s (imbalance 4.3 s; longest group 14.7 s), and 21.0 s pass
+  from the session's start to its first test (collection: every worker
+  collects all 46,322 items of the tree, then the tier hook deselects the
+  21,937 batch-tier ones -- test_mode_parity.py and the 52 ruled files).
+- Fix proposed (newly found): in a run that does not keep the batch tier,
+  skip collecting the batch-tier files (a pytest_ignore_collect hook in
+  test/conftest.py reading the file list test_test_tiers.py already pins as
+  _RULED_BATCH_FILES, plus test_mode_parity.py), so make test never imports
+  them.
+- Estimated saving: about 10 s (basis: collection time scales with the items
+  collected; the batch tier is 21,937 / 46,322 = 47% of them; 21.0 s x 0.47
+  = 9.9 s), which would bring make test to about 296 s.
+- Cost: no coverage moves (the files still run at every batch end); the risk
+  is the file list drifting from the files' marks, guarded by a test that
+  every ignored file carries the batch mark and every marked file is
+  ignored.  A second lever, -n 10 workers (07oct2026: -n 8 -> 10 took 94 ->
+  89 s, -5%), would save about 15 s but breaks the 8-worker budget
+  (scripts/run_all_tests.sh, the memory rule): a maintainer ruling.
+
+After-profile (scripts/suite_profile.py report):
+
+pytest timing-make-test-after.json: wall 306.1 s, 24385 tests, 2160.8 test-seconds
+  phases: setup 103.6 s, call 1837.7 s, teardown 219.5 s
+  workers: 8, busiest gw2 272.8 s, least busy gw1 268.5 s, imbalance 4.3 s
+  collection: 21.0 s
+  longest xdist group: test-integrity-suite 14.7 s (9 tests)
+  slowest files (test-seconds, tests):
+        26.0 s      9  test/test_function_test_map.py
+        22.5 s      8  test/test_server_dispatch.py
+        20.2 s    275  test/test_adversarial_matrix.py
+        19.9 s     55  test/test_contour_js.py
+        19.0 s    300  test/test_date_units.py
+        18.8 s     26  test/test_false_sentences.py
+        18.7 s    100  test/test_stroke_align.py
+        18.4 s    260  test/test_help_claims_8.py
+        18.2 s    119  test/test_saved_stale_cue.py
+        17.8 s    168  test/test_security_surface.py
+        17.7 s    132  test/test_stata_ticks.py
+        17.4 s     19  test/test_bare_intensity.py
+        17.2 s     42  test/test_added_text.py
+        16.4 s    162  test/test_colorvar_key.py
+        16.4 s    101  test/test_symbol_pattern.py
+        16.3 s    213  test/test_legend_keys.py
+        15.7 s    106  test/test_help_claims_3.py
+        15.7 s    109  test/test_served_dates.py
+        15.7 s    136  test/test_marker_fidelity.py
+        15.6 s    269  test/test_option_validation.py
+        15.4 s    123  test/test_private_files.py
+        15.3 s      8  test/test_server_build_returns.py
+        15.3 s     16  test/test_server_legend.py
+        15.2 s    115  test/test_csp.py
+        15.1 s     70  test/test_test_integrity.py
+        14.9 s     69  test/test_served_linked_views.py
+        14.8 s    174  test/test_colorvar_coverage.py
+        14.7 s    285  test/test_title_boxes.py
+        14.4 s     65  test/test_recast.py
+        14.3 s     99  test/test_setup_pep668.py
+  slowest tests:
+       14.48 s  test/test_test_integrity.py::TestTheSuiteCanFail::test_no_test_catches_assertion_error@test-integrity-suite
+        8.05 s  test/test_style_names.py::TestAgainstStata::test_every_n_record
+        6.77 s  test/test_function_test_map.py::test_the_universe_is_the_whole_file
+        6.75 s  test/test_dash_only_words.py::TestTheRulings::test_kept_words_are_deliberate
+        5.97 s  test/test_lpoly_constants_live.py::TestTheComment::test_every_row_is_reachable
+        5.65 s  test/test_function_test_map.py::test_what_nothing_runs_is_kept_on_purpose
+        5.53 s  test/test_function_test_map.py::test_every_function_has_an_entry
+        5.42 s  test/test_function_test_map.py::test_no_entry_is_stale
+        5.37 s  test/test_date_axes_p9.py::TestNumberFirst::test_each_type[served]
+        5.11 s  test/test_server_dispatch.py::TestTheAppHasNoDispatchOfItsOwn::test_its_own_code_tests_plot_types_only_where_pinned
+        4.89 s  test/test_adversarial_matrix.py::TestTextPlotOptionBounds::test_a_legend_order_of_a_hundred_thousand_keys_is_bounded
+        4.87 s  test/test_server_dispatch.py::TestTheAppHasNoDispatchOfItsOwn::test_the_dispatch_is_the_renderers_own_code[_dash_glyph_dispatch]
+        4.53 s  test/test_program_coverage_map.py::TestEveryReferenceIsATest::test_every_case_is_shown_by_its_script
+        4.44 s  test/test_server_dispatch.py::TestTheAppHasNoDispatchOfItsOwn::test_the_dispatch_is_the_renderers_own_code[_dash_add_glyph]
+        4.28 s  test/test_setup_pep668.py::TestTheBokehWindow::test_verify_reports_above_without_failing
+        4.16 s  test/test_by_grid.py::TestTheGridIsDrawn::test_every_probe[saved-foreign-rep78, total]
+        4.10 s  test/test_helper_source_cache.py::TestABuildWritesTheSameApp::test_a_reloaded_renderer_writes_its_new_text
+        3.84 s  test/test_region_truth.py::TestAgainstTwoway::test_probe[served]
+        3.82 s  test/test_natscale_js.py::TestJsFinishEqualsPython::test_random_moves
+        3.80 s  test/test_by_grid.py::TestTheSizes::test_every_numeric_size_is_scaled
+        3.79 s  test/test_security_surface_alone.py::test_its_served_app_helper_needs_no_earlier_test
+        3.76 s  test/test_webgl_backend.py::TestTheSwitchCountsDrawnRows::test_a_prefixed_spec_counts_the_same[srv]
+        3.66 s  test/test_false_sentences.py::TestTheReaders::test_owner_pin_reads_both_closing_forms
+        3.65 s  test/test_server_build_returns.py::TestBuildingDoesNotLaunch::test_the_file_it_writes_is_valid_python
+        3.54 s  test/test_scheme_fallback_provenance.py::TestAServedAppReportsHowItWasBuilt::test_the_rebuilt_scheme_does_not_misreport_its_provenance
+        3.52 s  test/test_bokeh_internals.py::TestTheKeyCheckFailsClosed::test_the_launcher_stops_with_the_message
+        3.50 s  test/test_working_columns.py::TestTheRenderer::test_both_modes_draw_a_user_dash_column[served]
+        3.41 s  test/test_render_cli_port.py::TestPortReachesTheGeneratedApp::test_the_default_is_still_5006
+        3.40 s  test/test_histogram_edge_rule.py::TestEveryFrequencyHistogramSumsToN::test_seeded_cases_sum_to_n_in_python_and_under_node
+        3.37 s  test/test_by_label_position.py::TestThePlace::test_sides[served]@by_label_position:served
+pytest timing-test-all-after.json: wall 583.2 s, 46322 tests, 4366.1 test-seconds
+  phases: setup 186.6 s, call 3755.8 s, teardown 423.7 s
+  workers: 8, busiest gw5 554.2 s, least busy gw4 541.8 s, imbalance 12.3 s
+  collection: 22.7 s
+  longest xdist group: test-integrity-suite 15.5 s (9 tests)
+  slowest files (test-seconds, tests):
+       346.0 s  11096  test/test_mode_parity.py
+        81.8 s    468  test/test_server.py
+        80.3 s   1503  test/test_js_fit_refit.py
+        76.5 s     84  test/test_serve_token.py
+        67.9 s     82  test/test_installed_layout.py
+        63.8 s     79  test/test_runner_portability.py
+        63.6 s    394  test/test_saved_filter_layers.py
+        63.5 s   1292  test/test_label_sinks.py
+        52.6 s    732  test/test_help_claims_7.py
+        50.3 s    129  test/test_lpolyci_band.py
+        46.6 s     53  test/test_serve_lifecycle.py
+        43.6 s     90  test/test_named_styles.py
+        43.3 s     96  test/test_scheme_resolution.py
+        42.0 s    210  test/test_unsupported_report_is_true.py
+        38.0 s    105  test/test_size_units.py
+        37.8 s    122  test/test_by_axes_keys.py
+        37.1 s    122  test/test_resource_limits.py
+        35.5 s     18  test/test_server_serves.py
+        35.3 s     88  test/test_scheme_rendered_output.py
+        35.1 s    149  test/test_help_claims_4.py
+        32.5 s    228  test/test_qualifier_logic.py
+        32.3 s     26  test/test_horizontal_moves.py
+        32.0 s    419  test/test_server_layer_defects.py
+        29.7 s     26  test/test_note_channel.py
+        29.2 s    205  test/test_embedded_rows.py
+        28.9 s    156  test/test_date_axis_residuals.py
+        27.4 s    253  test/test_legend_place.py
+        27.0 s    181  test/test_help_claims_5.py
+        26.6 s    210  test/test_join_order.py
+        25.6 s    183  test/test_by_types.py
+  slowest tests:
+       19.79 s  test/test_named_styles.py::TestRoles::test_against_stata
+       15.32 s  test/test_test_integrity.py::TestTheSuiteCanFail::test_no_test_catches_assertion_error@test-integrity-suite
+       13.94 s  test/test_horizontal_moves.py::TestAfterASavedMove::test_a_turned_layer_stays_turned
+       11.41 s  test/test_horizontal_moves.py::TestAfterAServedMove::test_a_turned_layer_stays_turned
+        9.28 s  test/test_dependency_guards.py::TestTheGuardOrder::test_the_loader_and_the_render_run_the_guard_first
+        8.71 s  test/test_scheme_resolution.py::TestEveryShippedSchemeResolves::test_as_the_session_scheme[served]
+        7.71 s  test/test_layer_reports.py::TestAnEmptyDatasetKeepsItsVariables::test_hostile_variable_names_do_not_become_columns
+        7.53 s  test/test_function_test_map.py::test_what_nothing_runs_is_kept_on_purpose
+        7.32 s  test/test_serve_token.py::TestTheServedAppRequiresItsToken::test_a_keyless_show_start_whose_link_cannot_be_written_prints_it_once_and_serves
+        6.96 s  test/test_style_names.py::TestAgainstStata::test_every_n_record
+        6.91 s  test/test_lpoly_constants_live.py::TestTheComment::test_every_row_is_reachable
+        6.43 s  test/test_horizontal.py::TestHorizontalIsTheTranspose::test_type[served]@horizontal:served
+        6.23 s  test/test_server_serves.py::TestALaterSession::test_three_sessions_one_after_another
+        6.21 s  test/test_dash_only_words.py::TestTheRulings::test_kept_words_are_deliberate
+        6.00 s  test/test_note_channel.py::TestTheRendererEntryPoint::test_the_sessions_filters_survive[server]
+        5.71 s  test/test_note_channel.py::TestTheRendererEntryPoint::test_an_error_filter_raises_no_note[server]
+        5.66 s  test/test_ts_operators.py::TestBothModesMatchTwoway::test_every_probe[served]
+        5.65 s  test/test_function_test_map.py::test_the_universe_is_the_whole_file
+        5.57 s  test/test_server_dispatch.py::TestTheAppHasNoDispatchOfItsOwn::test_the_dispatch_is_the_renderers_own_code[_dash_glyph_dispatch]
+        5.55 s  test/test_named_styles.py::TestTheEmptyPlanIsInert::test_the_corpus_draws_the_same_with_the_plan_bypassed
+        5.41 s  test/test_scheme_rendered_output.py::TestTheGrids::test_the_minor_grid_is_drawn_only_where_the_scheme_says[served]@rendered:titles
+        5.35 s  test/test_scheme_resolution.py::TestEveryShippedSchemeResolves::test_by_name[served]
+        5.23 s  test/test_textbox_grammar.py::TestSecondAxisTitleIsATextbox::test_text_lines_size_colour[served]
+        5.15 s  test/test_date_axes_p9.py::TestNumberFirst::test_each_type[served]
+        5.07 s  test/test_scheme_rendered_output.py::TestTheLegend::test_an_explicit_position_and_cols_still_win[served]@rendered:legend_pos9
+        5.02 s  test/test_scheme_rendered_output.py::TestXlabelGridUsesTheSchemesGridColour::test_the_grid_the_option_turns_on_is_the_schemes[served]@rendered:xgrid
+        4.96 s  test/test_help_claims_1.py::TestServeBlocksUntilCtrlC::test_the_launcher_waits_and_ctrl_c_stops_the_server
+        4.96 s  test/test_horizontal.py::TestUprightIsUntouched::test_every_type
+        4.92 s  test/test_server_dispatch.py::TestTheAppHasNoDispatchOfItsOwn::test_its_own_code_tests_plot_types_only_where_pinned
+        4.83 s  test/test_scheme_rendered_output.py::TestTheKpiCard::test_an_explicit_bgcolor_is_still_inline[served]@rendered:kpi_bg
+cert session after-s1: 9 scripts, 234.4 s summed
+       163.8 s  test_qualifier_in_stata.cscript
+        27.7 s  test_mata_library_guard.cscript
+        15.1 s  test_help_claims_2.cscript
+        13.5 s  test_wp49_truth.cscript
+         6.9 s  test_ci_band_options.cscript
+         5.8 s  test_e2e_kpi.cscript
+         0.8 s  test_caller_version.cscript
+         0.7 s  test_filter_label.cscript
+         0.2 s  test_utf8_validation.cscript
+cert session after-s2: 10 scripts, 227.8 s summed
+       130.3 s  test_wp43_truth.cscript
+        36.0 s  test_json_escaping.cscript
+        29.1 s  test_wp47_truth.cscript
+        10.8 s  test_alias_semantics.cscript
+         8.9 s  test_e2e_multi.cscript
+         6.6 s  test_varlist_expansion.cscript
+         5.4 s  test_wp46_truth.cscript
+         0.4 s  test_graph_option_scope.cscript
+         0.2 s  test_textbox_multiline.cscript
+         0.1 s  test_tokenizer.cscript
+cert session after-s3: 8 scripts, 193.7 s summed
+        84.8 s  test_option_validation.cscript
+        39.3 s  test_wp34_truth.cscript
+        23.6 s  test_wp37_truth.cscript
+        16.3 s  test_program_coverage.cscript
+        10.7 s  test_help_claims_7.cscript
+         7.5 s  test_render_log_clean.cscript
+         6.1 s  test_resource_limits.cscript
+         5.4 s  test_registry_collision.cscript
+cert session after-s4: 8 scripts, 219.8 s summed
+        64.9 s  test_twoway_option_parity.cscript
+        51.7 s  test_wp35_truth.cscript
+        37.8 s  test_adversarial.cscript
+        24.3 s  test_setup_honesty.cscript
+        19.5 s  test_path_validation.cscript
+        12.4 s  test_custom_scheme.cscript
+         6.5 s  test_help_claims_6.cscript
+         2.7 s  test_echo_text.cscript
+cert session after-s5: 12 scripts, 182.9 s summed
+        49.8 s  test_by_suboptions.cscript
+        45.3 s  test_abbreviations.cscript
+        28.1 s  test_string_values.cscript
+        21.0 s  test_examples_run.cscript
+        16.0 s  test_e2e_filters.cscript
+        11.2 s  test_statistical_options.cscript
+         8.8 s  test_help_claims_3.cscript
+         1.3 s  test_theme_escaping.cscript
+         1.1 s  test_nodraw_honoured.cscript
+         0.3 s  test_option_report_paren.cscript
+         0.0 s  test_setup_injection.cscript
+         0.0 s  test_setup_python_gate.cscript
+cert session after-s6: 8 scripts, 220.0 s summed
+        71.6 s  test_wp45_truth.cscript
+        60.1 s  test_wp33_truth.cscript
+        35.9 s  test_qualifier_literals.cscript
+        21.0 s  test_gaps2_truth.cscript
+        14.9 s  test_help_claims_5.cscript
+        12.3 s  test_option_surface.cscript
+         2.2 s  test_wp36_truth.cscript
+         2.0 s  test_serve_options.cscript
+cert session after-s7: 8 scripts, 204.9 s summed
+        86.0 s  test_wp44_truth.cscript
+        44.2 s  test_parser.cscript
+        21.9 s  test_wp40_truth.cscript
+        20.8 s  test_help_examples.cscript
+        18.1 s  test_help_claims_8.cscript
+         9.0 s  test_conformance.cscript
+         2.7 s  test_server_build.cscript
+         2.1 s  test_e2e_single.cscript
+cert session after-s8: 17 scripts, 216.0 s summed
+        73.0 s  test_wp42_truth.cscript
+        22.3 s  test_serve_launch.cscript
+        20.4 s  test_suboption_reporting.cscript
+        15.3 s  test_bug_regressions.cscript
+        15.2 s  test_e2e_serve.cscript
+        14.0 s  test_help_claims_1.cscript
+        12.7 s  test_help_claims_4.cscript
+        11.0 s  test_wp41_truth.cscript
+        10.2 s  test_env_guards.cscript
+         7.2 s  test_export.cscript
+         6.2 s  test_render_locate.cscript
+         3.4 s  test_serve_browser.cscript
+         3.1 s  test_wp38_truth.cscript
+         1.3 s  test_parser_integrity.cscript
+         0.3 s  test_setup_version_gate.cscript
+         0.2 s  test_clear_registry.cscript
+         0.1 s  test_ado_loads.cscript
+truth-script blocks over 20 s:
+    test_wp33_truth.cscript S09 49 s
+    test_wp43_truth.cscript S05 44 s
+    test_wp42_truth.cscript S03 35 s
+    test_wp35_truth.cscript S01 32 s
+    test_wp45_truth.cscript S03 31 s
+    test_wp43_truth.cscript S03 29 s
+    test_wp34_truth.cscript S09 29 s
+    test_wp44_truth.cscript S02 25 s
+    test_wp43_truth.cscript S02 21 s
+fixed cost (script seconds minus its blocks):
+    after-s7 test_wp40_truth.cscript: 21.9 s, blocks 21 s, fixed 0.9 s
+    after-s3 test_wp37_truth.cscript: 23.6 s, blocks 23 s, fixed 0.6 s
+    after-s1 test_wp49_truth.cscript: 13.5 s, blocks 13 s, fixed 0.5 s
+    after-s2 test_wp43_truth.cscript: 130.3 s, blocks 130 s, fixed 0.3 s
+    after-s3 test_wp34_truth.cscript: 39.3 s, blocks 39 s, fixed 0.3 s
+    after-s6 test_wp36_truth.cscript: 2.2 s, blocks 2 s, fixed 0.2 s
+    after-s2 test_wp47_truth.cscript: 29.1 s, blocks 29 s, fixed 0.1 s
+    after-s6 test_wp33_truth.cscript: 60.1 s, blocks 60 s, fixed 0.1 s
+    after-s8 test_wp38_truth.cscript: 3.1 s, blocks 3 s, fixed 0.1 s
+    after-s7 test_wp44_truth.cscript: 86.0 s, blocks 86 s, fixed 0.0 s
+    after-s8 test_wp41_truth.cscript: 11.0 s, blocks 11 s, fixed 0.0 s
+    after-s6 test_gaps2_truth.cscript: 21.0 s, blocks 21 s, fixed -0.0 s
+    after-s8 test_wp42_truth.cscript: 73.0 s, blocks 73 s, fixed -0.0 s
+    after-s4 test_wp35_truth.cscript: 51.7 s, blocks 52 s, fixed -0.3 s
+    after-s6 test_wp45_truth.cscript: 71.6 s, blocks 72 s, fixed -0.4 s
+    after-s2 test_wp46_truth.cscript: 5.4 s, blocks 6 s, fixed -0.6 s
+make test: 306 s against 300 s
