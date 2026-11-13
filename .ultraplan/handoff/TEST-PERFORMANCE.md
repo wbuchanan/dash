@@ -7,7 +7,7 @@ Measured by WP-50's batch-end runs (50-01 before, 50-04 after; full profile in
 
 | | Before (50-01) | After (50-04) |
 |---|---|---|
-| `make test` wall (Stata's Python, 8 workers) | 1,056.4 s (34,833 tests, 3 failed) | 306.1 s (24,385 passed) |
+| `make test` wall (Stata's Python, 8 workers) | 1,056.4 s (34,833 tests, 3 failed) | 306.1 s (24,385 passed); 284.6 s (24,397 passed) after the collection fix |
 | `make test` test-seconds | 8,138.9 | 2,160.8 |
 | `make test` longest item | 149.1 s (test_contour_gen malformed_object[std]) | 14.5 s (test_test_integrity, group test-integrity-suite 14.7 s) |
 | `make test` collection (session start to first test) | 22.2 s | 21.0 s |
@@ -26,9 +26,11 @@ Levers taken:
 
 Levers not taken: splits (no item over 60 s once BLAS ran on one thread); the render cache F (77 of 704 help_claims renders repeat, at most 11%, under its 25% rule); pruning (WP-50 deletes no test).
 
-make test: 306 s wall (24,385 passed), 6 s over the five-minute target (CLAUDE.md rule 11, PRD §8), with the 52 files ruled at 50-01-04 moved to the batch tier; the bottleneck is recorded below.
+make test: 285 s wall (24,397 passed), at or under the five-minute target (CLAUDE.md rule 11, PRD §8), with the 52 files ruled at 50-01-04 moved to the batch tier and, applied at sign-off (377bb3be, 13nov2026), the batch tier's files left uncollected; before that fix it was 306 s.
 
-**Bottleneck record (D-50-04.b):**
+Applied at sign-off (13nov2026, 377bb3be): the bottleneck's fix -- a run that leaves the batch tier out does not collect its files.  One timed make test: 306.1 s -> 284.6 s wall, 24,397 passed; collection 21.0 -> 16.1 s; test-seconds 2,160.8 -> 2,052.5; busiest worker 272.8 -> 257.3 s.
+
+**Bottleneck record (D-50-04.b), as written before the fix was applied:**
 - Bottleneck: the start of the run, not the tests.  The workers are busy
   268.5-272.8 s (imbalance 4.3 s; longest group 14.7 s), and 21.0 s pass
   from the session's start to its first test (collection: every worker

@@ -576,7 +576,7 @@ Before = 50-01's make test (13nov2026) and the WP-49 gate's test-all
 | WP truth scripts | 15 split in every session | all template-made ones whole; wp30/wp31 split (release tier) |
 | `make test-all` whole | 1,343 s | 835 s |
 
-make test: 306 s wall (24,385 passed), 6 s over the five-minute target (CLAUDE.md rule 11, PRD §8), with the 52 files ruled at 50-01-04 moved to the batch tier; the bottleneck is recorded below.
+make test: 285 s wall (24,397 passed), at or under the five-minute target (CLAUDE.md rule 11, PRD §8), with the 52 files ruled at 50-01-04 moved to the batch tier and, applied at sign-off (377bb3be, 13nov2026), the batch tier's files left uncollected; before that fix it was 306 s.
 
 Bottleneck record (D-50-04.b):
 - Bottleneck: the start of the run, not the tests.  The workers are busy
@@ -851,3 +851,5 @@ fixed cost (script seconds minus its blocks):
     after-s6 test_wp45_truth.cscript: 71.6 s, blocks 72 s, fixed -0.4 s
     after-s2 test_wp46_truth.cscript: 5.4 s, blocks 6 s, fixed -0.6 s
 make test: 306 s against 300 s
+
+Applied at sign-off (13nov2026, 377bb3be): the bottleneck's fix -- a run that leaves the batch tier out does not collect its files.  One timed make test: 306.1 s -> 284.6 s wall, 24,397 passed; collection 21.0 -> 16.1 s; test-seconds 2,160.8 -> 2,052.5; busiest worker 272.8 -> 257.3 s.

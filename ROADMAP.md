@@ -5479,7 +5479,7 @@ Summarised from .ultraplan/sections/index.md (WP-49) and the section decisions D
 
 ## WP-50 · Test-suite speed
 
-**Suite speed.** make test 1,056 s -> 306 s (8 workers, Stata's Python); make test-all pytest 627 s -> 583 s, cert 703 s (3 sessions) -> 238 s (8 sessions) wall. make test: 306 s wall (24,385 passed), 6 s over the five-minute target (CLAUDE.md rule 11, PRD §8), with the 52 files ruled at 50-01-04 moved to the batch tier; the bottleneck is recorded below. Bottleneck: 21.0 s of collection before the first test; proposed fix: skip collecting the batch-tier files in a run that leaves the tier out, about 10 s (.ultraplan/handoff/wp50-profile.txt).
+**Suite speed.** make test 1,056 s -> 285 s (8 workers, Stata's Python); make test-all pytest 627 s -> 583 s, cert 703 s (3 sessions) -> 238 s (8 sessions) wall. make test: 285 s wall (24,397 passed), at or under the five-minute target (CLAUDE.md rule 11, PRD §8), with the 52 files ruled at 50-01-04 moved to the batch tier and, applied at sign-off (377bb3be, 13nov2026), the batch tier's files left uncollected; before that fix it was 306 s. The fix was for the last bottleneck, 21.0 s of collection before the first test (16.1 s after; .ultraplan/handoff/wp50-profile.txt).
 
 ## Traceability matrix
 
