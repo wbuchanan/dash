@@ -101,7 +101,7 @@
 *!                 r(198), although dash.sthlp:157-160 promises a warning for
 *!                 the first two.
 *!   O2-04  FAIL   r(198).
-*!   O2-05  FAIL   r(198) on bmcolor(red).
+*!   O2-05  FAIL   r(198) on bmcolor(red) (zvarlabel(red) since WP-49).
 *!   O2-06  FAIL   r(198) on the two-segment command.
 *!   O2-07  PASS   vacuously, as O2-02.
 *!
@@ -739,8 +739,12 @@ if `dsp_ar_n' > 0 {
     // (BUGS.md "play() is named in the note, where twoway refuses a
     // recording it cannot find or read"); afcolor() and afintensity(),
     // which twoway takes and dash names, are the unsupported pair.
-    local combo `"mcolor(red)`macval(ar_optlist)' bmcolor(red) bmlcolor(red)"'
-    local ar_keylist `"`ar_keylist' bmcolor bmlcolor"'
+    // Flipped (WP-49 basic:PT-12): bmcolor() and bmlcolor() on scatter
+    // are taken in silence, as twoway draws the same picture with them and
+    // prints nothing (noted_option_truth.json probes); zvarlabel() and
+    // omitanymiss, which dash names on scatter, take their place.
+    local combo `"mcolor(red)`macval(ar_optlist)' zvarlabel(red) omitanymiss"'
+    local ar_keylist `"`ar_keylist' zvarlabel omitanymiss"'
     _dsp_probe "combo" "scatter mpg weight" `"`macval(combo)'"'
     local prc    = r(rc)
     local pnotes = r(nnotes)
@@ -790,7 +794,9 @@ if `dsp_ar_n' > 0 {
 // noted where twoway refuses it"); afcolor() twoway takes on every type.
 // ================================================================
 display as text ""
-_dsp_probe "unknown" "scatter mpg weight" "bmcolor(red)"
+// Flipped (WP-49 basic:PT-12): bmcolor() on scatter is taken in silence
+// (noted_option_truth.json); zvarlabel(), which dash names, carries O2-05.
+_dsp_probe "unknown" "scatter mpg weight" "zvarlabel(red)"
 local prc    = r(rc)
 local pnotes = r(nnotes)
 local pnote  `"`r(note)'"'
@@ -806,9 +812,9 @@ else if `pnotes' != 1 {
     local bad = 1
 }
 else {
-    _dsp_names `"`macval(pnote)'"' "bmcolor"
+    _dsp_names `"`macval(pnote)'"' "zvarlabel"
     if r(found) == 0 {
-        display as error `"O2-05 FAIL: the note does not name bmcolor(): `macval(pnote)'"'
+        display as error `"O2-05 FAIL: the note does not name zvarlabel(): `macval(pnote)'"'
         local bad = 1
     }
 }
@@ -827,8 +833,10 @@ else display as text "O2-05 PASS: an option dash does not draw is accepted and r
 // afintensity() twoway takes on every type.
 // ================================================================
 display as text ""
-_dsp_probe "twoseg" "scatter mpg weight, bmcolor(red) || line mpg weight" ///
-    "bmlcolor(red)"
+// Flipped (WP-49 basic:PT-12): zvarlabel() and omitanymiss, which dash
+// names on scatter and line, in place of bmcolor() and bmlcolor().
+_dsp_probe "twoseg" "scatter mpg weight, zvarlabel(red) || line mpg weight" ///
+    "omitanymiss"
 local prc    = r(rc)
 local pnotes = r(nnotes)
 local pnote  `"`r(note)'"'
@@ -845,7 +853,7 @@ else if `pnotes' != 1 {
     local bad = 1
 }
 else {
-    foreach key in bmcolor bmlcolor {
+    foreach key in zvarlabel omitanymiss {
         _dsp_names `"`macval(pnote)'"' "`key'"
         if r(found) == 0 {
             display as error `"O2-06 FAIL: the note omits segment option `key': `macval(pnote)'"'

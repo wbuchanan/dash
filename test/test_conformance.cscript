@@ -563,7 +563,9 @@ end
 capture program drop _cf_help_control
 program define _cf_help_control
     version 16.0
-    capture noisily dash scatter mpg weight, bmcolor(red) name(hctl)
+    // Flipped (WP-49 basic:PT-12): bmcolor() on scatter is taken in
+    // silence; the control is dot's dlpattern(), which dash names.
+    capture noisily dash dot mpg weight, dlpattern(dash) name(hctl)
     c_local n_hctl_rc = _rc
 end
 
@@ -591,7 +593,7 @@ assert `n_hbad' == 0
 assert `n_hctl_rc' == 0
 cert_log_has "`helplog'", needle("dash: ignoring unsupported option(s):")
 local n_noted = r(count)
-cert_log_has "`helplog'", needle("dash: ignoring unsupported option(s): bmcolor()")
+cert_log_has "`helplog'", needle("dash: ignoring unsupported option(s): dlpattern()")
 local n_ctl = r(count)
 if `n_noted' != 1 | `n_ctl' != 1 {
     display as error "C-05 FAIL: `n_noted' unsupported-option note(s), `n_ctl' of them the control's; the log:"

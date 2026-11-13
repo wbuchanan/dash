@@ -858,10 +858,13 @@ dash clear
 // another word than twoway names first, and an unknown lower-case word is
 // noted where twoway refuses it"); afcolor(), which twoway takes and dash does
 // not draw, carries the value.
-_hc_logged 13 dash scatter mpg weight, bmcolor(zq_secret_value_13) name(hc13)
+// Flipped (WP-49 basic:PT-12): bmcolor() on scatter is taken in silence --
+// twoway draws the same picture with it and prints nothing (noted_option_truth.json probes bmcolor(red), bmcolor(blue)) -- so dot's dlpattern(), which twoway
+// draws and dash names, carries the value.
+_hc_logged 13 dash dot mpg weight, dlpattern(zq_secret_value_13) name(hc13)
 local rc = r(rc)
 local lf "`r(logfile)'"
-cert_log_has "`lf'", needle("dash: ignoring unsupported option(s): bmcolor()")
+cert_log_has "`lf'", needle("dash: ignoring unsupported option(s): dlpattern()")
 local named = r(found)
 cert_log_has "`lf'", needle("zq_secret_value_13)")
 local echoed_cmd = r(found)

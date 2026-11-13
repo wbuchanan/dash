@@ -855,6 +855,8 @@ COVERAGE = {
         "_dash_pending_note": ("test_option_validation.cscript:U51-0",),
         "_dash_silent_drop": ("test_option_validation.cscript:U55-0",),
         "_dash_tw_silent_tab": ("test_option_validation.cscript:U55-0",),
+        "_dash_silent_sub": ("test_twoway_option_parity.cscript:Q4902-3",),
+        "_dash_tw_silent_sub_tab": ("test_twoway_option_parity.cscript:Q4902-3",),
         "_dash_tw_value_msg": ("test_option_validation.cscript:Q3505-1",),
         "_dash_tw_value_tab": ("test_option_validation.cscript:Q3505-1",),
         "_dash_valued_names": ("test_option_validation.cscript:U51-0",),

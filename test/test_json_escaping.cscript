@@ -1943,7 +1943,10 @@ _jg_log_on "`jg_l46'"
 // fcolor() and fintensity() now, as twoway draws them (alias_truth.json
 // P1), and not named; bmcolor() and bmlcolor(), back-marker options
 // twoway takes on every type and dash names, take their place.
-capture noisily dash scatter mpg weight, text(30 3000 `"'90s tp"') dlalign(1 `"'x"') bmcolor(`"'90s fp"') bmlcolor(red) name(jg46g)
+* Flipped (WP-49 basic:PT-12): bmcolor() and bmlcolor() on scatter are
+* taken in silence (twoway draws the same picture with it and prints nothing (noted_option_truth.json probes)); zvarlabel() and omitanymiss, which dash
+* names on scatter, take their place.
+capture noisily dash scatter mpg weight, text(30 3000 `"'90s tp"') dlalign(1 `"'x"') zvarlabel(`"'90s fp"') omitanymiss name(jg46g)
 local jg_r7 = _rc
 capture noisily dash (scatter mpg weight) (line mpg weight), text(30 3000 `"'90s tq"') name(jg46h)
 local jg_r8 = _rc
@@ -1951,7 +1954,7 @@ _jg_log_off
 * Flipped (WP-30 P1.10): text() is drawn, so the note names at() foo()
 * bar() and no note names text(); it was "at() text() foo() bar()" and
 * "text()" once each.
-cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): bmcolor() bmlcolor()")
+cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): zvarlabel() omitanymiss")
 local jg_m1 = r(count)
 cert_log_has "`jg_l46'", needle("text()")
 local jg_m2 = r(count)

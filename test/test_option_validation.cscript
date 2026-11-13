@@ -291,7 +291,7 @@
 *! (24sep2026):
 *!   OV-09m                           OV-09's refusal says "must be", which
 *!                                    no accepted case may print
-*!   OV-157 bmcolor(red)              rc 0, and OV-157m: the log says
+*!   OV-157 dlpattern(dash) on dot    rc 0, and OV-157m: the log says
 *!                                    "unsupported option", which no
 *!                                    refusal may print ("not found" is
 *!                                    found at OV-134m)
@@ -1351,7 +1351,11 @@ _ov_case OV-156 `"dash line mpg weight, mlabel(make) mlabangle(400) name(ov156)"
 // and not named; bmcolor(), the back marker's colour, which twoway takes
 // on every type and dash does not draw, is.
 // ----------------------------------------------------------------
-_ov_case OV-157 `"dash scatter mpg weight, bmcolor(red) name(ov157)"' 0 ""
+// Flipped (WP-49 basic:PT-12): bmcolor() on scatter is taken in silence,
+// as twoway draws the same picture with it and prints nothing
+// (noted_option_truth.json probes bmcolor(red), bmcolor(blue)); dot's
+// dlpattern(), which twoway draws and dash does not, is named.
+_ov_case OV-157 `"dash dot mpg weight, dlpattern(dash) name(ov157)"' 0 ""
 _ov_said OV-157m "unsupported option"
 
 // ----------------------------------------------------------------
@@ -3399,15 +3403,21 @@ capture dash clear
 // afintensity(), which dash now reads as fcolor() and fintensity(), as
 // twoway draws them (alias_truth.json P1); bmcolor() and bmlwidth(), back
 // marker options dash still names, take their place.
+// Flipped (WP-49 basic:PT-12): the in-plot cases are taken in silence on
+// scatter and bar, as twoway draws the same picture with them and prints
+// nothing (noted_option_truth.json probes); on contour and contourline
+// twoway's picture differs and dash names them, so the cases are carried
+// there (titling, silent on every type, by copyscheme).  U51-5's words
+// after the plot groups' comma are noted still.
 local _u51n 0
-foreach _u51p in "scatter mpg weight, titling|titling)" ///
-    "scatter mpg weight, bmcolor(red) below|bmcolor() below)" ///
-    "scatter mpg weight, logging bmlwidth(thin)|logging bmlwidth())" ///
-    "scatter mpg weight, clalign(outside)|clalign())" ///
+foreach _u51p in "contour mpg weight price, copyscheme|copyscheme)" ///
+    "contour mpg weight price, bmcolor(red) below|bmcolor() below)" ///
+    "contour mpg weight price, logging bmlwidth(thin)|logging bmlwidth())" ///
+    "contour mpg weight price, clalign(outside)|clalign())" ///
     "(scatter mpg weight), titling below|titling below)" ///
-    "scatter mpg weight, logging|logging)" ///
-    "bar mpg weight, omitallmiss|omitallmiss)" ///
-    "scatter mpg weight, nologging|nologging)" {
+    "contour mpg weight price, logging|logging)" ///
+    "contourline mpg weight price, omitallmiss|omitallmiss)" ///
+    "contour mpg weight price, nologging|nologging)" {
     local ++_u51n
     gettoken _u51x _u51m : _u51p, parse("|")
     local _u51m = substr(`"`_u51m'"', 2, .)

@@ -460,16 +460,19 @@ assert r(rc) == 0
 cert_log_has "`logfile'", needle("by() sub-option(s) not implemented")
 assert r(found) == 0
 capture erase "`page'"
-_hc5_run `"dash scatter mpg weight, by(foreign, subtitleformat(%9s) spacers(ring(2)) shrink ishrink cols(2) total) saving("`page'")"' "`logfile'"
+// Flipped (WP-49 basic:PT-12): spacers(ring(2)) is taken in silence --
+// twoway draws the same picture with it and prints nothing (noted_option_truth.json sub_probes by(foreign, spacers(ring(2)))) -- so the named example is
+// style(foo), a bystyle dash does not draw.
+_hc5_run `"dash scatter mpg weight, by(foreign, subtitleformat(%9s) style(foo) shrink ishrink cols(2) total) saving("`page'")"' "`logfile'"
 assert r(rc) == 0
-cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: spacers(ring(2)))")
+cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: style(foo))")
 assert r(found) == 1
-cert_log_has "`logfile'", needle("ignored: spacers(ring(2)) cols")
+cert_log_has "`logfile'", needle("ignored: style(foo) cols")
 assert r(found) == 0
-// ... and nothing after spacers(ring(2)).  The note joins what it drops with one
+// ... and nothing after style(foo).  The note joins what it drops with one
 // blank, in the order written, so any further name -- total as much as
-// cols() -- follows "spacers(ring(2)) " (24sep2026: total was never checked).
-local hc5by "by() sub-option(s) not implemented and ignored: spacers(ring(2)) "
+// cols() -- follows "style(foo) " (24sep2026: total was never checked).
+local hc5by "by() sub-option(s) not implemented and ignored: style(foo) "
 cert_log_has "`logfile'", needle("`hc5by'")
 assert r(found) == 0
 // The control for that needle: a second name dash does not implement is
@@ -479,21 +482,23 @@ _hc5_run `"dash scatter mpg weight, by(foreign, subtitleformat(%9s) spacers(ring
 assert r(rc) == 0
 // Flipped (WP-31 D10c): style(econ) is drawn whole, silently, so the
 // list is spacers(ring(2)) alone, once.
-cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: spacers(ring(2))")
-assert r(count) == 1
+// Flipped (WP-49 basic:PT-12): spacers(ring(2)) is taken in silence too,
+// so no by() sub-option is named.
+cert_log_has "`logfile'", needle("by() sub-option(s) not implemented")
+assert r(count) == 0
 cert_log_has "`logfile'", needle("sub-option style(econ)")
 assert r(count) == 0
 capture dash clear
-dash scatter mpg weight, by(foreign, subtitleformat(%9s) spacers(ring(2)) ishrink) name(hc8)
+dash scatter mpg weight, by(foreign, subtitleformat(%9s) style(foo) ishrink) name(hc8)
 local app "`c(tmpdir)'dash_hc5_app.py"
 capture erase "`app'"
 _hc5_run `"dash build, saving("`app'") replace server"' "`logfile'"
 assert r(rc) == 0
-cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: spacers(ring(2)))")
+cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: style(foo))")
 assert r(found) == 1
 capture erase "`app'"
 capture dash clear
-display "HC5-08 PASS: spacers(ring(2)) is named in the Stata log on a saved and a served build; subtitleformat(), shrink, ishrink, rows(), holes(), compact, colfirst, cols() and total are not"
+display "HC5-08 PASS: style(foo) is named in the Stata log on a saved and a served build; subtitleformat(), shrink, ishrink, rows(), holes(), compact, colfirst, cols(), total and spacers() are not"
 
 // ================================================================
 // HC5-09 -- headlabel

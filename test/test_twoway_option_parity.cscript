@@ -463,12 +463,16 @@ if `tw_rc' != 198 | `drc' != 198 | `dnote' != 0 | r(found) != 1 {
 // twoway draws it (alias_truth.json P1), and not named; bmcolor(), the
 // back marker's colour, which twoway takes on every type and dash names,
 // is the control.
-_ztp_run `"dash line mpg weight, bmcolor(red) name(zqtp)"' "`logfile'"
+// Flipped (WP-49 basic:PT-12): bmcolor() on line is taken in silence, as
+// twoway draws the same picture with it and prints nothing
+// (noted_option_truth.json probes bmcolor(red), bmcolor(blue)); dot's
+// dlpattern(), which twoway draws and dash names, is the control.
+_ztp_run `"dash dot mpg weight, dlpattern(dash) name(zqtp)"' "`logfile'"
 local drc = r(rc)
 local dnote = r(note)
-_ztp_logged "`logfile'" "bmcolor()"
+_ztp_logged "`logfile'" "dlpattern()"
 if `drc' != 0 | `dnote' != 1 | r(found) != 1 {
-    display as error "TP-02 FAIL: bmcolor(red) -- dash rc=`drc', note=`dnote', named bmcolor()=`r(found)'"
+    display as error "TP-02 FAIL: dlpattern(dash) on dot -- dash rc=`drc', note=`dnote', named dlpattern()=`r(found)'"
     local bad = 1
 }
 if `bad' {
@@ -5639,6 +5643,46 @@ if `q3bad' {
     local faillist "`faillist' Q4102-3"
 }
 else display as text "Q4102-3 PASS: by()'s unreadable legend position() prints twoway's clockdir note"
+
+// Q4902-3 (WP-49 basic:PT-12): text()'s own note.  (a) A text() word
+// twoway draws the same picture with and prints no note for -- angle(),
+// noted_option_truth.json's sub_probes text(30 3000 "x", angle(45)) and
+// angle(90) -- is not named; a noted word with no silent row, drawview(),
+// still is, with "()".  (b) A valueless word, ascircle, is named without
+// "()".
+preserve
+sysuse auto, clear
+local q3bad 0
+_ztp_run `"dash scatter mpg weight, text(30 3000 "x", angle(45)) name(q4902)"' "`logfile'"
+local rc = r(rc)
+_ztp_logged "`logfile'" "draws no"
+if `rc' | r(found) {
+    display as error "Q4902-3 FAIL angle(45): r(`rc'), a text() note `r(found)'"
+    local q3bad 1
+}
+_ztp_run `"dash scatter mpg weight, text(30 3000 "x", angle(45) drawview(yes)) name(q4902)"' "`logfile'"
+local rc = r(rc)
+_ztp_logged "`logfile'" "text() draws no drawview(); see help"
+if `rc' | !r(found) {
+    display as error "Q4902-3 FAIL drawview(yes): r(`rc'), drawview() not named alone"
+    local q3bad 1
+}
+_ztp_run `"dash scatter mpg weight, text(30 3000 "x", ascircle) name(q4902)"' "`logfile'"
+local rc = r(rc)
+_ztp_logged "`logfile'" "text() draws no ascircle; see help"
+local q3a = r(found)
+_ztp_logged "`logfile'" "ascircle()"
+if `rc' | !`q3a' | r(found) {
+    display as error "Q4902-3 FAIL ascircle: r(`rc'), named bare `q3a', named with () `r(found)'"
+    local q3bad 1
+}
+capture dash clear
+restore
+if `q3bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' Q4902-3"
+}
+else display as text "Q4902-3 PASS: text() names no word twoway draws the same with, and a valueless word without ()"
 
 // ----------------------------------------------------------------
 // Summary

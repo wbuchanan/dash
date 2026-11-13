@@ -94,15 +94,17 @@ display as text "ND-01 PASS: nodraw emits no note and the file is written"
 // dash now refuses it as twoway does (BUGS.md "play() is named in the
 // note, where twoway refuses a recording it cannot find or read"); afcolor(), which twoway takes and dash names, is the
 // named one.
-_nd_note_for `"dash scatter mpg weight, bmcolor(red) nodraw saving("`out1'", replace)"' "`logfile'"
+// Flipped (WP-49 basic:PT-12): bmcolor() on scatter is taken in silence
+// (twoway draws the same picture with it and prints nothing (noted_option_truth.json probes)); dot's dlpattern(), which dash names, is the named one.
+_nd_note_for `"dash dot mpg weight, dlpattern(dash) nodraw saving("`out1'", replace)"' "`logfile'"
 assert r(rc) == 0
 cert_log_has "`logfile'", needle("ignoring unsupported")
 assert r(found) == 1
-cert_log_has "`logfile'", needle("bmcolor()")
+cert_log_has "`logfile'", needle("dlpattern()")
 assert r(found) == 1
 cert_log_has "`logfile'", needle("nodraw()")
 assert r(found) == 0
-display as text "ND-02 PASS: bmcolor() is named, nodraw is not"
+display as text "ND-02 PASS: dlpattern() is named, nodraw is not"
 
 // ----------------------------------------------------------------
 // ND-03
@@ -114,11 +116,12 @@ assert r(found) == 0
 // And paren mode does report a plot group's options: afcolor() in the group
 // is named, nodraw beside it is not.  Without this a paren mode that
 // reported nothing at all passed.
-_nd_note_for `"dash (scatter mpg weight, bmcolor(red) nodraw), saving("`out1'", replace)"' "`logfile'"
+// Flipped (WP-49 basic:PT-12): dot's dlpattern() in place of bmcolor().
+_nd_note_for `"dash (dot mpg weight, dlpattern(dash) nodraw), saving("`out1'", replace)"' "`logfile'"
 assert r(rc) == 0
 cert_log_has "`logfile'", needle("ignoring unsupported")
 assert r(found) == 1
-cert_log_has "`logfile'", needle("bmcolor()")
+cert_log_has "`logfile'", needle("dlpattern()")
 assert r(found) == 1
 cert_log_has "`logfile'", needle("nodraw()")
 assert r(found) == 0

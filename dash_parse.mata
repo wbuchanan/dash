@@ -412,6 +412,9 @@
 *!   _dash_silent_drop(p, ptype)
 *!       The pending names less those twoway draws nothing of on ptype.
 *!
+*!   _dash_silent_sub(opt, sub)
+*!       1 when twoway draws nothing of sub-option sub of option opt.
+*!
 *!   _dash_pending_note(p)
 *!       The pending names as the note writes them, "()" after a valued one.
 *!
@@ -10042,44 +10045,122 @@ string matrix _dash_tw_silent_tab()
     t = t \ ("alpattern", "scatter line connected dot tsline rscatter contourline pcscatter scatteri lfit qfit fpfit lowess lpoly mspline mband kdensity function")
     t = t \ ("alstyle", "scatter line connected dot tsline rscatter contour contourline pcscatter scatteri lfit qfit fpfit lowess lpoly mspline mband kdensity function")
     t = t \ ("alwidth", "scatter line connected dot tsline rscatter contour contourline pcscatter scatteri lfit qfit fpfit lowess lpoly mspline mband kdensity function")
+    t = t \ ("back", "mspline mband")
     t = t \ ("barbsize", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contour contourline pcspike pccapsym pcscatter pci scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("bargap", "area bar spike dropline dot")
     t = t \ ("baroffset", "area spike dropline dot")
+    t = t \ ("below", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit fpfit lowess lpoly mspline mband kdensity histogram function")
     t = t \ ("blstyle", "scatter line connected dot tsline rscatter contour contourline pcscatter scatteri lfit qfit fpfit lowess lpoly mspline mband kdensity function")
+    t = t \ ("bmcolor", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("bmlalign", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("bmlcolor", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
     t = t \ ("bmlinestyle", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contour contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("bmlpattern", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("bmlwidth", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("bmsize", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcscatter pci scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("clalign", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("copyscheme", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("dlpattern", "scatter line connected area bar spike dropline tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
     t = t \ ("headlabel", "rpcap rpspike pcspike pci")
+    t = t \ ("heatlabel", "contourline")
+    t = t \ ("logging", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
     t = t \ ("lstyle", "scatter dot rscatter contour contourline pcscatter scatteri")
     t = t \ ("mangle", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contour contourline pcspike pccapsym pcscatter pci scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
     t = t \ ("mlstyle", "line area bar spike tsline tsrline rarea rbar rspike rcap rline contour contourline pcspike pci lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
     t = t \ ("msize", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contour contourline pcspike pccapsym pcscatter pci scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
     t = t \ ("mstyle", "line area bar spike tsline tsrline rarea rbar rspike rcap rline contour contourline pcspike pci lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("nologging", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("norefscheme", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contour contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("norescaling", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contour contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("notitling", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contour contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("omitallmiss", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("omitanymiss", "tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly mspline mband histogram function")
+    t = t \ ("omitdupmiss", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("omitnothing", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("onepanel", "tsline tsrline")
     t = t \ ("outlines", "contourline")
     t = t \ ("recast", "line dot tsline rpspike contour pcspike pci lfit qfit fpfit lowess lpoly mspline mband kdensity function")
+    t = t \ ("refscheme", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("rescaling", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contour contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
     t = t \ ("sort", "tsline tsrline contourline pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("titling", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contour contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
+    t = t \ ("zvarformat", "scatter line connected area bar spike dropline dot tsline tsrline rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike contourline pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband kdensity histogram function")
     // END tw_silent
     return(t)
 }
 
-// _dash_silent_drop(p, ptype) -- the pending names p (s(_pending)) less
-// those twoway draws nothing different with on plot type ptype
-// (_dash_tw_silent_tab), one blank between them.
+// _dash_tw_silent_sub_tab() -- the sub-options of graph options twoway
+// takes and draws nothing different with, printing no note (WP-49
+// basic:PT-12): one row each, the option, the sub-option's full name and
+// the plot type of the base command it was measured on (graph export SVG
+// against the base command without it, test/fixtures/
+// noted_option_truth.json's sub_probes).
+string matrix _dash_tw_silent_sub_tab()
+{
+    string matrix t
+
+    t = J(0, 3, "")
+    // BEGIN tw_silent_sub (generated by scripts/gen_twoway_takes_table.py from test/fixtures/noted_option_truth.json; do not edit)
+    t = t \ ("by", "spacers", "scatter")
+    t = t \ ("legend", "angle", "scatter")
+    t = t \ ("legend", "nodrawview", "scatter")
+    t = t \ ("legend", "nostack", "scatter")
+    t = t \ ("legend", "orientation", "scatter")
+    t = t \ ("legend", "styleonly", "scatter")
+    t = t \ ("subtitle", "width", "scatter")
+    t = t \ ("text", "angle", "scatter")
+    t = t \ ("title", "angle", "scatter")
+    t = t \ ("title", "astextbox", "scatter")
+    t = t \ ("xscale", "nolog", "scatter")
+    t = t \ ("ylabel", "labelkeepleadingzero", "scatter")
+    t = t \ ("yscale", "noreverse", "scatter")
+    t = t \ ("yscale", "ring", "scatter")
+    // END tw_silent_sub
+    return(t)
+}
+
+// _dash_silent_drop(p, ptype) -- the names p (s(_pending)'s bare names,
+// or s(_unknown)'s words as typed, "()" and all) less those twoway draws
+// nothing different with on plot type ptype (_dash_tw_silent_tab), one
+// blank between them.  A word is looked up by its name, the text before
+// its "(" (WP-49 basic:PT-12), and kept as typed.
 string scalar _dash_silent_drop(string scalar p, string scalar ptype)
 {
     string matrix    t
     string rowvector w
-    string scalar    out
-    real scalar      i, r, drop
+    string scalar    out, nm
+    real scalar      i, r, drop, k
 
     t = _dash_tw_silent_tab()
     w = tokens(p)
     out = ""
     for (i = 1; i <= cols(w); i++) {
         drop = 0
+        k = strpos(w[i], "(")
+        nm = (k ? substr(w[i], 1, k - 1) : w[i])
         for (r = 1; r <= rows(t); r++) {
-            if (t[r, 1] == w[i] & anyof(tokens(t[r, 2]), ptype)) drop = 1
+            if (t[r, 1] == nm & anyof(tokens(t[r, 2]), ptype)) drop = 1
         }
         if (!drop) out = out + (out == "" ? "" : " ") + w[i]
     }
     return(out)
+}
+
+// _dash_silent_sub(opt, sub) -- 1 when _dash_tw_silent_sub_tab() holds a
+// row for option opt and sub-option sub (its full name), else 0 (WP-49
+// basic:PT-12).  The plot-type column is not compared: the rows are
+// graph options, each measured on one base command.  text() stands for
+// ttext() too, which takes text()'s sub-options.
+real scalar _dash_silent_sub(string scalar opt, string scalar sub)
+{
+    string matrix t
+    real scalar   r
+
+    t = _dash_tw_silent_sub_tab()
+    for (r = 1; r <= rows(t); r++) {
+        if (t[r, 1] == opt & t[r, 2] == sub) return(1)
+    }
+    return(0)
 }
 
 // _dash_tw_value_tab() -- twoway's return code and first line for each

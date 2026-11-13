@@ -137,6 +137,11 @@ local probes `"`probes' zvarlabel(Z) zvarformat(%9.1f) heatlabel dropbase nodrop
 local probes `"`probes' back noback bargap(50) below clalign(outside) copyscheme"'
 local probes `"`probes' logging nologging refscheme norefscheme rescaling norescaling"'
 local probes `"`probes' titling notitling onepanel"'
+* WP-49 basic:PT-12 (section 49-02): a second non-default value for each
+* catch-all option above probed at one value only, so a type is silent
+* only when both values draw twoway's picture unchanged (D-49-02.a).
+local probes `"`probes' clalign(center) bargap(-20) zvarformat(%4.0f) bmsize(small) bmcolor(blue)"'
+local probes `"`probes' bmlalign(inside) bmlpattern(dot) bmlwidth(vthin)"'
 local k 0
 foreach one of local probes {
     local ++k
@@ -307,6 +312,114 @@ foreach f in zn_f1 zn_f2 zn_f3 zn_f4 {
     capture erase "`f'.html"
 }
 
+* WP-49 basic:PT-12 (section 49-02, D-49-02.a (2)): sub-options of graph
+* options, each against its base command without it -- twoway's rc, its
+* notes, whether its SVG differs from the base's (two base exports), and
+* dash's notes.  Spec "<option>|<sub-option>|<base>|<command>"; the key
+* is the command after its comma.  u is mpg / 50 (0 to 1).
+gen u = mpg / 50
+local s 0
+foreach spec in ///
+    `"legend|nostack|scatter mpg weight,|scatter mpg weight, legend(nostack)"' ///
+    `"legend|angle|scatter mpg weight,|scatter mpg weight, legend(angle(45))"' ///
+    `"legend|angle|scatter mpg weight,|scatter mpg weight, legend(angle(90))"' ///
+    `"legend|orientation|scatter mpg weight,|scatter mpg weight, legend(orientation(vertical))"' ///
+    `"legend|nodrawview|scatter mpg weight,|scatter mpg weight, legend(nodrawview)"' ///
+    `"legend|styleonly|scatter mpg weight,|scatter mpg weight, legend(styleonly)"' ///
+    `"title|angle|scatter mpg weight, title("T")|scatter mpg weight, title("T", angle(45))"' ///
+    `"title|angle|scatter mpg weight, title("T")|scatter mpg weight, title("T", angle(90))"' ///
+    `"title|astextbox|scatter mpg weight, title("T")|scatter mpg weight, title("T", astextbox)"' ///
+    `"text|angle|scatter mpg weight, text(30 3000 "x")|scatter mpg weight, text(30 3000 "x", angle(45))"' ///
+    `"text|angle|scatter mpg weight, text(30 3000 "x")|scatter mpg weight, text(30 3000 "x", angle(90))"' ///
+    `"xscale|nolog|scatter mpg weight,|scatter mpg weight, xscale(nolog)"' ///
+    `"yscale|noreverse|scatter mpg weight,|scatter mpg weight, yscale(noreverse)"' ///
+    `"yscale|ring|scatter mpg weight,|scatter mpg weight, yscale(ring(3))"' ///
+    `"yscale|ring|scatter mpg weight,|scatter mpg weight, yscale(ring(1))"' ///
+    `"ylabel|labelkeepleadingzero|scatter u weight, ylabel(.1(.1).5)|scatter u weight, ylabel(.1(.1).5, labelkeepleadingzero)"' ///
+    `"by|spacers|scatter mpg weight, by(foreign)|scatter mpg weight, by(foreign, spacers(ring(2)))"' ///
+    `"subtitle|width|scatter mpg weight, by(foreign)|scatter mpg weight, by(foreign) subtitle(, width(20))"' {
+    local ++s
+    gettoken so rest : spec, parse("|")
+    gettoken bar rest : rest, parse("|")
+    gettoken ss rest : rest, parse("|")
+    gettoken bar rest : rest, parse("|")
+    gettoken sb rest : rest, parse("|")
+    gettoken bar sc : rest, parse("|")
+    global ZN_SO_`s' "`so'"
+    global ZN_SS_`s' "`ss'"
+    global ZN_SB_`s' `"`sb'"'
+    global ZN_SC_`s' `"`sc'"'
+    foreach v in sb sc {
+        capture graph drop _all
+        set seed 12345
+        capture twoway `sb' name(zo, replace)
+        if !_rc capture graph export "${ZN_WORK}/`v'`s'.svg", name(zo) replace as(svg)
+    }
+    capture graph drop _all
+    quietly log using "${ZN_WORK}/ts`s'.log", replace text name(zn)
+    set seed 12345
+    capture noisily twoway `sc' name(zo, replace)
+    global ZN_STR_`s' = _rc
+    quietly log close zn
+    if !${ZN_STR_`s'} capture graph export "${ZN_WORK}/os`s'.svg", name(zo) replace as(svg)
+    capture graph drop _all
+    * dash on its one-line route (no name()): the page is built, so the
+    * renderer's notes are printed too.
+    quietly log using "${ZN_WORK}/ds`s'.log", replace text name(zn)
+    capture noisily dash `sc'
+    global ZN_SDR_`s' = _rc
+    quietly log close zn
+    capture dash clear
+}
+global ZN_S "`s'"
+
+* WP-49 LT-25 (section 49-02, the lt25 keys): the named-style probes --
+* each command's notes as twoway prints them (every line, in order, a
+* note twoway prints twice held twice) and as dash prints them.
+local l 0
+foreach spec in ///
+    `"R_tpos|scatter mpg weight, title("T", position(13))"' ///
+    `"R_e1pos|scatter mpg weight, t1title("T", position(13))"' ///
+    `"R_tjust|scatter mpg weight, title("T", justification(bogus))"' ///
+    `"tj_l|scatter mpg weight, title("T", justification(l))"' ///
+    `"C_pbog|contour gz gy gx, clegend(position(13))"' ///
+    `"R_tsz|scatter mpg weight, title("T", size(bogus))"' ///
+    `"R_lsz|scatter mpg weight, legend(size(bogus))"' ///
+    `"mlabgap_abc|scatter mpg weight, mlabel(make) mlabgap(abc)"' ///
+    `"L_posfr|scatter mpg weight, legend(pos(4.5))"' ///
+    `"R_tcol|scatter mpg weight, title("T", color(bogus))"' ///
+    `"R_lcol|scatter mpg weight, legend(color(bogus))"' ///
+    `"by_style_foo|scatter mpg weight, by(foreign, style(foo))"' ///
+    `"by_scale_abc|scatter mpg weight, by(foreign, scale(abc))"' ///
+    `"by_iscale_abc|scatter mpg weight, by(foreign, iscale(abc))"' ///
+    `"scale_abc|scatter mpg weight, scale(abc)"' ///
+    `"xsize_abc|scatter mpg weight, xsize(abc)"' ///
+    `"ysize_abc|scatter mpg weight, ysize(abc)"' ///
+    `"st11_legend_bottom|scatter mpg weight, legend(position(bottom))"' ///
+    `"st11_legend_ring_i|scatter mpg weight, legend(ring(i))"' ///
+    `"st11_connect_di|scatter mpg weight, connect(di)"' ///
+    `"st11_text_nor|scatter mpg weight, text(30 3000 "x", placement(nor))"' ///
+    `"st11_text_hor|scatter mpg weight, text(30 3000 "x", orientation(hor))"' ///
+    `"st11_title_hor|scatter mpg weight, title("T", orientation(hor))"' {
+    local ++l
+    gettoken lk rest : spec, parse("|")
+    gettoken bar lc : rest, parse("|")
+    global ZN_LK_`l' "`lk'"
+    global ZN_LC_`l' `"`lc'"'
+    capture graph drop _all
+    quietly log using "${ZN_WORK}/tq`l'.log", replace text name(zn)
+    capture noisily twoway `lc' name(zo, replace)
+    global ZN_LQT_`l' = _rc
+    quietly log close zn
+    capture graph drop _all
+    quietly log using "${ZN_WORK}/dq`l'.log", replace text name(zn)
+    capture noisily dash `lc'
+    global ZN_LQD_`l' = _rc
+    quietly log close zn
+    capture dash clear
+}
+global ZN_L "`l'"
+
 python:
 import json, os, re
 from sfi import Macro
@@ -337,6 +450,17 @@ def note(text):
                 s = s[:-1]
             return s.split()
     return []
+
+
+def notes(text):
+    """Every "(note: ...)" line of the log, in order, its continuation
+    lines joined and its blanks after "(note:" made one (WP-49 49-02)."""
+    out = []
+    for ln in text.replace("\n> ", "").splitlines():
+        s = ln.strip()
+        if s.startswith("(note:"):
+            out.append("(note: " + s[len("(note:"):].strip())
+    return out
 
 
 def first_error(text):
@@ -407,6 +531,7 @@ for k in range(1, int(G("ZN_K")) + 1):
         tt, dt = read(tl), read(dl)
         rows[t] = {"twoway_rc": tr[j - 1],
                    "twoway_message": first_error(tt) if tr[j - 1] else "",
+                   "twoway_notes": notes(tt),
                    "twoway_draws": draws(j, os.path.join(work, "o%d_%d.svg" % (k, j))) if tr[j - 1] == 0 else None,
                    "dash_rc": dr[j - 1],
                    "dash_message": first_error(dt) if dr[j - 1] else "",
@@ -428,6 +553,7 @@ for j, t in enumerate(ltypes, 1):
     tt, dt = read(tl), read(dl)
     rows[t] = {"twoway_rc": ltr[j - 1],
                "twoway_message": first_error(tt) if ltr[j - 1] else "",
+               "twoway_notes": notes(tt),
                "twoway_draws": draws(j, os.path.join(work, "ol_%d.svg" % j),
                                      ("bl", "cl")) if ltr[j - 1] == 0 else None,
                "dash_rc": ldr[j - 1],
@@ -456,6 +582,7 @@ for c in G("ZN_CTX").split():
             ctx_files.append(op)
             rows[t] = {"twoway_rc": tr[j - 1],
                        "twoway_message": first_error(tt) if tr[j - 1] else "",
+                       "twoway_notes": notes(tt),
                        "twoway_draws": draws(j, op, ("x" + c, "y" + c)) if tr[j - 1] == 0 else None,
                        "dash_rc": dr[j - 1],
                        "dash_message": first_error(dt) if dr[j - 1] else "",
@@ -482,6 +609,54 @@ for j in range(1, int(G("ZN_J")) + 1):
             os.remove(f)
         except OSError:
             pass
+# WP-49 basic:PT-12: the sub-option probes, keyed "<option>(<typed>)".
+sub = {}
+sub_files = []
+for s in range(1, int(G("ZN_S")) + 1):
+    tl = os.path.join(work, "ts%d.log" % s)
+    dl = os.path.join(work, "ds%d.log" % s)
+    tt, dt = read(tl), read(dl)
+    trc, drc = int(G("ZN_STR_%d" % s)), int(G("ZN_SDR_%d" % s))
+    op = os.path.join(work, "os%d.svg" % s)
+    b, c, o = (svg_lines(os.path.join(work, "%s%d.svg" % (v, s)))
+               for v in ("sb", "sc", "os"))
+    if trc or b is None or c is None or o is None or unordered(b) != unordered(c):
+        dr_ = None
+    elif o == b or unordered(o) == unordered(b):
+        dr_ = False
+    else:
+        dr_ = True
+    sub[G("ZN_SC_%d" % s).split(",", 1)[1].strip()] = {
+        "option": G("ZN_SO_%d" % s), "suboption": G("ZN_SS_%d" % s),
+        "base": G("ZN_SB_%d" % s), "cmd": G("ZN_SC_%d" % s),
+        "twoway_rc": trc, "twoway_message": first_error(tt) if trc else "",
+        "twoway_notes": notes(tt), "twoway_draws": dr_,
+        "dash_rc": drc, "dash_message": first_error(dt) if drc else "",
+        "dash_notes": notes(dt)}
+    sub_files += [op] + [os.path.join(work, "%s%d.svg" % (v, s)) for v in ("sb", "sc")]
+    for f in (tl, dl):
+        try:
+            os.remove(f)
+        except OSError:
+            pass
+# WP-49 LT-25: the named-style probes.
+lt25 = {}
+for q in range(1, int(G("ZN_L")) + 1):
+    tl = os.path.join(work, "tq%d.log" % q)
+    dl = os.path.join(work, "dq%d.log" % q)
+    tt, dt = read(tl), read(dl)
+    trc, drc = int(G("ZN_LQT_%d" % q)), int(G("ZN_LQD_%d" % q))
+    lt25[G("ZN_LK_%d" % q)] = {
+        "cmd": G("ZN_LC_%d" % q), "twoway_rc": trc,
+        "twoway_message": first_error(tt) if trc else "",
+        "twoway_notes": notes(tt), "dash_rc": drc,
+        "dash_message": first_error(dt) if drc else "",
+        "dash_notes": notes(dt)}
+    for f in (tl, dl):
+        try:
+            os.remove(f)
+        except OSError:
+            pass
 try:
     with open(os.path.join(work, "git_head.txt")) as fh:
         commit = fh.read().strip()
@@ -490,16 +665,18 @@ except OSError:
 out = {"_meta": {"stata_version": G("ZN_VERSION"), "born_date": G("ZN_BORN"),
                  "dash_commit": commit, "extracted": G("ZN_WHEN"),
                  "source": "scripts/extract_noted_option_truth.do"},
-       "types": types, "probes": probes, "graph_level": graph}
+       "types": types, "probes": probes, "graph_level": graph,
+       "sub_probes": sub, "lt25": lt25}
 with open(G("ZN_OUT"), "w", encoding="utf-8") as fh:
     json.dump(out, fh, indent=1, sort_keys=True)
     fh.write("\n")
 # ZN_KEEP=1 in the environment keeps the SVGs in c(tmpdir)dash_noted_probe
 # for reading what twoway draws.
-for f in ["git_head.txt"] + ([] if os.environ.get("ZN_KEEP") else ctx_files + ["%s%d.svg" % (c, i) for c in "bc" for i in range(1, len(types) + 1)] + ["o%d_%d.svg" % (k, j) for k in range(1, int(G("ZN_K")) + 1) for j in range(1, len(types) + 1)] + ["%s%d.svg" % (c, i) for c in ("bl", "cl", "ol_") for i in range(1, len(ltypes) + 1)]):
+for f in ["git_head.txt"] + ([] if os.environ.get("ZN_KEEP") else ctx_files + sub_files + ["%s%d.svg" % (c, i) for c in "bc" for i in range(1, len(types) + 1)] + ["o%d_%d.svg" % (k, j) for k in range(1, int(G("ZN_K")) + 1) for j in range(1, len(types) + 1)] + ["%s%d.svg" % (c, i) for c in ("bl", "cl", "ol_") for i in range(1, len(ltypes) + 1)]):
     try:
         os.remove(os.path.join(work, f))
     except OSError:
         pass
-print("wrote", G("ZN_OUT"), len(probes), "probes,", len(graph), "graph-level")
+print("wrote", G("ZN_OUT"), len(probes), "probes,", len(graph), "graph-level,",
+      len(sub), "sub-option,", len(lt25), "lt25")
 end

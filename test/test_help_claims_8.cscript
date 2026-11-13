@@ -10,9 +10,11 @@
 *! claim is measured here, not recalled: `set graphics off', and what twoway
 *! DRAWS is read from `graph export' SVG.
 *!
-*!   HC8-01  the note the help prints for `dash scatter mpg weight,
-*!           bmcolor(red) bmlcolor(red)' is, word for word, "dash:
-*!           ignoring unsupported option(s): bmcolor() bmlcolor()".
+*!   HC8-01  the note the help prints for `dash dot mpg weight,
+*!           dlpattern(dash) bartype(fixed)' is, word for word, "dash:
+*!           ignoring unsupported option(s): dlpattern() bartype()".
+*!           (Flipped, WP-49 basic:PT-12: bmcolor() and bmlcolor() on
+*!           scatter are taken in silence.)
 *!           (Flipped, WP-30 P1.14a: pstyle() is drawn now; flipped,
 *!           WP-31 D2: t1title() is drawn now.)
 *!   HC8-02  every option on the Unsupported list is accepted (rc 0) and
@@ -29,7 +31,7 @@
 *!           changes a graph that is not combined -- neither is a graph
 *!           combine option only, as the help used to say.
 *!   HC8-05  bargap(): twoway bar draws the same picture with it, and dash
-*!           names it; xscale(alt) is drawn, not named (flipped, WP-30
+*!           takes it in silence (WP-49); xscale(alt) is drawn, not named (flipped, WP-30
 *!           P1.18a); xscale(reverse) is honoured, not named.
 *!   HC8-06  titl(x) abbreviates title() and is honoured; titel(x) is
 *!           refused as twoway refuses it.
@@ -415,11 +417,14 @@ generate pos = mod(_n, 12) + 1
 // twoway refuses a recording it cannot find, r(601), and dash now does
 // (BUGS.md "play() is named in the note, where twoway refuses a recording
 // it cannot find or read"), and twoway draws nothing of bmlinestyle().
-_hc_run "" `"dash scatter mpg weight, bmcolor(red) bmlcolor(red)"'
+// Flipped (WP-49 basic:PT-12): bmcolor() and bmlcolor() on scatter are
+// taken in silence (twoway draws the same picture with it and prints nothing (noted_option_truth.json probes bmcolor(red), bmlcolor(red))); the help's
+// example is dot's dlpattern() and bartype(), which dash names.
+_hc_run "" `"dash dot mpg weight, dlpattern(dash) bartype(fixed)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
 _hc_expect "HC8-01" "(`rc' == 0)" "rc `rc'"
-_hc_log "HC8-01" "`lf'" "(note:  dash: ignoring unsupported option(s): bmcolor() bmlcolor())" 1 1
+_hc_log "HC8-01" "`lf'" "(note:  dash: ignoring unsupported option(s): dlpattern() bartype())" 1 1
 _hc_done "HC8-01" "the note is the help's, word for word"
 
 // ================================================================
@@ -447,7 +452,9 @@ _hc_done "HC8-01" "the note is the help's, word for word"
 // twoway refuses each on every type, r(198), and dash now does
 // (noted_option_truth.json); not given (24 -> 16 named, and after the
 // comma filter() and link() likewise, 3 -> 1).
-local p_opts `"bmcolor(red) acolor(red) alcolor(red) alpattern(dash) alwidth(thick) b1title(b) b2title(b) bmlinestyle(p3) cmissing(n) colorlist(red blue) coloruseplegend connect(l) dlstyle(p3) dstyle(p3) fxsize(50) fysize(50) l1title(l) l2title(l) mlabtextstyle(heading) mlabvposition(pos) mlpattern(dash) r1title(r) r2title(r) scale(1.5) sort t1title(t) t2title(t) text(20 3000 "hi") xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
+// Flipped (WP-49 basic:PT-12): bmcolor() on scatter is taken in silence
+// (twoway draws the same picture with it and prints nothing (noted_option_truth.json probes)); zvarlabel(), which dash names on scatter, is the named one.
+local p_opts `"zvarlabel(red) acolor(red) alcolor(red) alpattern(dash) alwidth(thick) b1title(b) b2title(b) bmlinestyle(p3) cmissing(n) colorlist(red blue) coloruseplegend connect(l) dlstyle(p3) dstyle(p3) fxsize(50) fysize(50) l1title(l) l2title(l) mlabtextstyle(heading) mlabvposition(pos) mlpattern(dash) r1title(r) r2title(r) scale(1.5) sort t1title(t) t2title(t) text(20 3000 "hi") xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
 // Flipped (WP-30 P1.10): text() named in the note was wrong, because dash
 // draws it as twoway does (added_text_truth.json); it is given and not
 // named, here and after the comma (39 -> 38 and 23 -> 22).
@@ -477,7 +484,7 @@ local p_opts `"bmcolor(red) acolor(red) alcolor(red) alpattern(dash) alwidth(thi
 // BUGS.md "dash names options twoway takes and draws nothing of, where
 // twoway is silent"): taken in silence, in p_honoured; afcolor(), which
 // twoway takes and dash names, is the named one.
-local p_names "bmcolor"
+local p_names "zvarlabel"
 // Flipped (WP-30 P1.24): mlabvposition named in the note was wrong,
 // because dash draws it per row as twoway does; it is given and not named.
 // Flipped (WP-30 P1.24, part 2): mlabtextstyle likewise, drawn in the
@@ -616,7 +623,10 @@ mata: st_local("same", strofreal(_hc_svg_same(st_local("hc_dir") + "/hc05a.svg",
 _hc_expect "HC8-05" "(`r1' == 0 & `r2' == 0 & `same' == 1)" "twoway bar with bargap(50): rc `r1' `r2', same picture `same'"
 _hc_run "" "dash bar mpg weight, bargap(50) name(hc05, replace)"
 _hc_expect "HC8-05" "(`r(rc)' == 0)" "dash bar, bargap(): rc `r(rc)'"
-_hc_log "HC8-05" "`r(logfile)'" "bargap()" 1
+// Flipped (WP-49 basic:PT-12): bargap() was named; twoway draws the same
+// picture with it (measured here and in noted_option_truth.json) and
+// prints nothing, so dash takes it in silence.
+_hc_log "HC8-05" "`r(logfile)'" "bargap()" 0
 _hc_run "" `"dash scatter mpg weight, xscale(alt) saving("`hc_dir'/hc05.html", replace)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
@@ -628,7 +638,7 @@ local lf "`r(logfile)'"
 _hc_expect "HC8-05" "(`rc' == 0)" "xscale(reverse): rc `rc'"
 _hc_log "HC8-05" "`lf'" "not implemented" 0
 _hc_log "HC8-05" "`lf'" "ignoring unsupported" 0
-_hc_done "HC8-05" "twoway bar ignores bargap() and dash names it; alt drawn; reverse honoured"
+_hc_done "HC8-05" "twoway bar ignores bargap() and dash takes it in silence; alt drawn; reverse honoured"
 
 // ================================================================
 // HC8-06 -- titl(x) is title(); titel(x) is named
@@ -660,10 +670,13 @@ _hc_done "HC8-06" "an abbreviation works; a misspelling is refused as twoway ref
 // mlabwidth() on every type, r(198), and dash now does.
 // Flipped (WP-32): bmlinestyle() -> afintensity(); twoway draws nothing
 // of bmlinestyle(), and dash takes it in silence.
-_hc_run "" "dash scatter mpg weight, bmlcolor(HC8SECRETVALUE) bmcolor(HC8OTHERVALUE) name(hc07, replace)"
+// Flipped (WP-49 basic:PT-12): bmlcolor() and bmcolor() on scatter are
+// taken in silence (twoway draws the same picture with it and prints nothing (noted_option_truth.json probes)); zvarlabel() and dlpattern() on dot, which dash
+// names, carry the values.
+_hc_run "" "dash dot mpg weight, zvarlabel(HC8SECRETVALUE) dlpattern(HC8OTHERVALUE) name(hc07, replace)"
 local lf "`r(logfile)'"
 _hc_expect "HC8-07" "(`r(rc)' == 0)" "rc `r(rc)'"
-_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): bmlcolor() bmcolor())" 1 1
+_hc_log "HC8-07" "`lf'" "(note:  dash: ignoring unsupported option(s): zvarlabel() dlpattern())" 1 1
 _hc_log "HC8-07" "`lf'" "HC8SECRETVALUE" 0
 _hc_log "HC8-07" "`lf'" "HC8OTHERVALUE" 0
 _hc_done "HC8-07" "the note carries the names and neither value"
@@ -1088,12 +1101,15 @@ foreach c in "scatter mpg weight, clegend(on)" "scatter mpg weight, plegend(on)"
     _hc_expect "Q4801-9" "(`rc' == 0)" "`c': rc `rc'"
     _hc_log "Q4801-9" "`lf'" "note:" 0
 }
-_hc_run "" "dash scatter mpg weight, titling"
+// Flipped (WP-49 basic:PT-12): titling is taken in silence on every
+// type (twoway draws the same picture with it and prints nothing (noted_option_truth.json probes titling)); the graph-wide setting still named is logging,
+// on contour, where twoway's picture differs.
+_hc_run "" "dash contour mpg weight price, logging"
 local rc = r(rc)
 local lf "`r(logfile)'"
-_hc_expect "Q4801-9" "(`rc' == 0)" "titling: rc `rc'"
-_hc_log "Q4801-9" "`lf'" "(note:  dash: ignoring unsupported option(s): titling)" 1 1
-_hc_done "Q4801-9" "clegend(), plegend(), pcycle() and the fit options drawn with no note; titling named"
+_hc_expect "Q4801-9" "(`rc' == 0)" "logging: rc `rc'"
+_hc_log "Q4801-9" "`lf'" "(note:  dash: ignoring unsupported option(s): logging)" 1 1
+_hc_done "Q4801-9" "clegend(), plegend(), pcycle() and the fit options drawn with no note; logging on contour named"
 
 // Q4801-10 -- by()'s style(rescale) and subtitle()'s box words are drawn
 // with no note.

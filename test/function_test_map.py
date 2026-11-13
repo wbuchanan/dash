@@ -986,6 +986,7 @@ FUNCTIONS = {
  '_dash_stroke_polygon': 'test/test_stroke_align.py::TestPolygons::test_inset_specs',
  '_dash_stroke_outlines': 'test/test_stroke_align.py::TestRects::test_outline_renderer',
  '_dash_subopt_name': 'test/test_help_claims_5.py::TestTheSubOptionSplitterReadsStataQuotes::test_legend_names_what_follows_an_apostrophe',
+ '_dash_silent_subopt': 'test/test_notes_p17.py::TestSubOptionSilence::test_a_word_with_no_row_is_still_named',
  '_dash_tab_panels': 'test/test_server.py::test_compute_kpi_mean_and_dcount',
  '_dash_by_shrink_factor': 'test/test_by_array.py::TestShrinkFactor::test_measured',
  '_dash_by_array_styles': 'test/test_by_array.py::TestArrayInset::test_graph_margin',

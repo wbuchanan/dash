@@ -1184,8 +1184,8 @@ there, is an invalid point.  The literal is read as data and never run.
     cannot honour is named once per command, in a single note:
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
-{p 12 12 2}{cmd:. dash scatter mpg weight, bmcolor(red)}{p_end}
-{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): bmcolor())}{p_end}
+{p 12 12 2}{cmd:. dash dot mpg weight, dlpattern(dash)}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): dlpattern())}{p_end}
 
 {phang2}
     {ul:How a note is printed.}  Every note {cmd:dash} prints -- this one,
@@ -7755,8 +7755,8 @@ refused with {cmd:twoway}'s return code; and the limits under
 {help dash##limits:Resource limits} apply:
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
-{p 12 12 2}{cmd:. dash scatter mpg weight, bmcolor(red) bmlcolor(red)}{p_end}
-{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): bmcolor() bmlcolor())}{p_end}
+{p 12 12 2}{cmd:. dash dot mpg weight, dlpattern(dash) bartype(fixed)}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): dlpattern() bartype())}{p_end}
 
 {pstd}
 The note is built from the declarations in {cmd:dash.ado} and from what
@@ -7791,14 +7791,16 @@ in either direction.
 {phang2}{ul:Area, bar and line edge styles.}
     {opt clalign(linealignmentstyle)}, a connecting line's alignment.
     {cmd:twoway} takes it on every plot type and draws nothing different
-    with it; {cmd:dash} names it.
+    with it but on {cmd:contour}; {cmd:dash} takes it in silence, and
+    names it on {cmd:contour}.
 
 {phang2}{ul:Back markers.}
     {opt bmcolor(color)}, {opt bmlalign(linealignmentstyle)},
     {opt bmlcolor(color)}, {opt bmlpattern(linepattern)},
     {opt bmlwidth(linewidth)}, {opt bmsize(markersizestyle)} without a
     {cmd:bmsymbol()} -- {cmd:twoway}'s back symbol is none by default, so it
-    draws nothing different with them; {cmd:dash} names them.  With
+    draws nothing different with them; {cmd:dash} takes them in silence,
+    as {cmd:twoway} does, and names them on {cmd:contour}.  With
     {cmd:bmsymbol()} (or {cmd:bsymbol()}) {cmd:dash} draws the back marker
     and they style it.  {opt bmsize()} on {cmd:pcarrow}, {cmd:pcbarrow} and
     {cmd:pcarrowi} is {cmd:barbsize()}, which dash draws.
@@ -7806,22 +7808,27 @@ in either direction.
 {phang2}{ul:Missing values and legend keys.}
     {opt omitallmiss}, {opt omitanymiss}, {opt omitdupmiss},
     {opt omitnothing} -- {cmd:twoway}'s rules for which observations with
-    missing values a plot omits; {cmd:dash} omits as its plot types say,
-    and names them.  Two of them in one command, in one plot or in two,
+    missing values a plot omits; {cmd:dash} omits as its plot types say.
+    Two of them in one command, in one plot or in two,
     are refused, r(198), as {cmd:twoway} refuses them.  {cmd:dash} draws
     {cmd:omitanymiss} on a plot of several y variables and on
-    {cmd:kdensity}; elsewhere {cmd:twoway} draws nothing different with
-    them, and {cmd:dash} names them.
+    {cmd:kdensity}; where {cmd:twoway} draws nothing different with
+    them -- {cmd:omitallmiss}, {cmd:omitdupmiss} and {cmd:omitnothing}
+    on every type but {cmd:contour} and {cmd:contourline}, and
+    {cmd:omitanymiss} off the types it changes -- {cmd:dash} takes them in
+    silence, and names them elsewhere.
 
 {phang2}{ul:Bar-family settings.}
     {opt bargap(#)} on {cmd:bar} and the other bar-derived types, an option
     of {cmd:graph bar}: {cmd:twoway bar} accepts it and draws nothing
-    different, and {cmd:dash} names it; so is {cmd:bartype()} named off
-    {cmd:bar}, where {cmd:twoway} draws nothing different with it.
+    different, and {cmd:dash} takes it in silence; {cmd:bartype()} is
+    named off {cmd:bar}.
 
 {phang2}{ul:A dot plot's line pattern.}
     {opt dlpattern(linepattern)} -- the pattern of the dots' outline on a
-    {cmd:dot} plot; {cmd:dash} draws it solid, and names it.
+    {cmd:dot} plot; {cmd:dash} draws it solid, and names it.  On the other
+    types but {cmd:contour} {cmd:twoway} draws nothing different with it,
+    and {cmd:dash} takes it in silence.
 
 {phang2}{ul:Type-specific options.}
     {opt back} on {cmd:mspline} and {cmd:mband};
@@ -7830,14 +7837,19 @@ in either direction.
     {cmd:contourline}; {cmd:zvarlabel()} on any type but {cmd:contour}, and
     {cmd:mlabalignment()} and {cmd:mlabjustification()} on a plot without
     marker labels, where {cmd:twoway} draws nothing different with them.
-    {cmd:dash} draws each plot as it draws it without them, and names them.
+    {cmd:dash} draws each plot as it draws it without them.  It takes
+    {opt back}, {opt onepanel}, {opt heatlabel} on {cmd:contourline} and
+    {opt zvarformat()} on {cmd:contourline} in silence, as {cmd:twoway}
+    takes them, and names the others.
 
 {phang2}{ul:Graph-wide settings.}
     {opt below}, {opt copyscheme}, {opt logging},
     {opt nologging}, {opt refscheme}, {opt norefscheme}, {opt rescaling},
     {opt norescaling}, {opt titling} and {opt notitling} -- settings of
     {cmd:twoway}'s graph object with nothing for {cmd:dash} to draw; it
-    names them; {cmd:notitling} with a title, subtitle, note or caption is
+    takes them in silence where {cmd:twoway} draws nothing different with
+    them -- on every type but {cmd:contour}, and {cmd:below} off the
+    {cmd:ci} fits as well -- and names them on those; {cmd:notitling} with a title, subtitle, note or caption is
     refused as {cmd:twoway} refuses it.  {cmd:maxaxes()} is checked as {cmd:twoway} checks it -- a
     value that is no integer, or an axis numbered above it, is refused --
     and is otherwise taken in silence.
@@ -7875,9 +7887,21 @@ in either direction.
     Where {cmd:twoway} draws the same picture with an option of this
     list as without it -- measured with graph export SVG on each of the
     44 plot types for every option
-    {cmd:test/fixtures/noted_option_truth.json} probes -- {cmd:dash} takes
+    {cmd:test/fixtures/noted_option_truth.json} probes, at two values
+    where the option takes one -- {cmd:dash} takes
     it in silence, as {cmd:twoway} does; it is
-    named only where {cmd:twoway} draws something different.  Stata's {cmd:nodraw} is not in
+    named only where {cmd:twoway} draws something different.  The
+    options of the lists above that reach {cmd:dash}'s catch-all are
+    measured the same way, and so are some sub-options of graph options
+    ({cmd:legend(nostack)}, {cmd:legend(angle(45))},
+    {cmd:legend(orientation(vertical))}, {cmd:legend(nodrawview)},
+    {cmd:legend(styleonly)}, {cmd:title("T", angle(45))},
+    {cmd:title("T", astextbox)}, {cmd:text(30 3000 "x", angle(45))},
+    {cmd:xscale(nolog)}, {cmd:yscale(noreverse)}, {cmd:yscale(ring(3))},
+    {cmd:ylabel(.1(.1).5, labelkeepleadingzero)},
+    {cmd:by(foreign, spacers(ring(2)))} and {cmd:subtitle(, width(20))}
+    under {cmd:by()}): each {cmd:twoway} draws the same picture with and
+    prints no note for is taken in silence.  Stata's {cmd:nodraw} is not in
     this list: written on a graph it is honoured, on an immediate render
     and, once the graph is registered, on {cmd:dash build} and
     {cmd:dash serve} alike, by keeping the browser window shut.

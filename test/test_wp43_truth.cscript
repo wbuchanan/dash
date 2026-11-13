@@ -2555,15 +2555,18 @@ if inlist("`only'", "", "S06") & `: list posof "S06" in w43_run' {
     dash clear
     capture log close q4306
     log using "`q6d'/silent.log", text replace name(q4306)
-    capture noisily dash scatter mpg weight, text(30 3000 "Peak", box bexpand bmargin(large) angle(45)) name(q4306c)
+    // Flipped (WP-49 basic:PT-12): angle() is taken in silence too --
+    // twoway draws the same picture with it and prints nothing (noted_option_truth.json sub_probes text(30 3000 "x", angle(45))) -- so drawview() is the
+    // word still noted.
+    capture noisily dash scatter mpg weight, text(30 3000 "Peak", box bexpand bmargin(large) drawview(yes)) name(q4306c)
     local rc = _rc
     log close q4306
     _w43_expect Q4306-3 "(`rc' == 0)" "rc `rc'"
-    cert_log_has "`q6d'/silent.log", needle("text() draws no angle(); see help dash##added_text")
-    // The note names angle() alone: had bexpand or bmargin() been named,
-    // they would stand in it beside angle().
-    _w43_expect Q4306-3 "(r(found) == 1)" "no note naming angle() alone"
-    _w43_done Q4306-3 "bexpand and bmargin() taken in silence; angle() named once"
+    cert_log_has "`q6d'/silent.log", needle("text() draws no drawview(); see help dash##added_text")
+    // The note names drawview() alone: had bexpand or bmargin() been named,
+    // they would stand in it beside drawview().
+    _w43_expect Q4306-3 "(r(found) == 1)" "no note naming drawview() alone"
+    _w43_done Q4306-3 "bexpand and bmargin() taken in silence; drawview() named once"
 
     local q6f : dir "`q6d'" files "*"
     foreach f of local q6f {

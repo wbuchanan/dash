@@ -53,19 +53,22 @@ SUBOPTIONS = [
     # Flipped (WP-43 LT-21): stacked and textfirst are drawn now, so these
     # two rows name symplacement(), which dash still does not draw.
     # Flipped (WP-43 LT-21): symplacement() is drawn (test_legend_keys.py::TestSymplacement), so they name orientation(), which dash does not draw.
-    ("legend span stack holes", {"legend": "span orientation(vertical)"
+    # Flipped (WP-49 basic:PT-12): orientation(vertical) is taken in
+    # silence -- twoway draws the same picture with it and prints nothing (noted_option_truth.json sub_probes legend(orientation(vertical))) -- so the legend rows
+    # name bexpand, which dash does not draw.
+    ("legend span stack holes", {"legend": "span bexpand"
                                            " holes(1) position(6)"},
      [plot_for("scatter"), plot_for("lfit")], "legend",
-     ["orientation(vertical)"], ["position", "span", "holes"]),
+     ["bexpand"], ["position", "span", "holes"]),
     ("legend keygap symxsize textwidth bmargin",
      {"legend": "keygap(2) symxsize(3) textwidth(20) bmargin(small) cols(2)"
-                " colgap(2) orientation(vertical)"},
+                " colgap(2) bexpand"},
      [plot_for("scatter"), plot_for("lfit")], "legend",
      # Flipped (WP-31 D4b): colgap() is drawn, so it is honoured.
-     ["orientation(vertical)"],
+     ["bexpand"],
      ["cols", "keygap", "symxsize", "textwidth", "bmargin", "colgap"]),
-    ("legend colfirst", {"legend": "colfirst orientation(vertical) on"},
-     None, "legend", ["orientation(vertical)"], ["on", "colfirst"]),
+    ("legend colfirst", {"legend": "colfirst bexpand on"},
+     None, "legend", ["bexpand"], ["on", "colfirst"]),
     # Flipped (WP-30 P1.18a): labcolor(), tlength(), noline, titlegap()
     # and off are drawn as twoway draws them, so each row names a word
     # dash still does not draw (labgap, outergap, extend).
@@ -73,12 +76,10 @@ SUBOPTIONS = [
     # Flipped (WP-44 AX-14): labstyle() and tstyle() are read from the
     # scheme and style files, so the rows name labelkeepleadingzero, the
     # label sub-option still not drawn.
-    ("ylabel labcolor",
-     {"ylabel": ", labcolor(red) labelkeepleadingzero"}, None,
-     "ylabel", ["labelkeepleadingzero"], ["labcolor"]),
-    ("ylabel labgap tlength",
-     {"ylabel": "10(10)30, labelkeepleadingzero tlength(3)"},
-     None, "ylabel", ["labelkeepleadingzero"], ["tlength", "labgap"]),
+    # Flipped (WP-49 basic:PT-12): labelkeepleadingzero is taken in
+    # silence -- twoway draws the same picture with it and prints nothing (noted_option_truth.json sub_probes ylabel(.1(.1).5, labelkeepleadingzero)) -- and no
+    # label sub-option is left that dash names, so the two ylabel rows
+    # are TestTheHonouredOnesStayQuiet's.
     ("yscale reverse noline titlegap",
      # Flipped (WP-31 D7): outergap() and extend are drawn; logit and
      # log1m are not.
@@ -112,8 +113,11 @@ SUBOPTIONS = [
     # names orient(), which a Title still cannot draw.
     # Flipped (WP-43 LT-18): orientation() is drawn now (a turned Label);
     # the row names astextbox, which dash does not draw.
-    ("title c and bc", {"title": "T, c(red) bc(red) astextbox"},
-     None, "title", ["astextbox"], ["c", "bc"]),
+    # Flipped (WP-49 basic:PT-12): astextbox is taken in silence on
+    # title() -- twoway draws the same picture with it and prints nothing (noted_option_truth.json sub_probes title("T", astextbox))) -- so the row names
+    # drawview, which dash does not draw.
+    ("title c and bc", {"title": "T, c(red) bc(red) drawview"},
+     None, "title", ["drawview"], ["c", "bc"]),
     # Flipped (WP-44 AX-13): orient() is drawn on an axis title now; the
     # row names bexp (bexpand), which stays named (D72).
     ("xtitle orient", {"xtitle": "Weight, orient(vertical) bexp"}, None,
@@ -171,6 +175,10 @@ class TestTheHonouredOnesStayQuiet:
         # WP-28 B3: every honoured spelling stays quiet, together.
         ({"ytitle": "M, si(large) c(red) prefix"}, None),
         ({"xtitle": "W, axis(1)"}, None),
+        # Flipped (WP-49 basic:PT-12): the two ylabel rows that named
+        # labelkeepleadingzero; twoway draws the same picture with it.
+        ({"ylabel": ", labcolor(red) labelkeepleadingzero"}, None),
+        ({"ylabel": "10(10)30, labelkeepleadingzero tlength(3)"}, None),
         # WP-29 P0.5: yline(#, axis(2)) is drawn on the second axis.
         ({"yline": "20 25, axis(2)"},
          [plot_for("scatter"), dict(plot_for("scatter"),

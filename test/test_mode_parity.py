@@ -2057,8 +2057,10 @@ CORPUS = [
     _case("note, caption and subtitle with sub-options", [_sc()], None,
           {"note": "N, size(large)", "caption": "C, color(red)",
            "subtitle": "S, size(small) span astextbox"}),
+    # Flipped (WP-49 basic:PT-12): astextbox is taken in silence on
+    # title() (twoway draws the same picture with it and prints nothing (noted_option_truth.json sub_probes title("T", astextbox))); drawview is still named.
     _case("graph title with sub-options", [_sc()], None,
-          {"title": "T, size(large) color(red) box astextbox"}),
+          {"title": "T, size(large) color(red) box drawview"}),
     _case("legend with an unimplemented sub-option",
           [_sc(), plot_for("lfit")], None,
           # Flipped (WP-31 D4): span and holes(1) are drawn (span taken
@@ -2068,7 +2070,11 @@ CORPUS = [
           # Flipped (WP-43 LT-21): symplacement() is drawn
           # (test_legend_keys.py::TestSymplacement), so orientation() is
           # the word still named.
-          {"legend": "position(6) orientation(vertical) colgap(1)"}),
+          # Flipped (WP-49 basic:PT-12): orientation(vertical) is taken in
+          # silence (twoway draws the same picture with it and prints
+          # nothing, noted_option_truth.json sub_probes
+          # legend(orientation(vertical))); bexpand is the word still named.
+          {"legend": "position(6) bexpand colgap(1)"}),
     _case("xscale(range()) and yscale with an unimplemented sub-option",
           [_sc()], None, {"xscale": "range(1500 4500)",
                           # Flipped (WP-31 D7): outergap() is drawn.
@@ -2212,7 +2218,12 @@ CORPUS = [
           # bgcolor(red) are not.
           # Flipped (WP-41 BY-7): bgcolor() is taken in silence;
           # spacers(ring(2)) is not.
-          {"by": "foreign, style(econ) spacers(ring(2))"}),
+          # Flipped (WP-49 basic:PT-12): spacers(ring(2)) is taken in
+          # silence (twoway draws the same picture with it and prints nothing (noted_option_truth.json sub_probes by(foreign, spacers(ring(2))))); style(econ) is
+          # still named -- it is not: style(econ) is drawn, so the entry
+          # gives style(foo), a bystyle twoway does not know, which dash
+          # names.
+          {"by": "foreign, style(foo) spacers(ring(2))"}),
     _case("by() with a graph-level if", [_sc()], None, {"by": "foreign"},
           if_expr="price > 4500"),
     _case("by() with marker labels and hover",
@@ -3619,15 +3630,17 @@ _MUST_WARN = {
         "dash: subtitle() sub-option(s) not implemented and ignored: "
         "astextbox",
     "graph title with sub-options":
-        "dash: title() sub-option(s) not implemented and ignored: astextbox",
+        "dash: title() sub-option(s) not implemented and ignored: drawview",
     # Flipped: WP-31 D4b draws colgap(); stacked is still named.
     # Flipped: WP-43 LT-21 draws stacked; symplacement() is still named.
     # Flipped (WP-43 LT-21): symplacement() is drawn
     # (test_legend_keys.py::TestSymplacement); orientation() is still
     # named.
+    # Flipped (WP-49 basic:PT-12): orientation(vertical) is taken in
+    # silence (twoway draws the same picture with it and prints nothing (noted_option_truth.json sub_probes legend(orientation(vertical)))); bexpand is still named.
     "legend with an unimplemented sub-option":
         "dash: legend() sub-option(s) not implemented and ignored: "
-        "orientation(vertical)",
+        "bexpand",
     "xscale(range()) and yscale with an unimplemented sub-option":
         "dash: yscale() sub-option(s) not implemented and ignored: "
         "logit",
@@ -3641,8 +3654,9 @@ _MUST_WARN = {
     # its own line; bgcolor(red) is the sub-option still ignored.
     "by() with an unimplemented sub-option":
         # Flipped (WP-41 BY-7): spacers(ring(2)), bgcolor() being taken.
+        # Flipped (WP-49 basic:PT-12): style(foo), spacers() being taken.
         "dash: by() sub-option(s) not implemented and ignored: "
-        "spacers(ring(2))",
+        "style(foo)",
     "filter() with an unknown type":
         "dash: filter(price, type(bogus)): type() must be one of",
     "yscale(range(abc))":

@@ -139,7 +139,10 @@ class TestTheShapeOfTheExamples:
             # and the named control is afcolor(), which dash names.
             # Flipped (WP-47 basic:PT-10): afcolor() is read as fcolor(),
             # so the named control is bmcolor(), which dash still names.
-            'dash scatter mpg weight, bmcolor(red)': 1,
+            # Flipped (WP-49 basic:PT-12): bmcolor() is taken in silence,
+            # as twoway draws the same picture with it (noted_option_truth
+            # .json); the example is dot's dlpattern(), which twoway draws.
+            'dash dot mpg weight, dlpattern(dash)': 1,
             # Flipped (WP-31 C10c): yaxis(3) is drawn; the help's
             # refusal example was degree(8), dash's own bound.
             # Flipped (WP-31 D35): degree(8) is drawn, as twoway draws it;
@@ -159,7 +162,9 @@ class TestTheShapeOfTheExamples:
             # Flipped (WP-47 basic:PT-10): afcolor() and afintensity() are
             # read as fcolor() and fintensity(); bmcolor() and bmlcolor()
             # are named instead.
-            'dash scatter mpg weight, bmcolor(red) bmlcolor(red)': 1,
+            # Flipped (WP-49 basic:PT-12): bmcolor() and bmlcolor() are
+            # taken in silence; dlpattern() and bartype() on dot are named.
+            'dash dot mpg weight, dlpattern(dash) bartype(fixed)': 1,
         }
 
 
