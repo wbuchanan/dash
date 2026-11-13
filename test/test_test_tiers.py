@@ -9,6 +9,7 @@ them as deselected.  A file, a node id, -k, --lf or --collect-only keeps
 them, so a release test is run directly the usual way.
 """
 import os
+import re
 import sys
 from types import SimpleNamespace
 
@@ -121,9 +122,43 @@ class TestTheMakefileRunsIt:
         assert phony and "test-release" in phony[0].split()
 
 
+#: The files of the batch tier besides test_mode_parity.py.
+#: old -> new: test_mode_parity.py alone -> it and these 52: WP-50 50-03
+#: <file> to the batch tier (ruled 13nov2026 at 50-01-04), the tier
+#: candidates of wp50-profile.txt, which kept make test above five minutes.
+_RULED_BATCH_FILES = (
+    "test_serve_token.py", "test_label_sinks.py", "test_server.py",
+    "test_js_fit_refit.py", "test_installed_layout.py",
+    "test_help_claims_7.py", "test_runner_portability.py",
+    "test_saved_filter_layers.py", "test_unsupported_report_is_true.py",
+    "test_named_styles.py", "test_lpolyci_band.py",
+    "test_scheme_rendered_output.py", "test_scheme_resolution.py",
+    "test_horizontal_moves.py", "test_by_axes_keys.py",
+    "test_serve_lifecycle.py", "test_size_units.py",
+    "test_server_layer_defects.py", "test_help_claims_4.py",
+    "test_embedded_rows.py", "test_resource_limits.py",
+    "test_legend_place.py", "test_qualifier_logic.py",
+    "test_marker_label_parity.py", "test_date_axis_residuals.py",
+    "test_server_serves.py", "test_help_claims_5.py", "test_horizontal.py",
+    "test_by_types.py", "test_function_expr.py", "test_layer_reports.py",
+    "test_join_order.py", "test_note_channel.py", "test_intensity_blend.py",
+    "test_graph_text.py", "test_by_layout.py", "test_ci_band_style.py",
+    "test_server_facets.py", "test_default_axes.py",
+    "test_dependency_guards.py", "test_by_remainder.py",
+    "test_ts_operators.py", "test_help_claims_2.py",
+    "test_textbox_grammar.py", "test_served_bs_layout.py",
+    "test_axis_format_fallback.py", "test_help_claims_6.py",
+    "test_by_text.py", "test_tracking_documents.py",
+    "test_scheme_consumption.py", "test_help_claims_1.py",
+    "test_twenty_six_schemes.py",
+)
+
+
 class TestTheBatchTier:
-    """test_mode_parity.py runs at batch ends and at release (make test-all,
-    make test-batch, make release), not in the default whole-suite run."""
+    """test_mode_parity.py and the files WP-50 50-03 moved
+    (``_RULED_BATCH_FILES``) run at batch ends and at release (make
+    test-all, make test-batch, make release), not in the default
+    whole-suite run (make test)."""
 
     @pytest.mark.parametrize("args", [[], ["test/"], [_ROOT]])
     def test_the_whole_suite_leaves_it_out(self, args):
@@ -163,6 +198,18 @@ class TestTheBatchTier:
         with open(os.path.join(_HERE, "test_mode_parity.py"),
                   encoding="utf-8") as fh:
             assert "\npytestmark = pytest.mark.batch\n" in fh.read()
+
+    def test_the_ruled_files_are_52(self):
+        assert len(set(_RULED_BATCH_FILES)) == len(_RULED_BATCH_FILES) == 52
+
+    @pytest.mark.parametrize("name", _RULED_BATCH_FILES)
+    def test_a_ruled_file_carries_the_mark(self, name):
+        """The module's own mark, alone or beside the marks it had."""
+        with open(os.path.join(_HERE, name), encoding="utf-8") as fh:
+            text = fh.read()
+        assert re.search(r"(?m)^pytestmark = (pytest\.mark\.batch"
+                         r"|\[[^\]\n]*\bpytest\.mark\.batch\b[^\]\n]*\])$",
+                         text), name
 
     def test_the_mark_is_registered(self, request):
         lines = request.config.getini("markers")

@@ -44,6 +44,9 @@ import pytest
 from bokeh.document import Document
 from bokeh.models import DatetimeAxis, HoverTool, Plot
 
+# WP-50 50-03: the batch tier, run at batch ends (make test-all), ruled 13nov2026 at 50-01-04.
+pytestmark = pytest.mark.batch
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 sys.path.insert(0, HERE)

@@ -182,7 +182,8 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers",
-        "batch: the batch-end tier (test_mode_parity.py).  A run of the "
+        "batch: the batch-end tier (test_mode_parity.py and the 52 files "
+        "WP-50 50-03 moved, test_test_tiers.py).  A run of the "
         "whole suite leaves it out unless DASH_TEST_TIER is batch or "
         "release or -m names batch (make test-all, make test-batch); a "
         "file, a node id, -k or --lf runs it.",
@@ -307,8 +308,8 @@ _TIERS_KEPT = {"batch": ("batch",), "release": ("batch", "release")}
 def _runs_tier(mark, args, rootpath, *, keyword="", lastfailed=False,
                collectonly=False, markexpr="", tier=""):
     """Whether a run keeps the tests marked *mark* (``release``: WP-30 test
-    performance D; ``batch``: test_mode_parity.py, run at batch ends and at
-    release).  A run of the whole suite (``_covers_whole_suite``) is the
+    performance D; ``batch``: test_mode_parity.py and the files WP-50 50-03
+    moved there, run at batch ends and at release).  A run of the whole suite (``_covers_whole_suite``) is the
     fast default and leaves them out, unless *tier* (DASH_TEST_TIER) keeps
     *mark* or the mark expression *markexpr* names it; any narrower run --
     a file, a node id, -k, --lf, --collect-only -- keeps them."""

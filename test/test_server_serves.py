@@ -55,7 +55,8 @@ from dash_render import ServerAppBuilder
 from conftest import make_spec, make_data_json
 from serve_token_probe import TEST_TOKEN
 
-pytestmark = pytest.mark.serve
+# WP-50 50-03: the batch tier, run at batch ends (make test-all), ruled 13nov2026 at 50-01-04.
+pytestmark = [pytest.mark.serve, pytest.mark.batch]
 
 
 def _free_port():

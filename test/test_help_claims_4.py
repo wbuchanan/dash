@@ -46,6 +46,9 @@ import pytest
 from bokeh.document import Document
 from bokeh.models import Div, RangeSlider, Select, Slider
 
+# WP-50 50-03: the batch tier, run at batch ends (make test-all), ruled 13nov2026 at 50-01-04.
+pytestmark = pytest.mark.batch
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(_HERE))
 sys.path.insert(0, _HERE)

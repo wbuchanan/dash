@@ -26,7 +26,7 @@ help:
 	@echo "make test      pytest under Stata's Python, strict"
 	@echo "make test-dev  pytest under the development interpreter ($(PYTHON)), strict"
 	@echo "make test-release  the release tier, the tests marked release, which make test and make test-dev leave out"
-	@echo "make test-batch  the batch tier (test_mode_parity.py), which make test and make test-dev leave out"
+	@echo "make test-batch  the batch tier (test_mode_parity.py and the files test/test_test_tiers.py lists), which make test and make test-dev leave out"
 	@echo "make test-all  the batch-end suite: pytest with the batch tier, then the certification scripts, never more than 8 workers at once (PYTEST_WORKERS, default 8; DASH_CERT_SESSIONS, default 8)"
 	@echo "make test-floor  one floor-matrix leg, run by hand (not part of make gate): FLOOR_VENV=<dir> FLOOR_BASELINE=<name>"
 	@echo "make cert      the certification suite, through the console binary, as DASH_CERT_SESSIONS (default 3, 1 to 8) sessions side by side; DASH_CERT_REMEASURE=1 asks twoway again (release)"
@@ -71,8 +71,9 @@ test-release:
 	@echo "pytest's release tier under the development interpreter: $(PYTHON)"
 	@DASH_STRICT=1 DASH_BASELINE=dev DASH_TEST_TIER=release $(PYTHON) -m pytest test/ -m release $(PYTEST_ARGS)
 
-# The batch tier: test_mode_parity.py, which a run of the whole suite
-# leaves out (test/conftest.py).  make test-all and make release run it.
+# The batch tier: test_mode_parity.py and the files test/test_test_tiers.py
+# lists (moved by WP-50 50-03), which a run of the whole suite leaves out
+# (test/conftest.py).  make test-all and make release run it.
 test-batch:
 	@echo "pytest's batch tier under the development interpreter: $(PYTHON)"
 	@DASH_STRICT=1 DASH_BASELINE=dev DASH_TEST_TIER=batch $(PYTHON) -m pytest test/ -m batch $(PYTEST_ARGS)

@@ -54,6 +54,9 @@ import sys
 import numpy as np
 import pytest
 
+# WP-50 50-03: the batch tier, run at batch ends (make test-all), ruled 13nov2026 at 50-01-04.
+pytestmark = pytest.mark.batch
+
 # Add parent directory (same bootstrap as test/test_glyphs.py)
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from dash_render import GlyphMapper

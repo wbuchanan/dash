@@ -1,6 +1,7 @@
 #!/bin/sh
 # Run the batch-end test suite -- pytest with its batch tier
-# (test_mode_parity.py), then the certification scripts -- never using
+# (test_mode_parity.py and the files test/test_test_tiers.py lists), then
+# the certification scripts -- never using
 # more than DASH_MAX_WORKERS (8) workers at once:
 # PYTEST_WORKERS pytest workers (default 8), then DASH_CERT_SESSIONS Stata
 # sessions (default 8 since 11nov2026; 3 before, 717 s against 353 s).
