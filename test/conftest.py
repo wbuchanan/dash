@@ -18,6 +18,7 @@ del _var
 
 import __future__
 import contextlib
+import functools
 import importlib.util
 import itertools
 import sys
@@ -29,6 +30,7 @@ import tempfile
 import time
 import types
 import warnings
+from pathlib import Path
 
 try:
     import fcntl
@@ -343,6 +345,42 @@ def _deselect_tier(config, items, mark):
         items[:] = keep
         config.hook.pytest_deselected(items=dropped)
     return dropped
+
+
+#: A test file's own module-level batch mark, alone or in a list.
+_BATCH_MARK = re.compile(r"(?m)^pytestmark = (pytest\.mark\.batch"
+                         r"|\[[^\]\n]*\bpytest\.mark\.batch\b[^\]\n]*\])$")
+
+
+@functools.lru_cache(maxsize=None)
+def _batch_file(path):
+    """True when the test file at *path* marks its whole module ``batch``."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return bool(_BATCH_MARK.search(fh.read()))
+    except OSError:
+        return False
+
+
+def pytest_ignore_collect(collection_path, config):
+    """Leave the batch tier's files uncollected in a run that leaves the
+    tier out (WP-50 50-04): make test spent 21 s collecting the 21,937
+    tests it then deselected.  ``_deselect_tier`` still drops any batch
+    test marked below module level.  None: pytest decides as usual."""
+    name = collection_path.name
+    if not (name.startswith("test_") and name.endswith(".py")):
+        return None
+    if not _batch_file(str(collection_path)):
+        return None
+    if _runs_tier(
+            "batch", config.args, config.rootpath,
+            keyword=config.getoption("keyword", ""),
+            lastfailed=config.getoption("lf", False),
+            collectonly=config.getoption("collectonly", False),
+            markexpr=config.getoption("markexpr", ""),
+            tier=os.environ.get(TIER_ENV, "")):
+        return None
+    return True
 
 
 def _deselect_release_tier(config, items):

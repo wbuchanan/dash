@@ -215,6 +215,60 @@ class TestTheBatchTier:
         lines = request.config.getini("markers")
         assert [ln for ln in lines if ln.startswith("batch:")]
 
+
+def _cfg(args=(), **opts):
+    """A stand-in pytest config for the collection hook."""
+    return SimpleNamespace(args=list(args), rootpath=_ROOT,
+                           getoption=lambda name, default=None:
+                           opts.get(name, default))
+
+
+class TestTheBatchTierIsNotCollected:
+    """WP-50 50-04: a run that leaves the batch tier out does not collect
+    its files at all (it spent 21 s collecting 21,937 tests it then
+    deselected); a file is in the tier by its own module-level mark."""
+
+    @pytest.mark.parametrize("line,expect", [
+        ("pytestmark = pytest.mark.batch", True),
+        ("pytestmark = [pytest.mark.serve, pytest.mark.batch]", True),
+        ("pytestmark = pytest.mark.release", False),
+        ("    pytestmark = pytest.mark.batch", False),
+        ("x = 1", False),
+    ])
+    def test_a_module_mark_makes_a_batch_file(self, tmp_path, line, expect):
+        f = tmp_path / "test_x.py"
+        f.write_text('"""Doc."""\nimport pytest\n\n%s\n' % line)
+        assert C._batch_file(str(f)) is expect
+
+    def test_a_whole_suite_run_does_not_collect_a_batch_file(self, monkeypatch):
+        monkeypatch.delenv(C.TIER_ENV, raising=False)
+        parity = os.path.join(_HERE, "test_mode_parity.py")
+        other = os.path.join(_HERE, "test_test_tiers.py")
+        assert C.pytest_ignore_collect(collection_path=C.Path(parity),
+                                       config=_cfg()) is True
+        assert C.pytest_ignore_collect(collection_path=C.Path(other),
+                                       config=_cfg()) is None
+
+    @pytest.mark.parametrize("tier,args,opts", [
+        ("batch", [], {}),
+        ("release", [], {}),
+        ("", ["test/test_mode_parity.py"], {}),
+        ("", [], {"markexpr": "batch"}),
+        ("", [], {"collectonly": True}),
+    ])
+    def test_a_run_that_keeps_the_tier_collects_it(self, monkeypatch, tier,
+                                                   args, opts):
+        monkeypatch.setenv(C.TIER_ENV, tier)
+        parity = os.path.join(_HERE, "test_mode_parity.py")
+        assert C.pytest_ignore_collect(collection_path=C.Path(parity),
+                                       config=_cfg(args, **opts)) is None
+
+    def test_the_batch_files_are_the_parity_file_and_the_ruled_ones(self):
+        found = {n for n in os.listdir(_HERE)
+                 if n.startswith("test_") and n.endswith(".py")
+                 and C._batch_file(os.path.join(_HERE, n))}
+        assert found == {"test_mode_parity.py"} | set(_RULED_BATCH_FILES)
+
     def test_the_makefile_runs_it_at_batch_ends_and_release(self):
         with open(os.path.join(_ROOT, "Makefile"), encoding="utf-8") as fh:
             mk = fh.read()
