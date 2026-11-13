@@ -16,7 +16,7 @@
 *!         (run from the dash/ directory)
 *!
 *! Produces: feature_tour.html
-*! Version: 0.1.0  18oct2026
+*! Version: 0.1.0  13nov2026
 
 sysuse auto, clear
 dash clear

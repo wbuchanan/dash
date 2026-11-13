@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.1.0  18oct2026}{...}
+{* *! version 0.1.0  13nov2026}{...}
 {viewerjumpto "Syntax"            "dash##syntax"}{...}
 {viewerjumpto "Description"       "dash##description"}{...}
 {viewerjumpto "Installation"      "dash##install"}{...}

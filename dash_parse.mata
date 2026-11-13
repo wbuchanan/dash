@@ -898,7 +898,7 @@
 *!       rows (__cgx __cgy __cgz __cgl) in frame, null for missing, with
 *!       "lines" read the same way from lframe when it is not "".
 *!
-*! Version: 0.1.0  18oct2026
+*! Version: 0.1.0  13nov2026
 
 // ============================================================
 // Compile into memory

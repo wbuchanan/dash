@@ -12,7 +12,7 @@
 *!         (run from the dash/ directory)
 *!
 *! Produces: serve_dashboard_app.py
-*! Version: 0.1.0  18oct2026
+*! Version: 0.1.0  13nov2026
 
 sysuse auto, clear
 dash clear

@@ -14,7 +14,7 @@
 *!         (run from the dash/ directory)
 *!
 *! Produces: plot_types_tour.html, plot_types_tour_ts.html
-*! Version: 0.1.0  18oct2026
+*! Version: 0.1.0  13nov2026
 
 sysuse auto, clear
 dash clear

@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.0, 18oct2026
+## 0.1.0, 13nov2026
 
-Changes since the 2.0 of 27mar2026 (renumbered 0.1.0 in every shipped file, as dash.pkg declares; `adoupdate` compares the Distribution-Date, now 20261018). Items marked with a work package number
+Changes since the 2.0 of 27mar2026 (renumbered 0.1.0 in every shipped file, as dash.pkg declares; `adoupdate` compares the Distribution-Date, now 20261113). Items marked with a work package number
 (WP-nn) are recorded in ROADMAP.md; items marked S07 to S16 are from the
 conformance work that came before it; a bare commit hash marks a fix
 recorded only in its commit.
