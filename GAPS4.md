@@ -555,8 +555,8 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **DT-29 Tracked:** Closed in WP-48, BUGS.md "dash_setup help contradicts itself on versions/ceilings; 0.1.0 CHANGELOG lists reversed behaviour; TWOWAY_COVERAGE_AUDIT rows stale; GAPS3 H5/I1/K1/K5 lack Tracked lines; DROPIN P2.34/P2.64 unmapped; rejected_options.json narratives", commit 606c88a.
 - **ECO-16 Tracked:** Closed in WP-48, BUGS.md "Help and README understate ecosystem losses (graph display/use/replay, putpdf, putexcel, markdown, iframe note unlinked); no recipes for commands that draw through twoway (histogram, marginsplot, sts graph)", commit 802256b6.
 - **DT-28 Tracked:** Documented in WP-48, BUGS.md "Reviewed and needing no change: HTML output is the package's premise; a zero-weight graph refused under nodraw matches the drawn twoway", commit d47458d3.
-- **plot:PT-7 Tracked:** Closed in WP-49, BUGS.md "Refusals add a second line ('twoway does not take this option here', the after-comma hint, 'takes this option once') and a six-line Supported list; value refusals use dash's words; the full option name is printed instead of the typed spelling (bands() for ba())", commit pending.
+- **plot:PT-7 Tracked:** Closed in WP-49, BUGS.md "Refusals add a second line ('twoway does not take this option here', the after-comma hint, 'takes this option once') and a six-line Supported list; value refusals use dash's words; the full option name is printed instead of the typed spelling (bands() for ba())", commit a4fe7ad.
 - **basic:PT-12 Tracked:** Open (WP-49 section 49-02).
 - **LT-25 Tracked:** Open (WP-49 section 49-02).
-- **plot:PT-6 Tracked:** Closed in WP-49, BUGS.md "Different words, same rc: tsline/tsrline without tsset; a weight glued to the type ('scatter[aw=price]'); a date tline() on a %tb axis", commit pending.
+- **plot:PT-6 Tracked:** Closed in WP-49, BUGS.md "Different words, same rc: tsline/tsrline without tsset; a weight glued to the type ('scatter[aw=price]'); a date tline() on a %tb axis", commit 6745e19.
 - **plot:PT-11 Tracked:** Open (WP-49 section 49-02).
