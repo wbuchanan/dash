@@ -4,6 +4,18 @@ conftest.py — Shared pytest fixtures for the dash test suite.
 Centralises commonly-used fixtures so individual test files don't each
 define their own copy of auto_df, make_spec, make_dr, etc.
 """
+import os
+
+# numpy's BLAS on one thread per test process, set before anything imports
+# numpy; xdist workers and subprocesses inherit it (test_blas_threads.py).
+# Stata's Python links OpenBLAS, which opened a 12-thread pool in each of
+# the 8 workers: the four contour files took 175 s of wall at -n 8, 12 s
+# with one thread (WP-50 50-03, 13nov2026).
+for _var in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS",
+             "VECLIB_MAXIMUM_THREADS"):
+    os.environ.setdefault(_var, "1")
+del _var
+
 import __future__
 import contextlib
 import importlib.util
