@@ -2,10 +2,10 @@
 
 The audit of 19oct2026 found 22 sentences of dash.sthlp, README.md,
 dash.pkg and their neighbours false (index Appendix B, HR-1..HR-22).  Each
-has one test class here: HR-1..HR-16 and HR-18..HR-22, 21 HRs in 20
-classes (HR-5 and HR-22, one sentence, share TestHR05and22).  HR-17 -- the
-Differences item 5 refusal sentences -- is 49-01's: it adds TestHR17 to
-this file in its plot:PT-7 commit.
+has one test class here: HR-1..HR-22, 22 HRs in 21 classes (HR-5 and
+HR-22, one sentence, share TestHR05and22).  HR-17 -- the Differences item
+5 refusal sentences -- is 49-01's TestHR17, added in its plot:PT-7 commit
+(D-48-04.c).
 
 Six sentences are this section's own (HR-1, HR-3, HR-4, HR-6, HR-7 and the
 HR-21 check): their classes assert the corrected sentence and that the
@@ -507,6 +507,23 @@ class TestHR16:
         assert "twoway takes any integer" not in h
         assert "minor_grid style" not in h
         assert "fill draw the plain axis" not in h
+
+
+class TestHR17:
+    """HR-17: Differences item 5 and the applicability sentence said dash
+    names "the word twoway names" and "the option given", while dash printed
+    the table's name for a word typed short (bands() for ba()); 49-01
+    (plot:PT-7) made the first line twoway's, the option as typed, and the
+    sentences say so (test_refusal_lines_p17.py reads them)."""
+
+    def test_refusal_sentences(self):
+        assert _owner_pin("plot:PT-7")
+        h = _help_prose()
+        assert "naming the option given" not in h
+        assert ("a refusal's first line is twoway's, naming the option as "
+                "you typed it") in h
+        assert _node_exists(
+            "test_refusal_lines_p17.py::TestTheHelp::test_item_five")
 
 
 class TestHR18:

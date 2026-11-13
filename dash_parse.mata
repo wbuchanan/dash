@@ -405,6 +405,10 @@
 *!   _dash_rep_prefix(opts, n)
 *!       The first n option words of opts, as typed.
 *!
+*!   _dash_opt_typed(opts, canon, table)
+*!       The option of opts that canon names, as typed ("ba()" for
+*!       bands()), for a refusal's first line; canon when none is.
+*!
 *!   _dash_silent_drop(p, ptype)
 *!       The pending names less those twoway draws nothing of on ptype.
 *!
@@ -3822,8 +3826,11 @@ void _dash_split_segs(string scalar input, | real scalar allow_empty) {
         errprintf("dash: unterminated quotation in the plot specification.\n")
         exit(198)
     }
+    // twoway's own line, with no line after (WP-49 plot:PT-7;
+    // refusal_line_truth.json sd12.Q14: "(scatter mpg weight", and
+    // legend(off || line ... and title(a alike, measured 12nov2026).
     if (depth != 0) {
-        errprintf("dash: unbalanced parentheses in the plot specification.\n")
+        errprintf("parentheses do not balance\n")
         exit(198)
     }
     pieces = pieces, substr(input, seg_start, .)
@@ -10267,6 +10274,42 @@ string scalar _dash_rep_prefix(string scalar opts, real scalar n)
         k++
     }
     return(out)
+}
+
+// _dash_opt_typed(opts, canon, table) -- the option word of opts that the
+// option canon names, as typed, for a refusal's first line: twoway names
+// the option as it was typed ("option ba() not allowed" for ba(3) where
+// bands() is meant; WP-49 plot:PT-7, test/fixtures/refusal_line_truth.json
+// pt7.typed.*).  canon is the name as the refusal prints it: "bands()" for
+// an option that takes a value, "atobs" for one that takes none.  The
+// first word of opts (read by _dash_rep_toks and _dash_rep_optname) whose
+// name abbreviates canon's -- for table "plot" or "graph" a leading part
+// of the name, for a sub-option family (_dash_so_canon's table) the
+// family's own minimum -- and that takes a value exactly when canon does
+// (so n(5) is never read as nofit) is returned with "()" when it takes
+// one, its name cut to 32 characters as Stata names are; canon itself
+// when no word is (an option given in p#() or written by dash).
+string scalar _dash_opt_typed(string scalar opts, string scalar canon,
+                              string scalar table)
+{
+    string rowvector w
+    string scalar    nm, full
+    real scalar      i, val
+
+    val  = (substr(canon, -2, 2) == "()")
+    full = (val ? substr(canon, 1, strlen(canon) - 2) : canon)
+    if (full == "") return(canon)
+    w = _dash_rep_toks(opts, 1)
+    for (i = 1; i <= cols(w); i++) {
+        nm = _dash_rep_optname(w[i])
+        if (nm == "" | (strpos(w[i], "(") > 0) != val) continue
+        if (table == "plot" | table == "graph") {
+            if (strlen(nm) > strlen(full) | substr(full, 1, strlen(nm)) != nm) continue
+        }
+        else if (_dash_so_canon(nm, table) != full) continue
+        return(substr(nm, 1, 32) + (val ? "()" : ""))
+    }
+    return(canon)
 }
 
 // _dash_pending_note(p) -- the pending names p (s(_pending): options dash

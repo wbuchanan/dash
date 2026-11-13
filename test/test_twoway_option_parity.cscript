@@ -1589,7 +1589,10 @@ capture cert_tw twoway scatter mpg weight, mlab(heading) nodraw
 local tw_h = _rc
 _ztp_run `"dash scatter mpg weight, mlab(heading) name(zqtp)"' "`logfile'"
 local drc = r(rc)
-_ztp_logged "`logfile'" "mlabel()"
+// Flipped (WP-49 plot:PT-7): "mlabel()" named was wrong because twoway's
+// line, which dash prints now, is "variable heading not found" (read as
+// mlabel()'s variable; refusal_line_truth sd12.mlabel_nosuch).
+_ztp_logged "`logfile'" "variable heading not found"
 local named = r(found)
 _ztp_logged "`logfile'" "mlabtextstyle()"
 local tsn = r(found)

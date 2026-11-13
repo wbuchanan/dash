@@ -1,0 +1,603 @@
+{
+ "_meta": {
+  "born_date": "04 Nov 2026",
+  "dash_commit": "37a9ee8621a32e8c31256853c172e91f179a94e1",
+  "extracted": "12 Nov 2026 18:42:33",
+  "source": "scripts/extract_refusal_line_truth.do",
+  "stata_version": "19.5"
+ },
+ "probes": {
+  "dg10.tb": {
+   "command": "scatter close tb, tline(10nov2001)",
+   "dash_lines": [
+    "invalid line argument, 10nov2001"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "invalid number, (10nov2001)"
+   ],
+   "twoway_rc": 198
+  },
+  "dg10.tb_number": {
+   "command": "scatter close tb, tline(100)",
+   "dash_lines": [],
+   "dash_rc": 0,
+   "twoway_lines": [],
+   "twoway_rc": 0
+  },
+  "pt6.tsline": {
+   "command": "tsline mpg",
+   "dash_lines": [
+    "dash: tsline needs a time variable: tsset your data first, as twoway tsline does."
+   ],
+   "dash_rc": 111,
+   "twoway_lines": [
+    "time variable not set, use tsset varname ..."
+   ],
+   "twoway_rc": 111
+  },
+  "pt6.tsrline": {
+   "command": "tsrline yl yh",
+   "dash_lines": [
+    "dash: tsrline needs a time variable: tsset your data first, as twoway tsrline does."
+   ],
+   "dash_rc": 111,
+   "twoway_lines": [
+    "time variable not set, use tsset varname ..."
+   ],
+   "twoway_rc": 111
+  },
+  "pt7.kept.plottype": {
+   "command": "scatterx mpg weight",
+   "dash_lines": [
+    "scatterx is not a twoway plot type",
+    "Supported: scatter line connected area bar spike",
+    "lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci",
+    "histogram kdensity rarea rbar rspike rcap rline rconnected",
+    "dot dropline rcapsym scatteri pcspike pcarrow pcbarrow",
+    "pccapsym pci pcarrowi pcscatter tsline tsrline mspline mband",
+    "rscatter function rpcap rpspike contour contourline"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "scatterx is not a twoway plot type"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.kept.repeat": {
+   "command": "lfit mpg weight, atobs atobs",
+   "dash_lines": [
+    "option atobs not allowed",
+    "twoway takes this option once; this command gives it more than once."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option atobs not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.kept.unknown": {
+   "command": "scatter mpg weight, titel(x)",
+   "dash_lines": [
+    "option titel() not allowed",
+    "twoway does not take this option here."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option titel() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.kept.ytitle2": {
+   "command": "scatter mpg weight, ytitle2(Y)",
+   "dash_lines": [
+    "option ytitle2() not allowed",
+    "use ytitle(..., axis(2))"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option ytitle2() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.applies_degree": {
+   "command": "scatter mpg weight, deg(2)",
+   "dash_lines": [
+    "option degree() not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option deg() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.applies_dropline": {
+   "command": "dropline mpg weight, ba(3)",
+   "dash_lines": [
+    "option bands() not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option ba() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.applies_function": {
+   "command": "function y = x, ba(3)",
+   "dash_lines": [
+    "option bands() not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option ba() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.applies_kernel": {
+   "command": "scatter mpg weight, ker(gaussian)",
+   "dash_lines": [
+    "option kernel() not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option ker() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.applies_n": {
+   "command": "scatter mpg weight, n(5)",
+   "dash_lines": [
+    "option n() not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option n() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.atobs": {
+   "command": "scatter mpg weight, ato",
+   "dash_lines": [
+    "option atobs not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option ato not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.baroffset": {
+   "command": "scatter mpg weight, baro(1)",
+   "dash_lines": [
+    "option baro() not allowed",
+    "twoway does not take this option here."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option baro() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.boundary": {
+   "command": "scatter mpg weight, bound",
+   "dash_lines": [
+    "option bound not allowed",
+    "twoway does not take this option here."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option bound not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.contour_ccuts": {
+   "command": "scatter mpg weight, ccut(1 2)",
+   "dash_lines": [
+    "option ccuts() not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option ccut() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.contour_minmax": {
+   "command": "scatter mpg weight, minm",
+   "dash_lines": [
+    "option minm not allowed",
+    "twoway does not take this option here."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option minm not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.fitplot": {
+   "command": "scatter mpg weight, fitp(line)",
+   "dash_lines": [
+    "option fitplot() not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option fitp() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.flag": {
+   "command": "scatter mpg weight, disc",
+   "dash_lines": [
+    "option discrete not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option disc not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.fxsize": {
+   "command": "scatter mpg weight, fxs(abc)",
+   "dash_lines": [
+    "option fxs() not allowed",
+    "twoway does not take this option here."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option fxs() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.gunique": {
+   "command": "(scatter mpg weight, xsiz(3)) (line mpg weight, xsiz(4))",
+   "dash_lines": [
+    "option xsize() not allowed",
+    "A graph takes one xsize(); this command gives it more than once, which twoway refuses as well."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option xsiz() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.gunique_mixed": {
+   "command": "(scatter mpg weight, xsize(3)) (line mpg weight, xsiz(4))",
+   "dash_lines": [
+    "option xsize() not allowed",
+    "A graph takes one xsize(); this command gives it more than once, which twoway refuses as well."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option xsiz() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.horizontal": {
+   "command": "scatter mpg weight, hor",
+   "dash_lines": [
+    "option hor not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option hor not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.lpoly_degree": {
+   "command": "lpoly mpg weight, deg(abc)",
+   "dash_lines": [
+    "option degree() not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option deg() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.lpoly_n": {
+   "command": "lpoly mpg weight, n(2.5)",
+   "dash_lines": [
+    "dash: n() must be an integer between 1 and 10000 (got: 2.5)"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option n() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.maxaxes": {
+   "command": "scatter mpg weight, maxa(abc)",
+   "dash_lines": [
+    "option maxa() not allowed",
+    "twoway does not take this option here."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option maxa() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.mwidth": {
+   "command": "scatter mpg weight, mwid",
+   "dash_lines": [
+    "option mwidth not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option mwid not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.nofit": {
+   "command": "scatter mpg weight, nof",
+   "dash_lines": [
+    "option nof not allowed",
+    "twoway does not take this option here."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option nof not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.noweight": {
+   "command": "scatter mpg weight, nowe",
+   "dash_lines": [
+    "option noweight not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option nowe not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.onevalue": {
+   "command": "rbar yl yh weight, barw(1 2)",
+   "dash_lines": [
+    "option barwidth() not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option barwidth() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.pcycle": {
+   "command": "scatter mpg weight, pcyc(abc)",
+   "dash_lines": [
+    "option pcycle() not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option pcyc() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt7.typed.seriesid": {
+   "command": "scatter mpg weight || scatter mpg turn || scatter mpg trunk, pcyc(0)",
+   "dash_lines": [
+    "option seriesid() not allowed"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option seriesid() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "pt8.after": {
+   "command": "scatter mpg weight [aw=price]",
+   "dash_lines": [],
+   "dash_rc": 0,
+   "twoway_lines": [],
+   "twoway_rc": 0
+  },
+  "pt8.hist": {
+   "command": "hist[fw=rep78] mpg",
+   "dash_lines": [
+    "hist[fw=rep78] is not a twoway plot type",
+    "Supported: scatter line connected area bar spike",
+    "lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci",
+    "histogram kdensity rarea rbar rspike rcap rline rconnected",
+    "dot dropline rcapsym scatteri pcspike pcarrow pcbarrow",
+    "pccapsym pci pcarrowi pcscatter tsline tsrline mspline mband",
+    "rscatter function rpcap rpspike contour contourline"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "invalid 'mpg'"
+   ],
+   "twoway_rc": 198
+  },
+  "pt8.scatter": {
+   "command": "scatter[aw=price] mpg weight",
+   "dash_lines": [
+    "scatter[aw=price] is not a twoway plot type",
+    "Supported: scatter line connected area bar spike",
+    "lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci",
+    "histogram kdensity rarea rbar rspike rcap rline rconnected",
+    "dot dropline rcapsym scatteri pcspike pcarrow pcbarrow",
+    "pccapsym pci pcarrowi pcscatter tsline tsrline mspline mband",
+    "rscatter function rpcap rpspike contour contourline"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "invalid 'mpg'"
+   ],
+   "twoway_rc": 198
+  },
+  "sd12.E08": {
+   "command": "[aw=price] scatter mpg weight",
+   "dash_lines": [
+    "[aw=price] is not a twoway plot type",
+    "Supported: scatter line connected area bar spike",
+    "lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci",
+    "histogram kdensity rarea rbar rspike rcap rline rconnected",
+    "dot dropline rcapsym scatteri pcspike pcarrow pcbarrow",
+    "pccapsym pci pcarrowi pcscatter tsline tsrline mspline mband",
+    "rscatter function rpcap rpspike contour contourline"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "[ is not a twoway plot type"
+   ],
+   "twoway_rc": 198
+  },
+  "sd12.Q14": {
+   "command": "(scatter mpg weight",
+   "dash_lines": [
+    "dash: unbalanced parentheses in the plot specification."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "parentheses do not balance"
+   ],
+   "twoway_rc": 198
+  },
+  "sd12.bar_word": {
+   "command": "scatter mpg weight | line mpg weight",
+   "dash_lines": [
+    "| invalid name"
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "| invalid name"
+   ],
+   "twoway_rc": 198
+  },
+  "sd12.by_nosuch": {
+   "command": "scatter mpg weight, by(nosuch)",
+   "dash_lines": [
+    "dash: by(): variable nosuch not found"
+   ],
+   "dash_rc": 111,
+   "twoway_lines": [
+    "variable nosuch not found"
+   ],
+   "twoway_rc": 111
+  },
+  "sd12.colorvar_nosuch": {
+   "command": "scatter mpg weight, colorvar(nosuch)",
+   "dash_lines": [
+    "variable nosuch not found"
+   ],
+   "dash_rc": 111,
+   "twoway_lines": [
+    "variable nosuch not found"
+   ],
+   "twoway_rc": 111
+  },
+  "sd12.legloc": {
+   "command": "scatter mpg weight, legloc(6)",
+   "dash_lines": [
+    "option legloc() not allowed",
+    "twoway does not take this option here."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option 6 not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "sd12.legloc_abbrev": {
+   "command": "scatter mpg weight, legl(6)",
+   "dash_lines": [
+    "option legl() not allowed",
+    "twoway does not take this option here."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option legl() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "sd12.legloc_by": {
+   "command": "scatter mpg weight, by(foreign, legloc(6))",
+   "dash_lines": [],
+   "dash_rc": 0,
+   "twoway_lines": [],
+   "twoway_rc": 0
+  },
+  "sd12.legloc_graph": {
+   "command": "(scatter mpg weight), legloc(6)",
+   "dash_lines": [
+    "option legloc() not allowed",
+    "After the plot groups' comma twoway takes graph options only; a plot's own options go inside its parentheses."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option 6 not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "sd12.legloc_word": {
+   "command": "scatter mpg weight, legloc(abc)",
+   "dash_lines": [
+    "option legloc() not allowed",
+    "twoway does not take this option here."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option abc not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "sd12.mlabel_nosuch": {
+   "command": "scatter mpg weight, mlabel(nosuch)",
+   "dash_lines": [
+    "dash: mlabel(): variable nosuch not found"
+   ],
+   "dash_rc": 111,
+   "twoway_lines": [
+    "variable nosuch not found"
+   ],
+   "twoway_rc": 111
+  },
+  "sd12.useplotregion": {
+   "command": "scatter mpg weight, useplotregion(1)",
+   "dash_lines": [
+    "option useplotregion() not allowed",
+    "twoway does not take this option here."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "1 is not a plotregion"
+   ],
+   "twoway_rc": 198
+  },
+  "sd12.useplotregion_abbrev": {
+   "command": "scatter mpg weight, useplot(1)",
+   "dash_lines": [
+    "option useplot() not allowed",
+    "twoway does not take this option here."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "option useplot() not allowed"
+   ],
+   "twoway_rc": 198
+  },
+  "sd12.useplotregion_graph": {
+   "command": "(scatter mpg weight), useplotregion(1)",
+   "dash_lines": [
+    "option useplotregion() not allowed",
+    "After the plot groups' comma twoway takes graph options only; a plot's own options go inside its parentheses."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "1 is not a plotregion"
+   ],
+   "twoway_rc": 198
+  },
+  "sd12.useplotregion_word": {
+   "command": "scatter mpg weight, useplotregion(abc)",
+   "dash_lines": [
+    "option useplotregion() not allowed",
+    "twoway does not take this option here."
+   ],
+   "dash_rc": 198,
+   "twoway_lines": [
+    "abc is not a plotregion"
+   ],
+   "twoway_rc": 198
+  }
+ }
+}

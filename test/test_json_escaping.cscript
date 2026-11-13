@@ -4364,7 +4364,10 @@ cert_log_has "`jg_l69'", needle("Audi 5000")
 local jg_w7 = r(count)
 cert_log_has "`jg_l69'", needle("bwidth() must be a positive number (got: ")
 local jg_w1 = r(count)
-cert_log_has "`jg_l69'", needle("mlabel(): variable ")
+// Flipped (WP-49 plot:PT-7): "mlabel(): variable " was wrong because
+// twoway's line, which dash prints now, is "variable <name> not found"
+// (refusal_line_truth sd12.mlabel_nosuch); still shown as typed (jg_w3).
+cert_log_has "`jg_l69'", needle("variable ")
 local jg_w2 = r(count)
 // Shown as typed, in dash's words: the refusals end "jgnone')" and
 // "jgnone' not found", which the echoed commands -- "jgnone'")" -- do not.

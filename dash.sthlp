@@ -1170,7 +1170,12 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:option bogus not allowed}), and after a plot's option given twice
     before it -- across {cmd:||} segments and plot groups too, every plot's
     own options before any kernel, and the options after the groups' comma
-    last.
+    last.  Where {cmd:twoway} refuses the command too, a refusal's first
+    line is {cmd:twoway}'s, naming the option as you typed it
+    ({cmd:option ba() not allowed} for {cmd:ba()}); {cmd:dash}
+    may add a line of advice -- such as the {cmd:twoway} spelling of a
+    synonym it used to accept, or what to do first -- and after a word that
+    is not a plot type, the list of the plot types it draws.
     So a command copy-pasted from a do-file runs whenever
     {cmd:dash} draws its plot type ({help dash##plottypes:Plot types})
     and can draw the values it is given: a few values {cmd:twoway} accepts, such as
@@ -1213,7 +1218,9 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:start()} and {cmd:barwidth()} -- is accepted only on the plot
     types {cmd:twoway} accepts it on and refused on any other, as
     {cmd:twoway} refuses it, with r(198) and {cmd:twoway}'s line
-    {err:option kernel() not allowed} (naming the option given): a
+    {err:option kernel() not allowed}, naming the option as it was typed
+    ({cmd:ker(gaussian)} on a {cmd:scatter} is
+    {err:option ker() not allowed}): a
     {cmd:kernel()} or {cmd:level()} on a {cmd:scatter}, say.  The per-type
     lists are generated from a measured table
     (scripts/extract_applicability_truth.do); the plot types each option

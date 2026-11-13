@@ -203,6 +203,95 @@ if inlist("`only'", "", "S00") & `: list posof "S00" in w49_run' {
 }
 * ==== end S00 ====
 
+// _w49_first_line(file): the first line a log holds that is not the
+// command's echo, blanks collapsed, quotes and backticks made ', at most
+// 200 characters (section 49-01).
+capture mata: mata drop _w49_first_line()
+mata:
+string scalar _w49_first_line(string scalar f)
+{
+    string colvector l
+    real scalar      i
+
+    l = cat(f)
+    for (i = 1; i <= rows(l); i++) {
+        if (strtrim(l[i]) == "" | substr(l[i], 1, 2) == ". " | substr(l[i], 1, 2) == "> ") continue
+        return(substr(subinstr(subinstr(subinstr(stritrim(strtrim(l[i])), char(34), "'"), char(96), "'"), "$", "S"), 1, 200))
+    }
+    return("")
+}
+end
+
+// _w49_first <who> <command>: runs `<who> <command>' under a text log
+// and leaves its rc in _w49_rc and its first printed line (blanks
+// collapsed, quotes and backticks made ', at most 200 characters) in
+// _w49_line (section 49-01).
+capture program drop _w49_first
+program define _w49_first
+    version 19
+    gettoken who 0 : 0
+    capture graph drop _all
+    capture dash clear
+    set linesize 255
+    capture log close _w49log
+    tempfile lg
+    quietly log using "`lg'", name(_w49log) text replace
+    capture noisily `who' `0'
+    local rc = _rc
+    quietly log close _w49log
+    set linesize 80
+    mata: st_local("_w49_s", _w49_first_line(st_local("lg")))
+    c_local _w49_rc `rc'
+    c_local _w49_line `"`_w49_s'"'
+    capture graph drop _all
+    capture dash clear
+end
+
+// _w49_same <case> <command>: twoway's and dash's rc agree, and when
+// both refuse, their first lines.
+capture program drop _w49_same
+program define _w49_same
+    version 19
+    args case cmd
+    _w49_first twoway `cmd'
+    local trc `_w49_rc'
+    local tl `"`_w49_line'"'
+    _w49_first dash `cmd'
+    // A drawn graph's lines are dash's page path: only the rc is compared.
+    local same = (`trc' == `_w49_rc') & (`trc' == 0 | `"`macval(tl)'"' == `"`macval(_w49_line)'"')
+    _w49_expect `case' "(`same' == 1)" `"`macval(cmd)': twoway rc `trc' `macval(tl)'; dash rc `_w49_rc' `macval(_w49_line)'"'
+end
+
+* ==== S01 plot:PT-7: first lines in twoway's words ====
+local only : env WP49_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w49_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4901-9: live, beside twoway: the option as typed at each refusal
+    // site, and the syn:SD-12 lines (test_option_validation.cscript's
+    // Q4901-1 and Q4901-3 read the same probes from the fixture).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    foreach c in "function y = x, ba(3)" "dropline mpg weight, ba(3)" ///
+        "scatter mpg weight, deg(2)" "scatter mpg weight, ker(gaussian)" ///
+        "lpoly mpg weight, deg(abc)" "lpoly mpg weight, n(2.5)" ///
+        "scatter mpg weight, ato" "scatter mpg weight, fitp(line)" ///
+        "scatter mpg weight, pcyc(abc)" "scatter mpg weight, ccut(1 2)" ///
+        "scatter mpg weight, disc" "scatter mpg weight, mwid" ///
+        "scatter mpg weight, nowe" ///
+        "(scatter mpg weight, xsize(3)) (line mpg weight, xsiz(4))" ///
+        "(scatter mpg weight" "scatter mpg weight, by(nosuch)" ///
+        "scatter mpg weight, mlabel(nosuch)" "[aw=price] scatter mpg weight" ///
+        "scatter mpg weight, legloc(6)" "(scatter mpg weight), legloc(abc)" ///
+        "scatter mpg weight, useplotregion(1)" {
+        _w49_same Q4901-9 `"`c'"'
+    }
+    _w49_done Q4901-9 "first lines are twoway's, the option as typed"
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

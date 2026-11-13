@@ -512,7 +512,7 @@ program define _dash_require_mata
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
         _dash_hz_order ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_zyx_abbrev _dash_rep_optname _dash_lpolyci_opts ///
-        _dash_unknown_scan _dash_rep_prefix _dash_pending_note _dash_silent_drop _dash_valued_names ///
+        _dash_unknown_scan _dash_rep_prefix _dash_opt_typed _dash_pending_note _dash_silent_drop _dash_valued_names ///
         _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
         _dash_axisn_clear _dash_axisn_json _dash_axisn_tf_in _dash_axisn_tf_out ///
@@ -3301,7 +3301,7 @@ program define _dash_contour_check, sclass
             mata: st_local("_zv", strofreal(st_global("s(`o')") != ""))
             if `_zv' {
                 local _zp = cond(`: list o in zo_flags', "", "()")
-                display as error "option `o'`_zp' not allowed"
+                mata: _dash_say("err", "option ", _dash_opt_typed(st_global("dash__opts_typed"), st_local("o") + st_local("_zp"), "plot"), " not allowed")
                 exit 198
             }
         }
@@ -3598,7 +3598,7 @@ program define _dash_fold_typed, sclass
     local mw_types "rbar histogram"
     mata: st_local("_ft", strofreal(st_global("s(mwidth)") != ""))
     if `_ft' & !`: list ptype in mw_types' {
-        display as error "option mwidth not allowed"
+        mata: _dash_say("err", "option ", _dash_opt_typed(st_global("dash__opts_typed"), "mwidth", "plot"), " not allowed")
         exit 198
     }
     // WP-32: map_histogram draws mwidth's bars a marker wide, upright and
@@ -5283,7 +5283,11 @@ program define _dash_validate_value, rclass
                 mata: _dash_say("err", "`prefix': `opt'() must name a variable, not a time-series expression (got: ", st_local("value"), ")")
                 exit 198
             }
-            mata: _dash_say("err", "`prefix': `opt'(): variable ", st_local("badvar"), " not found")
+            // twoway's own line for by(), mlabel() and colorvar() (WP-49
+            // plot:PT-7, refusal_line_truth.json sd12.*_nosuch); hover() is
+            // dash's own option and keeps dash's words.
+            if "`opt'" == "hover" mata: _dash_say("err", "`prefix': `opt'(): variable ", st_local("badvar"), " not found")
+            else mata: _dash_say("err", "variable ", st_local("badvar"), " not found")
             exit 111
         }
         if "`kind'" == "var" & `: word count `vv'' > 1 {
@@ -5467,7 +5471,7 @@ program define _dash_validate_value, rclass
         // degree(abc) and degree(1.5): twoway's integer syntax refuses the
         // option itself (measured, WP-31 D35).
         if "`opt'" == "degree" {
-            display as error "option degree() not allowed"
+            mata: _dash_say("err", "option ", _dash_opt_typed(st_global("dash__opts_typed"), "degree()", "plot"), " not allowed")
             exit 198
         }
         if "`opt'" == "kernel" {
@@ -5512,7 +5516,10 @@ program define _dash_validate_value, rclass
                 if `R' < `p1' | ("`p3'" == "x" & `R' <= `p1') local _tvc "below"
             }
         }
-        if "`ptype'" != "" & `: list ptype in _lpf' local _tvc ""
+        // lpoly's and lpolyci's n(2.5) is read from the table as twoway's
+        // integer syntax refuses it, "option n() not allowed" (value_truth
+        // lpoly_n_3; WP-49 plot:PT-7); their other values keep dash's.
+        if "`ptype'" != "" & `: list ptype in _lpf' & !("`opt'" == "n" & "`_tvc'" == "nonint") local _tvc ""
         mata: st_local("_twv", st_local("_tvc") == "" ? "" : _dash_tw_value_msg(st_local("opt"), st_local("ptype"), st_local("_tvc"), st_strscalar(st_local("T"))))
         mata: st_local("_twrc", substr(st_local("_twv"), 1, strpos(st_local("_twv"), "|") - 1))
         if "`_twrc'" != "" {
@@ -5832,7 +5839,7 @@ program define _dash_validate_opts, sclass
         if `: list ptype in types' continue
         foreach f of local names {
             if `"`s(`f')'"' != "" {
-                display as error "option `f' not allowed"
+                mata: _dash_say("err", "option ", _dash_opt_typed(st_global("dash__opts_typed"), st_local("f"), "plot"), " not allowed")
                 exit 198
             }
         }
@@ -5905,7 +5912,8 @@ program define _dash_validate_opts, sclass
 
     // Applicability (WP-31 C3): an option on a type twoway's parser does
     // not declare falls to Stata's syntax there and is refused before any
-    // value is read; the same here, naming the option from the table.
+    // value is read; the same here, naming the option as typed (WP-49
+    // plot:PT-7: ba(3) on function is "option ba() not allowed").
     foreach tok of local _dash_rules_applies {
         local at    = strpos("`tok'", "@")
         local o     = substr("`tok'", 1, `at' - 1)
@@ -5914,7 +5922,7 @@ program define _dash_validate_opts, sclass
         if `: list ptype in types' continue
         mata: st_local("_ap_v", strofreal(st_global("s(" + st_local("o") + ")") != ""))
         if `_ap_v' {
-            display as error "option `o'() not allowed"
+            mata: _dash_say("err", "option ", _dash_opt_typed(st_global("dash__opts_typed"), st_local("o") + "()", "plot"), " not allowed")
             exit 198
         }
     }
@@ -6902,8 +6910,12 @@ program define _dash_process_segment, rclass
         // twoway's line for a word that is no plot type (WP-31 A2): dash
         // printed a sentence of its own, and took lfi, ar and eleven more
         // shorter spellings that twoway refuses with this line.  The
-        // Supported: list that follows is dash's own.
-        mata: _dash_say("err", "", st_local("plottype"), " is not a twoway plot type")
+        // Supported: list that follows is dash's own.  A word holding a [
+        // is named up to and including it, as twoway names it: [aw=price]
+        // before the plot type is "[ is not a twoway plot type" (WP-49
+        // plot:PT-7, refusal_line_truth.json sd12.E08).
+        mata: st_local("_pt_word", strpos(st_local("plottype"), "[") ? substr(st_local("plottype"), 1, strpos(st_local("plottype"), "[")) : st_local("plottype"))
+        mata: _dash_say("err", "", st_local("_pt_word"), " is not a twoway plot type")
         display as error ///
             "Supported: scatter line connected area bar spike " _n ///
             "lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci " _n ///
@@ -6929,6 +6941,10 @@ program define _dash_process_segment, rclass
         mata: st_local("varpart", strtrim(st_local("rest")))
         local opts_raw ""
     }
+    // The plot's options as typed, read by value where a refusal names an
+    // option as typed (WP-49 plot:PT-7, _dash_opt_typed): ba(3) is "option
+    // ba() not allowed", as twoway words it.
+    mata: st_global("dash__opts_typed", st_local("opts_raw"))
 
     // ---- the option text is handed to -syntax- as typed ----
     // Option keys used to be rewritten here by Mata before -syntax- saw
@@ -7681,7 +7697,7 @@ program define _dash_process_segment, rclass
             exit 198
         }
         if "`_fsw_nowt'" == "1" {
-            display as error "option noweight not allowed"
+            mata: _dash_say("err", "option ", _dash_opt_typed(st_global("dash__opts_typed"), "noweight", "plot"), " not allowed")
             exit 198
         }
         // Two kernels, mlabfontface() (MLF-01) and a graph option given
@@ -7835,7 +7851,7 @@ program define _dash_process_segment, rclass
             mata: st_local("_c5v", strofreal(st_global("s(`_c5o')") != ""))
             if `_c5v' & !`: list _rc_own in _c5_types_`_c5o'' {
                 local _c5p = cond("`_c5o'" == "boundary", "", "()")
-                display as error "option `_c5o'`_c5p' not allowed"
+                mata: _dash_say("err", "option ", _dash_opt_typed(st_global("dash__opts_typed"), st_local("_c5o") + st_local("_c5p"), "plot"), " not allowed")
                 exit 198
             }
         }
@@ -10209,6 +10225,8 @@ program define _dash_plot
     global dash__poff ""
     // WP-35 DT-15: no earlier command's held p#() spelling (_dash_p_apply).
     global dash__dop ""
+    // WP-49 plot:PT-7: no earlier command's option text (_dash_opt_typed).
+    global dash__opts_typed ""
 
     // ---- UTF-8 safety check ----
     // The command is read by value, here and at every command's gate: put
@@ -10261,6 +10279,11 @@ program define _dash_plot
     // again.
     local n_segs   = `_n_segs'
     local gopts_raw : copy local _graph_opts_raw
+    // The command's option text as typed -- the graph's options, then
+    // each segment's -- for a graph option's refusal that names it as
+    // typed (WP-49 plot:PT-7, _dash_opt_typed): pcyc(abc) is "option
+    // pcyc() not allowed".  Read by value.
+    mata: _ty_s = st_local("_graph_opts_raw"); for (_ty_i = 1; _ty_i <= strtoreal(st_local("_n_segs")); _ty_i++) _ty_s = _ty_s + " " + st_local("_seg_" + strofreal(_ty_i)); st_local("_ty_cmd", _ty_s)
 
 
     // ---- The qualifier written between or after the plot groups ----
@@ -10620,7 +10643,13 @@ program define _dash_plot
               zlabel ztitle zscale ztick zmlabel zmtick aspectplacement xoverhangs yoverhangs nodraw play replace table {
             if !`: length local _sg_`gk'' continue
             if `: list gk in _g_unique' {
-                if `_gseen_`gk'' _dash_pend _dash_refuse_gunique `gk'
+                if `_gseen_`gk'' {
+                    // Named as this segment types it: xsize(3) ... xsiz(4)
+                    // is "option xsiz() not allowed" (WP-49 plot:PT-7).
+                    mata: st_local("_gu_w", _dash_opt_typed(st_local("_seg_`k'"), st_local("gk") + "()", "graph"))
+                    mata: st_local("_gu_w", ustrregexm(st_local("_gu_w"), "^[A-Za-z_][A-Za-z0-9_]*[(][)]$") ? st_local("_gu_w") : st_local("gk") + "()")
+                    _dash_pend _dash_refuse_gunique `gk' `_gu_w'
+                }
                 local _gseen_`gk' 1
             }
             mata: _dash_rep_merge_locals(st_local("gk"), "g_`gk'", "_sg_`gk'", "g_`gk'")
@@ -10856,6 +10885,7 @@ program define _dash_plot
         mata: st_local("_dash_ignored_acc", st_global("dash__tf_ign"))
     }
     capture macro drop dash__tf_*
+    capture macro drop dash__opts_typed
     if `_tf_rc' exit `_tf_rc'
 
     // ---- Validate the graph-level values (WP-15) ----
@@ -11292,7 +11322,7 @@ program define _dash_plot
     if `: length local g_pcycle' {
         mata: st_local("_pcv", strofreal(strtoreal(strtrim(st_local("g_pcycle")))))
         if missing(`_pcv') {
-            display as error "option pcycle() not allowed"
+            mata: _dash_say("err", "option ", _dash_opt_typed(st_local("_ty_cmd"), "pcycle()", "graph"), " not allowed")
             exit 198
         }
         mata: st_local("_pcbad", strofreal(_dash_pcycle_bad(st_local("plots_json"), `_pcv')))
@@ -12637,8 +12667,8 @@ program define _dash_fit_opts_check, sclass
     foreach o in atobs nofit fitplot ciplot smoothplot estopts predopts estcmd xlog xtransform {
         mata: st_local("_fo_v", strofreal(st_global("s(" + st_local("o") + ")") != ""))
         if `_fo_v' & !`: list ptype in _fo_`o'' {
-            if inlist("`o'", "atobs", "nofit", "xlog") display as error "option `o' not allowed"
-            else display as error "option `o'() not allowed"
+            local _fo_p = cond(inlist("`o'", "atobs", "nofit", "xlog"), "", "()")
+            mata: _dash_say("err", "option ", _dash_opt_typed(st_global("dash__opts_typed"), st_local("o") + st_local("_fo_p"), "plot"), " not allowed")
             exit 198
         }
     }
@@ -12924,13 +12954,16 @@ program define _dash_refuse_pendmsg
     exit `rc'
 end
 
-// _dash_refuse_gunique <name>  -- a graph option twoway takes once from
-// the whole command, given in a second plot group, || segment or after
-// the comma: "option xsize() not allowed", r(198).
+// _dash_refuse_gunique <name> [<typed>()]  -- a graph option twoway takes
+// once from the whole command, given in a second plot group, || segment
+// or after the comma: "option xsize() not allowed", r(198), naming the
+// second copy as typed (xsiz(4) is "option xsiz() not allowed"; WP-49
+// plot:PT-7, refusal_line_truth.json pt7.typed.gunique*).
 program define _dash_refuse_gunique
     version 19
-    args gk
-    display as error "option `gk'() not allowed"
+    args gk typed
+    if "`typed'" == "" local typed "`gk'()"
+    display as error "option `typed' not allowed"
     if "`gk'" == "table" display as error "      A graph takes one table; this command gives it more than once."
     else display as error "      A graph takes one `gk'(); this command gives it more than once, which twoway refuses as well."
     exit 198
@@ -13391,6 +13424,27 @@ program define _dash_refuse_unknown
     if "`_uk_cls`k''" == "jit" {
         _dash_refuse_jit
         exit
+    }
+    // legloc() and useplotregion(), written in full, are read by twoway
+    // itself, which refuses their value in its own words: legloc(6) is
+    // "option 6 not allowed" (its first word, read as a legend option)
+    // and useplotregion(1) "1 is not a plotregion", r(198), with no line
+    // after (WP-49 plot:PT-7, refusal_line_truth.json sd12.legloc*,
+    // sd12.useplotregion*; measured 12nov2026).  An empty value, and a
+    // legloc() whose first word takes a value (legloc(pos(6)), which
+    // twoway draws), keep the lines below.
+    if inlist("`_uk_nm`k''", "legloc()", "useplotregion()") {
+        mata: _uk_t = st_local("_uk_tok`k'"); st_local("_uk_v", stritrim(strtrim(strpos(_uk_t, "(") ? substr(_uk_t, strpos(_uk_t, "(") + 1, strlen(_uk_t) - strpos(_uk_t, "(") - 1) : "")))
+        mata: st_local("_uk_w", (cols(tokens(st_local("_uk_v"))) ? tokens(st_local("_uk_v"))[1] : ""))
+        mata: st_local("_uk_wok", strofreal(st_local("_uk_w") != "" & !strpos(st_local("_uk_w"), "(")))
+        if "`_uk_nm`k''" == "legloc()" & `_uk_wok' {
+            mata: _dash_say("err", "option ", substr(st_local("_uk_w"), 1, 80), " not allowed")
+            exit 198
+        }
+        if "`_uk_nm`k''" == "useplotregion()" & `: length local _uk_v' {
+            mata: _dash_say("err", "", substr(st_local("_uk_v"), 1, 80), " is not a plotregion")
+            exit 198
+        }
     }
     mata: _dash_say("err", "option ", st_local("_uk_nm`k'"), " not allowed")
     if "`_uk_cls`k''" == "uc" {

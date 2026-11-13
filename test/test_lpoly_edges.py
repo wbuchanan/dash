@@ -231,7 +231,11 @@ class TestLpolyHighDegree:
         assert "degree=int,0  " in ado or "degree=int,0 " in ado
         assert "degree=int,0,7" not in ado
         assert "dash fits local polynomials up to degree 7." not in ado
-        assert 'display as error "option degree() not allowed"' in ado
+        # Flipped (WP-49 plot:PT-7): the literal line was wrong because
+        # twoway names the option as typed (deg(abc) is "option deg() not
+        # allowed"); the site prints it through _dash_opt_typed.
+        assert ('_dash_opt_typed(st_global("dash__opts_typed"), "degree()", '
+                '"plot"), " not allowed")') in ado
 
     def test_constants_reach_the_bound(self):
         # The largest rule-of-thumb degree pe a bounded fit reaches: the

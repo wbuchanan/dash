@@ -91,7 +91,10 @@ class TestTheRefusal:
         # Flipped (WP-35 PD-10): the by-name branch above the sentence is
         # gone; the sentence opens the branch for a word that is no type.
         head = src[src.rindex("if \"`ptype'\" == \"\" {", 0, i):i]
-        assert ('mata: _dash_say("err", "", st_local("plottype"), '
+        # Flipped (WP-49 plot:PT-7): the word is named up to and including
+        # a [ in it, as twoway names it ("[ is not a twoway plot type" for
+        # [aw=price] before the type), so the echo reads _pt_word.
+        assert ('mata: _dash_say("err", "", st_local("_pt_word"), '
                 '" is not a twoway plot type")') in head, head
         assert "unrecognised plot type" not in head
         assert "exit(198)" in src[i:i + 600]

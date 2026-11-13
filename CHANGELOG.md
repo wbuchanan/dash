@@ -1019,6 +1019,7 @@ and now matches Stata.
 
 ### Fixed in WP-49
 
+- A refusal's first line is twoway's, naming the option as typed (function y = x, ba(3) is option ba() not allowed, where dash printed bands()), and dash's own first lines for an unbalanced parenthesis, a by() or mlabel() variable not found, legloc(), useplotregion() and a [ before the plot type are twoway's; return codes, dash's advice lines and the Supported list are unchanged (WP-49, plot:PT-7)
 ### Fixed in WP-48
 
 - The tracking documents and dash_setup's help agree with the code (WP-48, DT-29)

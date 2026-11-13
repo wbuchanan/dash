@@ -508,6 +508,10 @@ class TestTheNewProgramsKeepTheirConstraints:
         # WP-44 AX-5: custom with an edit and no value list, refused in
         # twoway's line (a test of the value, set as a local by value).
         "_dash_axlabel_custom_refusal",
+        # WP-49 plot:PT-7: _dash_opt_typed reads the plot's option text by
+        # value and returns the refused option's name as typed, for the
+        # first line _dash_say echoes.
+        "_dash_opt_typed",
     })
 
     @staticmethod

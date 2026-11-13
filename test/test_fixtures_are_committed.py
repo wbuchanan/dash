@@ -421,6 +421,7 @@ GENERATORS = {
     "natscale_axes_truth.json": "scripts/extract_natscale_axes_truth.do",
     "natscale_truth.json": "scripts/extract_natscale_truth.do",
     "noted_option_truth.json": "scripts/extract_noted_option_truth.do",
+    "refusal_line_truth.json": "scripts/extract_refusal_line_truth.do",
     "noted_drawn_truth.json": "scripts/extract_noted_drawn_truth.do",
     "numlist_truth.json": "scripts/extract_numlist_truth.do",
     "parsed_values_truth.json": "scripts/extract_parsed_values_truth.do",

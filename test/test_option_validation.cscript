@@ -134,7 +134,7 @@
 *!   OV-98  colorvar(nosuch)          rc and words of R_var_nosuch
 *!   OV-99  colorvar(rep78 foreign)   rc and words of R_var_two
 *!   OV-100 mlabel(mak)               rc 0, registry carries "mlabel":"make"
-*!   OV-101 mlabel(nosuchvar)         rc 111 naming mlabel()
+*!   OV-101 mlabel(nosuchvar)         rc 111, twoway's variable line
 *! Graph rules:
 *!   OV-102 xsize(9)                  rc 0
 *!   OV-103 xsize(abc)                rc 0   (a name)
@@ -147,7 +147,7 @@
 *!   OV-110 hover(pri wei)            rc 0, registry carries "hover":"price weight"
 *!   OV-111 hover(nosuchvar)          rc 111 naming hover()
 *!   OV-112 by(for, total)            rc 0, registry carries "by":"foreign, total"
-*!   OV-113 by(nosuchvar)             rc 111 naming by()
+*!   OV-113 by(nosuchvar)             rc 111, twoway's variable line
 *!   OV-114 by(, total)               rc 100 in twoway's words (Flipped,
 *!                                    WP-41 BY-6: it was r(198))
 *!   Q4105-1 aspectratio() with by(, shrink|overallshrink) rc 198 in
@@ -191,7 +191,7 @@
 *!                                    option inside a segment is validated
 *!                                    even when a later value outranks it)
 *!   OV-127 (scatter mpg weight, by(nosuch)) , by(foreign)
-*!                                    rc 111 naming by()
+*!                                    rc 111, twoway's variable line
 *!   OV-128 colorcuts(1(1)5)          rc 0, registry carries
 *!                                    "colorcuts":"1 2 3 4 5" (A4)
 *!   OV-129 kdensity range(0,10)      rc 0, registry carries "range":"0 10"
@@ -201,7 +201,7 @@
 *!                                    it (WP-35 basic:PT-13, D60)
 *!   OV-133 jitter(<tab>5<tab>)       rc 0, registry carries "jitter":"5"
 *!                                    (A8: tabs are trimmed; twoway rc 0)
-*!   OV-134 by("foreign")             rc 111 naming by(), and the message
+*!   OV-134 by("foreign")             rc 111, twoway's line, and the message
 *!                                    reads `variable "foreign" not found'
 *!                                    with nothing garbled (the old form
 *!                                    quoted the name in single quotes and
@@ -452,6 +452,14 @@
 *!   Q4704-4  a bad value of symbol(), msymangle(), bcolor(), afcolor(),
 *!          bfintensity(), afintensity(), blwidth(), blpattern(), bmsize()
 *!          rc 0, unnamed; mlabels(nosuchvar) r(111), twoway's line
+*! Refusal first lines (WP-49 plot:PT-7, test/fixtures/refusal_line_truth.json):
+*!   Q4901-1  an option spelled short at each refusal site: twoway's rc
+*!          and first line, the option as typed (option ba() not allowed)
+*!   Q4901-2  value_truth.json's TR-10 rows: no line after the first
+*!   Q4901-3  the syn:SD-12 first lines are twoway's; the dropped dash
+*!          sentences print no second line
+*!   Q4901-4  the Supported list still follows "is not a twoway plot type"
+*!   Q4901-5  the kept second lines (unknown, repeated, refused synonym)
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -1040,7 +1048,10 @@ _q4205 OV-98 R_var_nosuch
 // Flipped (WP-42 CV-9): twoway refuses a second variable with confirm's line and rc, not dash's (R_var_two).
 _q4205 OV-99 R_var_two
 _ov_case OV-100 `"dash scatter mpg weight, mlabel(mak) name(ov100)"' 0 "" `""mlabel":"make""'
-_ov_case OV-101 `"dash scatter mpg weight, mlabel(nosuchvar) name(ov101)"' 111 mlabel
+// Flipped (WP-49 plot:PT-7): "dash: mlabel(): variable ... not found" was wrong
+// because twoway prints "variable nosuchvar not found" (refusal_line_truth sd12).
+_u46_rc OV-101 111 `"dash scatter mpg weight, mlabel(nosuchvar) name(ov101)"'
+_ov_said OV-101 "variable nosuchvar not found"
 
 // Q4701-4 (WP-47 MS-7): mlabel() on scatteri, pci and pcarrowi is not
 // looked up in the data, as twoway does not look it up (rc 0; measured
@@ -1097,7 +1108,10 @@ _ov_case OV-109 `"dash scatter mpg weight, aspectratio(abc) name(ov109)"' 198 as
 _ov_case OV-110 `"dash scatter mpg weight, hover(pri wei) name(ov110)"' 0 "" `""hover":"price weight""'
 _ov_case OV-111 `"dash scatter mpg weight, hover(nosuchvar) name(ov111)"' 111 hover
 _ov_case OV-112 `"dash scatter mpg weight, by(for, total) name(ov112)"' 0 "" `""by":"foreign, total""'
-_ov_case OV-113 `"dash scatter mpg weight, by(nosuchvar) name(ov113)"' 111 by
+// Flipped (WP-49 plot:PT-7): "dash: by(): variable ... not found" was wrong
+// because twoway prints "variable nosuchvar not found" (refusal_line_truth sd12).
+_u46_rc OV-113 111 `"dash scatter mpg weight, by(nosuchvar) name(ov113)"'
+_ov_said OV-113 "variable nosuchvar not found"
 // Flipped (WP-41 BY-6): twoway refuses r(100), not 198
 _u46_rc OV-114 100 `"dash scatter mpg weight, by(, total) name(ov114)"'
 
@@ -1231,7 +1245,10 @@ capture erase "`_ov_html'"
 // twoway refuses it r(198) "graph xsize invalid;".
 _u46_rc OV-126 198 `"dash (scatter mpg weight, xsize(500)) , xsize(5) name(ov126)"'
 _ov_said OV-126 "graph xsize invalid;"
-_ov_case OV-127 `"dash (scatter mpg weight, by(nosuch)) , by(foreign) name(ov127)"' 111 by
+// Flipped (WP-49 plot:PT-7): "dash: by(): variable ... not found" was wrong
+// because twoway prints "variable nosuch not found" (refusal_line_truth sd12).
+_u46_rc OV-127 111 `"dash (scatter mpg weight, by(nosuch)) , by(foreign) name(ov127)"'
+_ov_said OV-127 "variable nosuch not found"
 
 // A4, A5 -- what the table accepts reaches the renderer in one spelling.
 _ov_case OV-128 `"dash scatter mpg weight, colorvar(price) colorcuts(1(1)5) name(ov128)"' 0 "" `""colorcuts":"1 2 3 4 5""'
@@ -1250,7 +1267,9 @@ _ov_case OV-133 `"dash scatter mpg weight, jitter(`_ov_tab'5`_ov_tab') name(ov13
 
 // The not-found message echoes the name without single quotes, so a
 // trailing double quote cannot end the compound quote early.
-_ov_case OV-134 `"dash scatter mpg weight, by("foreign") name(ov134)"' 111 by
+// Flipped (WP-49 plot:PT-7): the line no longer names by() -- twoway's
+// "variable <name> not found" -- and OV-134m reads it.
+_u46_rc OV-134 111 `"dash scatter mpg weight, by("foreign") name(ov134)"'
 _ov_said OV-134m `"variable "foreign" not found"'
 
 // S1 -- a two-variable plot type given ONE variable is refused at
@@ -4863,6 +4882,127 @@ foreach q44 in "scatter mpg weight, symbol(bogus)" "scatter mpg weight, msymbol(
 }
 _u46_rc Q4704-4 111 "dash scatter mpg weight, mlabels(nosuchvar)"
 _ov_said Q4704-4 "variable nosuchvar not found"
+capture dash clear
+
+// ----------------------------------------------------------------
+// Q4901-1..5 (WP-49 section 49-01, plot:PT-7): refusal first lines.
+// test/fixtures/refusal_line_truth.json (scripts/extract_refusal_line_truth.do)
+// holds each probe's twoway rc and lines.  Q4901-1 (pt7.typed.*) and
+// Q4901-3 (sd12.*): dash's rc and first line are twoway's; Q4901-3's
+// D-49-01.c rows print no second line.  Q4901-4: after "is not a twoway
+// plot type" the Supported list follows, as the fixture's dash lines
+// recorded it.  Q4901-5 (pt7.kept.*): dash's every line is the fixture's.
+// Q4901-2: value_truth.json's five TR-10 rows print one line (their rc
+// and first line are test_wp33_truth.cscript's Q3310-1).
+// ----------------------------------------------------------------
+python:
+import json as _q4901_json
+import re as _q4901_re
+from sfi import Macro as _q4901_M
+with open("fixtures/refusal_line_truth.json", encoding="utf-8") as _q4901_fh:
+    _q4901_fx = _q4901_json.load(_q4901_fh)["probes"]
+with open("fixtures/value_truth.json", encoding="utf-8") as _q4901_fh:
+    _q4901_vt = {r["id"]: r for r in _q4901_json.load(_q4901_fh)["twoway"]}
+_q4901_tr10 = ("kdensity_bwidth_1", "mband_bands_1", "kdensity_kernel_1",
+               "colorlevels_1", "mlabangle_4")
+# sd12 rows whose dash sentence is dropped (D-49-01.c): one line only.
+_q4901_one = ("sd12.Q14", "sd12.by_nosuch", "sd12.mlabel_nosuch",
+              "sd12.colorvar_nosuch", "sd12.bar_word", "sd12.legloc",
+              "sd12.legloc_word", "sd12.legloc_graph", "sd12.useplotregion",
+              "sd12.useplotregion_word", "sd12.useplotregion_graph")
+_q4901_M.setLocal("q_typed", " ".join(sorted(
+    k for k, v in _q4901_fx.items() if k.startswith("pt7.typed.") and v["twoway_rc"])))
+_q4901_M.setLocal("q_sd12", " ".join(sorted(
+    k for k, v in _q4901_fx.items() if k.startswith("sd12.") and v["twoway_rc"])))
+_q4901_M.setLocal("q_kept", " ".join(sorted(
+    k for k in _q4901_fx if k.startswith("pt7.kept."))))
+_q4901_M.setLocal("q_tr10", " ".join(_q4901_tr10))
+
+
+def _q4901_take(key):
+    if key in _q4901_vt:
+        _q4901_M.setLocal("q_cmd", _q4901_vt[key]["command"][len("twoway "):])
+        return
+    _q4901_M.setLocal("q_cmd", _q4901_fx[key]["command"])
+
+
+def _q4901_lines(path):
+    out = []
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            for ln in fh:
+                if ln.strip() and not ln.startswith((". ", "> ")):
+                    out.append(_q4901_re.sub(r"\s+", " ", ln).strip())
+    except OSError:
+        pass
+    return out
+
+
+def _q4901_clean(text):
+    for ch, to in (('"', "'"), ("\x60", "'"), ("$", "S")):
+        text = text.replace(ch, to)
+    return text[:200]
+
+
+def _q4901_judge(case, key, path, rc):
+    got = _q4901_lines(path)
+    rc = int(rc)
+    if case == "Q4901-2":
+        ok = rc != 0 and len(got) == 1
+        want = "one line"
+    else:
+        r = _q4901_fx[key]
+        tw = r["twoway_lines"]
+        want = tw[0] if tw else ""
+        ok = rc == r["twoway_rc"] and got[:1] == tw[:1]
+        if case == "Q4901-3" and key in _q4901_one:
+            ok = ok and len(got) == 1
+        if case == "Q4901-4":
+            base = _q4901_fx["pt7.kept.plottype"]["dash_lines"][1:]
+            ok = rc == r["twoway_rc"] and got[1:] == base and len(base) >= 3
+            want = "the Supported list: " + " / ".join(base)
+        if case == "Q4901-5":
+            ok = rc == r["dash_rc"] and got == r["dash_lines"]
+            want = " / ".join(r["dash_lines"])
+    _q4901_M.setLocal("q_ok", "1" if ok else "0")
+    _q4901_M.setLocal("q_got", _q4901_clean(" / ".join(got)))
+    _q4901_M.setLocal("q_want", _q4901_clean(want))
+end
+capture program drop _q4901
+program define _q4901
+    version 19
+    args case key
+    quietly sysuse auto, clear
+    quietly generate yl = mpg - 1
+    quietly generate yh = mpg + 1
+    python: import __main__; __main__._q4901_take("`key'")
+    set linesize 255
+    capture dash clear
+    capture log close _ovlog
+    capture erase "`c(tmpdir)'dash_ov.log"
+    quietly log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture noisily dash `q_cmd'
+    local rc = _rc
+    quietly log close _ovlog
+    python: import __main__; __main__._q4901_judge("`case'", "`key'", r"`c(tmpdir)'dash_ov.log", "`rc'")
+    _ov_assert `case' "(`q_ok' == 1)" `"`key': rc `rc'; dash said: `macval(q_got)'; want: `macval(q_want)'"'
+    set linesize 80
+end
+foreach _q49k of local q_typed {
+    _q4901 Q4901-1 `_q49k'
+}
+foreach _q49k of local q_tr10 {
+    _q4901 Q4901-2 `_q49k'
+}
+foreach _q49k of local q_sd12 {
+    _q4901 Q4901-3 `_q49k'
+}
+foreach _q49k in pt7.kept.plottype sd12.E08 {
+    _q4901 Q4901-4 `_q49k'
+}
+foreach _q49k of local q_kept {
+    _q4901 Q4901-5 `_q49k'
+}
 capture dash clear
 
 // Summary

@@ -1406,7 +1406,10 @@ display "P20-03 PASS: a refused enum keyword is echoed as text, not SMCL"
 // P20-04 — a variable option: mlabel(), the marker-label text source
 _adv_p19_run "dash scatter mpg weight, mlabel({bf:INJMARKML}) name(p2004)"
 assert r(rc) == 111
-cert_file_has "`r(log)'", needle("mlabel(): variable {bf:INJMARKML} not found")
+// Flipped (WP-49 plot:PT-7): dash's "mlabel(): variable ..." was wrong
+// because twoway prints "variable <name> not found" (refusal_line_truth
+// sd12.mlabel_nosuch); still echoed as text, not SMCL.
+cert_file_has "`r(log)'", needle("variable {bf:INJMARKML} not found")
 assert r(found) == 1
 assert "${dash_graph_registry}" == ""
 display "P20-04 PASS: a refused mlabel() variable is echoed as text, not SMCL"
@@ -1414,7 +1417,9 @@ display "P20-04 PASS: a refused mlabel() variable is echoed as text, not SMCL"
 // P20-05 — by()
 _adv_p19_run "dash scatter mpg weight, by({bf:INJMARKBY}) name(p2005)"
 assert r(rc) == 111
-cert_file_has "`r(log)'", needle("by(): variable {bf:INJMARKBY} not found")
+// Flipped (WP-49 plot:PT-7): twoway's "variable <name> not found"
+// (refusal_line_truth sd12.by_nosuch), not dash's "by(): variable ...".
+cert_file_has "`r(log)'", needle("variable {bf:INJMARKBY} not found")
 assert r(found) == 1
 assert "${dash_graph_registry}" == ""
 display "P20-05 PASS: a refused by() variable is echoed as text, not SMCL"

@@ -659,10 +659,13 @@ _p1b_run `"dash scatter mpg weight, legend(off || line price weight"'
 local rc36 = r(rc)
 local lg36 "`r(log)'"
 assert `rc36' == 198
-mata: st_local("p36m", strofreal(_p1b_log_has(st_local("lg36"), "unbalanced parentheses")))
+// Flipped (WP-49 plot:PT-7): dash's "unbalanced parentheses in the plot
+// specification" was wrong because twoway prints "parentheses do not
+// balance" for this command (measured 12nov2026).
+mata: st_local("p36m", strofreal(_p1b_log_has(st_local("lg36"), "parentheses do not balance")))
 assert `p36m' == 1
 assert "${dash_graph_registry}" == ""
-display "P1B-36 PASS: AC-01.3 -- legend(off || line ... exits 198 naming the unbalanced parentheses, and registers nothing"
+display "P1B-36 PASS: AC-01.3 -- legend(off || line ... exits 198 with twoway's parentheses do not balance, and registers nothing"
 
 // ----------------------------------------------------------------
 // P1B-37 -- AC-01.4: stray text between groups is r(198), as in twoway

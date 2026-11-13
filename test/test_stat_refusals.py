@@ -149,7 +149,11 @@ class TestTheLowessWeight:
         # refused dash-only word (WP-35 DT-15).
         unknown = seg.index("_dash_refuse_unknown _dash_parse_plot_opts "
                             "`ptype' `\"`macval(opts_raw)'\"'")
-        refuse = seg.index('display as error "option noweight not allowed"')
+        # Flipped (WP-49 plot:PT-7): the literal line was wrong because
+        # twoway names the option as typed (nowe is "option nowe not
+        # allowed"); the site prints it through _dash_opt_typed.
+        refuse = seg.index('_dash_opt_typed(st_global("dash__opts_typed"), '
+                           '"noweight", "plot")')
         assert clear < unknown < refuse
 
 

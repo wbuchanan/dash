@@ -143,7 +143,11 @@ class TestTheCheck:
                  for o in OPTIONS for t in _refused(o)}
         assert forms == {"option <opt>() not allowed"}, forms
         body = _program_body(_ado(), "_dash_validate_opts")
-        assert 'display as error "option `o\'() not allowed"' in body
+        # Flipped (WP-49 plot:PT-7): the table's name was wrong because
+        # twoway names the option as typed (ba(3) on function is "option
+        # ba() not allowed", refusal_line_truth.json pt7.typed.applies_*).
+        assert ('_dash_opt_typed(st_global("dash__opts_typed"), '
+                'st_local("o") + "()", "plot"), " not allowed")') in body
 
 
 class TestNothingRefusedIsAlsoNamed:

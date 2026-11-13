@@ -847,6 +847,7 @@ COVERAGE = {
         "_dash_grec_ok": ("test_option_validation.cscript:U54-0",),
         "_dash_unknown_scan": ("test_twoway_option_parity.cscript:TP-07",),
         "_dash_rep_prefix": ("test_twoway_option_parity.cscript:TP-07",),
+        "_dash_opt_typed": ("test_option_validation.cscript:Q4901-1",),
         "_dash_dashonly_list": ("test_option_validation.cscript:Q3507-1",),
         "_dash_dashonly_typed": ("test_option_validation.cscript:Q3507-1",),
         "_dash_dashonly_say": ("test_option_validation.cscript:Q3507-1",),
