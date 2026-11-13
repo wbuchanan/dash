@@ -10120,19 +10120,23 @@ string matrix _dash_tw_silent_sub_tab()
 }
 
 // _dash_silent_drop(p, ptype) -- the names p (s(_pending)'s bare names,
-// or s(_unknown)'s words as typed, "()" and all) less those twoway draws
-// nothing different with on plot type ptype (_dash_tw_silent_tab), one
-// blank between them.  A word is looked up by its name, the text before
-// its "(" (WP-49 basic:PT-12), and kept as typed.
+// or s(_unknown)'s options as typed) less those twoway draws nothing
+// different with on plot type ptype (_dash_tw_silent_tab), one blank
+// between them.  An option is one word however many blanks its value
+// holds (_dash_opt_tokens), is looked up by its name, the text before its
+// "(" (WP-49 basic:PT-12), and kept as typed; one given a value is
+// dropped only when twoway takes that value in silence
+// (_dash_silent_value_ok): at any other twoway prints a note or refuses,
+// so dash names it.
 string scalar _dash_silent_drop(string scalar p, string scalar ptype)
 {
     string matrix    t
     string rowvector w
-    string scalar    out, nm
+    string scalar    out, nm, v
     real scalar      i, r, drop, k
 
     t = _dash_tw_silent_tab()
-    w = tokens(p)
+    w = _dash_opt_tokens(p)
     out = ""
     for (i = 1; i <= cols(w); i++) {
         drop = 0
@@ -10141,9 +10145,75 @@ string scalar _dash_silent_drop(string scalar p, string scalar ptype)
         for (r = 1; r <= rows(t); r++) {
             if (t[r, 1] == nm & anyof(tokens(t[r, 2]), ptype)) drop = 1
         }
+        if (drop & k) {
+            v = substr(w[i], k + 1, .)
+            if (substr(v, -1, 1) == ")") v = substr(v, 1, strlen(v) - 1)
+            drop = _dash_silent_value_ok(nm, v)
+        }
         if (!drop) out = out + (out == "" ? "" : " ") + w[i]
     }
     return(out)
+}
+
+// _dash_silent_value_ok(nm, v) -- 1 when twoway takes value v of the
+// silent-table option nm without a note (WP-49 basic:PT-12; measured
+// 12nov2026, scatter mpg weight).  A value is a style list, one element
+// per y, each of which must be: for a colour, a name with a
+// color-<name>.style file (the case as typed: RED, Red are noted), "#"
+// and six hex digits, a quoted triple of integers 0-255, or nothing, any
+// of them followed by *# or %#; for a line width or marker size, a
+// number with an optional pt, in, cm or rs and an optional leading *, or
+// a named style; for a line pattern, a formula of - _ . l # or a named
+// style; for a stroke alignment, a named style (no abbreviation).  "."
+// ".." "..." and "=" stand for elements.  bargap() takes a number (other
+// text is refused, r(198)); every other option takes any value.
+real scalar _dash_silent_value_ok(string scalar nm, string scalar v)
+{
+    string rowvector e
+    string scalar    cls, x, f, fdir, fbase
+    real scalar      i, k
+
+    if (nm == "bargap") return(strtoreal(strtrim(v)) < .)
+    cls = (anyof(("bmcolor", "bmlcolor"), nm) ? "color" :
+          (anyof(("bmlalign", "clalign"), nm) ? "alignstroke" :
+          (anyof(("bmlpattern", "dlpattern"), nm) ? "linepattern" :
+          (nm == "bmlwidth" ? "linewidth" :
+          (nm == "bmsize" ? "symbolsize" : "")))))
+    if (cls == "") return(1)
+    e = tokens(v)
+    if (cols(e) == 0) return(0)
+    for (i = 1; i <= cols(e); i++) {
+        x = strtrim(e[i])
+        if (anyof((".", "..", "...", "="), x)) continue
+        if (strlen(x) >= 2 & substr(x, 1, 1) == char(34) & substr(x, -1, 1) == char(34)) {
+            x = strtrim(substr(x, 2, strlen(x) - 2))
+        }
+        if (cls == "color") {
+            k = strpos(x, "*")
+            if (!k | (strpos(x, "%") & strpos(x, "%") < k)) k = strpos(x, "%")
+            if (k) x = strtrim(substr(x, 1, k - 1))
+            if (x == "") continue
+            if (ustrregexm(x, "^#[0-9a-fA-F]{6}$")) continue
+            if (ustrregexm(x, "^[0-9]+ +[0-9]+ +[0-9]+$")) {
+                if (max(strtoreal(tokens(x))) <= 255) continue
+                return(0)
+            }
+        }
+        else if (cls == "linewidth" | cls == "symbolsize") {
+            if (ustrregexm(x, "^[*]?[-+]?([0-9]+[.]?[0-9]*|[.][0-9]+)(pt|in|cm|rs)?$")) continue
+        }
+        else if (cls == "linepattern") {
+            if (ustrregexm(x, "^[-_.l#]+$")) continue
+        }
+        if (!ustrregexm(x, "^[A-Za-z0-9_]+$")) return(0)
+        // A named style: the file twoway reads, its name in the case as
+        // typed (a case-blind file system finds color-RED.style too).
+        f = findfile(cls + "-" + x + ".style")
+        if (f == "") return(0)
+        pathsplit(f, fdir, fbase)
+        if (!anyof(dir(fdir, "files", cls + "-*.style"), cls + "-" + x + ".style")) return(0)
+    }
+    return(1)
 }
 
 // _dash_silent_sub(opt, sub) -- 1 when _dash_tw_silent_sub_tab() holds a

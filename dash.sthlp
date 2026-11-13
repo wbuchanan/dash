@@ -7901,7 +7901,9 @@ in either direction.
     {cmd:ylabel(.1(.1).5, labelkeepleadingzero)},
     {cmd:by(foreign, spacers(ring(2)))} and {cmd:subtitle(, width(20))}
     under {cmd:by()}): each {cmd:twoway} draws the same picture with and
-    prints no note for is taken in silence.  Stata's {cmd:nodraw} is not in
+    prints no note for is taken in silence.  It is taken in silence only
+    at a value {cmd:twoway} takes without a note: a name {cmd:twoway}
+    does not know, such as {cmd:bmcolor(BOGUS)}, is named.  Stata's {cmd:nodraw} is not in
     this list: written on a graph it is honoured, on an immediate render
     and, once the graph is registered, on {cmd:dash build} and
     {cmd:dash serve} alike, by keeping the browser window shut.

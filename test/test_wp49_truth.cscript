@@ -424,6 +424,58 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w49_run' {
         _w49_expect Q4902-2 "(`q2rc' == 0 & r(found))" `"dash `q2c': r(`q2rc'), `q2o' not named"'
     }
     _w49_done Q4902-2 "an option twoway draws differently with is still named"
+
+    // ------------------------------------------------------------
+    // Q4902-8 (WP-49 basic:PT-12 follow-up): an option of the silent
+    // table is taken in silence only at a value twoway takes in silence.
+    // Each command runs beside twoway: where twoway prints a note (a
+    // name not found in its class, a misspelt case, an RGB triple out of
+    // range, an unquoted triple read as three colours) or refuses, dash
+    // names the option or refuses; where twoway is silent, so is dash.
+    // And a value of several words is one option: dot's dlpattern() is
+    // named alone beside bmcolor("255 0 0").
+    // ------------------------------------------------------------
+    foreach q8 in ///
+        `"scatter mpg weight, bmcolor(BOGUS)"' `"scatter mpg weight, bmcolor(RED)"' ///
+        `"scatter mpg weight, bmcolor(255 0 0)"' `"scatter mpg weight, bmcolor("300 0 0")"' ///
+        `"scatter mpg weight, bmcolor("255 0 0")"' `"scatter mpg weight, bmcolor(red*.5)"' ///
+        `"scatter mpg weight, bmcolor(red%50)"' `"scatter mpg weight, bmcolor(red blue)"' ///
+        `"scatter mpg weight, bmcolor(#ff0000)"' `"scatter mpg weight, bmlcolor(BOGUS)"' ///
+        `"scatter mpg weight, bmlalign(bogus)"' `"scatter mpg weight, bmlalign(center)"' ///
+        `"scatter mpg weight, bmlpattern(bogus)"' `"scatter mpg weight, bmlpattern(Dash)"' ///
+        `"scatter mpg weight, bmlpattern(-.)"' `"scatter mpg weight, bmlwidth(bogus)"' ///
+        `"scatter mpg weight, bmlwidth(1pt)"' `"scatter mpg weight, bmlwidth(medium thick)"' ///
+        `"scatter mpg weight, bmsize(bogus)"' `"scatter mpg weight, bmsize(*2)"' ///
+        `"scatter mpg weight, clalign(bogus)"' `"scatter mpg weight, clalign(in)"' ///
+        `"line mpg weight, clalign(inside)"' `"scatter mpg weight, dlpattern(bogus)"' ///
+        `"bar mpg weight, bargap(bogus)"' `"bar mpg weight, bargap(-200)"' {
+        capture log close _q49
+        capture erase "`q1log'"
+        quietly log using "`q1log'", text replace name(_q49)
+        capture noisily twoway `q8' name(q49tw, replace) nodraw
+        local q8trc = _rc
+        quietly log close _q49
+        capture graph drop q49tw
+        cert_log_has "`q1log'", needle("(note:")
+        local q8tw = (`q8trc' != 0 | r(found))
+        capture erase "`q1log'"
+        quietly log using "`q1log'", text replace name(_q49)
+        capture noisily dash `q8' saving("`w49_work'/q4902_1.html", replace)
+        local q8drc = _rc
+        quietly log close _q49
+        capture dash clear
+        cert_log_has "`q1log'", needle("ignoring unsupported")
+        local q8d = (`q8drc' != 0 | r(found))
+        _w49_expect Q4902-8 "(`q8tw' == `q8d')" `"`q8': twoway notes or refuses `q8tw' (rc `q8trc'), dash names or refuses `q8d' (rc `q8drc')"'
+    }
+    capture erase "`q1log'"
+    quietly log using "`q1log'", text replace name(_q49)
+    capture noisily dash dot mpg weight, dlpattern(dash) bmcolor("255 0 0") saving("`w49_work'/q4902_1.html", replace)
+    quietly log close _q49
+    capture dash clear
+    cert_log_has "`q1log'", needle("ignoring unsupported option(s): dlpattern())")
+    _w49_expect Q4902-8 "(r(found) == 1)" `"dot, dlpattern(dash) bmcolor("255 0 0"): the note is not dlpattern() alone"'
+    _w49_done Q4902-8 "a silent option is silent only at a value twoway takes in silence"
     capture erase "`q1log'"
     capture erase "`w49_work'/q4902_1.html"
     display as text "S02 end " c(current_date) " " c(current_time)
