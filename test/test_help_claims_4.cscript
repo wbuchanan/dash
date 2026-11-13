@@ -44,8 +44,8 @@ if "`_cert_prof'" != "" {
 do "cert_helpers.do"
 global dash_nobrowser 1
 qui sysuse auto, clear
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 // Runs a command with its output logged, so a check can read what dash
 // printed; r(rc) and r(log).

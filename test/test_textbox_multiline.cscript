@@ -47,8 +47,8 @@ if "`_cert_prof'" != "" {
 qui sysuse auto, clear
 
 // Load the parser and the command, as every end-to-end script here does.
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 // Assert a graph_options value, entirely inside Mata.
 //

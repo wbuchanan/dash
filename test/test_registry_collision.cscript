@@ -78,8 +78,8 @@ global dash_nobrowser 1
 // ----------------------------------------------------------------
 
 qui sysuse auto, clear
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 // cert_file_has: asks whether a file holds a string, from Mata, where the
 // file's text is a value and never macro text.  cert_log_has asks the same

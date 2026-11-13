@@ -36,7 +36,7 @@ if "`_cert_prof'" != "" {
 // do returns rc=3000 for Mata compilation — this is non-fatal.
 // Match pattern used by test_parser.cscript and test_e2e_single.cscript:
 // run the file, don't assert _rc==0, just let fatal errors propagate.
-do "../dash_parse.mata"
+run "../dash_parse.mata"
 display "P15-01 PASS: dash_parse.mata loaded (non-fatal Mata rc is expected)"
 
 // ================================================================
@@ -52,7 +52,7 @@ display "P15-01 PASS: dash_parse.mata loaded (non-fatal Mata rc is expected)"
 // The same bug existed in _dash_build (stray end at end of program)
 // and _dash_serve (duplicate end).
 // ================================================================
-do "../dash.ado"
+run "../dash.ado"
 display "P15-02 PASS: dash.ado loaded without error"
 
 // ================================================================

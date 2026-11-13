@@ -1494,3 +1494,37 @@ class TestTheWpTruthScripts:
         u2 = t.replace('do "cert_helpers.do"', 'do "x.do"')
         assert _head_and_tail(u2) != _head_and_tail(t)
         assert len(_SECS.findall(t)) == 1
+
+
+# ---------------------------------------------------------------------------
+# WP-50 50-02 (D-50-02.f): every certification script loads dash with run
+# ---------------------------------------------------------------------------
+
+#: A line that loads dash_parse.mata or dash.ado with do (any prefix, any
+#: directory): do echoes all of the file's lines into the session's log.
+_DO_LOAD = re.compile(
+    r'^\s*(?:(?:capture|cap|quietly|qui|noisily|noi)\s+)*do\s+'
+    r'"[^"\n]*\bdash(?:_parse\.mata|\.ado)"', re.M)
+#: The comment that keeps a do load: the script reads its own load echo.
+_DO_KEPT = "// do: this script reads its own load echo"
+
+
+class TestEveryCscriptLoadsWithRun:
+
+    @pytest.mark.parametrize("path", _CSCRIPTS + [_WP_TEMPLATE],
+                             ids=os.path.basename)
+    def test_no_do_load(self, path):
+        bad = []
+        for i, line in enumerate(_read(path).splitlines(), 1):
+            if _DO_LOAD.match(line) and _DO_KEPT not in line:
+                bad.append("%d: %s" % (i, line.strip()))
+        assert not bad, "\n".join(bad)
+
+    def test_the_reader_sees_a_do_load(self):
+        for line, hit in (('qui do "../dash_parse.mata"', True),
+                          ('do "../dash.ado"', True),
+                          ('    quietly do "`root\'/dash.ado"', True),
+                          ('qui run "../dash.ado"', False),
+                          ('do "cert_helpers.do"', False),
+                          ('quietly do "../dash_setup.ado"', False)):
+            assert bool(_DO_LOAD.match(line)) == hit, line

@@ -40,7 +40,7 @@ if "`_cert_prof'" != "" {
 }
 
 
-qui do "../dash.ado"
+qui run "../dash.ado"
 do "cert_helpers.do"
 
 global dash_nobrowser 1

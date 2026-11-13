@@ -153,8 +153,8 @@ if "${ZQA_HELP}" == "" {
     exit 222
 }
 
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 tempfile savtmp
 global ZQA_TMPSAV "`savtmp'.html"

@@ -83,8 +83,8 @@ if "`_cert_prof'" != "" {
 
 // Sets $dash_nobrowser (cscript dropped it) and defines cert_file_has.
 do "cert_helpers.do"
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 quietly do "../dash_setup.ado"
 
 local ls0 = c(linesize)

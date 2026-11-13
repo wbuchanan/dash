@@ -58,8 +58,8 @@ if "`_cert_prof'" != "" {
 // PASSED.  Nothing decides whether Python is there (WP-36 plat:PT-1, M8):
 // with no Python set, Stata finds one on the first python: line.
 
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 // ----------------------------------------------------------------
 // Colour-census helpers

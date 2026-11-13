@@ -31,8 +31,8 @@ if "`_cert_prof'" != "" {
 
 qui sysuse auto, clear
 global dash_nobrowser 1
-qui do "../dash_parse.mata"
-qui do "../dash.ado"
+qui run "../dash_parse.mata"
+qui run "../dash.ado"
 
 mata:
 // Read a captured log, re-join "> " continuations into logical lines, and

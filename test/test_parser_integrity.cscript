@@ -63,7 +63,7 @@ if "`_cert_prof'" != "" {
 // Setup
 // ----------------------------------------------------------------
 qui sysuse auto, clear
-do "../dash_parse.mata"
+run "../dash_parse.mata"
 
 
 // ================================================================
@@ -581,7 +581,7 @@ display "P1B-34 PASS: a filter whose quoted label holds an unbalanced '(' is ext
 // Registration and the refusals run in Stata alone: no Python, no jsonio.
 // Each command's output goes to a log that Mata reads by value, so nothing
 // dash prints can end a Stata string.
-do "../dash.ado"
+run "../dash.ado"
 global dash_nobrowser 1
 
 capture mata: mata drop _p1b_log_has()

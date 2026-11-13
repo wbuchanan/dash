@@ -64,8 +64,8 @@ if "`_cert_prof'" != "" {
 // Nothing here builds a dashboard; it is set so nothing ever could open one.
 global dash_nobrowser 1
 
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 
 // ================================================================

@@ -59,7 +59,7 @@ if "`_cert_prof'" != "" {
     profiler on
 }
 
-qui do "../dash_parse.mata"
+qui run "../dash_parse.mata"
 
 mata:
 // Build a string from a comma-separated list of decimal byte values.

@@ -32,8 +32,8 @@ if "`_cert_prof'" != "" {
 
 qui sysuse auto, clear
 
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 // Shared certification helpers.  cert_file_has searches a file from Mata,
 // where a line is a value rather than macro text, so no character in the

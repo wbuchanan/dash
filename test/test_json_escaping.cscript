@@ -100,8 +100,8 @@ global dash_nobrowser 1
 quietly do "cert_svg.do"
 
 qui sysuse auto, clear
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 mata:
 // Does the escaped text still carry a raw byte below 0x20?

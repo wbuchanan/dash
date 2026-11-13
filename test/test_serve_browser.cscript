@@ -52,8 +52,8 @@ if "`_cert_prof'" != "" {
 
 do "cert_helpers.do"
 qui sysuse auto, clear
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 // This script sets and drops $dash_nobrowser itself, case by case; it
 // never builds a dashboard, and the stub below opens nothing whatever it

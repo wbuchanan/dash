@@ -63,8 +63,8 @@ set linesize 255
 version 16
 assert c(userversion) == 16
 qui sysuse auto, clear
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 // ================================================================
 // CV-01..02 — a graph can be named under user version 16

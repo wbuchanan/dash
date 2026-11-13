@@ -58,8 +58,8 @@ if "`_cert_prof'" != "" {
 // Setup
 // ----------------------------------------------------------------
 qui sysuse auto, clear
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 // twoway's answers (WP-30 test performance, B2): every question below is
 // asked of twoway in a run with DASH_CERT_REMEASURE set, and read from

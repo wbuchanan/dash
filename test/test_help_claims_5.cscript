@@ -76,8 +76,8 @@ set graphics off
 
 do "cert_helpers.do"
 quietly do "cert_svg.do"
-qui do "../dash_parse.mata"
-qui do "../dash.ado"
+qui run "../dash_parse.mata"
+qui run "../dash.ado"
 
 // cscript drops every global; cert_helpers.do set it again, and so does this.
 global dash_nobrowser 1

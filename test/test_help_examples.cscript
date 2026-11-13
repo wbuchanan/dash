@@ -120,7 +120,7 @@ global dash_nobrowser 1
 
 // _dash_serve_spec, _dash_find_render and _dash_do_render are internal to
 // dash.ado; loading the file defines them (test_serve_options does too).
-qui do "../dash.ado"
+qui run "../dash.ado"
 
 // A long note must reach the log on one line, and a new session draws in
 // stcolor (cscript set its own scheme).

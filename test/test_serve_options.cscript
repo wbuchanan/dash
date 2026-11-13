@@ -43,7 +43,7 @@ if "`_cert_prof'" != "" {
 
 
 // _dash_serve_spec is internal to dash.ado; loading the file defines it.
-qui do "../dash.ado"
+qui run "../dash.ado"
 
 do "cert_helpers.do"
 

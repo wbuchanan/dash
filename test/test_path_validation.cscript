@@ -42,8 +42,8 @@ if "`_cert_prof'" != "" {
 // the package directory on the ado-path -- measured, `findfile
 // dash_parse.mata' returns 601 in this context -- so dash.ado's own autoload
 // finds nothing and every Mata-backed check would silently not run.
-qui do "../dash_parse.mata"
-qui do "../dash.ado"
+qui run "../dash_parse.mata"
+qui run "../dash.ado"
 
 // ----------------------------------------------------------------
 // The payloads are built with char() so that THIS file's own parsing

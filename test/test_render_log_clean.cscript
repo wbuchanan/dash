@@ -61,7 +61,7 @@ if "`_cert_prof'" != "" {
 
 // See test_cscript_hygiene.py: do NOT probe Python by running it.
 
-qui do "../dash.ado"
+qui run "../dash.ado"
 do "cert_helpers.do"
 
 // Log scanner for check 4: re-join "> " continuations, then count the

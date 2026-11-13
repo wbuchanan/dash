@@ -24,7 +24,7 @@ if "`_cert_prof'" != "" {
 // Setup
 // ----------------------------------------------------------------
 qui sysuse auto, clear
-do "../dash_parse.mata"
+run "../dash_parse.mata"
 
 // ================================================================
 // P1A-20 — _dash_split_segs: single flat segment set correctly

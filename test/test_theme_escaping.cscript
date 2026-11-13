@@ -73,8 +73,8 @@ global dash_nobrowser 1
 // ----------------------------------------------------------------
 
 qui sysuse auto, clear
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 // Build once with the given theme() value and hand back the return code,
 // whether the dashboard file was written, and the captured log.  A fresh

@@ -65,8 +65,8 @@ global dash_nobrowser 1
 // ----------------------------------------------------------------
 
 qui sysuse auto, clear
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 // cert_log_has reads a captured log as a value in Mata, so nothing the
 // message contains can end a Stata string or be parsed as code (LOC-09).
 do "cert_helpers.do"

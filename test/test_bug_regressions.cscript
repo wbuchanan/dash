@@ -92,7 +92,7 @@ if _rc != 0 {
 }
 
 quietly do "cert_svg.do"
-qui do "../dash.ado"
+qui run "../dash.ado"
 
 // cscript drops every global; the runner's setting does not reach here.
 global dash_nobrowser 1

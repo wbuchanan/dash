@@ -32,8 +32,8 @@ if "`_cert_prof'" != "" {
 
 qui sysuse auto, clear
 
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 // cert_file_has: asks whether a generated file contains a string, from Mata,
 // where the file's text is a value rather than macro text.  The scans below

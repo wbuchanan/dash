@@ -36,8 +36,8 @@ if "`_cert_prof'" != "" {
 
 do "cert_helpers.do"
 qui sysuse auto, clear
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 // The notes are read back from a log with cert_log_has, which undoes
 // Stata's wrapping: a note is a Python warning, whose line starts with the

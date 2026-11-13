@@ -51,8 +51,8 @@ if "`_cert_prof'" != "" {
 global dash_nobrowser 1
 
 
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 do "cert_helpers.do"
 
 _dash_find_render

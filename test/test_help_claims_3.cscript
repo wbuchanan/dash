@@ -56,8 +56,8 @@ if _rc != 0 {
     exit 222
 }
 
-qui do "../dash_parse.mata"
-qui do "../dash.ado"
+qui run "../dash_parse.mata"
+qui run "../dash.ado"
 do "cert_helpers.do"
 global dash_nobrowser 1
 

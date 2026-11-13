@@ -203,8 +203,8 @@ if _rc != 0 {
     exit 222
 }
 
-do "`root'/dash_parse.mata"
-do "`root'/dash.ado"
+run "`root'/dash_parse.mata"
+run "`root'/dash.ado"
 
 // A note that names several options is long.  cscript sets linesize 79, which
 // would wrap it in the capture log; the scanner below re-joins Stata's "> "

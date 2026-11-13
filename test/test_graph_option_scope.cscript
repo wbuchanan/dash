@@ -51,8 +51,8 @@ if "`_cert_prof'" != "" {
 // Setup
 // ----------------------------------------------------------------
 qui sysuse auto, clear
-do "../dash_parse.mata"
-do "../dash.ado"
+run "../dash_parse.mata"
+run "../dash.ado"
 
 // Read one graph-level option out of a registered graph's JSON.  Mata
 // throughout: the value carries the quotes Stata's `asis' preserved, and a
