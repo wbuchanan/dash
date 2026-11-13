@@ -322,9 +322,17 @@ class TestTheHeadJs:
         for rng in (fig.x_range, fig.y_range):
             for ev in ("change:start", "change:end"):
                 assert rng.js_property_callbacks[ev].count(cb) == 1
+        # The frame's size: a layout that moves the frame inside the same
+        # canvas (the width scale's fonts and spacing, which the page now
+        # lays out after document_ready) changes no range and no canvas
+        # size, and the heads were left sized for the frame before it
+        # (TestInChrome, 0.95 of the column).
+        for ev in ("change:inner_width", "change:inner_height"):
+            assert fig.js_property_callbacks[ev].count(cb) == 1
         # Wired once however often the page asks.
         dr._dash_arrow_head_hooks([fig])
         assert fig.x_range.js_property_callbacks["change:start"].count(cb) == 1
+        assert fig.js_property_callbacks["change:inner_width"].count(cb) == 1
         assert "new ResizeObserver" in dr._DASH_ARROW_HEAD_JS
         assert cb.args["ends"] == _ENDS[ptype]
 

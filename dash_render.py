@@ -64851,7 +64851,7 @@ const run = () => {
     if (!(k > 0)) { continue; }
     ctx.font = String(lab.text_font_style || "normal") + " " + k + "px " +
       String(lab.text_font || "helvetica");
-    const lines = String(lab.text == null ? "" : lab.text).split("\n");
+    const lines = String(lab.text == null ? "" : lab.text).split("\\n");
     let tw = 0;
     const nl = Math.min(lines.length, 100000);
     for (let j = 0; j < nl; j++) {
@@ -68592,7 +68592,11 @@ def _dash_arrow_head_hooks(models):
     C1) under *models*, for the document's ``document_ready`` hooks, beside
     ``_dash_by_stack_hooks``'.  Each is also put on ``start`` and ``end`` of
     every range its figure holds now, once: pan, zoom and reset keep the
-    head's pixel size.  Both modes call it on the finished layout."""
+    head's pixel size; and on the figure's ``inner_width`` and
+    ``inner_height``, once: a layout that moves the frame inside the same
+    canvas (the width scale's fonts and spacing, laid out after
+    document_ready by the page's layout queue) changes no range and no
+    canvas size.  Both modes call it on the finished layout."""
     out, seen, cbs, fig_of = [], set(), [], {}
     for root in models or ():
         refs = root.references() if hasattr(root, "references") else ()
@@ -68623,6 +68627,10 @@ def _dash_arrow_head_hooks(models):
                     have = rng.js_property_callbacks.get("change:" + ev, [])
                     if not any(c is m for c in have):
                         rng.js_on_change(ev, m)
+            for ev in _DASH_SPAN_KEYS[:2]:
+                have = fig.js_property_callbacks.get("change:" + ev, [])
+                if not any(c is m for c in have):
+                    fig.js_on_change(ev, m)
     return out
 
 

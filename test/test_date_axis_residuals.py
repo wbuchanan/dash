@@ -734,13 +734,20 @@ _PLAIN_DIGESTS = {
         # (served); yaxis2 ef52ed54... -> d2c9e34b... and 4ebf96d9... ->
         # 8b9c4ce1...; finish JS text only (the old statements spliced in
         # give the old digests); the same under both Pythons.
-        "38fa274c054d8523ce1f891d6c5c39d1ad7f230204479e2b5cf90c01f9107a67",
+        # WP-50 WE page load (64d658ae..2f65ece0): the layout queue and
+        # batched sets in the span, margin and width-scale callbacks:
+        # 38fa274c... -> 1c4db286... (saved) and 5edc5553... -> 0f7c5cf0...
+        # (served); yaxis2 d2c9e34b... -> 6fc9c785... and 8b9c4ce1... ->
+        # 58a868b2....  With every CustomJS's code masked the digests equal
+        # the tree at 186fe9c's in all four: callback JS text only; the
+        # same under both Pythons.
+        "1c4db286986cbe04fade13c719f2a8a7168f13efa298b335346b4903e74627ab",
     ("saved", "yaxis2"):
-        "d2c9e34b0a91f3ca7fc34753c0a4e053f5f175eef0acc2d8cdbc097e0ffcab87",
+        "6fc9c78527c6be9928cd21c7b28d6683bcb3656b1bdfbe54c39e0c1306ad3b90",
     ("served", "plain"):
-        "5edc55532aeae9b522f6dc6a1760894f55af6d1b198d81dcd452fa62877ba77c",
+        "0f7c5cf08ff087562dfb06e90b9ff4c90dcfa2101c294751d9931bc601d61039",
     ("served", "yaxis2"):
-        "8b9c4ce14b73103a3dd69ca05a0bf01a699faab2f2dafd501cdf03017baebf38",
+        "58a868b2487cf503474c46bbe82a64e7211afe3a0cfcd33757aa12089e5163bd",
 }
 
 
