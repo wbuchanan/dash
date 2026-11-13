@@ -47,7 +47,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const L = Bokeh.require("models/layouts/layout_dom").LayoutDOMView;
     const orig = L.prototype.compute_layout;
     L.prototype.compute_layout = function (...a) {
-      if (this.parent == null) window.__dashRootLayouts++;
+      // A page root only (Bokeh.index): a plot's own layout of its
+      // panels, at no cost to the page, has no parent either.
+      if (this.parent == null && Bokeh.index != null
+          && Object.values(Bokeh.index).includes(this)) {
+        window.__dashRootLayouts++;
+      }
       return orig.apply(this, a);
     };
   } catch (e) { window.__dashCountErr = String(e); }
@@ -57,10 +62,12 @@ document.addEventListener("DOMContentLoaded", () => {
 _SETTLE_JS = "new Promise(r => setTimeout(r, 1500))"
 
 
-def _root_layouts(mode, n, tmp_path):
-    """Whole-page layouts while a page of *n* scatter graphs loads."""
-    spec = bk._spec([bk._graph("g%d" % i, bk._ONE, {}) for i in range(n)])
-    page = tmp_path / ("%s_%d.html" % (mode, n))
+def _root_layouts(mode, n, tmp_path, go=None):
+    """Whole-page layouts while a page of *n* scatter graphs, each with
+    the graph options *go*, loads."""
+    spec = bk._spec([bk._graph("g%d" % i, bk._ONE, dict(go or {}))
+                     for i in range(n)])
+    page = tmp_path / ("%s_%d_%d.html" % (mode, n, bool(go)))
     page.write_text(bkb._page(mode, spec), encoding="utf-8")
     blank = tmp_path / "blank.html"
     blank.write_text("<html><body></body></html>", encoding="utf-8")
@@ -79,10 +86,22 @@ def _root_layouts(mode, n, tmp_path):
 
 
 @pytest.mark.parametrize("mode", ("saved", "served"))
-def test_layouts_do_not_grow_with_the_graph_count(mode, tmp_path):
+@pytest.mark.parametrize("go", ({}, {"by": "foreign"}), ids=("plain", "by"))
+def test_layouts_do_not_grow_with_the_graph_count(mode, go, tmp_path):
     """Two graphs and sixteen are laid out about as often: at most two
-    layouts more for the larger page, and fewer layouts than graphs."""
-    few = _root_layouts(mode, 2, tmp_path)
-    many = _root_layouts(mode, 16, tmp_path)
+    layouts more for the larger page, and fewer layouts than graphs.
+    Under by() each graph's fit, span, key and stacked-view callbacks
+    set every panel's proportion, box and visibility, and each set laid
+    the page out at once (BokehJS lays a model out on a change of a
+    layout property): those sets go through the queue as well
+    (``dash_batch``).  A by() graph's width scale still lays its spacing
+    out as it sets it, which the fit and the spans read
+    (test_legend_span_browser.py), so a by() page keeps one layout per
+    graph: 20 for sixteen graphs, where it was 225 (14 per graph)."""
+    few = _root_layouts(mode, 2, tmp_path, go)
+    many = _root_layouts(mode, 16, tmp_path, go)
     assert many >= 1, many
-    assert many <= few + 2 and many < 16, (few, many)
+    if go:
+        assert many <= few + 16, (few, many)
+    else:
+        assert many <= few + 2 and many < 16, (few, many)

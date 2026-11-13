@@ -30992,31 +30992,89 @@ def _dash_width_scale(anchor, models, nominal_w, ref_in=4.0, grid=None):
 #: root out once, in a ``setTimeout`` (a layout asked for inside the
 #: browser's resize observer is what makes it report a loop).  The queue
 #: is the page's, shared by every callback through ``globalThis``.
+#: ``dash_batch(fn)`` runs *fn* with BokehJS's own layouts sent to the
+#: queue: a change of a layout property (a by() panel's aspect_ratio, a
+#: plot's min_border) lays the page out at once in BokehJS, so a callback
+#: setting one per panel laid the page out once per set; and a plot whose
+#: axis or title panel changed size lays out the whole page before it
+#: paints, once per plot.  The change events still fire (a served page
+#: still syncs); only the layout waits for the queue, the plot painting
+#: once on its old geometry and again after it.  Where BokehJS's
+#: LayoutDOMView or PlotView cannot be reached, layouts stay immediate.
 _DASH_RELAYOUT_JS = """
-const dash_relayout = globalThis.__dash_relayout
-  || (globalThis.__dash_relayout = (() => {
+const dash_relayout = globalThis.dashRelayoutQueue
+  || (globalThis.dashRelayoutQueue = (() => {
     const roots = new Set();
     let timer = null;
-    return (v) => {
+    const flush = () => {
+      timer = null;
+      const now = Array.from(roots);
+      roots.clear();
+      for (const x of now) {
+        try { x.invalidate_layout(); } catch (e) { /* next layout */ }
+      }
+    };
+    const arm = () => { if (timer == null) { timer = setTimeout(flush, 0); } };
+    const q = (v) => {
       if (v == null || typeof v.invalidate_layout !== "function") { return; }
       let r = v;
       while (r.parent != null && typeof r.parent.invalidate_layout === "function") {
         r = r.parent;
       }
       roots.add(r);
-      if (timer == null) {
-        timer = setTimeout(() => {
-          timer = null;
-          const now = [...roots];
-          roots.clear();
-          for (const x of now) {
-            try { x.invalidate_layout(); } catch (e) { /* next layout */ }
+      arm();
+    };
+    return q;
+  })());
+const dash_batch = globalThis.dashBatchLayouts
+  || (globalThis.dashBatchLayouts = (() => {
+    let depth = 0, painting = 0;
+    try {
+      const L = Bokeh.require("models/layouts/layout_dom").LayoutDOMView;
+      const P = Bokeh.require("models/plots/plot").PlotView;
+      if (!L.prototype.dashBatched) {
+        const own = L.prototype.invalidate_layout;
+        L.prototype.invalidate_layout = function () {
+          if (depth > 0) { dash_relayout(this); return; }
+          return own.call(this);
+        };
+        const own_c = L.prototype.compute_layout;
+        L.prototype.compute_layout = function () {
+          if (painting > 0 && this.parent instanceof L) {
+            dash_relayout(this);
+            return;
           }
-        }, 0);
+          return own_c.call(this);
+        };
+        const own_i = P.prototype._invalidate_layout_if_needed;
+        if (typeof own_i === "function") {
+          P.prototype._invalidate_layout_if_needed = function () {
+            painting++;
+            try { return own_i.call(this); } finally { painting--; }
+          };
+        }
+        L.prototype.dashBatched = true;
       }
+    } catch (e) { /* layouts stay immediate */ }
+    return (fn) => {
+      depth++;
+      try { return fn(); } finally { depth--; }
     };
   })());
 """
+
+
+def _dash_batched_js(code):
+    """*code*, a CustomJS body that answers a graph's laid-out size, run
+    inside ``dash_batch`` with :data:`_DASH_RELAYOUT_JS` before it: every
+    model it sets is laid out once, with the page's other requests, in
+    the queue's next tick (WP-50 WE.7).  The body's own ``return``
+    leaves its arrow function as it left the callback.  The width scale
+    is not run so: its fonts and spacing are laid out as it sets them,
+    as the by() fit and the spans read them (batched, a by() title box
+    settled 1.85 px off its place, test_legend_span_browser.py)."""
+    return (_DASH_RELAYOUT_JS + "return dash_batch(() => {" + code
+            + "});\n")
 
 
 #: The width scale (D66): k = drawn width / nominal width x unit, written
@@ -43269,7 +43327,7 @@ def _dash_move_legend(fig, legend, side, location="center", ring=3):
 #: below is given the align and offset that put it there on the canvas
 #: (BokehJS offsets a left or right Title only, so a centred one is drawn
 #: from its left edge).
-_DASH_SPAN_JS = """
+_DASH_SPAN_JS = _dash_batched_js("""
 let pv = null;
 try { pv = Bokeh.index.find_one(fig); } catch (e) { pv = null; }
 if (pv == null || pv.bbox == null) { return; }
@@ -43767,7 +43825,7 @@ for (const it of items) {
     if (m.offset !== offset) { m.offset = offset; }
   }
 }
-"""
+""")
 
 #: The laid-out sizes BokehJS sets on a figure after each layout.
 _DASH_SPAN_KEYS = ("inner_width", "inner_height", "outer_width",
@@ -46678,7 +46736,7 @@ def _dash_graph_margin(fig, scheme, graph_opts):
 #: fysize(), the plot and its axes in # percent of the scheme's
 #: reference side (``ref`` inches, 96 px an inch at the nominal width),
 #: centred.  What other passes added to a border stays.
-_DASH_GRAPH_MARGIN_JS = _DASH_RELAYOUT_JS + """
+_DASH_GRAPH_MARGIN_JS = _dash_batched_js("""
 const w = fig.outer_width, h = fig.outer_height;
 if (!(w > 0) || !(h > 0)) { return; }
 const forced = typeof cb_data !== "undefined" && cb_data != null &&
@@ -46761,7 +46819,7 @@ if (x != null) {
 if (moved && view != null && view.invalidate_layout != null) {
   dash_relayout(view);
 }
-"""
+""")
 
 def _dash_inner_box(fig):
     """The plot region's inner box on *fig* (WP-30 P1.20b), as twoway
@@ -66460,7 +66518,7 @@ def _dash_by_compass_location(clock, side):
 #: 1/64 px, so a height on a whole px floored to two values in one row
 #: (at 1400 px, by(rep78)'s 419.547 and 419.562 px columns: 336.98 and
 #: 337.00 px, frames 265 and 266 px tall).
-_DASH_BY_FIT_JS = """
+_DASH_BY_FIT_JS = _dash_batched_js("""
 const vs = [];
 for (const p of panels) {
   let v = null;
@@ -66518,7 +66576,7 @@ const ar = pw / mid(ph2);
 for (const [p, v] of vs) {
   if (p.aspect_ratio !== ar) { p.aspect_ratio = ar; }
 }
-"""
+""")
 
 
 def _dash_by_fit_hook(figs, ratio, nr, nc, frame_ar=None, fx_px=None,
@@ -66857,7 +66915,7 @@ _DASH_KEY_SWATCH_PX = {"marker": 7.0, "rect": 6.3, "line": 20.5,
 #: WP-42 CV-3: a key cell's frame follows its figure's (the z axis spans
 #: the plot region, as twoway's does), and its other side the figure's
 #: drawn size, at every layout.
-_DASH_KEY_CELL_JS = r"""
+_DASH_KEY_CELL_JS = _dash_batched_js(r"""
 let v = null;
 try { v = Bokeh.index.find_one(fig); } catch (e) { v = null; }
 if (v == null || v.frame == null || v.frame.bbox == null) { return; }
@@ -67037,7 +67095,7 @@ if (vert) {
     }
   }
 }
-"""
+""")
 
 
 def _dash_key_range(lo, hi, inset=_DASH_KEY_AXIS_INSET, log=False):
@@ -68317,7 +68375,7 @@ def _dash_by_label_box(fig, scheme, mult=1.0):
 #: on window resizes, as the layout settles, and once a second (BokehJS
 #: writes the widths with no change event).  Constant code: titles reach it as JSON data in
 #: ``labels_json``.
-_DASH_BY_STACK_JS = """
+_DASH_BY_STACK_JS = _DASH_RELAYOUT_JS + """
 const restore = JSON.parse(labels_json);
 let tries = 0;
 let state = null;
@@ -68342,14 +68400,17 @@ function check() {
     return;
   }
   state = stacked;
-  for (let i = 0; i < axes.length; i++) {
-    const r = restore[i];
-    axes[i].visible = stacked ? r[3] : r[0];
-    axes[i].axis_label = stacked ? r[2] : r[1];
-  }
-  for (const c of cells) {
-    c.visible = !stacked;
-  }
+  // One layout for every set, through the queue (_DASH_RELAYOUT_JS).
+  dash_batch(() => {
+    for (let i = 0; i < axes.length; i++) {
+      const r = restore[i];
+      axes[i].visible = stacked ? r[3] : r[0];
+      axes[i].axis_label = stacked ? r[2] : r[1];
+    }
+    for (const c of cells) {
+      c.visible = !stacked;
+    }
+  });
 }
 let queued = false;
 window.addEventListener("resize", function () {

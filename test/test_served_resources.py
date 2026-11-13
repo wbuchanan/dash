@@ -745,7 +745,11 @@ _SAVED_DIGEST = (
     # old -> new: dcfbc92 -> 1ff4b5a: WP-50 WE.7 the width-scale and
     # figure-margin callbacks lay the page out through _DASH_RELAYOUT_JS's
     # one queue (callback JS text only), the same under both Pythons.
-    "1ff4b5a4d5a87c80f541845bfe85fc64e0bdc201e1b1fee3778186bb4630d22e")
+    # old -> new: 1ff4b5a -> dc8ed22: WP-50 WE.7 the span, key cell,
+    # figure-margin, by() fit and by() stacked-view callbacks set their
+    # models inside dash_batch (callback JS text only), the same under
+    # both Pythons.
+    "dc8ed223a3eb7fc5e6715f0386f8b70ad7d77d2cd8dd807fc0cf7f928c0e3851")
 
 
 # ===========================================================================
