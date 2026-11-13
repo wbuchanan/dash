@@ -465,7 +465,9 @@ capture erase "`page'"
 // style(foo), a bystyle dash does not draw.
 _hc5_run `"dash scatter mpg weight, by(foreign, subtitleformat(%9s) style(foo) shrink ishrink cols(2) total) saving("`page'")"' "`logfile'"
 assert r(rc) == 0
-cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: style(foo))")
+// Flipped (WP-49 LT-25): style(foo) gets twoway's bygraphstyle note
+// (noted_option_truth.json lt25 by_style_foo), not dash's list.
+cert_log_has "`logfile'", needle("(note:  named style foo not found in class bygraphstyle, default attributes used)")
 assert r(found) == 1
 cert_log_has "`logfile'", needle("ignored: style(foo) cols")
 assert r(found) == 0
@@ -494,7 +496,7 @@ local app "`c(tmpdir)'dash_hc5_app.py"
 capture erase "`app'"
 _hc5_run `"dash build, saving("`app'") replace server"' "`logfile'"
 assert r(rc) == 0
-cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: style(foo))")
+cert_log_has "`logfile'", needle("(note:  named style foo not found in class bygraphstyle, default attributes used)")
 assert r(found) == 1
 capture erase "`app'"
 capture dash clear

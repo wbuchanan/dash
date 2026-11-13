@@ -12694,7 +12694,11 @@ real scalar _dash_subreq_check(string scalar kind)
         // position() and ring() are noted only where twoway's clockdir and
         // gridringstyle do not read them (WP-45 ST-3, ST-4: top, b, in, o
         // are read; style_words_truth.json).
+        // WP-49 LT-25: twice, as twoway prints it (noted_option_truth.json
+        // lt25 L_posfr).
         if (lastpos != "" & _dash_style_word("clockdir", lastpos) == "") {
+            _dash_note("named style ", lastpos,
+                       " not found in class clockdir, default attributes used")
             _dash_note("named style ", lastpos,
                        " not found in class clockdir, default attributes used")
         }
@@ -12871,16 +12875,20 @@ real scalar _dash_subreq_check(string scalar kind)
                 // note() and caption(): a word clockdir or tb_orientstyle
                 // does not read gets twoway's note (WP-45 ST-11;
                 // style_words_truth.json clockdir/tb_orientstyle title rows).
+                // WP-49 LT-25: position()'s note twice, as twoway prints it
+                // for title(); once on an edge title (noted_option_truth
+                // .json lt25 R_tpos, R_e1pos).
                 for (i = 1; i <= cols(toks); i++) {
-                    if (edge) break
                     arg = strtrim(_dash_rep_value(toks[i]))
                     if (arg == "") continue
                     if (names[i] == "position" &
                         _dash_style_word("clockdir", arg) == "") {
                         _dash_note("named style ", arg,
                                    " not found in class clockdir, default attributes used")
+                        if (!edge) _dash_note("named style ", arg,
+                                   " not found in class clockdir, default attributes used")
                     }
-                    if (names[i] == "orientation" &
+                    if (!edge & names[i] == "orientation" &
                         _dash_style_word("tb_orientstyle", arg) == "") {
                         _dash_note("named style ", arg,
                                    " not found in class tb_orientstyle, default attributes used")

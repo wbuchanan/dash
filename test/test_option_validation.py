@@ -777,6 +777,14 @@ def _case_id(c):
 class TestAnUnknownStyleNameIsNamedOnceInBothModes:
     def test_one_note_naming_the_option(self, ptype, opts, option):
         r, doc, std_w, srv_w = _both([plot_for(ptype, opts)])
+        if option == "mlabgap":
+            # Flipped (WP-49 LT-25): mlabgap()'s note is twoway's gsize
+            # note, which names the value, not the option
+            # (noted_option_truth.json lt25 mlabgap_abc).
+            want = ("dash: named style %s not found in class gsize, "
+                    "default attributes used" % opts[option])
+            assert std_w == srv_w and std_w.count(want) == 1, std_w
+            return
         line = _the_one(std_w, srv_w, option)
         # Flipped (18oct2026): an unknown colour is noted in twoway's
         # words, naming the colour; every other style in dash's.
@@ -1199,8 +1207,14 @@ class TestABadStyleValueNeverAborts:
         # float('1e400') is inf, int(inf) is OverflowError -- which no
         # `except ValueError' caught, in either mode.
         r, doc, std_w, srv_w = _both([plot_for(ptype, opts)])
-        line = _the_one(std_w, srv_w, option)
-        assert line.startswith(f"dash: {option}({opts[option]}) is not a recognised")
+        if option == "mlabgap":
+            # Flipped (WP-49 LT-25): twoway's gsize note, naming the value.
+            assert std_w == srv_w and std_w.count(
+                "dash: named style %s not found in class gsize, default "
+                "attributes used" % opts[option]) == 1, std_w
+        else:
+            line = _the_one(std_w, srv_w, option)
+            assert line.startswith(f"dash: {option}({opts[option]}) is not a recognised")
         std, srv = _figures(r, doc)
         assert std.renderers and srv.renderers
 
@@ -1308,11 +1322,12 @@ class TestTheRemainingSilentSites:
     def test_legend_size(self):
         _, _, std_w, srv_w = _both([plot_for("scatter"), plot_for("lfit")],
                                    {"legend": "size(abc)"})
-        line = _the_one_reading(std_w, srv_w, "legend(size(abc))")
-        # WP-30 P1.12a: twoway draws an unknown size as medium (11 pt), so
-        # the note says "using medium." (it said "the scheme's default").
-        assert line == ("dash: legend(size(abc)) is not a recognised size; "
-                        "using medium."), line
+        # WP-30 P1.12a: twoway draws an unknown size as medium (11 pt).
+        # Flipped (WP-49 LT-25): the note is twoway's gsize note
+        # (noted_option_truth.json lt25 R_lsz), which names the value.
+        want = ("dash: named style abc not found in class gsize, default "
+                "attributes used")
+        assert std_w == srv_w and std_w.count(want) == 1, std_w
 
     @staticmethod
     def _kpi_texts(r, doc):
@@ -1375,10 +1390,17 @@ class TestGraphSizeOptionsAgreeAcrossModes:
         _, _, std_w, srv_w = _both([plot_for("scatter")], {
             "aspectratio": "abc", "xsize": "abc", "ysize": "abc"})
         assert std_w == srv_w, (std_w, srv_w)
-        for opt in ("aspectratio", "xsize", "ysize"):
-            hits = _naming(std_w, opt)
-            assert len(hits) == 1, (opt, hits)
-            assert "is not a number" in hits[0], hits[0]
+        hits = _naming(std_w, "aspectratio")
+        assert len(hits) == 1, hits
+        assert "is not a number" in hits[0], hits[0]
+        # Flipped (WP-49 LT-25): xsize(abc) and ysize(abc) print twoway's
+        # two graphsize notes, the word and the default 5
+        # (noted_option_truth.json lt25 xsize_abc, ysize_abc), once each in
+        # one render for the pair.
+        for v in ("abc", "5"):
+            want = ("dash: named style %s not found in class graphsize, "
+                    "default attributes used" % v)
+            assert 1 <= std_w.count(want) <= 2, (v, std_w)
 
     def test_xsize_and_ysize_set_the_same_proportions(self):
         r, doc, std_w, srv_w = _both([plot_for("scatter")],

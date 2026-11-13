@@ -867,8 +867,9 @@ class TestTheSubOptionsDashDoesNotImplement:
         # Flipped (WP-31 D10c): style(econ) is drawn as its options
         # (bystyle_truth.json), silently; spacers(ring(2)) is the sub-option
         # still ignored.
-        want = ["dash: by() sub-option(s) not implemented and ignored: "
-                "spacers(ring(2))"]
+        # Flipped (WP-49 basic:PT-12): spacers(ring(2)) is taken in
+        # silence too, as twoway draws the same picture with spacers() and prints nothing (noted_option_truth.json sub_probes), so no by() sub-option is named.
+        want = []
         assert [m for m in saved if "sub-option" in m] == want, saved
         assert [m for m in served if "sub-option" in m] == want, served
         # cols(2), total and missing were honoured: two groups and the
@@ -882,8 +883,11 @@ class TestTheSubOptionsDashDoesNotImplement:
         gives only when a session opens reaches the terminal it is run in,
         never the Stata log.  HC5-08 measured it missing from the log; the
         build names them now, once, and a session does not again."""
+        # Flipped (WP-49 basic:PT-12, LT-25): spacers() is taken in
+        # silence; style(foo)'s bygraphstyle note is the one the build
+        # gives.
         spec = _spec([("g1", [_scatter()],
-                       {"by": "foreign, style(econ) spacers(ring(2))"})])
+                       {"by": "foreign, style(foo)"})])
         tag, sp, dp = _write(spec, _payload(_auto()))
         ap = os.path.join(_TMP, f"app_sub_{tag}.py")
         with warnings.catch_warnings(record=True) as built:
@@ -897,8 +901,8 @@ class TestTheSubOptionsDashDoesNotImplement:
             ns["make_document"](Document())
         # Flipped (WP-31 D10c): style(econ) is drawn as its options,
         # silently; spacers(ring(2)) is still ignored.
-        for want in ("dash: by() sub-option(s) not implemented and ignored: "
-                     "spacers(ring(2))",):
+        for want in ("dash: named style foo not found in class "
+                     "bygraphstyle, default attributes used",):
             assert [str(w.message) for w in built].count(want) == 1, \
                 [str(w.message) for w in built]
             assert want not in [str(w.message) for w in session]
@@ -1595,9 +1599,11 @@ class TestAdversarialLabelPlacement:
         """float() reads other scripts' digits, underscores and "infinity";
         Stata reads none of them.  Each is named and drawn at medium."""
         a, b, saved, served = _labelled(mlabgap=raw)
+        # Flipped (WP-49 LT-25): "dash: mlabgap(...) is not a recognised
+        # size; using medium." was dash's words; twoway prints its own class note there (noted_option_truth.json lt25 mlabgap_abc), with no dash: once printed.
         for notes in (saved, served):
-            assert [m for m in notes if m == f"dash: mlabgap({raw}) is not "
-                    "a recognised size; using medium."], notes
+            assert [m for m in notes if m == f"dash: named style {raw} not "
+                    "found in class gsize, default attributes used"], notes
         for ls in (a, b):
             # WP-30 P1.12a (Evidence E5, twoway measured; P1.12.2): an
             # unknown gap draws medium, gsize 3.8194 units = 14.667 px,
@@ -1616,7 +1622,9 @@ class TestAdversarialLabelPlacement:
             page = dr.DashRenderer(sp, dp).render()
         notes = [str(x.message) for x in w]
         assert [m for m in notes if bad in m and "mlabposition" in m], notes
-        assert [m for m in notes if bad in m and "mlabgap" in m], notes
+        # Flipped (WP-49 LT-25): mlabgap()'s note is twoway's gsize note,
+        # which names the value, not the option.
+        assert [m for m in notes if bad in m and "class gsize" in m], notes
         assert "onerror=alert" not in page
 
     # ---- exhaustion: a megabyte value is judged at once ---------------------

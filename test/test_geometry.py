@@ -169,7 +169,11 @@ class TestExplicitSize:
         fig = dr.figures["g1"]
         assert fig is not None
         if bad != "":
-            assert any("xsize" in str(w.message) for w in caught), (
+            # Flipped (WP-49 LT-25): a word gets twoway's graphsize note,
+            # which names the value, not the option (lt25 xsize_abc).
+            assert any("xsize" in str(w.message) or (
+                "named style %s not found in class graphsize" % bad
+                in str(w.message)) for w in caught), (
                 f"xsize({bad}) was accepted silently"
             )
 

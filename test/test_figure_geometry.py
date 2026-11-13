@@ -916,9 +916,10 @@ class TestSizeUnits:
                     if type(m).__name__ == "figure"]
             # The scheme's size: the graph stretches at its shape.
             assert figs[0].sizing_mode != "fixed", mode
-            # At least one note names the option (its words are WP-49
-            # 49-02's, LT-25, so they are compared with nothing).
-            assert any(opt + "(" in n for n in notes), (mode, notes)
+            # Flipped (WP-49 LT-25): the note is twoway's graphsize note,
+            # naming the value (noted_option_truth.json lt25 xsize_abc).
+            assert any("named style %s not found in class graphsize" % val
+                       in n for n in notes), (mode, notes)
 
     @pytest.mark.parametrize("key", ["U_abc", "U_10CMup"])
     def test_a_word_is_not_a_size(self, key):

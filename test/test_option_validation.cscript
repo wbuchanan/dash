@@ -5015,6 +5015,29 @@ foreach _q49k of local q_kept {
 }
 capture dash clear
 
+// Q4902-6 (WP-49 LT-25): xsize() and ysize() given a word print twoway's
+// two graphsize notes -- the word, then the default 5 (noted_option_truth
+// .json lt25 xsize_abc, ysize_abc) -- and draw the default; the lines of
+// a size outside 1-100 inches are 45-04's (Q4504-2).
+foreach _q6 in xsize ysize {
+    capture dash clear
+    capture log close _ovlog
+    log using "`c(tmpdir)'dash_ov.log", name(_ovlog) text replace
+    capture erase "`c(tmpdir)'ovq6.html"
+    capture noisily dash scatter mpg weight, `_q6'(abc) saving("`c(tmpdir)'ovq6.html", replace)
+    local _q6rc = _rc
+    log close _ovlog
+    _ov_assert Q4902-6 "(`_q6rc' == 0)" "`_q6'(abc): rc `_q6rc' (expected 0)"
+    _ov_count "`c(tmpdir)'dash_ov.log" "(note:  named style abc not found in class graphsize, default attributes used)"
+    _ov_assert Q4902-6 "(r(n) == 1)" "`_q6'(abc): `r(n)' abc note(s) (expected 1)"
+    _ov_count "`c(tmpdir)'dash_ov.log" "(note:  named style 5 not found in class graphsize, default attributes used)"
+    _ov_assert Q4902-6 "(r(n) == 1)" "`_q6'(abc): `r(n)' default note(s) (expected 1)"
+    _ov_count "`c(tmpdir)'dash_ov.log" "using None"
+    _ov_assert Q4902-6 "(r(n) == 0)" "`_q6'(abc): dash's own words printed"
+    capture erase "`c(tmpdir)'ovq6.html"
+}
+capture dash clear
+
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

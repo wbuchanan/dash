@@ -50,13 +50,13 @@ void _bys_scan(string scalar fn)
             full = full + substr(line, 3, .)
             continue
         }
-        if (strpos(full, "by() sub-option")) {
+        if (strpos(full, "by() sub-option") | strpos(full, "class bygraphstyle")) {
             n = n + 1
             if (first == "") first = full
         }
         full = line
     }
-    if (strpos(full, "by() sub-option")) {
+    if (strpos(full, "by() sub-option") | strpos(full, "class bygraphstyle")) {
         n = n + 1
         if (first == "") first = full
     }
@@ -140,12 +140,17 @@ display "BYS-01 PASS: by(foreign, cols(1) total) is not warned about"
 // example.
 // Flipped (WP-41 BY-7): bgcolor() is taken in silence; spacers(ring(2))
 // is the example in BYS-02..04 and BYS-06.
-_bys_render "foreign, spacers(ring(2))"
+// Flipped (WP-49 basic:PT-12, LT-25): spacers() is taken in silence, as
+// twoway draws the same picture with it and prints nothing
+// (noted_option_truth.json sub_probes), and no by() sub-option is left
+// unimplemented; style(foo) carries the case, its report twoway's
+// bygraphstyle note (lt25 by_style_foo), which _bys_scan counts too.
+_bys_render "foreign, style(foo)"
 _bys_take
 display `"  read: `macval(_bys_line)'"'
 assert `_bys_n' == 1
-assert strpos(`"`macval(_bys_line)'"', "spacers(ring(2))") > 0
-display "BYS-02 PASS: by(foreign, spacers(ring(2))) names it"
+assert strpos(`"`macval(_bys_line)'"', "named style foo") > 0
+display "BYS-02 PASS: by(foreign, style(foo)) is reported once"
 
 // Flipped (WP-31 D10c): style(econ) is drawn as the options its
 // bygraphstyle file gives (bystyle_truth.json) and names only its label
@@ -154,10 +159,13 @@ display "BYS-02 PASS: by(foreign, spacers(ring(2))) names it"
 _bys_render "foreign, style(econ) spacers(ring(2))"
 _bys_take
 // The follow-up draws econ's label margin too: style(econ) is silent.
-assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "style(econ)") == 0
-assert strpos(`"`_bys_line'"', "spacers(ring(2))") > 0
-display "BYS-03 PASS: style(econ) is drawn in silence and spacers(ring(2)) is named once"
+// Flipped (WP-49 basic:PT-12, LT-25): spacers() is taken in silence, as
+// twoway draws the same picture with it and prints nothing
+// (noted_option_truth.json sub_probes), and no by() sub-option is left
+// unimplemented; style(foo) carries the case, its report twoway's
+// bygraphstyle note (lt25 by_style_foo), which _bys_scan counts too.
+assert `_bys_n' == 0
+display "BYS-03 PASS: style(econ) is drawn in silence and spacers(ring(2)) taken in silence"
 
 
 // ================================================================
@@ -165,13 +173,18 @@ display "BYS-03 PASS: style(econ) is drawn in silence and spacers(ring(2)) is na
 // ================================================================
 // Flipped (WP-31 D10c): bgcolor(red) is the unimplemented word.
 // Flipped (WP-41 BY-7): spacers(ring(2)) is, bgcolor() being taken.
-_bys_render "foreign, cols(2) shrink spacers(ring(2))"
+// Flipped (WP-49 basic:PT-12, LT-25): spacers() is taken in silence, as
+// twoway draws the same picture with it and prints nothing
+// (noted_option_truth.json sub_probes), and no by() sub-option is left
+// unimplemented; style(foo) carries the case, its report twoway's
+// bygraphstyle note (lt25 by_style_foo), which _bys_scan counts too.
+_bys_render "foreign, cols(2) shrink style(foo)"
 _bys_take
 assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "spacers(ring(2))") > 0
+assert strpos(`"`_bys_line'"', "named style foo") > 0
 assert strpos(`"`_bys_line'"', "cols") == 0
 assert strpos(`"`_bys_line'"', "shrink") == 0
-display "BYS-04 PASS: cols(2) and shrink are not reported alongside spacers(ring(2))"
+display "BYS-04 PASS: cols(2) and shrink are not reported alongside style(foo)"
 
 
 // ================================================================
@@ -199,10 +212,15 @@ capture noisily _dash_setup_check_files
 // Flipped (WP-31 D10b): overallshrink is drawn; style(econ) is named.
 // Flipped (WP-31 D10c): style(econ) is drawn; bgcolor(red) is named.
 // Flipped (WP-41 BY-7): spacers(ring(2)) is, bgcolor() being taken.
-_bys_render "foreign, spacers(ring(2))"
+// Flipped (WP-49 basic:PT-12, LT-25): spacers() is taken in silence, as
+// twoway draws the same picture with it and prints nothing
+// (noted_option_truth.json sub_probes), and no by() sub-option is left
+// unimplemented; style(foo) carries the case, its report twoway's
+// bygraphstyle note (lt25 by_style_foo), which _bys_scan counts too.
+_bys_render "foreign, style(foo)"
 _bys_take
 assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "spacers(ring(2))") > 0
+assert strpos(`"`_bys_line'"', "named style foo") > 0
 display "BYS-06 PASS: the report is still printed after dash_setup's probe"
 
 // ================================================================

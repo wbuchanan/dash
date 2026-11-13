@@ -82,7 +82,10 @@ def _spec(tmp_path):
     # is the by() sub-option still named.
     # Flipped (WP-41 BY-7): bgcolor() is taken in silence now;
     # spacers(ring(2)) is the by() sub-option still named.
-    sp["graphs"][0]["graph_options"]["by"] = "foreign, spacers(ring(2))"
+    # Flipped (WP-49 basic:PT-12, LT-25): spacers() is taken in silence,
+    # as twoway draws the same picture with spacers() and prints nothing (noted_option_truth.json sub_probes); style(foo) carries the renderer's by() note now, twoway's
+    # "named style foo not found in class bygraphstyle".
+    sp["graphs"][0]["graph_options"]["by"] = "foreign, style(foo)"
     df = pd.DataFrame({"mpg": [20.0, 22.0, 30.0, 18.0],
                        "weight": [3000.0, 2500.0, 2000.0, 3500.0],
                        "foreign": [0.0, 0.0, 1.0, 1.0]})
@@ -131,7 +134,11 @@ def _run(tmp_path, mode, flt, monkeypatch, capsys):
 
 
 def _notes(err):
-    return [ln for ln in err.splitlines() if ln.startswith(_NOTE)]
+    # Flipped (WP-49 LT-25): a named-style note is printed in twoway's
+    # words, "(note:  named style ...)", with no "dash:" (noted_option_truth
+    # .json lt25), so it counts as one of dash's notes too.
+    return [ln for ln in err.splitlines()
+            if ln.startswith(_NOTE) or ln.startswith("(note:  named style ")]
 
 
 class TestTheSmclEscape:
@@ -320,7 +327,7 @@ class TestTheRendererEntryPoint:
         _, err2, _ = _run(tmp_path / "b", mode, "ignore", monkeypatch, capsys)
         assert _notes(err2) == control
         if mode == "server":
-            assert any("spacers" in n for n in control)
+            assert any("bygraphstyle" in n for n in control)
 
     @pytest.mark.parametrize("mode", MODES)
     def test_an_error_filter_raises_no_note(self, mode, tmp_path,
@@ -370,6 +377,6 @@ class TestTheRendererEntryPoint:
         notes as warnings."""
         sp, dp = _spec(tmp_path)
         out = str(tmp_path / "o.html")
-        with pytest.warns(UserWarning, match="spacers"):
+        with pytest.warns(UserWarning, match="bygraphstyle"):
             dr.main(sp, dp, out)
         assert os.path.exists(out)

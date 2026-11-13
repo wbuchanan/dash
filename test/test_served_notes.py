@@ -214,7 +214,8 @@ class TestTheGeneratedApp:
         err = r.stderr.splitlines()
         assert r.returncode == 0, r.stderr[-2000:]
         # Flipped (18oct2026): twoway's words, naming the colour.
-        assert len([l for l in err if l.startswith("(note:  dash: named style notacolor")]) == 1, err
+        # Flipped (WP-49 LT-25): printed as twoway prints it, no "dash:".
+        assert len([l for l in err if l.startswith("(note:  named style notacolor")]) == 1, err
         assert len([l for l in err if l.startswith("(note:  dash: msymbol(weird)")]) == 1, err
         assert err.count("dash: graph 'g1' plot 2 (lfit): "
                          "(note:  regress could not fit model)") == 1, err

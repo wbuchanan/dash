@@ -5684,6 +5684,79 @@ if `q3bad' {
 }
 else display as text "Q4902-3 PASS: text() names no word twoway draws the same with, and a valueless word without ()"
 
+// Q4902-4 (WP-49 LT-25): a named-style note is twoway's sentence, with no
+// "dash:" before it, as many times as twoway prints it -- each probe of
+// noted_option_truth.json's lt25 that twoway notes (xsize() and ysize()
+// aside: test_option_validation.cscript Q4902-6), every distinct line
+// twoway printed counted in dash's log, and no other "not found in class"
+// line printed.  Q4902-5 (ST-11): where twoway prints no note, neither
+// does dash.
+python:
+import json as _q4902_json
+from sfi import Macro as _q4902_M
+_q4902_fx = _q4902_json.load(open("fixtures/noted_option_truth.json", encoding="utf-8"))["lt25"]
+_q4902_k = [k for k in sorted(_q4902_fx) if k not in ("xsize_abc", "ysize_abc")]
+_q4902_M.setLocal("q45_n", str(len(_q4902_k)))
+for _i, _k in enumerate(_q4902_k, 1):
+    _p = _q4902_fx[_k]
+    _q4902_M.setLocal("q45_key%d" % _i, _k)
+    _q4902_M.setLocal("q45_cmd%d" % _i, _p["cmd"])
+    _q4902_M.setLocal("q45_tot%d" % _i, str(len(_p["twoway_notes"])))
+    _u = sorted(set(_p["twoway_notes"]))
+    _q4902_M.setLocal("q45_m%d" % _i, str(len(_u)))
+    for _j, _l in enumerate(_u, 1):
+        _q4902_M.setLocal("q45_l%d_%d" % (_i, _j), "(note:  " + _l[len("(note: "):])
+        _q4902_M.setLocal("q45_c%d_%d" % (_i, _j), str(_p["twoway_notes"].count(_l)))
+end
+preserve
+sysuse auto, clear
+quietly gen gx = mod(_n - 1, 9) + 1 if _n <= 72
+quietly gen gy = floor((_n - 1) / 9) + 1 if _n <= 72
+quietly gen gz = gx * gy + gy
+local q45_ls = c(linesize)
+set linesize 255
+local q4bad 0
+local q5bad 0
+forvalues i = 1/`q45_n' {
+    // Built (saving()), so the renderer's notes are printed too.
+    capture erase "`c(tmpdir)'q4902_4.html"
+    _ztp_run `"dash `macval(q45_cmd`i')' saving("`c(tmpdir)'q4902_4.html", replace)"' "`logfile'"
+    local rc = r(rc)
+    cert_log_has "`logfile'", needle("not found in class")
+    local q45_all = r(count)
+    if `q45_tot`i'' == 0 {
+        if `rc' | `q45_all' {
+            display as error `"Q4902-5 FAIL `q45_key`i'': r(`rc'), `q45_all' note line(s) where twoway prints none"'
+            local q5bad 1
+        }
+        continue
+    }
+    local q45_bad 0
+    if `rc' | `q45_all' != `q45_tot`i'' local q45_bad 1
+    forvalues j = 1/`q45_m`i'' {
+        cert_log_has "`logfile'", needle(`"`macval(q45_l`i'_`j')'"')
+        if r(count) != `q45_c`i'_`j'' local q45_bad 1
+    }
+    if `q45_bad' {
+        display as error `"Q4902-4 FAIL `q45_key`i'': r(`rc'), `q45_all' "not found in class" line(s), twoway prints `q45_tot`i'' (`macval(q45_l`i'_1)')"'
+        local q4bad 1
+    }
+}
+set linesize `q45_ls'
+capture erase "`c(tmpdir)'q4902_4.html"
+capture dash clear
+restore
+if `q4bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' Q4902-4"
+}
+else display as text "Q4902-4 PASS: every named-style note is twoway's sentence, as often as twoway prints it"
+if `q5bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' Q4902-5"
+}
+else display as text "Q4902-5 PASS: no named-style note where twoway prints none"
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------

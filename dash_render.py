@@ -7823,7 +7823,8 @@ def _textbox_size(opts: dict, default: "Any" = None, ref_in: float = 4.0,
             str(raw), "text",
             T.css_to_pt(default) or T.size_medium_pt("text"), ref_in))
     except (ValueError, TypeError):
-        _dash_style_note(option, raw, "size", "medium")
+        # WP-49 LT-25: twoway's gsize note (lt25 R_tsz).
+        _dash_style_note(option, raw, "size", "medium", cls="gsize")
         return T.css_pt(T.size_medium_pt("text"))
 
 
@@ -19654,8 +19655,9 @@ class GlyphMapper:
             try:
                 gap = self._mlabel_gap_px(options["mlabgap"], _gap_pt, _ref)
             except ValueError:
+                # WP-49 LT-25: twoway's gsize note (lt25 mlabgap_abc).
                 _dash_style_note("mlabgap", options["mlabgap"], "size",
-                                 "medium")
+                                 "medium", cls="gsize")
                 gap = T.size_medium_pt("gap") * T.PX_PER_PT
         _d = float(radius_px) + gap
         if p == 0:
@@ -30088,6 +30090,13 @@ def _dash_emit_note(text, sfi=None):
     t = str(text)
     if t.startswith("dash: note: "):
         t = "dash: " + t[len("dash: note: "):]
+    # WP-49 LT-25: a named-style note is twoway's sentence and is printed
+    # without dash's mark, as twoway prints it; a second copy of one
+    # twoway prints twice travels as "dash twoway#<k>: " so it is not
+    # merged with the first.
+    if re.match(r"(?:dash|dash twoway#[0-9]+): named style .* not found in "
+                r"class \S+, default attributes used$", t):
+        t = t.split(": ", 1)[1]
     if len(t) > 4000:
         t = t[:3997] + "..."
     plain = re.match(
@@ -30137,7 +30146,7 @@ def _dash_note_scope(sfi=None):
     so the text set de-duplicates instead.  Nothing newer than Python 3.10.
     """
     import re
-    pattern = r"dash(?:_render| scheme| kpi| build| serve)?: "
+    pattern = r"dash(?:_render| scheme| kpi| build| serve| twoway#[0-9]+)?: "
     said = set()
     with warnings.catch_warnings():
         orig = warnings.showwarning
@@ -30334,7 +30343,7 @@ _DASH_EMPTY_BIN_JS = (
 
 
 def _dash_style_note(option, value, what, using="the scheme's default",
-                     prefix="dash"):
+                     prefix="dash", cls=None, times=1):
     """Report a style name dash does not recognise, before the default is used.
 
     twoway never rejects a bad style name: ``mcolor(notacolour)`` draws with
@@ -30361,7 +30370,26 @@ def _dash_style_note(option, value, what, using="the scheme's default",
                 angle / clock position / fill intensity.
         using:  What is drawn instead.
         prefix: ``dash``, or ``dash kpi`` for a KPI's colour.
+        cls:    twoway's class for the value (``gsize``, ``clockdir``,
+                ``numstyle``, ``graphsize``, ``bygraphstyle`` ...), one of
+                dash's fixed names, never user text.  Given, the note is
+                twoway's own sentence, ``named style <value> not found in
+                class <cls>, default attributes used``, with no ``dash:``
+                (WP-49 LT-25, noted_option_truth.json lt25).
+        times:  how many times twoway prints that sentence (title
+                position(13)'s clockdir note twice); the once-per-render
+                key holds the copy's index, so each copy prints.
     """
+    if cls is not None:
+        shown = _dash_display(value)
+        for k in range(max(1, int(times))):
+            _dash_warn_once(
+                ("named-style", cls, option, str(value), k),
+                ("dash: " if k == 0 else "dash twoway#%d: " % (k + 1))
+                + f"named style {shown} not found in class {cls}, default "
+                "attributes used",
+            )
+        return
     if what == "colour" and using == "black" and prefix == "dash":
         # An unknown colour, drawn black: noted in twoway's words after
         # dash's "dash: " (the note channel's mark, as the other named
@@ -30376,10 +30404,12 @@ def _dash_style_note(option, value, what, using="the scheme's default",
         cut = [k for k in (text.find("*"), text.find("%")) if k >= 0]
         words = (text[:min(cut)] if cut else text).split()
         named = _dash_display(" ".join(words) if words else text.strip())
+        # WP-49 LT-25: printed as twoway's sentence alone, no "dash:"
+        # before it (_dash_emit_note).
         _dash_warn_once(
             ("colour-unknown", named),
-            f"dash: named style {named} not found in class color, default "
-            "attributes used",
+            f"dash: named style {named} not found in class color, "
+            "default attributes used",
         )
         return
     shown = _dash_display(value)
@@ -31395,6 +31425,13 @@ def _stat_option_float(
     try:
         val = float(str(raw).strip())
     except (TypeError, ValueError):
+        if layer == "graph" and key in ("xsize", "ysize"):
+            # WP-49 LT-25: twoway's two graphsize notes, the word and then
+            # the default 5 (noted_option_truth.json lt25 xsize_abc,
+            # ysize_abc); the scheme's size is drawn.
+            _dash_style_note(key, str(raw).strip(), "", cls="graphsize")
+            _dash_style_note(key + "#", "5", "", cls="graphsize")
+            return default
         warnings.warn(
             f"dash: {layer} option {key}({raw}) is not a number; using "
             f"{default!r} instead.",
@@ -40518,6 +40555,14 @@ def _dash_parse_by(by_raw, warn=True):
             # a direct parse still draws their separate scales
             # (_dash_by_rescale), in silence.
             pass
+        elif name == "style" and "(" in tok and arg.strip() and \
+                arg.strip() not in _DASH_BYSTYLE_SHIPPED:
+            # WP-49 LT-25: a bystyle twoway has no bygraphstyle-<name>
+            # .style for gets its note (lt25 by_style_foo) and is drawn as
+            # the default.
+            if warn:
+                _dash_style_note("by(style)", arg.strip(), "",
+                                 cls="bygraphstyle")
         elif _row == "bgcolor" and "(" in tok:
             # WP-41 BY-7: the by() grid's background
             # (_dash_by_array_styles), under every shipped scheme covered
@@ -40529,6 +40574,14 @@ def _dash_parse_by(by_raw, warn=True):
             # WP-41 BY-2: a positive number scales the whole by() graph
             # (_dash_by_scale_mult); anything else is named.
             pass
+        elif _row == "scale" and "(" in tok and arg.strip() and \
+                not _DASH_SUBOPT_REAL_RE.fullmatch(arg.strip().lstrip("*")):
+            # WP-49 LT-25: a word twoway's numstyle does not read gets its
+            # two notes, the word and then the default 1 (lt25
+            # by_scale_abc); the graph is drawn at scale 1.
+            if warn:
+                _dash_style_note("by(scale)", arg.strip(), "", cls="numstyle")
+                _dash_style_note("by(scale)#", "1", "", cls="numstyle")
         elif _dash_silent_subopt("by", _row or tok):
             # WP-49 basic:PT-12: twoway draws the same picture with it
             # (spacers()) and prints no note.
@@ -40544,6 +40597,13 @@ def _dash_parse_by(by_raw, warn=True):
             UserWarning, stacklevel=2,
         )
     return varlist, by_cols, by_total, by_missing, unsupported
+
+
+#: WP-49 LT-25: the bystyles Stata ships a bygraphstyle-<name>.style for;
+#: any other name twoway notes, "named style <name> not found in class
+#: bygraphstyle", and draws as default.
+_DASH_BYSTYLE_SHIPPED = frozenset({"altleg", "combine", "compact", "default",
+                                   "econ", "rescale", "stata7"})
 
 
 #: WP-31 D10c: the bystyles whose bygraphstyle-<name>.style twoway draws
@@ -45390,9 +45450,10 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
             except (ValueError, TypeError):
                 _bad = True
         if _bad:
+            # WP-49 LT-25: twoway's gsize note (lt25 R_lsz).
             _dash_style_note("legend(%s)" % _size_typed, m_size.group(1),
                              "size",
-                             "medium")
+                             "medium", cls="gsize")
 
     # 7b. The box and its text (WP-31 D4): region(lcolor() fcolor()
     #     color() lwidth() lpattern() margin()), nobox/box, bmargin(),
@@ -62658,6 +62719,12 @@ def _dash_clegend_opts(text):
                 out[full] = int(float(arg.strip()))
             except ValueError:
                 out["other"].append(nm)
+            # WP-49 LT-25: a number clockdir does not read (13, 4.5) gets
+            # twoway's note, twice (lt25 C_pbog).
+            if full == "position" and out[full] is not None and \
+                    arg.strip() not in [str(c) for c in range(13)]:
+                _dash_style_note("clegend(position)", arg.strip(),
+                                 "clock position", cls="clockdir", times=2)
         elif full in ("title", "subtitle", "note", "caption"):
             out[full] = _dash_unquoted(arg.strip())
         else:
@@ -74846,7 +74913,7 @@ def _dash_app_note_hook():
     import sys
     import types
     import warnings
-    pat = r"dash(?:_render| scheme| kpi| build| serve)?: "
+    pat = r"dash(?:_render| scheme| kpi| build| serve| twoway#[0-9]+)?: "
     holder = sys.modules.get("_dash_app_notes")
     if not (isinstance(holder, types.ModuleType)
             and isinstance(getattr(holder, "said", None), set)):
@@ -81091,7 +81158,7 @@ def _dash_trial_render(source):
     import warnings
     from bokeh.document import Document
     from bokeh.io.doc import patch_curdoc
-    pat = re.compile(r"dash(?:_render| scheme| kpi| build| serve)?: ")
+    pat = re.compile(r"dash(?:_render| scheme| kpi| build| serve| twoway#[0-9]+)?: ")
     ns = {"__name__": "_dash_trial_app", "_DASH_TRIAL": True}
     rec = []
     failure = stop = None
@@ -81523,6 +81590,8 @@ class ServerAppBuilder:
                       "_DASH_REFLINE_SUBOPT_TABLE", "_DASH_AXLABEL_HONOURED",
                       # WP-49 basic:PT-12: the generated silent sub-options.
                       "_DASH_TW_SILENT_SUB",
+                      # WP-49 LT-25: the shipped bystyles.
+                      "_DASH_BYSTYLE_SHIPPED",
                       # WP-31 D1: minor ticks and minor labels.
                       "_DASH_MINOR_RULE_RE", "_DASH_MTICK_JS",
                       # WP-44 AX-5: a custom option's edits.
@@ -87868,10 +87937,16 @@ def _dash_relay_kind(line, in_traceback=False):
     """
     import re
     s = str(line).rstrip("\r\n")
-    m = re.match(r"\(note:  (dash(?:_render| scheme| kpi| build| serve)?: .*)\)$",
+    m = re.match(r"\(note:  (dash(?:_render| scheme| kpi| build| serve| twoway#[0-9]+)?: .*)\)$",
                  s)
     if m:
         return "note", m.group(1), False
+    # WP-49 LT-25: a note in twoway's words, printed by the app without
+    # dash's mark.
+    m = re.match(r"\(note:  (named style .* not found in class \S+, default "
+                 r"attributes used)\)$", s)
+    if m:
+        return "note", "dash: " + m.group(1), False
     if re.match(r"dash: .*: \(note:  (?:regress|fracpoly) could not fit "
                 r"model\)$|dash scheme: \(note: scheme \S+ not found, "
                 r"using s2color\)", s):

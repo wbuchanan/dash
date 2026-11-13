@@ -153,3 +153,71 @@ class TestSubOptionSilence:
         assert not dr._dash_silent_subopt("legend(region)", "angle(45)")
         with pytest.warns(UserWarning, match=r"xscale\(\) sub-option.*noreverse"):
             dr._dash_report_suboptions("xscale", ["nolog", "noreverse"])
+
+
+# LT-25: a named-style note is twoway's sentence -- "named style <v> not
+# found in class <cls>, default attributes used", with no "dash:" before
+# it -- printed as many times as twoway prints it
+# (noted_option_truth.json lt25).
+_LT25 = _NOTED["lt25"]
+
+
+def _twoway_line(key):
+    return _LT25[key]["twoway_notes"][0][len("(note: "):-1]
+
+
+def _printed(warns):
+    """The notes as printed (_dash_emit_note, its "(note:  " and ")"
+    off): a named-style note loses dash's mark."""
+    return [dr._dash_emit_note(w, sfi=False)[len("(note:  "):-1] for w in warns]
+
+
+class TestNamedStyleNotes:
+    def test_class_worded_note_has_no_prefix(self):
+        """title("T", color(bogus)): twoway's line, no "dash:" (R_tcol)."""
+        spec = tp._spec([plot_for("scatter")], None,
+                        {"title": "T, color(bogus)"})
+        for warns in (tp._standalone(spec)[1], tp._served(spec)[1]):
+            assert _twoway_line("R_tcol") in _printed(warns), warns
+            assert not [w for w in _printed(warns)
+                        if w.startswith("dash: named style")]
+
+    def test_the_gsize_note_replaces_dashs_words(self):
+        """title("T", size(bogus)): the gsize note (R_tsz), not "is not
+        a recognised size"."""
+        spec = tp._spec([plot_for("scatter")], None,
+                        {"title": "T, size(bogus)"})
+        for warns in (tp._standalone(spec)[1], tp._served(spec)[1]):
+            assert _twoway_line("R_tsz") in _printed(warns), warns
+            assert not [w for w in warns if "not a recognised size" in w]
+
+    def test_printed_twice_when_twoway_does(self):
+        """times=2 prints the line twice in one render, as twoway prints
+        title position(13)'s clockdir note (R_tpos)."""
+        import warnings
+        dr._DASH_NOTED.clear()
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            dr._dash_style_note("title(position)", "13", "clock position",
+                                cls="clockdir", times=2)
+        got = [str(w.message) for w in caught]
+        assert _printed(got) == [_twoway_line("R_tpos")] * 2, got
+        assert len(set(got)) == 2, "the two copies must not merge"
+        printed = [dr._dash_emit_note(g, sfi=False) for g in got]
+        assert printed == ["(note:  %s)" % _twoway_line("R_tpos")] * 2
+
+    def test_markup_value_is_inert(self):
+        """A value with markup is shown as printable text, cut to 80; the
+        class is never the user's."""
+        import warnings
+        dr._DASH_NOTED.clear()
+        bad = "<b>x</b>\n" + "y" * 200
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            dr._dash_style_note("title(size)", bad, "size", cls="gsize")
+        (msg,) = _printed([str(w.message) for w in caught])
+        assert msg.startswith("named style <b>x</b>")
+        assert msg.endswith(" not found in class gsize, default attributes used")
+        tail = " not found in class gsize, default attributes used"
+        assert "\n" not in msg
+        assert len(msg) <= len("named style ") + 83 + len(tail)

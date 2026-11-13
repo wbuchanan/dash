@@ -2922,7 +2922,6 @@ class TestTheCountsAreTrue:
 #: commit closes its entry in place and deletes its own key line.
 #: GAPS4_WP and GAPS4_SECTION are permanent: each id's WP and section.
 GAPS4_OPEN = {
-    'LT-25': "Named-style notes: invented twoway-worded notes where twoway prints none; missing notes for clockdir 13 and justification(bogus); 'not a recognised size; using medium' instead of the gsize note; iscale(abc) note printed twice; xsize() bounds and graphsize notes in dash's words with 'None'",
 }
 
 GAPS4_WP = {

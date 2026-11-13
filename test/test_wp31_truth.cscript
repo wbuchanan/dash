@@ -8316,7 +8316,8 @@ if inlist("`only'", "", "S34") & `: list posof "S34" in w31_run' {
         local drc = _rc
         quietly log close _u34log
         if `trc' != `drc' local bad `"`bad' `a': twoway rc `trc', dash `drc';"'
-        cert_file_has "`lg'", needle("dash: named style `a' not found in class alignstroke")
+        // Flipped (WP-49 LT-25): printed as twoway prints it, no "dash:".
+        cert_file_has "`lg'", needle("(note:  named style `a' not found in class alignstroke")
         if ("`a'" == "bogus") != r(found) local bad `"`bad' `a': dash's note found `r(found)';"'
         cert_file_has "`lg'", needle("ignoring unsupported option")
         if r(found) local bad `"`bad' `a': the generic note named it;"'

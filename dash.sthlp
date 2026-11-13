@@ -1201,7 +1201,15 @@ there, is an invalid point.  The literal is read as data and never run.
     words, {cmd:(note: regress could not fit model)} (or {cmd:fracpoly}'s)
     and {cmd:(note: scheme} {it:name} {cmd:not found, using s2color)},
     are printed as {cmd:twoway} prints them, as plain text that
-    {cmd:quietly} hides.
+    {cmd:quietly} hides.  A named-style note -- a value {cmd:twoway} looks
+    up in a class of styles and does not find, such as
+    {cmd:title("T", size(bogus))} -- is {cmd:twoway}'s own sentence,
+    {cmd:(note:  named style bogus not found in class gsize, default attributes used)},
+    with no {cmd:dash:} before it, and is printed as many times as
+    {cmd:twoway} prints it: twice for a {cmd:title()} or {cmd:legend()}
+    position that is not a clock position, and for a word in
+    {cmd:scale()}, {cmd:xsize()} or {cmd:ysize()} the second line naming
+    the default {cmd:twoway} draws instead (1, or 5 inches).
 
 {phang2}
     The note names option {it:names}, never the values supplied, each as
@@ -1409,7 +1417,7 @@ there, is an invalid point.  The literal is read as data and never run.
     intensity) is reported once per render and the scheme's default drawn
     (for a fill intensity, full intensity), as {cmd:twoway} does with its
     own "named style not found" note.  An unknown or wrong-case colour is
-    drawn black and reported in {cmd:twoway}'s own words, "dash: named
+    drawn black and reported in {cmd:twoway}'s own words, "named
     style {it:name} not found in class color, default attributes used", as
     {cmd:twoway} draws and reports it (see {help dash##colours:Colours}).  A
     refusal uses {cmd:twoway}'s return code and words (its first line),
@@ -7021,7 +7029,7 @@ a scheme's {cmd:system naturally_white 0}), and {it:colour}{cmd:%}{it:#}
 the opacity, from 0 to 100; the two may be given in either order.  An
 unknown colour, or a number out of range, is drawn black (a bar or an
 area at its intensity), as {cmd:twoway} draws it, with {cmd:twoway}'s note,
-{cmd:(note:  dash: named style }{it:name}{cmd: not found in class color, default attributes used)},
+{cmd:(note:  named style }{it:name}{cmd: not found in class color, default attributes used)},
 {it:name} the colour as written, its {cmd:*}{it:#} and {cmd:%}{it:#} left
 off; a malformed hex code, multiplier or opacity keeps the default in
 silence; a colour written with commas is read as {cmd:twoway} reads it

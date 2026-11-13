@@ -434,6 +434,8 @@ _EMPTY_PARENS = [
     ("scatter", {"msangle": "()"}, None, "msangle"),
     ("scatter", {"mlwidth": "()"}, None, "mlwidth"),
     ("scatter", {"mlabel": "price", "mlabsize": "()"}, None, "mlabsize"),
+    # Flipped (WP-49 LT-25): mlabgap(), xsize() and ysize() are reported in
+    # twoway's class notes, which name the value, (), not the option.
     ("scatter", {"mlabel": "price", "mlabgap": "()"}, None, "mlabgap"),
     ("scatter", {"mlabel": "price", "mlabposition": "()"}, None,
      "mlabposition"),
@@ -456,6 +458,13 @@ class TestAStyleOptionGivenEmptyParenthesesIsReported:
         spec = _spec([plot_for(ptype, opts)], go)
         _, _, sw, _, _, vw = _both(tmp_path, spec)
         assert sw == vw, (sw, vw)
+        cls = {"mlabgap": "gsize", "xsize": "graphsize",
+               "ysize": "graphsize"}.get(option)
+        if cls:
+            hits = [w for w in sw
+                    if f"named style () not found in class {cls}" in w]
+            assert len(hits) == 1, sw
+            return
         hits = _naming(sw, option)
         assert len(hits) == 1, hits
         assert f"{option}(())" in hits[0], hits[0]
@@ -561,9 +570,13 @@ class TestAnUnknownStyleInsideAStructuredOption:
         assert sw == vw
         # Flipped (18oct2026): an unknown colour's note is twoway's, which
         # names the colour, not the sub-option.
+        # Flipped (WP-49 LT-25): an unknown size's note is twoway's gsize
+        # note, which names the value (lt25 R_tsz).
         assert len([w for w in sw if sub in w or (
             sub == "color(bogus)" and "named style bogus not found in "
-            "class color" in w)]) == 1, sw
+            "class color" in w) or (
+            sub == "size(bogus)" and "named style bogus not found in "
+            "class gsize" in w)]) == 1, sw
         if sub.startswith("size"):
             # WP-30 P1.12a: twoway draws an unknown size as medium, 11 pt
             # (it was the plain figure's size).

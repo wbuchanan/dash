@@ -182,7 +182,10 @@ local bad = 0
 // different with bmlinestyle(), and dash now takes it in silence (BUGS.md
 // "dash names options twoway takes and draws nothing of, where twoway is
 // silent").
-foreach cmd in "scatter mpg weight, bmlcolor(red)" "scatter mpg weight, bmcolor(red)" {
+// Flipped (WP-49 basic:PT-12): bmlcolor() and bmcolor() on scatter are
+// taken in silence, as twoway draws the same picture with it and prints nothing (noted_option_truth.json probes); dot's dlpattern() and scatter's
+// zvarlabel(), which dash names, are the controls.
+foreach cmd in "dot mpg weight, dlpattern(dash)" "scatter mpg weight, zvarlabel(red)" {
     _zh7_run `"dash `cmd' name(zq7)"' "`logfile'"
     if r(rc) != 0 | r(note) != 1 {
         display as error "HC7-00 FAIL `cmd': rc `r(rc)', the ignoring note seen `r(note)' (want 1)"

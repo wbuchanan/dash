@@ -3655,8 +3655,11 @@ _MUST_WARN = {
     "by() with an unimplemented sub-option":
         # Flipped (WP-41 BY-7): spacers(ring(2)), bgcolor() being taken.
         # Flipped (WP-49 basic:PT-12): style(foo), spacers() being taken.
-        "dash: by() sub-option(s) not implemented and ignored: "
-        "style(foo)",
+        # Flipped (WP-49 LT-25): style(foo) gets twoway's bygraphstyle note
+        # (noted_option_truth.json lt25 by_style_foo); no by() sub-option is
+        # left unimplemented.
+        "dash: named style foo not found in class bygraphstyle, default "
+        "attributes used",
     "filter() with an unknown type":
         "dash: filter(price, type(bogus)): type() must be one of",
     "yscale(range(abc))":

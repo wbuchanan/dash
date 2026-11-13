@@ -249,12 +249,15 @@ else display as text "SR-02 PASS: xlabel(, valuelabel) is drawn and not named"
 _sr_render `"dash scatter mpg weight, ylabel(, labgap(2) labelkeepleadingzero)"'
 local lg `"`r(logfile)'"'
 assert r(rc) == 0
-_sr_check SR-03 "`lg'" ylabel "labelkeepleadingzero" "labgap"
+// Flipped (WP-49 basic:PT-12): labelkeepleadingzero is taken in silence,
+// as twoway draws the same picture with it and prints nothing (noted_option_truth.json sub_probes ylabel(.1(.1).5, labelkeepleadingzero)); no ylabel()
+// sub-option is left that dash names.
+_sr_check SR-03 "`lg'" ylabel "" "labelkeepleadingzero"
 if r(bad) {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-03"
 }
-else display as text "SR-03 PASS: ylabel(, labelkeepleadingzero) is named, the drawn labgap() is not"
+else display as text "SR-03 PASS: ylabel(, labgap() labelkeepleadingzero) names nothing"
 
 _sr_render `"dash scatter mpg weight, yscale(reverse noline titlegap(2) outergap(1))"'
 local lg `"`r(logfile)'"'
@@ -575,11 +578,14 @@ if `b' {
 }
 else display as text "SA-07 PASS: the first refusal is twoway's"
 
-// SA-08: twoway's notes, once each; a copy replaced is silent.
+// SA-08: twoway's notes, as often as twoway prints them; a copy replaced
+// is silent.  Flipped (WP-49 LT-25): legend(pos(13))'s clockdir note was
+// counted once; twoway prints it twice (noted_option_truth.json lt25
+// L_posfr and the 12nov2026 probe of legend(position(13))).
 local b = 0
 _sa_expect SA-08 0 "named style 13 not found in class clockdir" `"`_sab' legend(pos(13))"'
 _sr_count "`r(logfile)'" "named style 13 not found in class clockdir"
-if r(n) != 1 local b = 1
+if r(n) != 2 local b = 1
 _sa_expect SA-08 0 "named style x not found in class gridringstyle" `"`_sab' legend(ring(x))"'
 if r(bad) local b = 1
 _sa_expect SA-08 0 "x not an integer, option order() ignored" `"`_sab' legend(order(1 x))"'

@@ -4875,7 +4875,10 @@ program define _dash_validate_value, rclass
             else       local norm = strtrim(string(`R', "%21.0g"))
         }
         else {
+            // WP-49 LT-25: twoway's two notes, the word and then the
+            // default 1 (noted_option_truth.json lt25 scale_abc).
             mata: _dash_note("named style ", st_local("tv"), " not found in class numstyle, default attributes used")
+            mata: _dash_note("named style ", "1", " not found in class numstyle, default attributes used")
             local norm ""
         }
     }
@@ -6670,8 +6673,13 @@ program define _dash_by_check
             exit 198
         }
     }
-    if "`_byg_iscale_kind'" == "bad" {
+    // WP-49 LT-25: twoway's two notes, the word and then the default 1
+    // (noted_option_truth.json lt25 by_iscale_abc), once a command: the
+    // by() text is checked once per plot and once after the comma.
+    if "`_byg_iscale_kind'" == "bad" & `"${dash__byg_noted}"' == "" {
         mata: _dash_note("named style ", st_local("_byg_iscale"), " not found in class numstyle, default attributes used")
+        mata: _dash_note("named style ", "1", " not found in class numstyle, default attributes used")
+        global dash__byg_noted 1
     }
     if `_byg_imargin_bad' {
         mata: _dash_note("named style ", st_local("_byg_imargin"), " not found in class margin, default attributes used")
@@ -10294,6 +10302,9 @@ program define _dash_plot
     global dash__dop ""
     // WP-49 plot:PT-7: no earlier command's option text (_dash_opt_typed).
     global dash__opts_typed ""
+    // WP-49 LT-25: no earlier command's by(, iscale()) notes
+    // (_dash_by_check prints them once a command).
+    global dash__byg_noted ""
 
     // ---- UTF-8 safety check ----
     // The command is read by value, here and at every command's gate: put
