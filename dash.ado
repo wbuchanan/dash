@@ -77,8 +77,18 @@ else {
 // What is authoritative is whether the functions dash calls are there, and
 // _dash_require_mata asks that at the entry to every command.  It is also
 // the only check that sees a library cleared mid-session.
+//
+// WP-49 plot:PT-11: the library is run only when it is not in memory.  Run
+// over a library already loaded (after discard, or a second load of
+// dash.ado), `run' stopped at its first definition and the compiler's
+// "_dash_dp_format() already exists" and "(N lines skipped)" reached the
+// screen, capture or no capture.  mata describe is asked quietly, so it
+// prints nothing when the function is there (mata which finds only a
+// function in a .mlib library: measured 12nov2026, r(111) for a function
+// compiled in memory).
 if `"`_dash_matalib'"' != "" {
-    capture run "`_dash_matalib'"
+    capture quietly mata: mata describe _dash_dp_format()
+    if _rc capture quietly run "`_dash_matalib'"
 }
 
 program define dash, rclass
@@ -575,9 +585,10 @@ program define _dash_require_mata
         // names only, every one of which is _dash_* (WP-31 H7: the last
         // four unprefixed ones were renamed, so no hand list is kept;
         // test_session_hygiene.py holds dash_parse.mata to the prefix),
-        // and only when there is a file to load it back from.
+        // and only when there is a file to load it back from.  The run is
+        // quiet, so no compiler text is printed (WP-49 plot:PT-11).
         capture mata: mata drop _dash_*()
-        capture run `"`_src'"'
+        capture quietly run `"`_src'"'
     }
 
     // Only now is it a real failure.  Without this the user got

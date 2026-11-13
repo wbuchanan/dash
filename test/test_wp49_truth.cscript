@@ -430,6 +430,87 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w49_run' {
 }
 * ==== end S02 ====
 
+// _q4902_progs(file): the names of file's "program define" lines, one
+// blank between them (S02 plot:PT-11, Q4902-7).
+capture mata: mata drop _q4902_progs()
+mata:
+string scalar _q4902_progs(string scalar file)
+{
+    string colvector l
+    string scalar    out
+    real scalar      i
+
+    l = cat(file)
+    out = ""
+    for (i = 1; i <= rows(l); i++) {
+        if (ustrregexm(l[i], "^program define ([A-Za-z_0-9]+)")) out = out + " " + ustrregexs(1)
+    }
+    return(out)
+}
+end
+
+* ==== S02 plot:PT-11: no library messages ====
+local only : env WP49_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w49_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4902-7 (WP-49 plot:PT-11): no text of dash's Mata library reaches
+    // the log -- after discard (the library still in memory, dash.ado
+    // loaded again), after one library function is dropped (the repair
+    // in _dash_require_mata), after the whole library is dropped and
+    // discard run (dash.ado loads it), and through stat:PT-22's fpfit
+    // estcmd(poisson) sequence.  Neither "already exists" nor "lines
+    // skipped" nor mata describe's line for the probe is printed, and each
+    // command ends r(0).
+    // ------------------------------------------------------------
+    // dash.ado was run by this script (qui do), so discard alone keeps its
+    // programs; they are dropped by name (its "program define" lines) so
+    // the next dash command loads dash.ado from the ado-path, as a user's
+    // session does after discard.
+    capture program drop _q4902_unload
+    program define _q4902_unload
+        version 19
+        mata: st_local("q7p", _q4902_progs("../dash.ado"))
+        foreach p of local q7p {
+            capture program drop `p'
+        }
+        discard
+    end
+    sysuse auto, clear
+    local q7log "`w49_work'/q4902_7.log"
+    capture log close _q49
+    capture erase "`q7log'"
+    quietly log using "`q7log'", text replace name(_q49)
+    _q4902_unload
+    capture noisily dash scatter mpg weight, saving("`w49_work'/q4902_7a.html", replace)
+    local q7a = _rc
+    capture mata: mata drop _dash_dp_format()
+    capture noisily dash scatter mpg weight, saving("`w49_work'/q4902_7b.html", replace)
+    local q7b = _rc
+    capture noisily dash fpfit mpg weight, estcmd(poisson) saving("`w49_work'/q4902_7c.html", replace)
+    local q7c = _rc
+    _q4902_unload
+    capture mata: mata drop _dash_*()
+    capture noisily dash scatter mpg weight, saving("`w49_work'/q4902_7d.html", replace)
+    local q7d = _rc
+    quietly log close _q49
+    capture dash clear
+    capture program drop _q4902_unload
+    _w49_expect Q4902-7 "(`q7a' == 0 & `q7b' == 0 & `q7c' == 0 & `q7d' == 0)" "r(`q7a') r(`q7b') r(`q7c') r(`q7d')"
+    foreach q7n in "already exists" "lines skipped" "string scalar" {
+        cert_log_has "`q7log'", needle("`q7n'")
+        _w49_expect Q4902-7 "(!r(found))" `"the log holds "`q7n'" (`r(count)' times)"'
+    }
+    _w49_done Q4902-7 "no library text after discard, a repair, a dropped library or the fpfit sequence"
+    capture erase "`q7log'"
+    foreach q7f in a b c d {
+        capture erase "`w49_work'/q4902_7`q7f'.html"
+    }
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------
