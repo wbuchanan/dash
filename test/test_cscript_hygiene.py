@@ -1484,16 +1484,59 @@ class TestTheWpTruthScripts:
             assert any(says in b for b in _wp_blocks(text, wp)[1]), (says,)
 
     def test_the_seconds_table_may_change(self):
+        # Flipped (WP-50 50-02): the seconds moved from the script head to
+        # the runner (D-50-02.d).  Was: the template held one seconds
+        # statement, which _head_and_tail left out so that a commit could
+        # rewrite it; now the head reads the runner's line through
+        # _wNN_secs(), and rewriting that line changes no script.
         t = _read(_WP_TEMPLATE).replace("@@WP@@", "47")
-        u = t.replace("local w47_secs S00 1\n",
-                      "local w47_secs ///\n    S00 1 S09 150 ///\n"
-                      "    S10 300\n")
-        assert u != t
-        assert _head_and_tail(u) == _head_and_tail(t)
-        # WP-36 plat:PT-1: the template's head no longer holds a skip gate.
+        assert "_w47_secs(" in t
+        assert _SECS.findall(t) == []
+        for path in _WP_TRUTHS:
+            text = _read(path)
+            assert "// secs " not in text, path
+            assert _SECS.findall(text) == [], path
+        runner = _read(_RUNNER)
+        assert runner.count("// ---- block seconds: begin (scripts/"
+                            "cert_shards.py writes this block) ----") == 1
+        assert runner.count("// ---- block seconds: end ----") == 1
+        # A change elsewhere in the head is still caught (WP-36 plat:PT-1:
+        # the head holds no skip gate, so the helpers' load line stands in).
         u2 = t.replace('do "cert_helpers.do"', 'do "x.do"')
+        assert u2 != t
         assert _head_and_tail(u2) != _head_and_tail(t)
-        assert len(_SECS.findall(t)) == 1
+
+    def test_the_template_reads_its_row(self):
+        # WP-50 50-02 (D-50-02.c): a script whose row is a shard number runs
+        # every block in that one session.
+        t = _read(_WP_TEMPLATE)
+        assert ("real scalar _w@@WP@@_whole(string scalar runner, "
+                "string scalar script,") in t
+        call = ('mata: st_local("w@@WP@@_whole", strofreal(_w@@WP@@_whole('
+                '"run_all_cscripts.do", "test_wp@@WP@@_truth.cscript", '
+                '`w@@WP@@_N\')))')
+        branch = ("    if `w@@WP@@_whole' {\n"
+                  "        local w@@WP@@_how \" whole (shard `w@@WP@@_k'/"
+                  "`w@@WP@@_N')\"\n"
+                  "        local w@@WP@@_k 1\n"
+                  "        local w@@WP@@_N 1\n"
+                  "    }\n")
+        assert call in t and branch in t
+        assert "capture mata: mata drop _w@@WP@@_whole()" in t
+        assert "capture mata: mata drop _w@@WP@@_secs()" in t
+        # After DASH_CERT_SHARD and WP@@WP@@_ONLY are read and checked,
+        # before the part is asked for.
+        order = ["local w@@WP@@_sh : environment DASH_CERT_SHARD",
+                 "local w@@WP@@_only : env WP@@WP@@_ONLY",
+                 "if `w@@WP@@_k' > `w@@WP@@_N' {", call, branch,
+                 'cert_split_part "test_wp@@WP@@_truth.cscript"']
+        at = [t.index(s) for s in order]
+        assert at == sorted(at), at
+        # Unreadable runner, no table, no row or "*": 0, so it splits.
+        body = t[t.index("real scalar _w@@WP@@_whole("):]
+        body = body[:body.index("\n}\n")]
+        assert "if (n < 2 | !fileexists(runner)) return(0)" in body
+        assert 'return(ustrregexm(t[n + 2], "^[0-9]+$"))' in body
 
 
 # ---------------------------------------------------------------------------

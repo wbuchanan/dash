@@ -108,24 +108,17 @@ class TestTheRealTable:
         # ["test_wp30_truth.cscript"] -> plus test_wp31_truth.cscript:
         # WP-31 S01 adds the second script that splits itself; plus
         # test_wp33_truth.cscript: WP-33 33-01 adds the third.
-        # old -> new: plus test_wp34_truth.cscript (WP-34 W0)
+        # old -> new: plus test_wp34_truth.cscript (WP-34 W0), ... plus
+        # wp35 to wp49 (WP-35 to WP-49 W0).
+        # Flipped (WP-50 50-02): the starred scripts were wp30, wp31 and
+        # every template-made truth script; that was wrong because a short
+        # template-made truth script now runs whole (A-3, D-50-02.b): under
+        # the split rule (SPLIT_MIN 228.0 s, 13nov2026) none of wp33..wp49
+        # reaches it, so only the two that cannot run whole stay starred.
+        # old -> new: 18 -> 2 starred scripts: WP-50 50-02 split rule.
         assert [s for s, k in rows.items()
                 if any(S.is_every(v) for v in k.values())] == [
-            "test_wp30_truth.cscript", "test_wp31_truth.cscript",
-            "test_wp33_truth.cscript", "test_wp34_truth.cscript",
-            "test_wp35_truth.cscript",  # old -> new: plus wp35 (WP-35 W0)
-            "test_wp36_truth.cscript",  # old -> new: plus wp36 (WP-36 W0)
-            "test_wp37_truth.cscript",  # old -> new: plus wp37 (WP-37 W0)
-            "test_wp38_truth.cscript",  # old -> new: plus wp38 (WP-38 W0)
-            "test_wp40_truth.cscript",  # old -> new: plus wp40 (WP-40 W0)
-            "test_wp41_truth.cscript",  # old -> new: plus wp41 (WP-41 W0)
-            "test_wp42_truth.cscript",  # old -> new: plus wp42 (WP-42 W0)
-            "test_wp43_truth.cscript",  # old -> new: plus wp43 (WP-43 W0)
-            "test_wp44_truth.cscript",  # old -> new: plus wp44 (WP-44 W0)
-            "test_wp45_truth.cscript",  # old -> new: plus wp45 (WP-45 W0)
-            "test_wp46_truth.cscript",  # old -> new: plus wp46 (WP-46 W0)
-            "test_wp47_truth.cscript",  # old -> new: plus wp47 (WP-47 W0)
-            "test_wp49_truth.cscript"]  # old -> new: plus wp49 (WP-49 W0)
+            "test_wp30_truth.cscript", "test_wp31_truth.cscript"]
         with open(S.WP30, encoding="utf-8") as fh:
             text = fh.read()
         secs = S.wp30_seconds(text)
@@ -582,7 +575,12 @@ class TestTheSplitScriptsAreTurned:
         assert "program define cert_split_part, rclass" in helpers
         assert "return(mod(k - 1 - r + n, n) + 1)" in helpers
         rows = S.read_table(_runner())
-        every = sorted(r[0] for r in rows if S.is_every(r[3][2]))
+        # Flipped (WP-50 50-02): the scripts were the starred rows; that was
+        # wrong because a short template-made truth script now runs whole
+        # (A-3, D-50-02.b) and is not starred, yet still asks for its part
+        # (its part is every block).  Now: every script that splits itself.
+        every = sorted(r[0] for r in rows
+                       if S.splits_itself(S._cscript_text(r[0])))
         assert len(every) >= 16
         for name in every + ["templates/wp_truth_template.cscript"]:
             text = open(os.path.join(_HERE, name)).read()
@@ -595,3 +593,210 @@ class TestTheSplitScriptsAreTurned:
                 assert m.group(1) == name
             # After cert_helpers.do is loaded.
             assert text.index('do "cert_helpers.do"') < m.start(), name
+
+
+# ---------------------------------------------------------------------------
+# WP-50 50-02: the split rule, the block seconds and add
+# ---------------------------------------------------------------------------
+
+#: A template-made truth script's text, as the rule reads it: it splits
+#: itself and can run whole.
+_WHOLE_TEXT = ("local w47_sh : environment DASH_CERT_SHARD\n"
+               'mata: st_local("w47_whole", strofreal(_w47_whole('
+               '"run_all_cscripts.do", "test_wp47_truth.cscript", 2)))\n')
+#: test_wp30_truth.cscript's kind: it splits itself and cannot run whole.
+_SPLIT_TEXT = "local w30_sh : environment DASH_CERT_SHARD\n"
+
+
+class TestTheSplitRule:
+
+    def test_split_min(self):
+        # Half of one session's balanced load over the gate's 8 sessions.
+        assert S.SESSIONS == 8 and S.SPLIT_SHARE == 0.5
+        assert S.split_min({"a": 600, "b": 300, "c": 300}) == 75.0
+
+    def test_the_sessions_are_the_gates(self):
+        # SESSIONS is scripts/run_all_tests.sh's DASH_CERT_SESSIONS default.
+        with open(os.path.join(_ROOT, "scripts", "run_all_tests.sh"),
+                  encoding="utf-8") as fh:
+            m = re.search(r'^cs="\$\{DASH_CERT_SESSIONS:-(\d+)\}"$',
+                          fh.read(), re.M)
+        assert m and int(m.group(1)) == S.SESSIONS
+
+    def test_what_runs_whole(self):
+        assert S.runs_whole(_WHOLE_TEXT)
+        assert not S.runs_whole(_SPLIT_TEXT)
+        assert not S.runs_whole("_w47_whole_x(1)\n")
+
+    def test_a_short_whole_capable_script_runs_whole(self):
+        texts = {"test_a.cscript": "display 1\n",
+                 "test_short.cscript": _WHOLE_TEXT,
+                 "test_long.cscript": _WHOLE_TEXT,
+                 "test_w30.cscript": _SPLIT_TEXT}
+        seconds = {"test_a.cscript": 100.0, "test_short.cscript": 10.0,
+                   "test_long.cscript": 60.0, "test_w30.cscript": 5.0}
+        # 175 s over 8 sessions: SPLIT_MIN 10.9 s.
+        assert S.split_min(seconds) == 0.5 * 175.0 / 8
+        every = S.starred_by_rule(seconds, texts.get)
+        assert every == {"test_long.cscript", "test_w30.cscript"}
+        text = (S.render_table(seconds, set(), "a run", every)
+                + S.END + "\n")
+        rows = {r[0]: r[3] for r in S.read_table(text)}
+        for n in S.COUNTS:
+            assert isinstance(rows["test_short.cscript"][n], int), n
+            assert S.is_every(rows["test_long.cscript"][n]), n
+            assert S.is_every(rows["test_w30.cscript"][n]), n
+        # A script that cannot be read is not starred.
+        assert S.starred_by_rule(seconds, {}.get) == set()
+
+    def test_every_starred_part_has_a_block(self):
+        three = "".join("* ==== S%02d x ====\n" % i for i in range(3))
+        probs = S.parts_check(three, {"S00": 9}, "test_x.cscript")
+        assert probs == ["test_x.cscript: a part of %d has no block "
+                         "(3 blocks)" % n for n in (4, 5, 6, 7, 8)]
+        eight = "".join("* ==== S%02d x ====\n" % i for i in range(8))
+        assert S.parts_check(eight, {}, "test_x.cscript") == []
+
+    def test_the_real_table_follows_the_rule(self):
+        rows = S.read_table(_runner())
+        seconds = {r[0]: r[1] for r in rows}
+        starred = {r[0] for r in rows if S.is_every(r[3][2])}
+        assert starred == S.starred_by_rule(seconds, S._text_or_none)
+        low = S.split_min(seconds)
+        for r in rows:
+            if S.runs_whole(S._cscript_text(r[0])) and r[1] < low:
+                assert all(isinstance(v, int) for v in r[3].values()), r
+
+
+class TestTheBlockSeconds:
+
+    def test_from_log(self):
+        log = ("S01 start 20 Oct 2026 10:00:01\n"
+               ". display as text \"S01 end \" c(current_date)\n"
+               "S01 end 20 Oct 2026 10:00:05\n"
+               "[ TIME] test_wp47_truth.cscript timer=9.0s wall=9.0s\n")
+        assert S.block_seconds_from_log(log) == {
+            "test_wp47_truth.cscript": {"S01": 4}}
+
+    def test_repeats_logs_wraps_and_the_floor(self):
+        log = ("S02 start 20 Oct 2026 23:59:58\n"
+               "S02 end 21 Oct 2026 00:00:03\n"
+               "S03 start 23:59:59\nS03 end 00:00:01\n"
+               "S04 start 20 Oct 2026 10:00:00\n"
+               "S04 end 20 Oct 2026 10:00:00\n"
+               "S02 start 20 Oct 2026 10:00:00\n"
+               "S02 end 20 Oct 2026 10:00:02\n"
+               "[ TIME] test_wp47_truth.cscript timer=9.0s wall=9.0s\n"
+               # Another session's log, put after the first.
+               "S05 start 20 Oct 2026 10:00:00\n"
+               "S05 end 20 Oct 2026 10:00:07\n"
+               "[ TIME] test_other.cscript timer=1.0s wall=1.0s\n"
+               "S03 start 20 Oct 2026 10:00:00\n"
+               "S03 end 20 Oct 2026 10:00:03\n"
+               "[ TIME] test_wp47_truth.cscript timer=9.0s wall=9.0s\n")
+        assert S.block_seconds_from_log(log) == {
+            "test_wp47_truth.cscript": {"S02": 7, "S03": 5, "S04": 1},
+            "test_other.cscript": {"S05": 7}}
+
+    def test_render_and_read_back(self):
+        text = S.render_block_seconds(
+            {"test_wp47_truth.cscript": {"S01": 4, "S00": 1}}, "a run")
+        lines = text.splitlines()
+        assert lines[0] == S.SECS_BEGIN and lines[-1] == S.SECS_END
+        assert "// secs test_wp47_truth.cscript S00 1 S01 4" in lines
+        assert S.read_block_seconds(text) == {
+            "test_wp47_truth.cscript": {"S00": 1.0, "S01": 4.0}}
+        assert S.read_block_seconds("nothing") == {}
+        # Put directly after the shard table, then replaced in place.
+        runner = "a\n" + S.END + "\nb\n"
+        once = S.put_block_seconds(runner, text)
+        assert once == "a\n" + S.END + "\n" + text + "b\n"
+        new = S.render_block_seconds({}, "another run")
+        assert S.put_block_seconds(once, new) == \
+            "a\n" + S.END + "\n" + new + "b\n"
+
+    def test_a_split_template_script_takes_the_runners_seconds(self):
+        text = (_WHOLE_TEXT + "* ==== S00 a ====\n* ==== S01 b ====\n"
+                "* ==== S02 c ====\n")
+        texts = {"test_wp47_truth.cscript": text}
+        parts = S.parts_of({"test_wp47_truth.cscript": 30.0},
+                           set(texts), 2, texts.get,
+                           {"test_wp47_truth.cscript": {"S01": 4, "S02": 1}})
+        # S01 4 to part 1, S00 1 and S02 1 to part 2; scaled to 30 s.
+        assert parts == {"test_wp47_truth.cscript": [20.0, 10.0]}
+        # No line: S00 1 and every other block 1 s.
+        parts = S.parts_of({"test_wp47_truth.cscript": 30.0},
+                           set(texts), 3, texts.get, {})
+        assert parts == {"test_wp47_truth.cscript": [10.0, 10.0, 10.0]}
+
+    def test_the_real_runner_lists_every_template_made_script(self):
+        secs = S.read_block_seconds(_runner())
+        made = sorted(s for s in V.registered_scripts(_runner())
+                      if S.runs_whole(S._cscript_text(s)))
+        assert len(made) >= 15  # wp33..38, wp40..47, wp49
+        assert sorted(secs) == made
+        for s in made:
+            ids = set(S.block_ids(S._cscript_text(s)))
+            assert set(secs[s]) <= ids, s
+            assert all(v >= 1 for v in secs[s].values()), s
+
+
+class TestAdd:
+
+    _tree = TestTheCommandLine._tree
+    _run = TestTheCommandLine._run
+
+    def test_add_places_a_new_script(self, tmp_path):
+        tree, log = self._tree(tmp_path)
+        # 109 s over 8 sessions: SPLIT_MIN 6.8 s, so the 1 s row is whole.
+        log.write_text(log.read_text().replace("timer=   10.000s",
+                                               "timer=  100.000s"))
+        assert self._run(tree, "write", str(log)).returncode == 0
+        path = tree / "test" / "run_all_cscripts.do"
+        (tree / "test" / "test_wp99_truth.cscript").write_text(
+            _WHOLE_TEXT.replace("47", "99") + "* ==== S00 a ====\n")
+        path.write_text(path.read_text() + 'capture noisily {\n'
+                        '    do "test_wp99_truth.cscript"\n}\n')
+        r = self._run(tree, "check")
+        assert r.returncode == 1 and "no row for: test_wp99" in r.stdout
+        r = self._run(tree, "add", "test_wp99_truth.cscript")
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert "added test_wp99_truth.cscript at 1.0 s" in r.stdout
+        r = self._run(tree, "check")
+        assert r.returncode == 0, r.stdout
+        rows = {x[0]: x for x in S.read_table(path.read_text())}
+        assert rows["test_wp99_truth.cscript"][1] == 1.0
+        assert all(isinstance(v, int)
+                   for v in rows["test_wp99_truth.cscript"][3].values())
+        # Twice, or a script the runner does not run: refused.
+        r = self._run(tree, "add", "test_wp99_truth.cscript")
+        assert r.returncode == 1 and "already has a row" in r.stdout
+        r = self._run(tree, "add", "test_zz.cscript")
+        assert r.returncode == 1 and "not a script the runner runs" in r.stdout
+
+    def test_write_puts_the_block_seconds_after_the_table(self, tmp_path):
+        tree, log = self._tree(tmp_path)
+        (tree / "test" / "test_b.cscript").write_text(
+            _WHOLE_TEXT + "* ==== S00 a ====\n* ==== S01 b ====\n")
+        log.write_text("[ TIME] test_a.cscript timer=   10.000s wall=  10s\n"
+                       "S01 start 20 Oct 2026 10:00:00\n"
+                       "S01 end 20 Oct 2026 10:00:03\n"
+                       "[ TIME] test_b.cscript timer=    4.000s wall=   4s\n"
+                       "[ TIME] test_p.cscript timer=    4.000s wall=   4s\n")
+        r = self._run(tree, "write", str(log), "the test's run")
+        assert r.returncode == 0, r.stdout + r.stderr
+        path = tree / "test" / "run_all_cscripts.do"
+        text = path.read_text()
+        assert S.read_block_seconds(text) == {
+            "test_b.cscript": {"S01": 3.0}}
+        at = text.index(S.END) + len(S.END) + 1
+        assert text[at:].startswith(S.SECS_BEGIN)
+        # 18 s over 8: test_b (4 s) is at SPLIT_MIN 1.1 s or more: starred.
+        rows = {x[0]: x[3] for x in S.read_table(text)}
+        assert all(S.is_every(v) for v in rows["test_b.cscript"].values())
+        assert self._run(tree, "check").returncode == 1  # 2 blocks < 8 parts
+        assert "test_b.cscript: a part of 3 has no block" in \
+            self._run(tree, "check").stdout
+        # rebalance keeps the block seconds and the table as written.
+        assert self._run(tree, "rebalance").returncode == 0
+        assert path.read_text() == text
