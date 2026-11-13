@@ -742,7 +742,10 @@ _SAVED_DIGEST = (
     # dash_rarea_bound_kept and its "rarea" branch (filter JS text only:
     # with the old _FILTER_JS spliced in the old digest is given), the
     # same under both Pythons.
-    "dcfbc9223ab038f91fa1c95ff2d854517c7c7e26a95203f16127a5e3df8d548b")
+    # old -> new: dcfbc92 -> 1ff4b5a: WP-50 WE.7 the width-scale and
+    # figure-margin callbacks lay the page out through _DASH_RELAYOUT_JS's
+    # one queue (callback JS text only), the same under both Pythons.
+    "1ff4b5a4d5a87c80f541845bfe85fc64e0bdc201e1b1fee3778186bb4630d22e")
 
 
 # ===========================================================================

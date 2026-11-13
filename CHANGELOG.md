@@ -1017,6 +1017,10 @@ and now matches Stata.
   3.12, as on 3.13. (WP-30, P1.33)
 - Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64, and measured on MP only. Every dash and dash_setup program declared version 16.0, which implied Stata 16 support that was never tested; all 91 now declare version 19. (WP-30, P1.35)
 
+### Fixed in WP-50
+
+- A page of many graphs loads in seconds: each graph asked for the whole page to be laid out again, so a page of 60 graphs took 16 s to appear and one of 124 never did; the page is now laid out once however many graphs ask (60 graphs 2.3 s, 100 graphs 5.8 s, in headless Chrome) (WP-50)
+
 ### Fixed in WP-49
 
 - A refusal's first line is twoway's, naming the option as typed (function y = x, ba(3) is option ba() not allowed, where dash printed bands()), and dash's own first lines for an unbalanced parenthesis, a by() or mlabel() variable not found, legloc(), useplotregion() and a [ before the plot type are twoway's; return codes, dash's advice lines and the Supported list are unchanged (WP-49, plot:PT-7)

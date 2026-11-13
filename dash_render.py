@@ -30984,11 +30984,46 @@ def _dash_width_scale(anchor, models, nominal_w, ref_in=4.0, grid=None):
     return cb
 
 
+#: One layout per page root per tick (WP-50 WE.7).  A plot's
+#: ``invalidate_layout`` climbs to the root and lays out the whole page, so
+#: a page of n graphs whose callbacks each asked for their own was laid out
+#: about 1.7 n times, each layout O(n): a page of 124 graphs did not load.
+#: ``dash_relayout(view)`` queues the view's root and lays every queued
+#: root out once, in a ``setTimeout`` (a layout asked for inside the
+#: browser's resize observer is what makes it report a loop).  The queue
+#: is the page's, shared by every callback through ``globalThis``.
+_DASH_RELAYOUT_JS = """
+const dash_relayout = globalThis.__dash_relayout
+  || (globalThis.__dash_relayout = (() => {
+    const roots = new Set();
+    let timer = null;
+    return (v) => {
+      if (v == null || typeof v.invalidate_layout !== "function") { return; }
+      let r = v;
+      while (r.parent != null && typeof r.parent.invalidate_layout === "function") {
+        r = r.parent;
+      }
+      roots.add(r);
+      if (timer == null) {
+        timer = setTimeout(() => {
+          timer = null;
+          const now = [...roots];
+          roots.clear();
+          for (const x of now) {
+            try { x.invalidate_layout(); } catch (e) { /* next layout */ }
+          }
+        }, 0);
+      }
+    };
+  })());
+"""
+
+
 #: The width scale (D66): k = drawn width / nominal width x unit, written
 #: to every entry once per width (a change under half a percent is not
 #: rewritten), then each plot laid out again.  Under by() the width is
 #: the array's (the GridBox holding the panels).
-_DASH_WIDTH_SCALE_JS = """
+_DASH_WIDTH_SCALE_JS = _DASH_RELAYOUT_JS + """
 let W = anchor.outer_width;
 if (by && typeof Bokeh !== "undefined" && Bokeh.index != null) {
   let v = null;
@@ -31056,7 +31091,7 @@ if (typeof Bokeh !== "undefined" && Bokeh.index != null) {
       pv.el.style.setProperty("--dash-k", String(k));
     }
     if (pv != null && pv.invalidate_layout != null) {
-      setTimeout(() => pv.invalidate_layout(), 0);
+      dash_relayout(pv);
     }
   }
   // Each figure's size follow reads the frame these sizes leave: run it
@@ -46643,7 +46678,7 @@ def _dash_graph_margin(fig, scheme, graph_opts):
 #: fysize(), the plot and its axes in # percent of the scheme's
 #: reference side (``ref`` inches, 96 px an inch at the nominal width),
 #: centred.  What other passes added to a border stays.
-_DASH_GRAPH_MARGIN_JS = """
+_DASH_GRAPH_MARGIN_JS = _DASH_RELAYOUT_JS + """
 const w = fig.outer_width, h = fig.outer_height;
 if (!(w > 0) || !(h > 0)) { return; }
 const forced = typeof cb_data !== "undefined" && cb_data != null &&
@@ -46721,11 +46756,10 @@ if (x != null) {
             ay + (x.fy != null ? bs[2] * g : 0),
             ay + (x.fy != null ? bs[3] * g : 0)]);
 }
-// A border is not a layout property in BokehJS: lay the figure out again.
-// Deferred: a layout asked for inside the browser's resize observer is
-// what makes it report a loop.
+// A border is not a layout property in BokehJS: lay the figure out again,
+// through the page's one queue (_DASH_RELAYOUT_JS).
 if (moved && view != null && view.invalidate_layout != null) {
-  setTimeout(() => view.invalidate_layout(), 0);
+  dash_relayout(view);
 }
 """
 
