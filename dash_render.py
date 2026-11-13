@@ -31053,6 +31053,16 @@ const dash_batch = globalThis.dashBatchLayouts
             try { return own_i.call(this); } finally { painting--; }
           };
         }
+        // BokehJS reads each colour, alpha and width it draws from the
+        // element's computed style first (--bk-line-color and the like),
+        // making the browser work the page's styles out again whenever
+        // it has changed.  A dash page defines no --bk- property, and
+        // BokehJS's stylesheets none (test_page_load_layouts.py), so the
+        // answer is always "": the model's own value is drawn.
+        const V = Bokeh.require("core/visuals/visual").VisualProperties;
+        if (V != null && typeof V.prototype._get_css_value === "function") {
+          V.prototype._get_css_value = function () { return ""; };
+        }
         L.prototype.dashBatched = true;
       }
     } catch (e) { /* layouts stay immediate */ }
@@ -31119,6 +31129,18 @@ if (typeof Bokeh !== "undefined" && Bokeh.index != null) {
     }
   }
 }
+// Without by(), each model's changed values are set together (one setv,
+// one change event): set one by one, a marker-label set re-rendered and
+// the page's styles were worked out again once per value (WP-50 WE.7).
+// A by() graph sets them one by one, each laid out as it is set, as its
+// fit and spans read them.
+const sets = new Map();
+const put = (m, p, v) => {
+  if (by) { m[p] = v; return; }
+  let a = sets.get(m);
+  if (a == null) { a = {}; sets.set(m, a); }
+  a[p] = v;
+};
 for (const [m, p, b, kind] of entries) {
   const v = b * k;
   if (kind === "pair") {
@@ -31127,17 +31149,21 @@ for (const [m, p, b, kind] of entries) {
     const cur = m[p];
     if (!Array.isArray(cur) || cur.length !== n.length
         || n.some((x, i) => cur[i] !== x)) {
-      m[p] = n;
+      put(m, p, n);
     }
   } else if (kind === "css") {
     const s = (Math.round(v * 100) / 100) + "pt";
-    if (m[p] !== s) { m[p] = s; }
+    if (m[p] !== s) { put(m, p, s); }
   } else if (kind === "int") {
     const n = Math.round(v);
-    if (m[p] !== n) { m[p] = n; }
+    if (m[p] !== n) { put(m, p, n); }
   } else if (m[p] !== v) {
-    m[p] = v;
+    put(m, p, v);
   }
+}
+for (const [m, a] of sets) {
+  if (typeof m.setv === "function") { m.setv(a); }
+  else { for (const p of Object.keys(a)) { m[p] = a[p]; } }
 }
 if (typeof Bokeh !== "undefined" && Bokeh.index != null) {
   // Deferred, as the size follow's: a layout asked for inside the

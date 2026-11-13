@@ -1019,7 +1019,7 @@ and now matches Stata.
 
 ### Fixed in WP-50
 
-- A page of many graphs loads in seconds: each graph asked for the whole page to be laid out again, so a page of 60 graphs took 16 s to appear and one of 124 never did; the page is now laid out once however many graphs ask (60 graphs 2.3 s, 100 graphs 5.8 s, in headless Chrome); a page of 16 by() graphs takes 8.7 s, where it took 50 s (WP-50)
+- A page of many graphs loads in seconds: each graph asked for the whole page to be laid out again, so a page of 60 graphs took 16 s to appear and one of 124 never did; the page is now laid out once however many graphs ask (60 graphs 2.3 s, 100 graphs 5.8 s, in headless Chrome); a page of 16 by() graphs takes 8.7 s, where it took 50 s; the corpus gallery's page of 124 scatter examples loads in 32 s (WP-50)
 
 ### Fixed in WP-49
 

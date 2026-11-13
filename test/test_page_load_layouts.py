@@ -105,3 +105,114 @@ def test_layouts_do_not_grow_with_the_graph_count(mode, go, tmp_path):
         assert many <= few + 16, (few, many)
     else:
         assert many <= few + 2 and many < 16, (few, many)
+
+
+#: Counts each axis's setv calls (one per change event) while the page
+#: loads.
+_SETV_JS = r"""
+window.__dashAxisSets = {}; window.__dashCountErr = null;
+document.addEventListener("DOMContentLoaded", () => {
+  try {
+    const H = Bokeh.require("core/has_props").HasProps;
+    const orig = H.prototype.setv;
+    H.prototype.setv = function (attrs, opts) {
+      if (this.type === "LinearAxis") {
+        window.__dashAxisSets[this.id] = (window.__dashAxisSets[this.id] || 0) + 1;
+      }
+      return orig.call(this, attrs, opts);
+    };
+  } catch (e) { window.__dashCountErr = String(e); }
+}, {capture: true});
+"""
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+def test_the_width_scale_sets_each_model_once(mode, tmp_path):
+    """The width scale (D66) sets a model's scaled values together, one
+    change event per model: set one by one, each value of a marker
+    label set re-rendered it and made the browser work out the page's
+    styles again (the gallery's scatter page, 11,174 sets on 2,761
+    models).  An axis's eleven scaled values reach it in one setv, where
+    they took five."""
+    spec = bk._spec([bk._graph("g%d" % i, bk._ONE, {}) for i in range(2)])
+    page = tmp_path / ("%s_setv.html" % mode)
+    page.write_text(bkb._page(mode, spec), encoding="utf-8")
+    blank = tmp_path / "blank.html"
+    blank.write_text("<html><body></body></html>", encoding="utf-8")
+    probe = dash_run.CorpusProbe(
+        str(blank), timeout=300,
+        ready="document.readyState === 'complete'").__enter__()
+    try:
+        probe._send("Page.addScriptToEvaluateOnNewDocument",
+                    {"source": _SETV_JS})
+        probe.navigate(str(page))
+        probe.eval_async(_SETTLE_JS)
+        assert probe._eval("window.__dashCountErr") is None
+        sets = probe._eval("window.__dashAxisSets")
+    finally:
+        probe.__exit__(None, None, None)
+    assert sets and max(sets.values()) == 1, sets
+
+
+#: Counts the CSS reads of BokehJS's visual overrides (``--bk-<visual>``):
+#: getComputedStyle(...).getPropertyValue("--bk-...").
+_BK_READS_JS = r"""
+window.__dashBkReads = 0;
+const dashOwnGet = CSSStyleDeclaration.prototype.getPropertyValue;
+CSSStyleDeclaration.prototype.getPropertyValue = function (name) {
+  if (typeof name === "string" && name.startsWith("--bk-")) {
+    window.__dashBkReads++;
+  }
+  return dashOwnGet.call(this, name);
+};
+"""
+
+_REPAINT_JS = r"""new Promise((resolve) => {
+  window.__dashBkReads = 0;
+  for (const v of Object.values(Bokeh.index)) {
+    if (typeof v.invalidate_layout === "function") { v.invalidate_layout(); }
+  }
+  setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(
+    () => resolve(window.__dashBkReads))), 100);
+})"""
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+def test_a_repaint_reads_no_visual_override_from_css(mode, tmp_path):
+    """BokehJS reads every colour, alpha and width it draws from the
+    element's computed style first (``--bk-line-color`` and the like),
+    which makes the browser work out the page's styles again whenever
+    the page has changed: 29 of the gallery scatter page's 49 s.  A dash
+    page defines no such property (test_no_page_defines_a_visual_override),
+    so once the page's callbacks have run, a layout and paint read none."""
+    spec = bk._spec([bk._graph("g%d" % i, bk._ONE, {}) for i in range(2)])
+    page = tmp_path / ("%s_bk.html" % mode)
+    page.write_text(bkb._page(mode, spec), encoding="utf-8")
+    blank = tmp_path / "blank.html"
+    blank.write_text("<html><body></body></html>", encoding="utf-8")
+    probe = dash_run.CorpusProbe(
+        str(blank), timeout=300,
+        ready="document.readyState === 'complete'").__enter__()
+    try:
+        probe._send("Page.addScriptToEvaluateOnNewDocument",
+                    {"source": _BK_READS_JS})
+        probe.navigate(str(page))
+        probe.eval_async(_SETTLE_JS)
+        reads = probe.eval_async(_REPAINT_JS)
+    finally:
+        probe.__exit__(None, None, None)
+    assert reads == 0, reads
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+def test_no_page_defines_a_visual_override(mode):
+    """What makes answering those reads with "" sound: neither dash's
+    styles nor BokehJS's own stylesheets on the page define a
+    ``--bk-...`` property (BokehJS's bundle names the prefix only, in
+    the template its visuals build their names from)."""
+    import re
+    spec = bk._spec([bk._graph("g0", bk._ONE, {"legend": "on",
+                                               "title": '"T"'})])
+    html = bkb._page(mode, spec)
+    defined = re.findall(r"--bk-[A-Za-z0-9_-]+\s*:", html)
+    assert defined == [], defined

@@ -752,7 +752,11 @@ _SAVED_DIGEST = (
     # old -> new: dc8ed22 -> c93ce93: WP-50 WE.7 the width scale sets a
     # graph's sizes inside dash_batch where it has no by() (callback JS
     # text only), the same under both Pythons.
-    "c93ce931b194d37b204c6d6f1da8de92f83508d12714e51c2219b7dd91833f5e")
+    # old -> new: c93ce93 -> 4e76d32: WP-50 WE.7 the width scale sets a
+    # model's values in one setv where it has no by(), and BokehJS's
+    # --bk- visual reads answer "" (callback JS text only), the same
+    # under both Pythons.
+    "4e76d32bde8f3fe3f0df9aff3e397b904ce6b61a98ccffcdd6b3dcb93ec478db")
 
 
 # ===========================================================================
