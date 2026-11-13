@@ -195,6 +195,12 @@ class TestPages:
         with pytest.raises(ValueError, match="f-6"):
             gallery.pages([_row("f-6", plottype="Scatter")])
 
+    def test_a_left_out_plot_type_gets_no_page(self):
+        """D78: contour's page held 107 MB, over GitHub's 100 MB file limit."""
+        assert gallery.LEFT_OUT == ("contour",)
+        p = gallery.pages([_row("a-1", plottype="contour"), _row("b-2")])
+        assert list(p) == ["scatter"]
+
 
 class TestCopySvgs:
 
@@ -213,6 +219,17 @@ class TestCopySvgs:
         tw = (out / "svg" / ("%s-twoway.svg" % a)).read_text(encoding="utf-8")
         assert 'id="d1"' in tw and "url(#d1)" in tw and "r9" not in tw
         assert (out / "svg" / ("%s-dash.svg" % a)).read_text(encoding="utf-8") == _DA_SVG
+
+    def test_no_svgs_for_a_left_out_plot_type(self, tmp_path):
+        run = _fake_run(tmp_path)
+        rows, _ = gallery.load_run(str(run))
+        a, b, _c = _IDS
+        {r["id"]: r for r in rows}[a]["example"]["plottype"] = "contour"
+        out = tmp_path / "out"
+        got = gallery.copy_svgs(rows, str(run), str(out))
+        assert a not in got and b in got
+        assert sorted(os.listdir(out / "svg")) == sorted(
+            ["%s-twoway.svg" % b, "%s-dash.svg" % b])
 
 
 class TestSetupFrames:
@@ -345,6 +362,92 @@ class TestPageParts:
         mixed = [rows[0], rows[1], _row("w-1", setup=["webuse nosuch, clear"]), rows[2]]
         parts = gallery.page_parts("scatter", mixed, cache, frame_limit=5)
         assert [p for p, _ in parts] == ["scatter"] and len(parts[0][1]) == 4
+
+
+def _ids(page_rows):
+    return {p: [r["id"] for r in rows] for p, rows in page_rows.items()}
+
+
+class TestResplit:
+    """D78: a plot type with a built page over the byte cap is split again."""
+
+    def test_pages_within_the_cap_stay(self, cache):
+        page_rows = {"line": [_row("l-1", plottype="line")], "scatter": [_row("s-1")]}
+        got, redo = gallery.resplit(page_rows, {"line": 200, "scatter": 900}, cache, cap=1000)
+        assert redo == set() and _ids(got) == _ids(page_rows)
+
+    def test_an_over_cap_type_is_split_by_its_bytes_a_row(self, cache):
+        # base 200 (the smallest page), 100 bytes a row; 0.9 * cap - base = 700.
+        rows = [_row("s-%02d" % k) for k in range(10)]
+        page_rows = {"line": [_row("l-1", plottype="line")], "scatter": rows}
+        got, redo = gallery.resplit(page_rows, {"line": 200, "scatter": 1200}, cache,
+                                    cap=1000)
+        assert redo == {"scatter"}
+        assert list(got) == ["line", "scatter", "scatter-2"]
+        assert _ids(got)["scatter"] == ["s-%02d" % k for k in range(7)]
+        assert _ids(got)["scatter-2"] == ["s-07", "s-08", "s-09"]
+        assert got["line"] is page_rows["line"]
+
+    def test_parts_are_joined_and_renumbered_in_order(self, cache):
+        page_rows = {"scatter": [_row("s-%02d" % k) for k in range(4)],
+                     "scatter-2": [_row("s-%02d" % k) for k in range(4, 8)],
+                     "zline": [_row("z-1", plottype="line")]}
+        sizes = {"scatter": 600, "scatter-2": 1400, "zline": 200}
+        got, redo = gallery.resplit(page_rows, sizes, cache, cap=1000)
+        assert redo == {"scatter"} and list(got)[-1] == "zline"
+        flat = [i for p in got if p != "zline" for i in _ids(got)[p]]
+        assert flat == ["s-%02d" % k for k in range(8)]
+        assert [p for p in got if p != "zline"] == [
+            "scatter"] + ["scatter-%d" % k for k in range(2, len(got))]
+        assert len(got) - 1 > 2
+
+    def test_a_lone_page_is_split_and_frames_still_bound_a_part(self, cache):
+        # One page: the base is at most a quarter of the cap, so it splits.
+        rows = [_row("r-%d" % k, setup=["sysuse s%d, clear" % k]) for k in range(1, 7)]
+        got, redo = gallery.resplit({"scatter": rows}, {"scatter": 2000}, cache, cap=1000,
+                                    frame_limit=4)
+        assert redo == {"scatter"}
+        assert all(len(rs) <= 2 for rs in got.values())
+        assert [i for p in got for i in _ids(got)[p]] == ["r-%d" % k for k in range(1, 7)]
+
+    def test_one_row_over_the_cap_cannot_be_split(self, cache):
+        with pytest.raises(ValueError, match="scatter-2"):
+            gallery.resplit({"scatter": [_row("a-1")], "scatter-2": [_row("b-2")]},
+                            {"scatter": 200, "scatter-2": 5000}, cache, cap=1000)
+
+
+class TestBuildCapped:
+
+    def test_rebuilds_only_the_split_type_until_every_page_fits(self, tmp_path, cache,
+                                                                  monkeypatch):
+        """A fake build writes <page>.html of 200 bytes and 100 a row; the
+        row cost is uneven (s-00 costs 500), so a second round splits again."""
+        out = tmp_path / "out"
+        out.mkdir()
+        calls = []
+
+        def fake_build(page_rows, run_dir, out_dir, repo, jobs=3):
+            calls.append(sorted(page_rows))
+            got = {}
+            for page, rows in page_rows.items():
+                n = 200 + sum(500 if r["id"] == "s-00" else 100 for r in rows)
+                (out / ("%s.html" % page)).write_bytes(b"x" * n)
+                got[page] = {"log": {"build": 0}, "shown": {r["id"]: "live" for r in rows}}
+            return got
+        monkeypatch.setattr(gallery, "build_pages", fake_build)
+        rows = [_row("s-%02d" % k) for k in range(12)]
+        page_rows = {"line": [_row("l-1", plottype="line")], "scatter": rows}
+        got, built = gallery.build_capped(page_rows, str(tmp_path / "run"), str(out),
+                                          "/repo", 2, cache, cap=1000)
+        assert calls[0] == ["line", "scatter"]
+        assert all(c and all(p.startswith("scatter") for p in c) for c in calls[1:])
+        assert len(calls) >= 2
+        assert set(built) == set(got)
+        assert [i for p in got if p != "line" for i in _ids(got)[p]] == [
+            "s-%02d" % k for k in range(12)]
+        on_disk = sorted(f[:-5] for f in os.listdir(out) if f.endswith(".html"))
+        assert on_disk == sorted(got)
+        assert all(os.path.getsize(out / ("%s.html" % p)) <= 1000 for p in got)
 
 
 class TestParsePageLog:
@@ -495,6 +598,25 @@ class TestCorpusJson:
         assert text.endswith("}\n") and json.loads(text) == corpus
         assert text.startswith('{\n  "_meta"')
 
+    def test_a_left_out_example_keeps_its_comparison_off_the_gallery(self, tmp_path, cache):
+        """D78: the example stays in corpus.json with its verdict; gallery
+        false, on no page, no SVGs, and out of the gallery count."""
+        run = _fake_run(tmp_path)
+        rows, _ = gallery.load_run(str(run))
+        a, b, _c = _IDS
+        {r["id"]: r for r in rows}[a]["example"]["plottype"] = "contour"
+        out = tmp_path / "out"
+        svgs = gallery.copy_svgs(rows, str(run), str(out))
+        corpus = gallery.corpus_json(rows, {b: ("live", "scatter")}, svgs,
+                                     {"generated": "13nov2026"}, str(out))
+        by = {e["id"]: e for e in corpus["examples"]}
+        assert by[a]["verdict"] == "Close" and by[a]["gallery"] is False
+        assert by[a]["shown"] is None and by[a]["page"] is None
+        assert by[a]["twoway_svg"] is None and by[a]["dash_svg"] is None
+        n = corpus["_meta"]["counts"]
+        assert n["examples"] == 2 and n["gallery"] == 1
+        assert n["live"] + n["static"] + n["refused_shown"] == n["gallery"]
+
 
 class _StubProbe:
 
@@ -638,11 +760,13 @@ class TestReadmeCandidates:
         corpus, root = _cand_corpus(tmp_path, {})
         got = gallery.readme_candidates(corpus, root)
         assert list(got) == ["scatter", "line", "connected", "fit", "by()", "histogram",
-                             "kdensity", "bar", "area", "pcarrow", "contour", "colorvar()"]
+                             "kdensity", "bar", "area", "pcarrow", "colorvar()"]
         assert got["scatter"] == ["h-a", "h-e", "h-b"]
         assert got["fit"] == ["h-c"] and got["by()"] == ["h-b"]
-        assert got["colorvar()"] == ["h-e"] and got["contour"] == ["h-d"]
+        assert got["colorvar()"] == ["h-e"]
         assert got["bar"] == []
+        # D78: contour is left out of the gallery, so never a README pair.
+        assert not any("h-d" in ids for ids in got.values())
 
     def test_only_fully_vector_dash_svgs(self, tmp_path):
         legend_key = ('<svg><image href="data:image/svg+xml;base64,%s"/></svg>'
@@ -705,6 +829,10 @@ class TestMain:
 
         def fake_run_page(page_dir):
             rc = 198 if os.path.basename(page_dir) == "_index" else 0
+            if not rc:  # a built page is written as dash build writes it
+                with open(os.path.join(os.path.dirname(page_dir), "out", "%s.html"
+                                       % os.path.basename(page_dir)), "w") as fh:
+                    fh.write("<html></html>")
             return {"frames": {}, "images": {}, "graphs": {}, "static": {}, "build": rc,
                     "error": "r(198);" if rc else None}
         monkeypatch.setattr(gallery, "run_page", fake_run_page)
@@ -821,6 +949,21 @@ class TestTheCommittedGallery:
         for e in corpus["examples"]:
             assert set(e["ledger"] or []) <= known, e["id"]
             assert (e["shown"] == "static") == bool(e["missing"]), e["id"]
+
+    def test_every_file_fits_github_and_no_left_out_type_is_paged(self):
+        """D78: every committed gallery file is within the byte cap (GitHub
+        refuses a file over 100 MB), and no page is of a left-out plot type."""
+        files = _git_ls("docs/gallery")
+        for f in files:
+            assert os.path.getsize(os.path.join(_ROOT, f)) <= gallery.PAGE_BYTES_MAX, f
+        if not _git_ls("docs/gallery/corpus.json"):
+            return
+        with open(os.path.join(_ROOT, "docs", "gallery", "corpus.json"), encoding="utf-8") as fh:
+            corpus = json.load(fh)
+        assert not {p.split("-")[0] for p in corpus["_meta"]["pages"]} & set(gallery.LEFT_OUT)
+        for e in corpus["examples"]:
+            if e["plottype"] in gallery.LEFT_OUT:
+                assert not e["gallery"] and e["page"] is None, e["id"]
 
     def test_the_readme_block_is_the_generated_one(self):
         with open(os.path.join(_ROOT, "README.md"), encoding="utf-8") as fh:

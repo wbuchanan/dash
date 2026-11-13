@@ -7,9 +7,10 @@
 
 Reads the run's examples.jsonl, twoway.jsonl, dash.jsonl and verdicts.jsonl
 and writes, into a staging folder <run>/gallery/out/ first: svg/<id>-twoway.svg
-and svg/<id>-dash.svg for every example twoway draws; one dash page per plot
-type, <plottype>.html (in parts <plottype>-2.html, ... only when one Stata
-session cannot hold its rows or frames), each row twoway's SVG in an image
+and svg/<id>-dash.svg for every example twoway draws but those of a plot type
+in LEFT_OUT; one dash page per plot type, <plottype>.html (in parts
+<plottype>-2.html, ... when one Stata session cannot hold its rows or frames,
+or when a built page is over PAGE_BYTES_MAX), each row twoway's SVG in an image
 panel beside the live dash graph drawn in the frame of its own setup; and
 index.html, whose panels link to the pages.  Each page is one `dash build'
 in its own Stata session through scripts/stata_slot.sh.  Every page is timed
@@ -23,6 +24,13 @@ FRAME_LIMIT: measured 22oct2026, one Stata session created 99 frames besides
 `default' (100 in all), so a page holds at most FRAME_LIMIT - 2 setup frames
 with a live graph (one for `default', one for the stack frame dash build
 makes) and a plot type with more setups is built in parts.
+
+PAGE_BYTES_MAX and LEFT_OUT (DECISIONS D78, 13nov2026, in place of P5-3's
+"nothing split on size"): the gallery is committed to GitHub and served by
+GitHub Pages, which refuse a file over 100 MB.  A built page over the cap is
+split again by its bytes a row and its plot type rebuilt (build_capped).
+contour is left out: its 16 examples made a 107 MB page, each twoway SVG
+5.6 MB; corpus.json keeps their comparison, on no page.
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -49,6 +57,13 @@ FRAME_LIMIT = 100
 #: Rows on one page: 2 cells and at most 2 image panels a row, within the
 #: page's $dash_max_graphs and $dash_max_images of 1000.
 ROWS_PER_PART = 500
+#: Bytes a gallery file may hold (D78): GitHub refuses a file over 100 MB and
+#: warns over 50 MB; a 10 MB page loads in about 10 s.
+PAGE_BYTES_MAX = 10 * 1000 * 1000
+#: Plot types the gallery leaves out (D78).
+LEFT_OUT = ("contour",)
+#: Rounds of build_capped's re-splitting before it gives up.
+SPLIT_ROUNDS = 5
 CAPTION_MAX = 400
 ALT_MAX = 200
 START = "<!-- dash-gallery:start -->"
@@ -57,7 +72,7 @@ END = "<!-- dash-gallery:end -->"
 TWO_FRAMES_JS = "new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))"
 #: README candidates' groups, in order (D-33-08.k).
 GROUPS = ("scatter", "line", "connected", "fit", "by()", "histogram", "kdensity", "bar",
-          "area", "pcarrow", "contour", "colorvar()")
+          "area", "pcarrow", "colorvar()")
 _FITS = ("lfit", "lfitci", "qfit", "qfitci")
 _PLACEHOLDER = "__dash_gallery_name__"
 
@@ -114,11 +129,17 @@ def with_name(cmd, name):
         'saving("%s", replace)' % _PLACEHOLDER, "name(%s)" % name)
 
 
+def on_gallery(row):
+    """True for a row twoway draws (verdict gallery true) of a plot type not left out."""
+    return bool(row["verdict"].get("gallery")) and (
+        row["example"].get("plottype") not in LEFT_OUT)
+
+
 def pages(rows):
-    """{plottype: rows} of the rows twoway draws (verdict gallery true), id order."""
+    """{plottype: rows} of the rows on the gallery (on_gallery), id order."""
     out = {}
     for r in sorted(rows, key=lambda r: r["id"]):
-        if not r["verdict"].get("gallery"):
+        if not on_gallery(r):
             continue
         pt = r["example"].get("plottype") or ""
         if not _PLOTTYPE_RE.match(pt):
@@ -171,6 +192,75 @@ def page_parts(page, rows, cache, frame_limit=FRAME_LIMIT):
     if cur:
         parts.append(cur)
     return [(page if k == 0 else "%s-%d" % (page, k + 1), p) for k, p in enumerate(parts)]
+
+
+def _plottype(page):
+    return page.split("-")[0]
+
+
+def resplit(page_rows, sizes, cache, cap=PAGE_BYTES_MAX, frame_limit=FRAME_LIMIT):
+    """(page_rows split again, {plot types split}) for built pages of *sizes*
+    ({page: bytes}) over *cap* (D78).  A page's fixed bytes are taken as the
+    smallest page's, at most a quarter of the cap; the rest is shared evenly
+    by its rows.  Each plot type with a page over the cap has its rows, in
+    order, cut where a part would pass 90% of the cap, each cut then held to
+    page_parts' rules, and its parts renumbered.  ValueError for a page of
+    one row over the cap."""
+    base = min(min(sizes.values()), cap // 4)
+    redo = set()
+    for page, rows in page_rows.items():
+        if sizes[page] > cap:
+            if len(rows) < 2:
+                raise ValueError("gallery: %s.html holds one example in %d bytes, over "
+                                 "the %d-byte cap" % (page, sizes[page], cap))
+            redo.add(_plottype(page))
+    if not redo:
+        return dict(page_rows), redo
+    out = {}
+    for pt in dict.fromkeys(_plottype(p) for p in page_rows):
+        mine = [(p, rows) for p, rows in page_rows.items() if _plottype(p) == pt]
+        if pt not in redo:
+            out.update(mine)
+            continue
+        cuts, cur, used = [], [], 0.0
+        for p, rows in mine:
+            each = max(sizes[p] - base, 0) / len(rows)
+            for r in rows:
+                if cur and base + used + each > 0.9 * cap:
+                    cuts.append(cur)
+                    cur, used = [], 0.0
+                cur.append(r)
+                used += each
+        cuts.append(cur)
+        parts = [rows for cut in cuts
+                 for _name, rows in page_parts(pt, cut, cache, frame_limit)]
+        out.update((pt if k == 0 else "%s-%d" % (pt, k + 1), rows)
+                   for k, rows in enumerate(parts))
+    return out, redo
+
+
+def build_capped(page_rows, run_dir, out_dir, repo, jobs, cache, cap=PAGE_BYTES_MAX):
+    """Build every page, then split again and rebuild each plot type with a
+    page over *cap* until every page fits (D78); (page_rows, build_pages'
+    {page: {log, shown}})."""
+    built = build_pages(page_rows, run_dir, out_dir, repo, jobs)
+    for rnd in range(SPLIT_ROUNDS + 1):
+        sizes = {p: os.path.getsize(os.path.join(out_dir, p + ".html")) for p in page_rows}
+        new, redo = resplit(page_rows, sizes, cache, cap)
+        if not redo:
+            return page_rows, built
+        if rnd == SPLIT_ROUNDS:
+            break
+        for p in page_rows:
+            if _plottype(p) in redo:
+                os.remove(os.path.join(out_dir, p + ".html"))
+                del built[p]
+        page_rows = new
+        print("gallery: split %s again, over %d bytes a page" % (", ".join(sorted(redo)), cap))
+        built.update(build_pages({p: r for p, r in page_rows.items() if _plottype(p) in redo},
+                                 run_dir, out_dir, repo, jobs))
+    raise RuntimeError("gallery: a page is still over %d bytes after %d rounds"
+                       % (cap, SPLIT_ROUNDS))
 
 
 # ---- texts --------------------------------------------------------------------
@@ -397,7 +487,7 @@ def copy_svgs(rows, run_dir, out_dir):
     os.makedirs(svg, exist_ok=True)
     out = {}
     for r in rows:
-        if not r["verdict"].get("gallery"):
+        if not on_gallery(r):
             continue
         i, got = r["id"], {"twoway_svg": None, "dash_svg": None}
         src = r["twoway"].get("svg")
@@ -509,7 +599,7 @@ def corpus_json(rows, shown, svgs, meta, root):
             "verdict": v.get("verdict"), "summary": v.get("summary"),
             "checks": v.get("checks"), "differences": v.get("differences"),
             "ledger": v.get("ledger"), "ssim": v.get("ssim"),
-            "size_matched": v.get("size_matched"), "gallery": bool(v.get("gallery")),
+            "size_matched": v.get("size_matched"), "gallery": on_gallery(r),
             "shown": kind, "page": page, "twoway_svg": paths.get("twoway_svg"),
             "dash_svg": paths.get("dash_svg"), "dash_svg_vector": vector,
             "missing": (datasets.rewrite_setup(e.get("setup") or [], cache)[1]
@@ -520,7 +610,7 @@ def corpus_json(rows, shown, svgs, meta, root):
         rc_tw, rc_da = v.get("rc_twoway"), v.get("rc_dash")
         if not v.get("skip") and rc_tw == 0 and rc_da not in (0, None):
             n["refused_dash"] += 1
-        n["gallery"] += bool(v.get("gallery"))
+        n["gallery"] += on_gallery(r)
         if kind is not None:
             n["refused_shown" if kind == "refused" else kind] += 1
     m = dict(meta)
@@ -597,8 +687,7 @@ def replace_block(readme_text, block):
 def _groups_of(e):
     pt, cmd = e.get("plottype") or "", e.get("command") or ""
     g = []
-    if pt in ("scatter", "line", "connected", "histogram", "kdensity", "bar", "pcarrow",
-              "contour"):
+    if pt in ("scatter", "line", "connected", "histogram", "kdensity", "bar", "pcarrow"):
         g.append(pt)
     if pt in _FITS or re.search(r"\b(?:%s)\b" % "|".join(_FITS), cmd):
         g.append("fit")
@@ -616,7 +705,8 @@ def readme_candidates(corpus, root):
     out = {g: [] for g in GROUPS}
     keyed = []
     for e in corpus["examples"]:
-        if not e.get("gallery") or e.get("source") != "help" or e.get("dash_svg_vector") is not True:
+        if (not e.get("gallery") or e.get("plottype") in LEFT_OUT or e.get("source") != "help"
+                or e.get("dash_svg_vector") is not True):
             continue
         small = all(e.get(k) and os.path.exists(os.path.join(root, e[k]))
                     and os.path.getsize(os.path.join(root, e[k])) < 300 * 1024
@@ -685,7 +775,7 @@ def main(argv=None):
                                REPO)[1]
             shown.update({i: (k, page) for i, k in kinds.items()})
     else:
-        built = build_pages(page_rows, run_dir, out_dir, REPO, a.jobs)
+        page_rows, built = build_capped(page_rows, run_dir, out_dir, REPO, a.jobs, cache)
         flat = {}
         for page, b in built.items():
             flat.update(b["shown"])
@@ -695,6 +785,8 @@ def main(argv=None):
         parsed = run_page(idx)
         if parsed["build"] != 0:
             raise _failed("index", parsed)
+        if os.path.getsize(os.path.join(out_dir, "index.html")) > PAGE_BYTES_MAX:
+            raise RuntimeError("gallery: index.html is over %d bytes" % PAGE_BYTES_MAX)
         print("gallery: index.html built (%d pages)" % len(page_rows))
         files = [os.path.join(out_dir, p + ".html") for p in page_rows]
         load_s = measure_load(files + [os.path.join(out_dir, "index.html")])
