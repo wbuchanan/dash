@@ -317,9 +317,20 @@ class _StubProbe:
     def errors_since(self, n):
         return ["old error"][n:]
 
+    #: What the quiet wait answers (a test sets False: the page never settles).
+    quiet = True
+
     def eval_async(self, expr):
         if self.page == "bad.html":
             raise RuntimeError("the page did not load")
+        for name in ("LAYOUT_CLOCK_JS", "QUIET_JS", "SIZE_JS", "EXPORT_JS", "DUMP_JS"):
+            if expr.startswith("(" + getattr(dash_run, name, "\0")):
+                self.calls.append(("eval", name))
+                break
+        if expr.startswith("(" + getattr(dash_run, "LAYOUT_CLOCK_JS", "\0")):
+            return True
+        if expr.startswith("(" + getattr(dash_run, "QUIET_JS", "\0")):
+            return {"quiet": self.quiet, "waited_ms": 400}
         if expr.startswith("(" + dash_run.SIZE_JS):
             return {"lone": True, "tex": False}
         if expr.startswith("(" + dash_run.EXPORT_JS):
@@ -331,6 +342,27 @@ class _StubProbe:
 
 
 class TestExport:
+
+    def test_the_export_waits_for_the_layouts_to_stop(self, tmp_path, monkeypatch):
+        """WP-50 WE: a page lays itself out over several ticks after it is
+        sized (the layout queue); under load a fixed settle time ended
+        mid-layout and the export read a plot region on its way (the
+        cert guard's by() contour example, frame_aspect).  The exporter
+        starts a layout clock on the loaded page, and after the settle
+        time waits until no layout has run for QUIET_MS before the
+        export; a page that never settles is an export error."""
+        monkeypatch.setattr(dash_run, "SETTLE_S", (0.0, 0.0))
+        p = _StubProbe()
+        dash_run.export_page(p, str(tmp_path / "good.html"), 720, 432)
+        evals = [c[1] for c in p.calls if c[0] == "eval"]
+        assert evals == ["LAYOUT_CLOCK_JS", "SIZE_JS", "QUIET_JS", "EXPORT_JS", "DUMP_JS"]
+        assert p.calls.index(("navigate", "good.html")) < p.calls.index(
+            ("eval", "LAYOUT_CLOCK_JS"))
+        assert dash_run.QUIET_MS >= 300 and dash_run.QUIET_MAX_S >= 10
+        p = _StubProbe()
+        p.quiet = False
+        with pytest.raises(RuntimeError, match="kept laying"):
+            dash_run.export_page(p, str(tmp_path / "good.html"), 720, 432)
 
     def test_a_keyed_figure_exports_its_row(self):
         """WP-42 CV-3 (TR-42-03.3): a figure with its colour key cell (a
@@ -463,6 +495,28 @@ class TestInChrome:
             assert p._eval("document.title") == "one"
             assert p.navigate(str(two), ready=ready) == "two"
             assert p.errors_since(0) == []
+
+    def test_the_quiet_wait_outlasts_a_page_still_laying_out(self, tmp_path):
+        """QUIET_JS resolves only once no layout has run for its quiet
+        time: a page that lays its root out every 100 ms for 1.2 s after
+        the clock starts is waited for to the end."""
+        page = _page(tmp_path, _two_scatters())
+        with dash_run.CorpusProbe(page, timeout=120) as p:
+            assert p.eval_async("(%s)()" % dash_run.LAYOUT_CLOCK_JS) is True
+            p.eval_async("""new Promise((r) => {
+              const roots = Object.values(Bokeh.index);
+              const t0 = performance.now();
+              const id = setInterval(() => {
+                if (performance.now() - t0 > 1200) { clearInterval(id); return; }
+                for (const v of roots) {
+                  if (typeof v.invalidate_layout === "function") { v.invalidate_layout(); }
+                }
+              }, 100);
+              r(true);
+            })""")
+            got = p.eval_async("(%s)(400, 10000)" % dash_run.QUIET_JS)
+        assert got["quiet"] is True, got
+        assert got["waited_ms"] >= 1200, got
 
     def test_a_lone_figure_at_twoways_size(self, tmp_path):
         page = _page(tmp_path, _two_scatters())

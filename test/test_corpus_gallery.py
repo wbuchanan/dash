@@ -195,6 +195,11 @@ class TestPages:
         with pytest.raises(ValueError, match="f-6"):
             gallery.pages([_row("f-6", plottype="Scatter")])
 
+    def test_on_gallery_is_drawn_by_twoway_and_not_left_out(self):
+        assert gallery.on_gallery(_row("a-1"))
+        assert not gallery.on_gallery(_row("b-2", gallery_=False))
+        assert not gallery.on_gallery(_row("c-3", plottype="contour"))
+
     def test_a_left_out_plot_type_gets_no_page(self):
         """D78: contour's page held 107 MB, over GitHub's 100 MB file limit."""
         assert gallery.LEFT_OUT == ("contour",)

@@ -1381,6 +1381,7 @@ FUNCTIONS = {
  '_dash_area_ring': 'test/test_area_outline.py::TestTheRing::test_the_helper',
  '_dash_area_ring_write': 'test/test_area_outline.py::TestTheRing::test_the_finish_rewrites_the_ring',
  '_dash_base_spec': 'test/test_bar_range_geometry.py::TestTheBaseSpec::test_reads_only_well_formed_tags',
+ '_dash_batched_js': 'test/test_layout_batch_js.py::test_the_batched_scripts_wrap_their_code',
  '_dash_finish_auto_bases': 'test/test_bar_range_geometry.py::TestTheFill::test_clamps_zero_into_the_scale',
  # WP-30 S28 (P1.15a): by() panel labels and overall text (P1.15 part a)
  '_dash_by_chrome': 'test/test_by_text.py::TestTheChromeCells::test_head_and_foot',

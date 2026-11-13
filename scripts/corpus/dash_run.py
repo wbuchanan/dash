@@ -42,6 +42,43 @@ JSONL_KEYS = ROW_KEYS + CHROME_KEYS
 
 #: Seconds a page settles after it is sized: (plain, a page holding TeX).
 SETTLE_S = (1.5, 2.5)
+#: After the settle time the export waits until no layout has run for
+#: QUIET_MS, for at most QUIET_MAX_S (WP-50 WE): a page lays itself out
+#: over several ticks after it is sized (the page's layout queue), and
+#: under load a fixed settle time ended mid-layout.
+QUIET_MS = 400
+QUIET_MAX_S = 30
+#: Starts the layout clock on a loaded page: every BokehJS layout stamps
+#: window.__dashLastLayout.  True once it runs, false without BokehJS's
+#: layout class (the wait then has nothing to wait for).
+LAYOUT_CLOCK_JS = r"""() => {
+  window.__dashLastLayout = performance.now();
+  try {
+    const L = Bokeh.require("models/layouts/layout_dom").LayoutDOMView;
+    if (!L.prototype.__dashLayoutClock) {
+      const own = L.prototype.compute_layout;
+      L.prototype.compute_layout = function (...a) {
+        window.__dashLastLayout = performance.now();
+        return own.apply(this, a);
+      };
+      L.prototype.__dashLayoutClock = true;
+    }
+    return true;
+  } catch (e) { return false; }
+}"""
+#: (quiet ms, max ms) -> {quiet, waited_ms}: resolves once no layout has
+#: run for the quiet time (quiet true) or the max has passed (false).
+QUIET_JS = r"""(q, max) => new Promise((resolve) => {
+  const t0 = performance.now();
+  const tick = () => {
+    const now = performance.now();
+    const last = typeof window.__dashLastLayout === "number" ? window.__dashLastLayout : t0;
+    if (now - last >= q) { resolve({quiet: true, waited_ms: Math.round(now - t0)}); }
+    else if (now - t0 >= max) { resolve({quiet: false, waited_ms: Math.round(now - t0)}); }
+    else { setTimeout(tick, 50); }
+  };
+  tick();
+})"""
 #: A held Chrome is restarted after this many pages.
 PAGES_PER_CHROME = 100
 #: px per inch, the factor dash's _dash_apply_frame_aspect uses.
@@ -601,11 +638,16 @@ def export_page(probe, path, w, h):
     n0 = len(probe.js_errors())
     probe.viewport(None, None)
     probe.navigate(path)
+    probe.eval_async("(%s)()" % LAYOUT_CLOCK_JS)
     info = probe.eval_async("(%s)(%d, %d)" % (SIZE_JS, w, h)) or {}
     lone = bool(info.get("lone"))
     if not lone:
         probe.viewport(w, 2000)
     time.sleep(SETTLE_S[1] if info.get("tex") else SETTLE_S[0])
+    q = probe.eval_async("(%s)(%d, %d)" % (QUIET_JS, QUIET_MS, QUIET_MAX_S * 1000)) or {}
+    if not q.get("quiet"):
+        raise RuntimeError("the page kept laying out for %d s after it was sized"
+                           % QUIET_MAX_S)
     svg = probe.eval_async("(%s)()" % EXPORT_JS)
     if not svg:
         raise RuntimeError("the export returned no SVG")
