@@ -236,7 +236,11 @@ log using "`nc_log'", name(_dashnc) text replace
 capture noisily dash scatter mpg weight, mcolor(notacolor) saving("`nc_page'", replace)
 local nc_rc0 = _rc
 log close _dashnc
-mata: st_local("nc_d", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+// Flipped (WP-49 LT-25): the colour note is printed as twoway prints it,
+// "(note:  named style notacolor not found in class color, default
+// attributes used)", with no "dash:" (noted_option_truth.json lt25
+// R_tcol), so the note lines are counted by "(note:  ".
+mata: st_local("nc_d", strofreal(_rlc_count(st_local("nc_log"), "(note:  ")))
 python: import warnings as _nc_w
 python: _nc_cm = _nc_w.catch_warnings()
 python: _nc_cm.__enter__()
@@ -246,7 +250,7 @@ capture noisily dash scatter mpg weight, mcolor(notacolor) saving("`nc_page'", r
 local nc_rc1 = _rc
 log close _dashnc
 python: _nc_cm.__exit__(None, None, None)
-mata: st_local("nc_i", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+mata: st_local("nc_i", strofreal(_rlc_count(st_local("nc_log"), "(note:  ")))  // Flipped (WP-49 LT-25): as nc_d
 if `nc_rc0' == 0 & `nc_rc1' == 0 & `nc_d' >= 1 & `nc_i' == `nc_d' {
     display as text "NC-03 PASS: `nc_d' note line(s) by default and `nc_i' under an ignore filter"
 }
@@ -264,7 +268,7 @@ capture noisily dash scatter mpg weight, mcolor(notacolor) saving("`nc_page'", r
 local nc_rc2 = _rc
 log close _dashnc
 python: _nc_cm.__exit__(None, None, None)
-mata: st_local("nc_e", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+mata: st_local("nc_e", strofreal(_rlc_count(st_local("nc_log"), "(note:  ")))  // Flipped (WP-49 LT-25): as nc_d
 if `nc_rc2' == 0 & `nc_d' >= 1 & `nc_e' == `nc_d' {
     display as text "NC-04 PASS: rc 0 and `nc_e' note line(s) under an error filter"
 }
@@ -291,7 +295,7 @@ local nc_rc3 = _rc
 log close _dashnc
 mata: st_local("nc_uw", strofreal(_rlc_count(st_local("nc_log"), "User" + "Warning")))
 mata: st_local("nc_pa", strofreal(_rlc_count(st_local("nc_log"), "dash_render.py:")))
-mata: st_local("nc_n5", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+mata: st_local("nc_n5", strofreal(_rlc_count(st_local("nc_log"), "(note:  ")))  // Flipped (WP-49 LT-25): as nc_d
 if `nc_rc3' == 0 & `nc_uw' == 0 & `nc_pa' == 0 & `nc_n5' >= 2 {
     display as text "NC-05 PASS: `nc_n5' note lines, no Python warning and no path"
 }
@@ -308,7 +312,7 @@ local nc6_bad ""
 log using "`nc_log'", name(_dashnc) text replace
 quietly dash dot mpg weight, mcolor(notacolor) dlpattern(dash) saving("`nc_page'", replace)
 log close _dashnc
-mata: st_local("nc_qa", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+mata: st_local("nc_qa", strofreal(_rlc_count(st_local("nc_log"), "(note:  ")))  // Flipped (WP-49 LT-25): as nc_d
 mata: st_local("nc_qi", strofreal(_rlc_count(st_local("nc_log"), "ignoring unsupported option(s): dlpattern()")))
 if !(`nc_qa' >= 2 & `nc_qi' >= 1) {
     local nc6_bad "`nc6_bad' (a) quietly: `nc_qa' note line(s), `nc_qi' naming dlpattern();"

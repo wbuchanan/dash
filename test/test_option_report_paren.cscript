@@ -73,10 +73,14 @@ end
 // Flipped (WP-42 AX-12): zmtick() is drawn on the colour key and taken in
 // silence; titling, a graph option twoway takes and dash names in both
 // modes, is the example.
+// Flipped (WP-49 basic:PT-12): titling inside a plot is taken in silence
+// on every type, as twoway draws the same picture with it and prints nothing (noted_option_truth.json probes); logging, a graph setting dash names on contour
+// (twoway's picture differs there), is the example of comma mode.  After
+// the plot groups' comma (case 2) titling is still named.
 sysuse auto, clear
 dash clear
-_dash_note_for `"dash scatter mpg weight, name(c1) titling"' "`logfile'"
-cert_file_has "`logfile'", needle("titling")
+_dash_note_for `"dash contour mpg weight price, name(c1) logging"' "`logfile'"
+cert_file_has "`logfile'", needle("logging")
 assert r(found) == 1
 
 display as result "  [1/4] comma mode names it: PASS"
@@ -116,10 +120,12 @@ display as result "  [3/4] an argument is not reported as options: PASS"
 // ---------------------------------------------------------------
 // Flipped: WP-35 syn:SD-3 -- p1() is drawn now, so a noted option with a several-word value is used.
 dash clear
-_dash_note_for `"dash scatter mpg weight, name(q1) zvarlabel("a (b") titling"' "`logfile'"
+// Flipped (WP-49 basic:PT-12): titling is taken in silence on scatter
+// (twoway draws the same picture with it and prints nothing (noted_option_truth.json probes)); omitanymiss, which dash names on scatter, is the second word.
+_dash_note_for `"dash scatter mpg weight, name(q1) zvarlabel("a (b") omitanymiss"' "`logfile'"
 cert_file_has "`logfile'", needle("zvarlabel()")
 assert r(found) == 1
-cert_file_has "`logfile'", needle("titling")
+cert_file_has "`logfile'", needle("omitanymiss")
 assert r(found) == 1
 
 display as result "  [4/4] several unsupported options are all named: PASS"

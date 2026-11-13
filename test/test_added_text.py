@@ -179,12 +179,21 @@ class TestTheOptions:
         seen = set()
         # Flipped: width() is drawn (WP-43 LT-20); angle() is a sub-option
         # dash still names once and does not draw.
+        # Flipped (WP-49 basic:PT-12): angle() is taken in silence, as
+        # twoway draws the same picture with it and prints nothing
+        # (noted_option_truth.json sub_probes text(30 3000 "x", angle(45)));
+        # drawview(), which dash does not draw and no silent row holds, is
+        # the word named once.
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            o = dr._dash_added_text_opts("angle(5)", seen, "g1")
-            dr._dash_added_text_opts("angle(5)", seen, "g1")
+            o = dr._dash_added_text_opts("drawview(yes)", seen, "g1")
+            dr._dash_added_text_opts("drawview(yes)", seen, "g1")
         assert all(v is None for v in o.values()), o
-        assert sum("angle" in str(x.message) for x in w) == 1
+        assert sum("drawview" in str(x.message) for x in w) == 1
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            dr._dash_added_text_opts("angle(5)", set(), "g1")
+        assert not [x for x in w if "angle" in str(x.message)]
 
 
 # ---------------------------------------------------------------------------

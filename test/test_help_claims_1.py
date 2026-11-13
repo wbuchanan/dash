@@ -909,12 +909,16 @@ def test_a_textbox_suboption_dash_lacks_is_named(option):
     had no test of their own."""
     # Flipped (WP-43 LT-18): orientation() is drawn on these four now;
     # astextbox is a textbox sub-option dash still lacks.
+    # Flipped (WP-49 basic:PT-12): astextbox is taken in silence on title(),
+    # as twoway draws the same picture with it and prints nothing
+    # (noted_option_truth.json sub_probes title("T", astextbox)); drawview,
+    # which no silent row holds, is the word named, on all four.
     spec = tp._spec([plot_for("scatter")],
-                    graph_options={option: "T, astextbox"})
+                    graph_options={option: "T, drawview"})
     std_w, srv_w = _warned(spec)
     for where, ws in (("saved", std_w), ("served", srv_w)):
         hits = [w for w in ws if f"dash: {option}() sub-option(s) not "
-                f"implemented and ignored: astextbox" in w]
+                f"implemented and ignored: drawview" in w]
         assert len(hits) == 1, (where, ws)
 
 

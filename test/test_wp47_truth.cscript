@@ -887,7 +887,9 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w47_run' {
     }
     _q4704_run g1 "scatter mpg weight in 1/10, bmsize(3)"
     cert_log_has "${q4704_dir}/q4704_g1.log", needle("unsupported option(s): bmsize()")
-    _w47_expect Q4704-3 "(${q4704_rc_g1} == 0 & r(found) == 1)" "scatter bmsize(3): rc ${q4704_rc_g1}, bmsize() not named"
+    // Flipped (WP-49 basic:PT-12): off the arrows bmsize() is taken in
+    // silence, as twoway draws the same picture with it and prints nothing (noted_option_truth.json probes bmsize(large), bmsize(small)).
+    _w47_expect Q4704-3 "(${q4704_rc_g1} == 0 & r(found) == 0)" "scatter bmsize(3): rc ${q4704_rc_g1}, bmsize() named"
     _q4704_run g2 "scatter mpg weight in 1/10, bmsymbol(T) bsymbol(O)"
     cert_log_has "${q4704_dir}/q4704_g2.log", needle("unsupported option")
     _w47_expect Q4704-3 "(${q4704_rc_g2} == 0 & r(found) == 0)" "scatter bsymbol(O): rc ${q4704_rc_g2}, or named"
@@ -895,7 +897,7 @@ if inlist("`only'", "", "S04") & `: list posof "S04" in w47_run' {
         python: _q4704_cmp("g2", "g2")
         _w47_expect Q4704-3 `"(strpos(`"${q4704_opts}"', `""bmsymbol": "O""') > 0)"' `"bsymbol(O) writes ${q4704_opts}"'
     }
-    _w47_done Q4704-3 "bmsize() on pcarrow is barbsize(); off the arrows bmsize() stays named; bsymbol() is bmsymbol(), drawn"
+    _w47_done Q4704-3 "bmsize() on pcarrow is barbsize(); off the arrows bmsize() is taken in silence; bsymbol() is bmsymbol(), drawn"
 
     macro drop q4704_*
     display as text "S04 end " c(current_date) " " c(current_time)
@@ -935,8 +937,10 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w47_run' {
     }
     _q4704_run p9 "scatter mpg weight in 1/10, bmcolor(red)"
     cert_log_has "${q4704_dir}/q4704_p9.log", needle("unsupported option(s): bmcolor()")
-    _w47_expect Q4705-1 "(${q4704_rc_p9} == 0 & r(found) == 1)" "scatter bmcolor(red) without a back symbol: rc ${q4704_rc_p9}, not named"
-    _w47_done Q4705-1 "bmsymbol() .. bmlalign() drawn as a back marker, not named; without a back symbol still named"
+    // Flipped (WP-49 basic:PT-12): without a back symbol bmcolor() is taken
+    // in silence, as twoway draws the same picture with it and prints nothing (noted_option_truth.json probes bmcolor(red), bmcolor(blue)).
+    _w47_expect Q4705-1 "(${q4704_rc_p9} == 0 & r(found) == 0)" "scatter bmcolor(red) without a back symbol: rc ${q4704_rc_p9}, named"
+    _w47_done Q4705-1 "bmsymbol() .. bmlalign() drawn as a back marker, not named; without a back symbol taken in silence"
 
     // ------------------------------------------------------------
     // Q4705-2: alalign() and blalign() are the outline's alignment, read

@@ -563,7 +563,12 @@ class TestAnUnimplementedBySuboptionIsNamed:
         ("foreign, style(econ)", ["style(econ)"]),
         ("foreign, style(stata7)", ["style(stata7)"]),
         # Flipped (WP-41 BY-7): bgcolor() is taken in silence now.
-        ("foreign, style(econ) spacers(ring(2))", ["style(econ)", "spacers(ring(2))"]),
+        # Flipped (WP-49 basic:PT-12): spacers(ring(2)) is taken in silence,
+        # as twoway draws the same picture with spacers() and prints nothing (noted_option_truth.json sub_probes by(foreign, spacers(ring(2)))).  style(econ) is named by this direct parse, as it was at
+        # the WP-49 base (dash.ado writes econ as its options before the
+        # renderer parses by(), _dash_bystyle_route; twoway prints nothing
+        # for it, bygraphstyle-econ.style being shipped).
+        ("foreign, style(econ) spacers(ring(2))", ["style(econ)"]),
         ("foreign, style(stata7) shrink", ["style(stata7)"]),
         # Flipped (WP-30 P1.15a): by()'s title() is drawn now, as twoway
         # draws it.
@@ -619,9 +624,22 @@ class TestAnUnimplementedBySuboptionIsNamed:
         # drawn too, so style(econ) is silent.
         msgs = [str(w.message) for w in built if "by()" in str(w.message)]
         assert len([m for m in msgs if "style(econ)" in m]) == 0, msgs
-        assert len([m for m in msgs if "spacers(ring(2))" in m]) == 1, msgs
+        # Flipped (WP-49 basic:PT-12): spacers(ring(2)) is taken in silence
+        # (twoway draws the same picture with spacers() and prints nothing (noted_option_truth.json sub_probes by(foreign, spacers(ring(2))))), so it is not named at build time either; style(foo), whose
+        # twoway note is the bygraphstyle one (lt25 by_style_foo), is named
+        # once at build and not again in a session.
+        assert len([m for m in msgs if "spacers(ring(2))" in m]) == 0, msgs
         _, _, warns = served(tmp_path, spec)
         assert not [w for w in warns if "by()" in w and "econ" in w], warns
+        spec2 = by_spec("scatter", by="foreign, style(foo)")
+        tag2, sp2, dp2 = _write(tmp_path, spec2, _DF)
+        with warnings.catch_warnings(record=True) as built2:
+            warnings.simplefilter("always")
+            dr.ServerAppBuilder(sp2, dp2).build(str(tmp_path / f"b2_{tag2}.py"))
+        foo = ("dash: named style foo not found in class bygraphstyle, "
+               "default attributes used")
+        assert [str(w.message) for w in built2].count(foo) == 1, \
+            [str(w.message) for w in built2]
 
     def test_an_unsafe_by_string_still_facets_nothing(self, tmp_path):
         spec = by_spec("scatter", by='__import__("os")')

@@ -258,6 +258,14 @@ def _size_notes(notes, head):
     return [n for n in notes if head in n and "recognised size" in n]
 
 
+def _assert_one_gsize_note(notes, raw):
+    """WP-49 LT-25: a text size or gap twoway looks up in class gsize and
+    does not find is noted in twoway's words, naming the value."""
+    want = ("dash: named style %s not found in class gsize, default "
+            "attributes used" % raw)
+    assert notes.count(want) == 1, "expected %r once, got %r" % (want, notes)
+
+
 def _assert_one_medium_note(notes, head):
     hits = _size_notes(notes, head)
     assert len(hits) == 1, "expected one note naming %s, got %r" % (
@@ -589,7 +597,8 @@ class TestUnknownNamesDrawMedium:
             fig, notes = _figure_notes(mode, tmp_path, [_sc()],
                                        go={"title": '"T", size(%s)' % raw})
             assert fig.title.text_font_size == "11pt", raw
-            _assert_one_medium_note(notes, "title(size(%s))" % raw)
+            # Flipped (WP-49 LT-25): twoway prints its gsize note, which names the value (noted_option_truth.json lt25 R_tsz, R_lsz, mlabgap_abc).
+            _assert_one_gsize_note(notes, raw)
         fig, notes = _figure_notes(mode, tmp_path,
                                    [_sc(mlabel="make", mlabsize="abc")])
         assert _one_labelset(fig).text_font_size == "11pt"
@@ -598,7 +607,8 @@ class TestUnknownNamesDrawMedium:
                                    go={"legend": "size(abc)"})
         for lg in _legends(fig):
             assert lg.label_text_font_size == "11pt"
-        _assert_one_medium_note(notes, "legend(size(abc))")
+        # Flipped (WP-49 LT-25): twoway's gsize note.
+        _assert_one_gsize_note(notes, "abc")
         fig, notes = _figure_notes(mode, tmp_path, [_sc()],
                                    go={"ylabel": ", labsize(abc)"})
         assert _yaxis(fig).major_label_text_font_size == "11pt"
@@ -607,7 +617,8 @@ class TestUnknownNamesDrawMedium:
                                    [_sc(mlabel="make", mlabgap="abc")])
         assert _offset(fig) == (pytest.approx(2.933 + 14.667, abs=0.01),
                                 pytest.approx(0, abs=1e-6))
-        _assert_one_medium_note(notes, "mlabgap(abc)")
+        # Flipped (WP-49 LT-25): twoway's gsize note.
+        _assert_one_gsize_note(notes, "abc")
 
     def test_the_medium_of_each_class(self):
         smp = dr.OptionTranslator.size_medium_pt
@@ -820,10 +831,15 @@ class TestAdversarialSizes:
         fig, notes = _figure_notes("saved", tmp_path, [_sc()],
                                    go={"title": '"T", size(%s)' % hostile})
         assert fig.title.text_font_size == "11pt"
-        hits = _size_notes(notes, "title(size(")
+        # Flipped (WP-49 LT-25): the note is twoway's gsize sentence, which
+        # names the value; the value is still shown as printable text, cut
+        # to 80 (_dash_display), and the page below still holds none of it.
+        hits = [n for n in notes if n.startswith("dash: named style ")
+                and n.endswith(" not found in class gsize, default "
+                               "attributes used")]
         assert len(hits) == 1, notes
-        assert "medium" in hits[0]
-        echo = hits[0].split("title(size(", 1)[1].rsplit(")) is not", 1)[0]
+        echo = hits[0][len("dash: named style "):].rsplit(
+            " not found in class gsize", 1)[0]
         assert len(echo) <= 80 and echo.isprintable(), echo
         _tag, sp, dp = _inputs(tmp_path, [_sc()], "s2color",
                                {"title": '"T", size(%s)' % hostile}, None)

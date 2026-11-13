@@ -159,8 +159,13 @@ class TestByScale:
 
     def test_a_word_is_still_named(self):
         got = _sizes("saved", {"by": "foreign, scale(big)"})
-        assert [n for n in got["notes"] if "not implemented" in n
-                and "scale(big)" in n], got["notes"]
+        # Flipped (WP-49 LT-25): a word is noted in twoway's words, its two
+        # numstyle notes, the word and then the default 1
+        # (noted_option_truth.json lt25 by_scale_abc).
+        for v in ("big", "1"):
+            assert got["notes"].count(
+                "dash: named style %s not found in class numstyle, default "
+                "attributes used" % v) == 1, got["notes"]
         base = _sizes("saved", {"by": "foreign"})
         assert got["tick"] == base["tick"]
 
