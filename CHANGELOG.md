@@ -1020,6 +1020,7 @@ and now matches Stata.
 ### Fixed in WP-49
 
 - A refusal's first line is twoway's, naming the option as typed (function y = x, ba(3) is option ba() not allowed, where dash printed bands()), and dash's own first lines for an unbalanced parenthesis, a by() or mlabel() variable not found, legloc(), useplotregion() and a [ before the plot type are twoway's; return codes, dash's advice lines and the Supported list are unchanged (WP-49, plot:PT-7)
+- tsline and tsrline without tsset, a weight written before the varlist (scatter[aw=price] mpg weight) and a date tline() on a business-calendar (%tb) axis print twoway's first line (time variable not set, use tsset varname ...; invalid 'mpg'; invalid number, (10nov2001)); a weight before the varlist now returns twoway's code by type: scatter [aw=price] mpg weight r(198) (was r(100)), scatter[aw=price] alone r(100) (was r(198)), contour[aw=price] z y x r(101) (was r(198)), tsline[aw=price] y r(100) (was r(198)) (WP-49, plot:PT-6)
 ### Fixed in WP-48
 
 - The tracking documents and dash_setup's help agree with the code (WP-48, DT-29)

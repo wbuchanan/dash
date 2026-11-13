@@ -6138,11 +6138,11 @@
   - Suggested fix: Echo twoway's notes once each, in its words
   - Resolution: Not fixed because WP-49 section 49-02 has not landed. Graded S3 (WP-49): drop-in audit package 17, cosmetic.
 
-- [ ] Title: Different words, same rc: tsline/tsrline without tsset; a weight glued to the type ('scatter[aw=price]'); a date tline() on a %tb axis
+- [x] Title: Different words, same rc: tsline/tsrline without tsset; a weight glued to the type ('scatter[aw=price]'); a date tline() on a %tb axis
   - File Names and Line Numbers: dash.ado:6033-6035, 6278-6280, 5868; dash_parse.mata:9264-9279
   - Description: Drop-in audit of 19oct2026 (.ultraplan/review/DROPIN-AUDIT-19oct2026.md at commit f81cd31), package 17 (cosmetic): ids plot:PT-6, plot:PT-8, DG-10; confirmed; tracked: untracked. Registered as GAPS4 plot:PT-6 (WP-49, section 49-01, Fix).
   - Suggested fix: Print twoway's lines; split the type at '['
-  - Resolution: Not fixed because WP-49 section 49-01 has not landed. Graded S3 (WP-49): drop-in audit package 17, cosmetic.
+  - Resolution: Fixed 12nov2026 (WP-49, plot:PT-6). tsline and tsrline without tsset print twoway's line, time variable not set, use tsset varname ..., r(111), then dash's sentence, which says to tsset (_dash_process_segment). The plot type is read up to a blank, a comma or a [, as twowaygraph_g.class reads it, and a weight before the varlist is refused as twoway refuses it: scatter[aw=price] mpg weight and hist[fw=rep78] mpg are invalid 'mpg', r(198) (dash said scatter[aw=price] is not a twoway plot type), scatter [aw=price] mpg weight the same (dash said varlist required, r(100)), and, as twoway answers by type (measured on all forty-four), a weight with nothing after it varlist required, r(100) (function expression required, r(100); scatteri, pci and pcarrowi weights not allowed, r(198)), contour and contourline weights not allowed, r(101), and tsline and tsrline varlist required, r(100); a weight after the varlist is drawn as before. _dash_taxis_unit gives a %tb axis no date unit for its lines, so tline(10nov2001) there is twoway's invalid number, (10nov2001), r(198) (dash said invalid line argument, 10nov2001), and tline(100) is drawn. Ids plot:PT-8 and DG-10 close with it. Pinned by test/test_parser.cscript Q4901-6, Q4901-7, Q4901-8, P1A-81, test/test_wp49_truth.cscript Q4901-10; fixture test/fixtures/refusal_line_truth.json. Closes GAPS4 plot:PT-6 (WP-49, plot:PT-6).
 
 - [ ] Title: '_dash_dp_format() already exists' and '(11721 lines skipped)' are printed after discard and, in long sessions, mid-session
   - File Names and Line Numbers: dash.ado:79-81, 540-551; p4.log; probe1 #42

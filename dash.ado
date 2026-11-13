@@ -6902,7 +6902,12 @@ program define _dash_process_segment, rclass
     // The word is matched as typed, in lower case only (WP-35 plot:PT-3,
     // M7): twoway refuses Sc, Hist and Rsc, "<word> is not a twoway plot
     // type", r(198), and dash read them in any case.
-    gettoken plottype rest : seg_text, parse(" ,")
+    //
+    // It ends at a [ too, as twowaygraph_g.class reads it (parse(" ,["),
+    // WP-49 plot:PT-6): `scatter[aw=price] mpg weight' is scatter with a
+    // weight before its varlist, refused below, and `[aw=price] scatter'
+    // is the word [.
+    gettoken plottype rest : seg_text, parse(" ,[")
     mata: _dash_expand_plottype(st_local("plottype"), "_pt_exp")
     local ptype "`_pt_exp'"
 
@@ -6924,6 +6929,50 @@ program define _dash_process_segment, rclass
             "pccapsym pci pcarrowi pcscatter tsline tsrline mspline mband " _n ///
             "rscatter function rpcap rpspike contour contourline"
         exit(198)
+    }
+
+    // A weight before the varlist -- scatter[aw=price] mpg weight, or with
+    // a blank before the [ -- is refused as twoway refuses it, by type
+    // (measured 12nov2026 on all forty-four, `<type>[aw=price] mpg weight'
+    // and `<type>[aw=price]'; refusal_line_truth.json pt8.scatter,
+    // pt8.hist): contour and contourline "weights not allowed", r(101);
+    // tsline and tsrline "varlist required", r(100); with nothing after
+    // the weight (or only if, in or the comma) scatteri, pci and pcarrowi
+    // "weights not allowed", r(198), function "expression required",
+    // r(100), and every other type "varlist required", r(100); otherwise
+    // "invalid '<the first word after the weight>'", r(198).  dash said
+    // "scatter[aw=price] is not a twoway plot type", and "varlist
+    // required" r(100) for scatter [aw=price] mpg weight.  A weight after
+    // the varlist is read below, as before.
+    mata: _pt_r = strltrim(st_local("rest")); _pt_c = strpos(_pt_r, "]"); st_local("_pt_wf", strofreal(substr(_pt_r, 1, 1) == "[" & _pt_c > 0)); st_local("_pt_after", _pt_c ? strltrim(substr(_pt_r, _pt_c + 1, .)) : "")
+    if `_pt_wf' {
+        local _pt_wnone "contour contourline"
+        local _pt_wvar "tsline tsrline"
+        local _pt_wimm "scatteri pci pcarrowi"
+        if `: list ptype in _pt_wnone' {
+            display as error "weights not allowed"
+            exit 101
+        }
+        if `: list ptype in _pt_wvar' {
+            display as error "varlist required"
+            exit 100
+        }
+        gettoken _pt_tok : _pt_after, parse(" ,([")
+        mata: st_local("_pt_none", strofreal(anyof(("", ",", "if", "in"), strtrim(st_local("_pt_tok")))))
+        if `_pt_none' & `: list ptype in _pt_wimm' {
+            display as error "weights not allowed"
+            exit 198
+        }
+        if `_pt_none' & "`ptype'" == "function" {
+            display as error "expression required"
+            exit 100
+        }
+        if `_pt_none' {
+            display as error "varlist required"
+            exit 100
+        }
+        mata: _dash_say("err", "invalid '", substr(st_local("_pt_tok"), 1, 80), "'")
+        exit 198
     }
 
     // The families each plot type is routed by, named once (TR-22.4).
@@ -7039,7 +7088,10 @@ program define _dash_process_segment, rclass
         if "`ptype'" == "tsrline" {
             // tsset first, as twoway asks it first: `tsrline lo hi t' on
             // un-tsset data is r(111) there, not r(103).
+            // twoway's line first, then dash's (WP-49 plot:PT-6;
+            // refusal_line_truth.json pt6.tsrline).
             if `"`_dta[_TStvar]'"' == "" {
+                display as error "time variable not set, use tsset varname ..."
                 display as error "dash: tsrline needs a time variable: " ///
                     "tsset your data first, as twoway tsrline does."
                 exit(111)
@@ -7277,7 +7329,10 @@ program define _dash_process_segment, rclass
             // set"), and so does dash (test_help_claims_1.cscript
             // HC1-09).  tsrline, a range type, is read above.
             local xvar `"`_dta[_TStvar]'"'
+            // twoway's line first, then dash's (WP-49 plot:PT-6;
+            // refusal_line_truth.json pt6.tsline).
             if `"`xvar'"' == "" {
+                display as error "time variable not set, use tsset varname ..."
                 display as error "dash: `ptype' needs a time variable: " ///
                     "tsset your data first, as twoway `ptype' does."
                 exit(111)

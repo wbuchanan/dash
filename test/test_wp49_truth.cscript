@@ -292,6 +292,48 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w49_run' {
 }
 * ==== end S01 ====
 
+* ==== S01 plot:PT-6: tsset, glued weights, %tb lines ====
+local only : env WP49_ONLY
+if inlist("`only'", "", "S01") & `: list posof "S01" in w49_run' {
+    display as text "S01 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // Q4901-10: live, beside twoway: tsline and tsrline without tsset, a
+    // weight glued to the type, and a date tline() on a %tb axis
+    // (test_parser.cscript's Q4901-6..8 read the same probes from
+    // test/fixtures/refusal_line_truth.json).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    quietly generate yl = mpg - 1
+    quietly generate yh = mpg + 1
+    // The weight before the varlist with a blank after the type, with
+    // nothing after it, and on the types twoway answers otherwise
+    // (measured 12nov2026: varlist required r(100), expression required
+    // r(100), weights not allowed r(198) and r(101)).
+    foreach c in "tsline mpg" "tsrline yl yh" "scatter[aw=price] mpg weight" ///
+        "hist[fw=rep78] mpg" "scatter mpg weight [aw=price]" ///
+        "scatter [aw=price] mpg weight" "scatter[aw=price]" ///
+        "scatter mpg weight || line[aw=price] mpg weight" ///
+        "scatter[aw=price] if foreign" "function [aw=price]" ///
+        "function[aw=price] y = x" "scatteri[aw=price]" ///
+        "scatteri[aw=price] 1 2" "contour[aw=price] mpg weight turn" {
+        _w49_same Q4901-10 `"`c'"'
+    }
+    quietly sysuse sp500, clear
+    quietly bcal create "`w49_work'/u49", from(date) replace
+    adopath + "`w49_work'"
+    quietly generate tb = bofd("u49", date)
+    format tb %tbu49
+    foreach c in "scatter close tb, tline(10nov2001)" "scatter close tb, tline(100)" {
+        _w49_same Q4901-10 `"`c'"'
+    }
+    adopath - "`w49_work'"
+    capture erase "`w49_work'/u49.stbcal"
+    _w49_done Q4901-10 "tsset, glued-weight and %tb lines are twoway's"
+    display as text "S01 end " c(current_date) " " c(current_time)
+}
+* ==== end S01 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

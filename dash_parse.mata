@@ -11263,8 +11263,11 @@ void _dash_axreq_accept_line(real scalar row)
 // family 1 is a label or tick list (_date2elapsed's map, which reads %-tm
 // as %tm); family 2 a line or a scale range (axis.class get_time_format,
 // which tests only the prefixes %t and %d, so %-tm has no unit there, and
-// a %tc, %tC or %tb axis gives "c": a time format with no literal form,
-// whose lines fail as numlist fails, "invalid line argument, ...").
+// a %tc or %tC axis gives "c": a time format with no literal form, whose
+// lines fail as numlist fails, "invalid line argument, ...").  A %tb axis
+// gives "" there: twoway reads its lines as numbers, so tline(10nov2001)
+// is "invalid number, (10nov2001)" and tline(100) is drawn (WP-49 DG-10,
+// refusal_line_truth.json dg10.tb, dg10.tb_number; measured 12nov2026).
 string scalar _dash_taxis_unit(string scalar fmt, real scalar family)
 {
     string scalar f, c
@@ -11279,6 +11282,7 @@ string scalar _dash_taxis_unit(string scalar fmt, real scalar family)
     if (substr(f, 1, 1) != "t") return("")
     c = substr(f, 2, 1)
     if (anyof(("d", "w", "m", "q", "h", "y"), c)) return(c)
+    if (c == "b") return("")
     return(family == 2 ? "c" : "")
 }
 

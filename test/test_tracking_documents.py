@@ -2924,7 +2924,6 @@ class TestTheCountsAreTrue:
 GAPS4_OPEN = {
     'basic:PT-12': "Notes for options twoway draws the same picture with: afcolor on scatter, clalign, dlpattern on dot, bmsize on scatter, bargap, omitallmiss, onepanel, xlog on qfit, back/noback, heatlabel, zvarformat, nolog, noreverse, ring(), labelkeepleadingzero, legend nostack/angle/orientation, text angle/bexpand ('bexpand()' with parentheses), by() spacers/subtitle width",
     'LT-25': "Named-style notes: invented twoway-worded notes where twoway prints none; missing notes for clockdir 13 and justification(bogus); 'not a recognised size; using medium' instead of the gsize note; iscale(abc) note printed twice; xsize() bounds and graphsize notes in dash's words with 'None'",
-    'plot:PT-6': "Different words, same rc: tsline/tsrline without tsset; a weight glued to the type ('scatter[aw=price]'); a date tline() on a %tb axis",
     'plot:PT-11': "'_dash_dp_format() already exists' and '(11721 lines skipped)' are printed after discard and, in long sessions, mid-session",
 }
 

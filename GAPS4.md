@@ -558,5 +558,5 @@ One line per row, rewritten in place by the item's closing commit; test/test_tra
 - **plot:PT-7 Tracked:** Closed in WP-49, BUGS.md "Refusals add a second line ('twoway does not take this option here', the after-comma hint, 'takes this option once') and a six-line Supported list; value refusals use dash's words; the full option name is printed instead of the typed spelling (bands() for ba())", commit pending.
 - **basic:PT-12 Tracked:** Open (WP-49 section 49-02).
 - **LT-25 Tracked:** Open (WP-49 section 49-02).
-- **plot:PT-6 Tracked:** Open (WP-49 section 49-01).
+- **plot:PT-6 Tracked:** Closed in WP-49, BUGS.md "Different words, same rc: tsline/tsrline without tsset; a weight glued to the type ('scatter[aw=price]'); a date tline() on a %tb axis", commit pending.
 - **plot:PT-11 Tracked:** Open (WP-49 section 49-02).

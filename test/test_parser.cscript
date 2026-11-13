@@ -4,6 +4,9 @@
 *! Tests: P1A-31 through P1A-85  (rewritten for syntax-based parsing), and
 *!        FX-01 through FX-11 (function evaluated by Stata, WP-29 P0.6)
 *!        FN-02 through FN-05 (a function layer without Stata's points, WP-30 P1.22)
+*!        Q4901-6 through Q4901-8 (twoway's first lines for tsline/tsrline
+*!        without tsset, a weight glued to the type and tline() on a %tb
+*!        axis; WP-49 plot:PT-6, test/fixtures/refusal_line_truth.json)
 *!
 *! In v2.0 parsing is done via Stata's -syntax- command rather than a
 *! hand-rolled Mata parser.  These tests exercise:
@@ -2138,8 +2141,10 @@ capture dash clear
 // Untsset, tsrline asks for tsset first, whatever the count, as twoway.
 quietly tsset, clear
 cert_truth_ctx "P1A-81 not tsset"
+// WP-49 plot:PT-6: and with twoway's first line, which dash's own
+// sentence (the second line now) replaced.
 foreach vl in "mpg" "mpg weight price" {
-    _p1a_vs_tw P1A-81 "twoway tsrline `vl'" "dash tsrline `vl', name(p1a81)"
+    _p1a_vs_tw P1A-81 "twoway tsrline `vl'" "dash tsrline `vl', name(p1a81)" "time variable not set, use tsset varname ..."
 }
 // Adversarial (rule 18).  Resource exhaustion: 2,000 variables to a range
 // type are refused at once, r(103), and nothing is registered or drawn.
@@ -4248,4 +4253,99 @@ if r(problems) > 0 {
 capture erase "`c(tmpdir)'dash_p1a_run.log"
 
 display ""
+// ================================================================
+// Q4901-6 .. Q4901-8 (WP-49 section 49-01, plot:PT-6): twoway's first
+// lines, read from test/fixtures/refusal_line_truth.json
+// (scripts/extract_refusal_line_truth.do).  Q4901-6: tsline and tsrline
+// without tsset print twoway's line, then dash's sentence (it says to
+// tsset).  Q4901-7: a weight glued to the type -- scatter[aw=price] mpg
+// weight, hist[fw=rep78] mpg -- is refused as twoway refuses a weight
+// before the varlist, one line; written after the varlist it is drawn.
+// Q4901-8: tline() with a date on a %tb axis is twoway's "invalid number"
+// line alone; a numeric tline() there is drawn.
+// ================================================================
+python:
+import json as _q49p_json
+import re as _q49p_re
+from sfi import Macro as _q49p_M
+with open("fixtures/refusal_line_truth.json", encoding="utf-8") as _q49p_fh:
+    _q49p_fx = _q49p_json.load(_q49p_fh)["probes"]
+
+
+def _q49p_take(key):
+    _q49p_M.setLocal("q_cmd", _q49p_fx[key]["command"])
+    _q49p_M.setLocal("q_rc", str(_q49p_fx[key]["twoway_rc"]))
+
+
+def _q49p_judge(case, key, path, rc):
+    r = _q49p_fx[key]
+    got = []
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            for ln in fh:
+                if ln.strip() and not ln.startswith((". ", "> ")):
+                    got.append(_q49p_re.sub(r"\s+", " ", ln).strip())
+    except OSError:
+        pass
+    rc = int(rc)
+    tw = r["twoway_lines"]
+    if r["twoway_rc"] == 0:
+        ok = rc == 0
+    elif case == "Q4901-6":
+        # The base's dash sentence follows twoway's line.
+        ok = rc == r["twoway_rc"] and got[:1] == tw[:1] and got[1:] == r["dash_lines"][:1]
+    else:
+        ok = rc == r["twoway_rc"] and got == tw[:1]
+    _q49p_M.setLocal("q_ok", "1" if ok else "0")
+    txt = " / ".join(got)
+    for ch, to in (('"', "'"), ("\x60", "'"), ("$", "S")):
+        txt = txt.replace(ch, to)
+    _q49p_M.setLocal("q_got", txt[:200])
+end
+tempfile q49pb
+local q49pd "`q49pb'_d"
+capture mkdir "`q49pd'"
+quietly sysuse sp500, clear
+quietly bcal create "`q49pd'/u49", from(date) replace
+adopath + "`q49pd'"
+local q49p_bad 0
+foreach q49c in "Q4901-6 pt6.tsline" "Q4901-6 pt6.tsrline" "Q4901-7 pt8.scatter" ///
+    "Q4901-7 pt8.hist" "Q4901-7 pt8.after" "Q4901-8 dg10.tb" "Q4901-8 dg10.tb_number" {
+    gettoken q49id q49k : q49c
+    local q49k = strtrim("`q49k'")
+    if substr("`q49k'", 1, 4) == "dg10" {
+        quietly sysuse sp500, clear
+        quietly generate tb = bofd("u49", date)
+        format tb %tbu49
+    }
+    else {
+        quietly sysuse auto, clear
+        quietly generate yl = mpg - 1
+        quietly generate yh = mpg + 1
+    }
+    python: import __main__; __main__._q49p_take("`q49k'")
+    capture dash clear
+    local q49ls = c(linesize)
+    set linesize 255
+    capture log close _q49p
+    capture erase "`c(tmpdir)'dash_q49p.log"
+    quietly log using "`c(tmpdir)'dash_q49p.log", name(_q49p) text replace
+    capture noisily dash `q_cmd'
+    local q49rc = _rc
+    quietly log close _q49p
+    set linesize `q49ls'
+    python: import __main__; __main__._q49p_judge("`q49id'", "`q49k'", r"`c(tmpdir)'dash_q49p.log", "`q49rc'")
+    if `q_ok' display "`q49id' PASS: `q49k' rc `q49rc' -- `q_got'"
+    else {
+        display as error "`q49id' FAIL: `q49k' rc `q49rc' (twoway `q_rc') -- `q_got'"
+        local q49p_bad 1
+    }
+}
+capture dash clear
+adopath - "`q49pd'"
+capture erase "`q49pd'/u49.stbcal"
+capture rmdir "`q49pd'"
+capture erase "`c(tmpdir)'dash_q49p.log"
+if `q49p_bad' exit 9
+
 display "All syntax-based parser tests PASSED."
