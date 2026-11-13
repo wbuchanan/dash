@@ -26,6 +26,7 @@ drew ten labels beside six markers.  And a dropdown on a date variable
 kept no rows: its options were "2001-01-02 00:00:00" and the script
 compared them with the column's epoch milliseconds.
 """
+import copy
 import itertools
 import json
 import math
@@ -165,10 +166,18 @@ def _move(r, action):
 
 
 @memo_build()
-def _saved_after_move(spec, action, df=_DF):
+def _saved_move(spec, action, df=_DF):
+    """``(before, after)``: the page's profile as drawn and after the move,
+    from one render (WP-50 50-03: TestEveryLayerFollowsAMove's two checks
+    drew the page twice); *before* is a copy, so the move cannot reach it."""
     r = _render(spec, df)
+    before = copy.deepcopy(_profile(r))
     _move(r, action)
-    return _profile(r)
+    return before, _profile(r)
+
+
+def _saved_after_move(spec, action, df=_DF):
+    return _saved_move(spec, action, df)[1]
 
 
 @memo_build()
@@ -299,8 +308,7 @@ class TestEveryLayerFollowsAMove:
                                              oracle):
         """Guards the guard: the move is not a no-op for these layers."""
         name = request.node.callspec.id
-        before = _profile(_render(spec))
-        after = _saved_after_move(spec, action)
+        before, after = _saved_move(spec, action)
         assert _diff(before, after), f"{name}: the move changed nothing"
 
 

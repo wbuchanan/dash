@@ -45,9 +45,10 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr
-from conftest import make_data_json, load_app
+from conftest import make_data_json, load_app, memo_build
 from by_panel_probe import by_grid, chrome_texts, panel_label
 from test_server_layer_defects import ALL_TYPES, plot_for, make_spec, _walk
+from test_server_layer_defects import _once_dir
 
 _SEQ = itertools.count()
 
@@ -223,16 +224,42 @@ def by_spec(ptype, by="foreign", options=None, **graph_extra):
 _SERVED_TYPES = ("scatter", "line", "rarea", "bar", "lfitci", "pccapsym")
 
 
+@memo_build()
+def _standalone_once(spec):
+    """``standalone`` kept per spec, for the sweep checks that only read it
+    (WP-50 50-03: test_the_panels_agree and test_every_panel_draws drew
+    each type's by() page twice)."""
+    return standalone(_once_dir(), spec)
+
+
+@memo_build()
+def _served_once(spec):
+    """``served`` kept per spec, as ``_standalone_once``."""
+    return served(_once_dir(), spec)
+
+
+#: The sweep checks that read _standalone_once/_served_once share one
+#: worker per plot type, so each type's by() page is built once a mode.
+_ONCE_TESTS = frozenset(["test_the_panels_agree", "test_every_panel_draws"])
+
+
+def xdist_group_of(item):
+    if item.name.split("[")[0] in _ONCE_TESTS:
+        return "sf:" + str(item.callspec.params.get("ptype"))
+    return None
+
+
 class TestEveryTypeFacetsTheSameWayInBothModes:
     """The sweep GAPS.md D4 should have been: every type, not 18 -- saved
     for every type, compared with the served app for ``_SERVED_TYPES``."""
 
     @pytest.mark.parametrize("ptype", [t for t in ALL_TYPES
                                        if t in _SERVED_TYPES])
-    def test_the_panels_agree(self, tmp_path, ptype):
+    def test_the_panels_agree(self, ptype):
         spec = by_spec(ptype)
-        std = profiles_std(tmp_path, spec)
-        srv = profiles_srv(tmp_path, spec)
+        figs, _ = _standalone_once(spec)
+        std = [panel_profile(figs[k]) for k in figs]
+        srv = [panel_profile(f) for f in _served_once(spec)[0]]
         assert std == srv, (
             "%s under by(foreign): saved panels\n  %s\nserved panels\n  %s"
             % (ptype, std, srv)
@@ -241,14 +268,14 @@ class TestEveryTypeFacetsTheSameWayInBothModes:
     @pytest.mark.parametrize("ptype,mode", [
         *[(t, "saved") for t in ALL_TYPES],
         *[(t, "served") for t in ALL_TYPES if t in _SERVED_TYPES]])
-    def test_every_panel_draws(self, tmp_path, ptype, mode):
+    def test_every_panel_draws(self, ptype, mode):
         """Stated positively: no panel is an empty plot region -- saved for
         every type, served for ``_SERVED_TYPES``."""
         if mode == "saved":
-            figs, warns = standalone(tmp_path, by_spec(ptype))
+            figs, warns = _standalone_once(by_spec(ptype))
             figs = list(figs.values())
         else:
-            figs, _, warns = served(tmp_path, by_spec(ptype))
+            figs, _, warns = _served_once(by_spec(ptype))
         assert len(figs) == 2, "by(foreign) should give two panels"
         for f in figs:
             assert any(getattr(r, "glyph", None) is not None

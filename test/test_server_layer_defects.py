@@ -228,7 +228,11 @@ def _served_once(spec):
 
 #: The per-type checks that read _standalone_once/_served_once share one
 #: worker per plot type, so each type is built once.
-_ONCE_TESTS = frozenset(['test_no_figure_carries_two_identical_hovers', 'test_no_type_is_reported_empty_in_only_one_mode', 'test_the_same_keys_at_the_same_size', 'test_the_same_tooltips_in_both_modes'])
+#: WP-50 50-03: the hover(foreign) checks and the AC-10.3 tooltip check
+#: joined them (the served hover(foreign) page and the bare served page
+#: were each built again by a second check).
+_ONCE_TESTS = frozenset(['test_no_figure_carries_two_identical_hovers', 'test_no_type_is_reported_empty_in_only_one_mode', 'test_the_same_keys_at_the_same_size', 'test_the_same_tooltips_in_both_modes',
+                         'test_hover_adds_its_variable_in_both_modes', 'test_hover_reaches_the_served_tooltip', 'test_the_types_ac_10_3_names_have_a_tooltip'])
 
 
 def xdist_group_of(item):
@@ -735,10 +739,10 @@ class TestEveryFigureCarriesTheSameHover:
         )
 
     @pytest.mark.parametrize("ptype", ALL_TYPES)
-    def test_hover_adds_its_variable_in_both_modes(self, tmp_path, ptype):
+    def test_hover_adds_its_variable_in_both_modes(self, ptype):
         spec = make_spec([plot_for(ptype)], None, {"hover": "foreign"})
-        std = tooltips(standalone(tmp_path, spec)[0])
-        srv = tooltips(served(tmp_path, spec)[0])
+        std = tooltips(_standalone_once(spec)[0])
+        srv = tooltips(_served_once(spec)[0])
         assert std == srv, (
             "%s with hover(foreign): saved\n  %s\nserved\n  %s"
             % (ptype, std, srv)
@@ -747,19 +751,19 @@ class TestEveryFigureCarriesTheSameHover:
     @pytest.mark.parametrize("ptype", ["scatter", "bar", "spike", "dot",
                                        "dropline", "connected", "rspike",
                                        "rcap", "rbar"])
-    def test_hover_reaches_the_served_tooltip(self, tmp_path, ptype):
+    def test_hover_reaches_the_served_tooltip(self, ptype):
         """AC-10.2, stated positively rather than as a comparison."""
         spec = make_spec([plot_for(ptype)], None, {"hover": "foreign"})
-        srv = tooltips(served(tmp_path, spec)[0])
+        srv = tooltips(_served_once(spec)[0])
         assert any("foreign" in t for t in srv), (
             "%s: hover(foreign) did not reach the served tooltip: %s"
             % (ptype, srv)
         )
 
     @pytest.mark.parametrize("ptype", ["bar", "histogram", "area"])
-    def test_the_types_ac_10_3_names_have_a_tooltip(self, tmp_path, ptype):
+    def test_the_types_ac_10_3_names_have_a_tooltip(self, ptype):
         spec = make_spec([plot_for(ptype)])
-        assert tooltips(served(tmp_path, spec)[0]), (
+        assert tooltips(_served_once(spec)[0]), (
             "%s has no hover tool in server mode" % ptype)
 
     @pytest.mark.parametrize("ptype", ALL_TYPES)
