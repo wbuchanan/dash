@@ -5458,6 +5458,25 @@ Summarised from .ultraplan/sections/index.md (WP-48) and the section decisions D
 - **Left open:** none of WP-48's rows. HR-17's sentence check is 49-01's (WP-49).
 - **Gate (12nov2026):** `make test-all` on 53fc062: pytest 46,014 passed (613 s), cert 80 of 80 (696 s), 1,320 s in all; `make cert-release` on 53fc062: 3 of 3 (the WP-29/30/31 truth scripts, 590 s); all green first time. The two run about 32 minutes, over the 5-minute rule (CLAUDE.md 11); the cuts are proposed as their own work.
 
+## WP-49 · Messages and notes (P17) — DONE
+
+**GAPS4 closed:** plot:PT-7, plot:PT-6, LT-25, plot:PT-11 · **partly closed:** basic:PT-12
+
+As a Stata user who pastes a twoway command into dash, I want dash's refusals and notes to read as twoway's do, so that a refused command names the option as I typed it in twoway's words, an option twoway draws the same picture with is taken in silence, and a named-style note prints twoway's sentence the number of times twoway prints it.
+
+### Business requirements
+
+Summarised from .ultraplan/sections/index.md (WP-49) and the section decisions D-49-01.a..D-49-02.e, which hold them in full.
+
+- **Refusal first lines (49-01, PD-11, M12).** The first line of every refusal is twoway's, naming the option as typed (option ba() not allowed for ba()), measured in test/fixtures/refusal_line_truth.json (51 probes); dash's second and later lines and the Supported list stay. tsline/tsrline without tsset, a weight written before the varlist and a date tline() on a %tb axis print twoway's lines and return codes. The help states the rule (HR-17, TestHR17).
+- **Silence where twoway is silent (49-02).** Catch-all words and text(), title and by() sub-options that twoway draws the same picture with, at two measured values, are taken without a note (test/fixtures/noted_option_truth.json); a value twoway notes, such as a bogus or wrongly cased style name, is still named.
+- **Named-style notes (49-02).** All 23 measured named-style cases (position, size, scale, iscale, by() style, xsize/ysize) print twoway's note lines, in its text and count.
+- **Library load (49-02).** dash.ado runs the Mata library only when it is not in memory, quietly, so no "already exists" or "lines skipped" line is printed.
+
+- **Entries.** 5 WP-49 entries; 4 closed, 0 documented, 1 partly closed; BUGS.md holds 39 open entries.
+- **Left open:** basic:PT-12's residual, BUGS.md "mlabalignment() and mlabjustification() without marker labels, zvarlabel() off contour, xscale()'s noreverse and ring(), and the catch-all words after the plot groups' comma are named where twoway draws the same picture" (S3).
+- **Gate (12nov2026):** `make test-all` on c3bb39e: pytest 46,066 passed, 9 failed (628 s), cert 78 of 81 (703 s), 1,343 s in all; the 12 readers left stale by 49-02's silence and notes (controls now taken in silence, the colour and gsize notes in twoway's words, a DROPIN mapping) were flipped in 94ab013, with no code change, and re-run alone: their 7 pytest files 606 passed, test_render_log_clean, test_option_report_paren and test_wp47_truth S04/S05 passed. `make cert-release` on c3bb39e: 3 of 3 (the WP-29/30/31 truth scripts, 592 s). The two run about 32 minutes, over the 5-minute rule (CLAUDE.md 11); the cuts are WP-50's.
+
 ## Traceability matrix
 
 Every finding in `GAPS.md`, and the package that closes it.
