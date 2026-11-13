@@ -182,9 +182,11 @@ def _gallery_texts():
         for s in runs:
             try:
                 raw = base64.b64decode(s + "=" * (-len(s) % 4))
+                # Text only: a binary payload (Bokeh's base64 arrays) can
+                # hold the bytes of "~/" by chance (WP-50 WE.7).
+                decoded.append((where + " (base64)", raw.decode("utf-8")))
             except ValueError:
                 continue
-            decoded.append((where + " (base64)", raw.decode("utf-8", "replace")))
     return out + decoded
 
 
@@ -240,3 +242,11 @@ def test_the_gallery_scan_catches_planted_samples(tmp_path, monkeypatch):
     readme.write_text(_GALLERY_START + "\nC:" + "\\Users\\x\n" + _GALLERY_END + "\n",
                       encoding="utf-8")
     assert _gallery_findings(_gallery_texts()) != []
+    # A page's numbers are base64 binary (Bokeh's arrays): bytes that
+    # happen to read "~/" between bytes no text holds are not a path
+    # (WP-50 WE.7: six such runs in the first gallery's pages).
+    readme.write_text("# x\n", encoding="utf-8")
+    noise = bytes([0x11, 0xff, 0x3b, 0x13, 0x7e, 0x2f, 0x40, 0xa9, 0x11]) * 40
+    (g / "e.html").write_text('<script>"%s"</script>'
+                              % base64.b64encode(noise).decode(), encoding="utf-8")
+    assert _gallery_findings(_gallery_texts()) == []
