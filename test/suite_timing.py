@@ -35,27 +35,37 @@ def _worker_of(report):
     return getattr(gateway, "id", None) or "main"
 
 
-def summarise(records, wall):
+def summarise(records, wall, session_start=None, first_test_start=None):
     """Aggregate ``records`` into the report's dict.
 
     ``records`` is a list of ``(nodeid, when, worker, seconds)``; ``wall`` is
     the session's elapsed seconds.  Returns per-test totals (setup + call +
-    teardown), per-file totals with test counts, and per-worker busy time,
-    each sorted slowest first.
+    teardown), per-file totals with test counts, per-worker busy time and
+    per-xdist-group totals (``--dist loadgroup`` ends a grouped test's node
+    id with ``@<group>``; a group runs on one worker, so the largest is the
+    wall's floor), each sorted slowest first.  ``session_start`` and
+    ``first_test_start`` (epoch seconds), when given, are kept so a reader
+    can tell collection from the tests (WP-50 50-01).
     """
     tests = defaultdict(float)
     files = defaultdict(float)
     counts = defaultdict(set)
     workers = defaultdict(float)
     phases = defaultdict(float)
+    groups = defaultdict(float)
+    members = defaultdict(set)
     for nodeid, when, worker, seconds in records:
         tests[nodeid] += seconds
         files[_file_of(nodeid)] += seconds
         counts[_file_of(nodeid)].add(nodeid)
         workers[worker] += seconds
         phases[when] += seconds
+        if "@" in nodeid:
+            g = nodeid.rsplit("@", 1)[1]
+            groups[g] += seconds
+            members[g].add(nodeid)
     by = lambda d: sorted(d.items(), key=lambda kv: kv[1], reverse=True)
-    return {
+    out = {
         "wall_seconds": round(wall, 3),
         "test_seconds": round(sum(tests.values()), 3),
         "tests": len(tests),
@@ -66,7 +76,14 @@ def summarise(records, wall):
                   for f, s in by(files)],
         "slowest_tests": [{"test": t, "seconds": round(s, 3)}
                           for t, s in by(tests)[:200]],
+        "groups": [{"group": g, "seconds": round(s, 3),
+                    "tests": len(members[g])} for g, s in by(groups)[:200]],
     }
+    if session_start is not None:
+        out["session_start"] = round(session_start, 3)
+    if first_test_start is not None:
+        out["first_test_start"] = round(first_test_start, 3)
+    return out
 
 
 def format_summary(summary, top=TOP):
@@ -97,10 +114,16 @@ class SuiteTiming:
         self.path = path
         self.records = []
         self.start = time.monotonic()
+        self.session_start = time.time()
+        self.first_test_start = None
 
     def pytest_runtest_logreport(self, report):
         if getattr(report, "duration", None) is None:
             return
+        begun = getattr(report, "start", None)
+        if isinstance(begun, (int, float)) and (
+                self.first_test_start is None or begun < self.first_test_start):
+            self.first_test_start = float(begun)
         self.records.append(
             (report.nodeid, report.when, _worker_of(report),
              float(report.duration)))
@@ -108,7 +131,8 @@ class SuiteTiming:
     def pytest_sessionfinish(self, session):
         if hasattr(session.config, "workerinput"):
             return  # an xdist worker: the controller writes the report
-        summary = summarise(self.records, time.monotonic() - self.start)
+        summary = summarise(self.records, time.monotonic() - self.start,
+                            self.session_start, self.first_test_start)
         with open(self.path, "w", encoding="utf-8") as fh:
             json.dump(summary, fh, indent=1)
         self.summary = summary

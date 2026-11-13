@@ -44,6 +44,23 @@ class TestTheHelpers:
         assert s["files"][1] == {"file": "t/a.py", "seconds": 3.5, "tests": 2}
         assert s["slowest_tests"][0] == {"test": "t/b.py::z", "seconds": 4.25}
 
+    def test_summarise_totals_xdist_groups(self):
+        recs = [
+            ("t/a.py::x@g1", "call", "gw0", 2.0),
+            ("t/a.py::y@g1", "setup", "gw0", 0.5),
+            ("t/b.py::z@g2", "call", "gw1", 1.0),
+            ("t/b.py::w", "call", "gw1", 9.0),
+        ]
+        s = st.summarise(recs, wall=10.0)
+        assert s["groups"] == [{"group": "g1", "seconds": 2.5, "tests": 2},
+                               {"group": "g2", "seconds": 1.0, "tests": 1}]
+
+    def test_summarise_records_the_session_and_first_test_starts(self):
+        s = st.summarise([], wall=1.0, session_start=100.0,
+                         first_test_start=112.5)
+        assert s["session_start"] == 100.0 and s["first_test_start"] == 112.5
+        assert "session_start" not in st.summarise([], wall=1.0)
+
     def test_summarise_of_nothing_is_empty(self):
         s = st.summarise([], wall=0.0)
         assert s["tests"] == 0 and s["files"] == [] and s["workers"] == []
@@ -118,6 +135,7 @@ class TestEndToEnd:
     def test_one_process_writes_the_report(self, tmp_path):
         s, stdout = self._run(tmp_path)
         assert s["tests"] == 2
+        assert s["session_start"] <= s["first_test_start"]
         assert s["slowest_tests"][0]["test"].endswith("test_slow")
         assert s["slowest_tests"][0]["seconds"] >= 0.2
         assert "suite timing" in stdout
