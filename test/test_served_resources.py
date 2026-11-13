@@ -749,7 +749,10 @@ _SAVED_DIGEST = (
     # figure-margin, by() fit and by() stacked-view callbacks set their
     # models inside dash_batch (callback JS text only), the same under
     # both Pythons.
-    "dc8ed223a3eb7fc5e6715f0386f8b70ad7d77d2cd8dd807fc0cf7f928c0e3851")
+    # old -> new: dc8ed22 -> c93ce93: WP-50 WE.7 the width scale sets a
+    # graph's sizes inside dash_batch where it has no by() (callback JS
+    # text only), the same under both Pythons.
+    "c93ce931b194d37b204c6d6f1da8de92f83508d12714e51c2219b7dd91833f5e")
 
 
 # ===========================================================================

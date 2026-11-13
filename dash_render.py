@@ -31070,9 +31070,10 @@ def _dash_batched_js(code):
     model it sets is laid out once, with the page's other requests, in
     the queue's next tick (WP-50 WE.7).  The body's own ``return``
     leaves its arrow function as it left the callback.  The width scale
-    is not run so: its fonts and spacing are laid out as it sets them,
-    as the by() fit and the spans read them (batched, a by() title box
-    settled 1.85 px off its place, test_legend_span_browser.py)."""
+    batches itself only for a graph without by(): a by() graph's fonts
+    and spacing are laid out as it sets them, as its fit and spans read
+    them (batched, a by() title box settled 1.85 px off its place,
+    test_legend_span_browser.py)."""
     return (_DASH_RELAYOUT_JS + "return dash_batch(() => {" + code
             + "});\n")
 
@@ -31082,6 +31083,7 @@ def _dash_batched_js(code):
 #: rewritten), then each plot laid out again.  Under by() the width is
 #: the array's (the GridBox holding the panels).
 _DASH_WIDTH_SCALE_JS = _DASH_RELAYOUT_JS + """
+const dash_scale = () => {
 let W = anchor.outer_width;
 if (by && typeof Bokeh !== "undefined" && Bokeh.index != null) {
   let v = null;
@@ -31160,6 +31162,11 @@ if (typeof Bokeh !== "undefined" && Bokeh.index != null) {
     }, 0);
   }
 }
+};
+// A graph without by() sets its sizes inside dash_batch, laid out once
+// with the page's other requests (WP-50 WE.7); a by() graph lays them
+// out as it sets them, as its fit and spans read them.
+return by ? dash_scale() : dash_batch(dash_scale);
 """
 
 
