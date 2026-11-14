@@ -5496,7 +5496,7 @@ Summarised from .ultraplan/sections/index.md (WP-50, M3, Q29) and the sections 5
 
 - **Entries.** 0 WP-50 entries; 0 closed, 0 documented, 0 partly closed; BUGS.md holds 39 open entries.
 - **Left open:** none.
-- **Gate (13nov2026):** `make test-all` on 8105131: pytest 46,334 passed (555 s), cert 81 of 81 (8 sessions, 234 s), 802 s in all, green first time. `make cert-release` on 8105131: 3 of 3 (the WP-29/30/31 truth scripts, 547 s). `make test-all` is about 13 minutes, over the five-minute rule, which binds `make test` (285 s).
+- **Gate (13nov2026):** `make test-all` on 8105131: pytest 46,334 passed (555 s), cert 81 of 81 (8 sessions, 234 s), 802 s in all, green first time. `make cert-release` on 8105131: 3 of 3 (the WP-29/30/31 truth scripts, 547 s). `make test-all` is about 13 minutes, over the five-minute rule, which binds `make test` (285 s). Second gate after the closeout work (WP-50 WE, 14nov2026): `make test-all` on 2312959: pytest 46,347 passed (574 s), cert PASS (8 sessions, 234 s), 820 s in all; it followed a run on 1f9204c that failed 3 (two unnamed functions' tests and test_wp33_truth Q3309-1 under load), fixed in 2312959. `make cert-release` on 2312959: 3 of 3 (550 s).
 
 ## Traceability matrix
 
