@@ -478,9 +478,13 @@ def write_page(page, rows, out_dir, page_dir, repo):
         elif kind == "static" and r["dash"].get("svg"):
             caps += list(captions(r, "static"))
             lines += _image("%s/%s-dash.svg" % (svg, i), "d%d" % k, "%d,2" % k, "STATIC", i)
+    # scheme(`c(scheme)'): each twoway example was drawn alone in the
+    # session's scheme; without a page scheme, dash draws every graph that
+    # names none in the first scheme() a graph on the page names.
     lines += ["file close _cap",
               'capture noisily dash build, saving("%s/%s.html") replace '
-              'title("dash beside twoway: %s") layout(`lay\') nobrowser' % (out_dir, page, page),
+              'title("dash beside twoway: %s") layout(`lay\') '
+              "scheme(`c(scheme)') nobrowser" % (out_dir, page, page),
               'display "##BUILD " _rc']
     with open(cap_path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(caps) + "\n")

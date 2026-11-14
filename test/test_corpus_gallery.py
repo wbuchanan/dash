@@ -493,6 +493,11 @@ class TestWritePage:
         for m in re.finditer(r'dash image using "([^"]+)"', do):
             assert m.group(1).startswith(str(out) + "/svg/"), m.group(1)
         assert 'saving("%s/scatter.html")' % out in do
+        # The page is drawn in the session's scheme, as each twoway example
+        # was: without it, one example's scheme() (scatter-3's economist)
+        # was every other graph's on the page (_resolve_scheme_name).
+        build = [ln for ln in do.splitlines() if "dash build," in ln]
+        assert len(build) == 1 and "scheme(`c(scheme)')" in build[0], build
         assert do.count("##GRAPH") == 2 and do.count("##IMAGE") == 3
         assert do.rstrip().endswith('display "##BUILD " _rc')
 
