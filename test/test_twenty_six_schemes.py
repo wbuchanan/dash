@@ -205,8 +205,8 @@ class TestTheSixResolveInBothModes:
     @pytest.mark.parametrize("mode", MODES)
     @each("name", SIX)
     def test_by_graph_scheme(self, name, mode):
+        """The graph is drawn in its scheme(); the page is not (14nov2026)."""
         d = _draw(_scheme_spec(go={"scheme": name}), mode)
-        assert d.scheme.name == name
         assert _unknown(d.warnings) == [], d.warnings
         assert d.fig.border_fill_color == _TWOWAY[name]["bg"]
 

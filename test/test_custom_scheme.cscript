@@ -40,7 +40,10 @@
 *!          rc 0, no note, #123456 present, #1e2d53 ABSENT
 *!   CS-04  the same with scheme(mytheme.scheme)
 *!   CS-05  registered with graph-level scheme(mytheme), built with no
-*!          scheme(): #123456 present, #1e2d53 absent
+*!          scheme(): #123456 present (the graph), #1e2d53 present (the
+*!          page takes the session's s2color8: a graph's scheme() is that
+*!          graph's alone, 14nov2026; it was absent while the first
+*!          graph's scheme was the dashboard's)
 *!   CS-06  scheme(nosuchthing) on scatter      rc 0, twoway's note (ST-16)
 *!   CS-07  scheme(nosuchthing) on dash build   rc 198, names scheme()
 *!   CS-08  theme(nosuchtheme) on dash build    rc 198, names theme()
@@ -415,8 +418,8 @@ _cs_expect CS-05 "(`prc' == 0)" "registration with scheme(mytheme) rc `prc' (exp
 _cs_expect CS-05 "(`rc' == 0)" "rc `rc' (expected 0)"
 _cs_notes CS-05 "`lg'" 0
 _cs_page CS-05 "b.html" "#123456" 1
-_cs_page CS-05 "b.html" "#1e2d53" 0
-_cs_done CS-05 "a registered graph's scheme(mytheme): rc 0, no warning, figure and chrome from mytheme"
+_cs_page CS-05 "b.html" "#1e2d53" 1
+_cs_done CS-05 "a registered graph's scheme(mytheme): rc 0, no warning, the figure from mytheme and the page from the session's scheme"
 
 // ----------------------------------------------------------------
 // CS-06 .. CS-09: an explicit name that resolves to nothing is refused

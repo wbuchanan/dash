@@ -10,8 +10,8 @@ So a user who set a scheme, or simply had one set in their Stata session,
 got Bokeh's default blue on a white plot region in server mode and their
 scheme's colours in standalone. The same command, two colours.
 
-The precedence — scheme(), then theme(), then a scheme named on a graph,
-then c(scheme) — is resolved by one function now
+The precedence — scheme(), then theme(), then c(scheme); a scheme named on
+a graph draws that graph only (14nov2026) — is resolved by one function now
 (``_resolve_scheme_name``), so the two modes cannot disagree about which
 scheme was asked for.
 """

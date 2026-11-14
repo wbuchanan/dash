@@ -662,6 +662,79 @@ class TestPerGraphSchemes:
         _borders, msgs = _two(mode)
         assert not [m for m in msgs if "draws one scheme" in m], msgs
 
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("bo, other", [
+        ({"session_scheme": "stcolor"}, "stcolor"),
+        ({"session_scheme": "stcolor", "scheme": "s1mono"}, "s1mono")],
+        ids=["session", "build_scheme"])
+    def test_a_graphs_scheme_draws_that_graph_only(self, mode, bo, other):
+        """scheme() on one graph draws that graph and no other: a graph
+        that names none is drawn in dash build's scheme(), else the
+        session's c(scheme), whichever graph comes first.  Before, the
+        first graph's scheme() was every unschemed graph's -- one example's
+        scheme(economist) drew the gallery's scatter-3 page square."""
+        alone, _m = _draw(tp._spec([plot_for("scatter")], dict(bo), {}), mode)
+        for graphs in ([("g1", [plot_for("scatter")], {"scheme": "economist"}),
+                        ("g2", [plot_for("scatter")], {})],
+                       [("g1", [plot_for("scatter")], {}),
+                        ("g2", [plot_for("scatter")], {"scheme": "economist"})]):
+            borders, _m = _draw(tp._spec(None, dict(bo), None, graphs), mode)
+            want = [_bg("economist") if g[2] else _bg(other) for g in graphs]
+            assert borders == want, (graphs, borders)
+            assert alone == [_bg(other)]
+        if mode == "standalone":
+            spec = tp._spec(None, dict(bo), None,
+                            [("g1", [plot_for("scatter")], {"scheme": "economist"}),
+                             ("g2", [plot_for("scatter")], {})])
+            r, _m = tp._standalone(spec)
+            sizes = [round(f.aspect_ratio, 3) for f in r.figures.values()]
+            r1, _m = tp._standalone(tp._spec([plot_for("scatter")], dict(bo), {}))
+            assert sizes[1] == round(list(r1.figures.values())[0].aspect_ratio, 3)
+            assert sizes[0] != sizes[1]
+            # The page takes the build's or the session's scheme, not a graph's.
+            assert r.scheme.name == other
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_graphs_scheme_sets_that_graphs_size(self, mode):
+        """A graph's scheme() gives it that scheme's size, in the served app
+        as in the saved page: served, scheme(stcolor) under an s2color
+        session drew stcolor's colours at s2color's 5.5 x 4 (aspect 1.375,
+        not 1.667; wp30 SX-03), hidden while the first graph's scheme was
+        the dashboard's."""
+        bo = {"session_scheme": "s2color"}
+        graphs = [("g1", [plot_for("scatter")], {"scheme": "stcolor"}),
+                  ("g2", [plot_for("scatter")], {})]
+        spec = tp._spec(None, bo, None, graphs)
+        if mode == "standalone":
+            r, _m = tp._standalone(spec)
+            got = [round(f.aspect_ratio, 4) for f in r.figures.values()]
+        else:
+            doc, _m = tp._served(spec)
+            got = [round(p.aspect_ratio, 4) for p in _plots_in_order(doc)]
+        r_st, _m = tp._standalone(tp._spec([plot_for("scatter")],
+                                           {"session_scheme": "stcolor"}, {}))
+        r_s2, _m = tp._standalone(tp._spec([plot_for("scatter")],
+                                           {"session_scheme": "s2color"}, {}))
+        want = [round(list(r_st.figures.values())[0].aspect_ratio, 4),
+                round(list(r_s2.figures.values())[0].aspect_ratio, 4)]
+        assert want[0] != want[1]
+        assert got == want, (mode, got, want)
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_a_graphs_unknown_scheme_is_reported_once_for_it_alone(self, mode):
+        """An unknown name on a graph (a spec built by hand: dash.ado
+        refuses one) is said once, for that graph, however many graphs
+        name it, and drawn s2color on those graphs only."""
+        bo = {"session_scheme": "stcolor"}
+        graphs = [("g1", [plot_for("scatter")], {"scheme": "nosuchthing"}),
+                  ("g2", [plot_for("scatter")], {}),
+                  ("g3", [plot_for("scatter")], {"scheme": "nosuchthing"})]
+        borders, msgs = _draw(tp._spec(None, bo, None, graphs), mode)
+        assert borders == [_bg("s2color"), _bg("stcolor"), _bg("s2color")], borders
+        said = [m for m in msgs if "nosuchthing" in m]
+        assert len(said) == 1 and "was not found for graph g1; using s2color" \
+            in said[0], msgs
+
     def test_the_served_move_keeps_each_graphs_scheme(self):
         _n, filt, action, oracle = tp._MOVES[0]
         spec = tp._spec(graphs=_TWO, build_options={"filter": filt})

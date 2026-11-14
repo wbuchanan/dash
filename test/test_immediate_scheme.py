@@ -57,10 +57,20 @@ IMMEDIATE = {"layout": "1 1", "theme": "", "session_scheme": "stcolor",
              "level": "95", "formats": {}}
 
 
+def _figure_bg(r):
+    """The one figure's canvas colour, drawing the page first."""
+    render_models(r)
+    [fig] = list(r.figures.values())
+    return fig.border_fill_color
+
+
 class TestGraphLevelScheme:
     def test_graph_scheme_beats_the_session_scheme(self, tmp_path):
+        """The graph is drawn in its own scheme(); the page around it keeps
+        the session's (14nov2026: a graph's scheme() is that graph's alone)."""
         r = _render(tmp_path, dict(IMMEDIATE), {"scheme": "economist"})
-        assert r.scheme.name == "economist"
+        assert _figure_bg(r) == dr.SchemeParser("economist").background_color
+        assert r.scheme.name == "stcolor"
 
     def test_session_scheme_still_applies_when_no_option_is_given(self, tmp_path):
         r = _render(tmp_path, dict(IMMEDIATE), {})
@@ -83,15 +93,22 @@ class TestGraphLevelScheme:
         to s2color wherever it was written, so the two places a user can name
         a scheme do not behave differently when the name is wrong.
         """
-        with pytest.warns(UserWarning, match="not a known theme or scheme"):
+        import warnings
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
             r = _render(tmp_path, dict(IMMEDIATE), {"scheme": "no_such_scheme"})
-        assert r.scheme.name == "s2color"
+            bg = _figure_bg(r)
+        said = [str(w.message) for w in caught if "no_such_scheme" in str(w.message)]
+        assert len(said) == 1 and "was not found for graph g1; using s2color" \
+            in said[0], said
+        assert bg == dr.SchemeParser("s2color").background_color
+        assert r.scheme.name == "stcolor"
 
-    def test_the_first_graphs_scheme_wins_and_the_conflict_is_reported(self, tmp_path):
-        """Two graphs, two different scheme() values: the dashboard takes
-        the first graph's, and each figure is drawn in its own, with no
-        "draws one scheme" warning (WP-30 P1.25.6; the node keeps its
-        name, flipped in place)."""
+    def test_each_graph_is_drawn_in_its_own_and_the_page_in_the_sessions(self, tmp_path):
+        """Two graphs, two different scheme() values: each figure is drawn
+        in its own, with no "draws one scheme" warning (WP-30 P1.25.6), and
+        the page takes the session's scheme, not the first graph's
+        (14nov2026)."""
         import warnings
         graphs = [
             {"name": "g1", "plots": [{"type": "scatter", "yvar": "mpg",
@@ -111,7 +128,7 @@ class TestGraphLevelScheme:
             warnings.simplefilter("always")
             r = render_models(dr.DashRenderer(str(spec), str(data)))
         assert not [w for w in caught if "draws one scheme" in str(w.message)]
-        assert r.scheme.name == "economist"
+        assert r.scheme.name == "stcolor"
         assert [f.border_fill_color for f in r.figures.values()] == [
             dr.SchemeParser("economist").background_color,
             dr.SchemeParser("s1mono").background_color]
@@ -123,12 +140,16 @@ class TestTheKeyDashAdoActuallyWrites:
     def test_graph_options_is_read(self, tmp_path):
         r = _render(tmp_path, dict(IMMEDIATE), {"scheme": "economist"},
                     key="graph_options")
-        assert r.scheme.name == "economist"
+        assert _figure_bg(r) == dr.SchemeParser("economist").background_color
 
-    def test_options_still_works_for_older_specs(self, tmp_path):
+    def test_options_is_not_the_pages_scheme(self, tmp_path):
+        """"options" is a plot key; a scheme under it on a graph (a shape
+        dash.ado never writes) made the page's scheme only while the first
+        graph's scheme() was the dashboard's.  The page keeps the
+        session's (14nov2026)."""
         r = _render(tmp_path, dict(IMMEDIATE), {"scheme": "economist"},
                     key="options")
-        assert r.scheme.name == "economist"
+        assert r.scheme.name == "stcolor"
 
     def test_the_shape_dash_ado_writes_end_to_end(self, tmp_path):
         """The literal graph object dash.ado assembles (dash.ado:1482)."""
@@ -146,8 +167,10 @@ class TestTheKeyDashAdoActuallyWrites:
         spec.write_text(_json.dumps(master))
         df = _pd.DataFrame({"mpg": [22.0, 18.0], "weight": [2930.0, 3350.0]})
         data.write_text(_json.dumps(make_data_json(df)))
-        assert dr._resolve_scheme_name(master) == "economist"
-        assert dr.DashRenderer(str(spec), str(data)).scheme.name == "economist"
+        assert dr._resolve_scheme_name(master) == "stcolor"
+        r = dr.DashRenderer(str(spec), str(data))
+        assert r.scheme.name == "stcolor"
+        assert _figure_bg(r) == dr.SchemeParser("economist").background_color
 
 
 class TestAnIncludeNoteIsPrintedOncePerBuild:
@@ -201,7 +224,8 @@ class TestAnIncludeNoteIsPrintedOncePerBuild:
 
     def test_the_immediate_route_notes_each_include_once(self, wd):
         r, said = self._build(wd, dict(IMMEDIATE), {"scheme": "b2inc"})
-        assert r.scheme.name == "b2inc"
+        assert r.scheme.name == "stcolor"
+        assert [f.border_fill_color for f in r.figures.values()] == ["#123456"]
         assert self._count(said) == (1, 1), said
 
     def test_a_build_scheme_and_a_graph_scheme_note_once(self, wd):

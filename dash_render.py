@@ -40220,8 +40220,12 @@ def _resolve_scheme_name(master_spec: dict,
                          scheme_dirs: "tuple[str, ...] | None" = None) -> str:
     """Return the scheme name a spec asks for, after every fallback.
 
-    Precedence: ``scheme()``, then ``theme()``, then a ``scheme()`` written on
-    a graph, then the session's own ``c(scheme)``, then ``s2color``.  Each
+    Precedence: ``scheme()``, then ``theme()``, then the session's own
+    ``c(scheme)``, then ``s2color``.  A ``scheme()`` written on a graph draws
+    that graph only (each figure resolves its own) and is never the
+    dashboard's: as in Stata, a graph that names none is drawn in the
+    session's scheme whatever another graph names (14nov2026; before, the
+    first graph's was the dashboard's, WP-30 P1.25.6).  Each
     is named by ``_dash_scheme_choice`` and looked for along *scheme_dirs*
     (``build_options["scheme_dirs"]`` when None), as Stata looks (WP-30
     P1.25b).
@@ -40242,36 +40246,15 @@ def _resolve_scheme_name(master_spec: dict,
     dirs = (_dash_scheme_dirs_of(_build_opts) if scheme_dirs is None
             else tuple(scheme_dirs))
 
-    # A scheme() written on a single graph rather than on `dash build'.
-    # `dash scatter mpg weight, scheme(economist)' takes the immediate
-    # render path, which writes its own build_options with no scheme key
-    # in it at all, and stores the option on the graph.  The first graph's
-    # is the dashboard's; every graph is drawn in its own (WP-30 P1.25.6),
-    # so a second graph naming another scheme is not a conflict.
-    # dash.ado emits a graph as
-    #     {"plots":[...], "graph_options":{...}, "if_expr":"", "in_expr":""}
-    # -- "options" is a PLOT key and appears on no graph it writes.
-    # "options" is kept as a fallback so hand-built fixtures keep working.
-    _graph_scheme = ""
-    for _g in master_spec.get("graphs", []):
-        if not isinstance(_g, dict):
-            continue
-        _go = _g.get("graph_options") or _g.get("options") or {}
-        if not isinstance(_go, dict):
-            continue
-        _gs = str(_go.get("scheme", "") or "").strip()
-        if _gs:
-            _graph_scheme = _gs
-            break
-
-    # Prefer explicit 'scheme' key, then 'theme', then a scheme named on
-    # a graph, then the session's own c(scheme).  The session scheme is
-    # what a Stata user has already chosen for every graph they draw.
+    # Prefer explicit 'scheme' key, then 'theme', then the session's own
+    # c(scheme): what a Stata user has already chosen for every graph they
+    # draw.  A scheme() written on a graph -- `dash scatter mpg weight,
+    # scheme(economist)', or one graph of a dash build -- is that graph's
+    # alone; each figure resolves its own, so it is not read here.
     source, value = "", ""
     for _src, _val in (
             ("scheme", str(_build_opts.get("scheme", "") or "").strip()),
             ("theme", str(_build_opts.get("theme", "") or "").strip()),
-            ("graph", _graph_scheme),
             ("session",
              str(_build_opts.get("session_scheme", "") or "").strip())):
         if _val:
@@ -85410,9 +85393,15 @@ class ServerAppBuilder:
             "        # names a bad aspectratio() too.  With neither given, the",
             "        # scheme's own graphsize ratio, as the saved figure",
             "        # (_resolve_aspect_ratio), with no height band (WP-45 VF-4).",
-            "        _ar = _dash_figure_aspect(go, _SCHEME_GRAPHSIZE_X, _SCHEME_GRAPHSIZE_Y)",
-            "        if _ar is None and _SCHEME_GRAPHSIZE_X and _SCHEME_GRAPHSIZE_Y:",
-            "            _ar = float(_SCHEME_GRAPHSIZE_X) / float(_SCHEME_GRAPHSIZE_Y)",
+            "        # The graph's own scheme's size, as the saved renderer reads",
+            "        # self.scheme inside _make_figure (14nov2026): the page's was",
+            "        # every figure's, so scheme(stcolor) under an s2color session",
+            "        # drew at 5.5 x 4.",
+            "        _gsx = getattr(_dash_cur_scheme(), 'graphsize_x', None)",
+            "        _gsy = getattr(_dash_cur_scheme(), 'graphsize_y', None)",
+            "        _ar = _dash_figure_aspect(go, _gsx, _gsy)",
+            "        if _ar is None and _gsx and _gsy:",
+            "            _ar = float(_gsx) / float(_gsy)",
             "        if _ar is not None:",
             "            _fig_kw['aspect_ratio'] = _ar",
             "        _xsc = _dash_scale_spec(go.get('xscale', ''), 'xscale', _reported_subopts, gname)",
@@ -85824,13 +85813,12 @@ class ServerAppBuilder:
             "        _dash_title_standoffs(fig)",
             "        _dash_outline_border(fig)",
             "        _dash_apply_scale(fig, _dash_scale_factor(go))",
-            "        fig._dash_gsize = (_SCHEME_GRAPHSIZE_X or 5.5, _SCHEME_GRAPHSIZE_Y or 4.0)",
+            "        fig._dash_gsize = (_gsx or 5.5, _gsy or 4.0)",
             "        fig._dash_gmargin = _dash_graph_margin_pct(go, _dash_cur_scheme())",
             "        _dash_overhangs(fig, go)",
             "        _dash_dashes_on_canvas(fig)",
             "        if _fac_label is None:",
-            "            _dash_apply_figure_size(fig, go, _SCHEME_GRAPHSIZE_X,",
-            "                                    _SCHEME_GRAPHSIZE_Y)",
+            "            _dash_apply_figure_size(fig, go, _gsx, _gsy)",
             "            # WP-43: a legend wider than twoway's limit kept",
             "            # inside the graph, as the saved renderer does.",
             "            _dash_legend_fit(fig, go)",

@@ -7213,10 +7213,11 @@ style, in either order.
 
 {pstd}
 {cmd:scheme()} applies a named Stata graph scheme to the whole dashboard.
-A {cmd:scheme()} written on one graph draws that graph in it, in the
-saved page and the served app alike; the page and the KPI cards take the
-dashboard's scheme ({cmd:dash build}'s {cmd:scheme()}, then
-{cmd:theme()}, then the first graph's, then {cmd:c(scheme)}).
+A {cmd:scheme()} written on one graph draws that graph in it, and no other,
+in the saved page and the served app alike, as {cmd:twoway}'s does.  A
+graph with no {cmd:scheme()} of its own, the page and the KPI cards take
+the dashboard's scheme ({cmd:dash build}'s {cmd:scheme()}, then
+{cmd:theme()}, then {cmd:c(scheme)}), whatever scheme another graph names.
 With no {cmd:scheme()} and no {cmd:theme()}, {cmd:dash} follows the session's
 own {cmd:c(scheme)}, so a dashboard has the look of every other graph you
 draw without your asking.

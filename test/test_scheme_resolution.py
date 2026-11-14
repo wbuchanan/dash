@@ -255,8 +255,15 @@ class TestACustomSchemeInTheWorkingDirectory:
     def test_the_page_chrome_is_drawn_with_it(self, custom_cwd, entry, bo,
                                               go, mode):
         """The half-application: the css block -- body background, heading
-        and KPI card rules -- came from s2color while the figure did not."""
+        and KPI card rules -- came from s2color while the figure did not.
+        A graph's scheme() is that graph's alone (14nov2026): the page and
+        its KPI cards take the session's, here none, so s2color."""
         d = _draw(_spec(bo, go), mode)
+        if entry.startswith("graph"):
+            assert CUSTOM_BG not in d.css, d.css
+            assert d.scheme.name == "s2color", d.scheme.name
+            assert all(CUSTOM_BG not in c for c in d.div_css), d.div_css
+            return
         assert CUSTOM_BG in d.css, (
             f"[{entry}, {mode}] css_block() carries no {CUSTOM_BG}:\n{d.css}")
         assert S2COLOR_HEADING not in d.css, (
@@ -290,7 +297,8 @@ class TestBothModesAgreeOnTheCustomScheme:
             f"{b.css}")
         assert (a.fig.border_fill_color, a.fig.background_fill_color) == \
             (b.fig.border_fill_color, b.fig.background_fill_color)
-        assert a.scheme.name == b.scheme.name == "mytheme"
+        assert a.scheme.name == b.scheme.name == (
+            "s2color" if entry.startswith("graph") else "mytheme")
 
 
 # ---------------------------------------------------------------------------
@@ -400,12 +408,14 @@ class TestAnUnresolvableNameIsReportedOnce:
         _assert_unknown_warning(msgs[0], "../mytheme")
 
     def test_a_graph_level_unknown_name(self, custom_cwd):
+        """A graph's scheme() is not the dashboard's (14nov2026): resolving
+        the dashboard's says nothing of it; its figure reports it, once
+        (test_scheme_lookup.py, TestPerGraphSchemes)."""
         graphs = [{"name": "g1", "plots": [plot_for("scatter")],
                    "graph_options": {"name": "g1", "scheme": "nosuchthing"}}]
         name, msgs = _resolve({}, graphs)
         assert name == "s2color"
-        assert len(msgs) == 1, msgs
-        _assert_unknown_warning(msgs[0], "nosuchthing")
+        assert msgs == [], msgs
 
     @pytest.mark.parametrize("mode", MODES)
     def test_a_build_level_unknown_name_warns_once_through_a_render(
