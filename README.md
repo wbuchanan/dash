@@ -64,7 +64,7 @@ dash (scatter mpg weight) (lfit mpg weight), title("MPG vs Weight") saving(fit.h
 ## Gallery
 
 <!-- dash-gallery:start -->
-These pairs were drawn on 13nov2026 at dash commit aa0aa0c; each verdict is the corpus comparison's (make corpus).
+These pairs were drawn on 14nov2026 at dash commit 0a6498a; each verdict is the corpus comparison's (make corpus).
 
 <p><img src="docs/gallery/svg/help-scatter-5a78709a-twoway.svg" alt="twoway: twoway scatter lexp gnp000, xsca(log) xlabel(.5 2.5 10(10)40)" width="49%"> <img src="docs/gallery/svg/help-scatter-5a78709a-dash.svg" alt="dash: twoway scatter lexp gnp000, xsca(log) xlabel(.5 2.5 10(10)40)" width="49%"><br><code>twoway scatter lexp gnp000, xsca(log) xlabel(.5 2.5 10(10)40)</code><br><b>Close</b>: margins</p>
 <p><img src="docs/gallery/svg/help-marker_label_options-154277cd-twoway.svg" alt="twoway: twoway scatter lexp gnppc if region==2, mlabel(country)" width="49%"> <img src="docs/gallery/svg/help-marker_label_options-154277cd-dash.svg" alt="dash: twoway scatter lexp gnppc if region==2, mlabel(country)" width="49%"><br><code>twoway scatter lexp gnppc if region==2, mlabel(country)</code><br><b>Close</b>: margins</p>
