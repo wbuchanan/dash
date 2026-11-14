@@ -432,6 +432,23 @@ class TestPanelPage:
         assert gallery.panel_page(str(path), rows, kinds) == 0
         assert path.read_text(encoding="utf-8") == after
 
+    def test_a_long_command_is_known_by_dashs_shortened_name(self, tmp_path):
+        """dash names a picture by its alt() cut to 120 characters
+        (_dash_aria); a row whose command is longer is still its row (the
+        gallery's scatter page stopped at its row 17)."""
+        cmd = ('scatter mpg weight, mc(navy) ms(circle) msi(medium) title("Fuel '
+               'Efficiency vs. Weight") xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")')
+        rows = [_row("a-1", cmd=cmd)]
+        kinds = {"a-1": "live"}
+        path = tmp_path / "scatter.html"
+        path.write_text(gallery_page_html(rows, kinds), encoding="utf-8")
+        assert len(gallery.captions(rows[0], "twoway")[1]) > 120
+        assert gallery.panel_page(str(path), rows, kinds) == 2
+        doc, _ = _doc_json(path.read_text(encoding="utf-8"))
+        cells = {(c[1], c[2]): c[0] for c in _grid(doc)["attributes"]["children"]}
+        assert gallery.html.escape(cmd) in \
+            cells[(0, 0)]["attributes"]["children"][-1]["attributes"]["text"]
+
     def test_a_page_unlike_its_rows_is_refused_and_kept(self, tmp_path, built_page):
         rows, kinds = _panel_rows()
         path = tmp_path / "scatter.html"

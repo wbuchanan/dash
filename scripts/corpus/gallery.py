@@ -354,6 +354,15 @@ def _aria_label(model):
     return dict(attrs.get("entries") or []).get("aria-label")
 
 
+def _dash_name(alt):
+    """The accessible name dash gives a picture whose alt() is *alt*: its
+    rule (dash_render._dash_aria), which cuts a name to 120 characters."""
+    import types
+    import dash_render
+    return dash_render._dash_aria(types.SimpleNamespace(html_attributes={}),
+                                  alt).html_attributes.get("aria-label")
+
+
 def panel_page(path, rows, shown):
     """Put each cell of a built page in its panel: the label above, the
     command below, twoway's at column 1 and dash's, shaded, at column 2;
@@ -390,7 +399,7 @@ def panel_page(path, rows, shown):
         raise ValueError("gallery: %s's grid holds %d cells, not its %d rows' %d"
                          % (name, len(at), len(rows), len(want)))
     for k, r in enumerate(rows):
-        if _aria_label(at[(k, 0)]) != captions(r, "twoway")[1]:
+        if _aria_label(at[(k, 0)]) != _dash_name(captions(r, "twoway")[1]):
             raise ValueError("gallery: %s's row %d is not %s" % (name, k + 1, r["id"]))
     out = []
     for k, r in enumerate(rows):
