@@ -79,7 +79,70 @@ def _page(tmp):
     return path
 
 
+_FILL_JS = r"""
+JSON.stringify((() => {
+  const out = [];
+  const walk = (root) => {
+    for (const el of root.querySelectorAll('*')) {
+      if (el.shadowRoot) walk(el.shadowRoot);
+    }
+    for (const f of root.querySelectorAll('figure.dash-image')) {
+      const img = f.querySelector('img');
+      const host = f.getRootNode().host;
+      if (!img || !host || !img.complete) continue;
+      const a = img.getBoundingClientRect(), b = host.getBoundingClientRect();
+      out.push([a.left, a.width, b.left, b.width]);
+    }
+  };
+  walk(document);
+  // The graph's cell beside it: the grid's other child.
+  for (const v of Object.values(Bokeh.index)) {
+    const find = (w) => {
+      if (!w) return null;
+      const kids = w.child_views || [];
+      if (w.model.type === 'GridBox' && kids.length == 2) return kids;
+      for (const c of kids) { const f = find(c); if (f) return f; }
+      return null;
+    };
+    const kids = find(v);
+    if (kids) {
+      const cells = kids.map(k => k.el.getBoundingClientRect().width);
+      out.push(cells);
+    }
+  }
+  return out;
+})())
+"""
+
+
 class TestInChrome:
+
+    @pytest.mark.parametrize("width", [1400, 2000])
+    def test_the_image_fills_its_cell(self, width):
+        """The picture is as wide as its layout cell, as the graph beside it
+        is, on a narrow window and a wide one: a <figure>'s default 40 px
+        side margins narrowed it by 80 px, and Bokeh's inline-block content
+        box held it at its own width (720 px) on a window wider than that."""
+        with tempfile.TemporaryDirectory(prefix="dash_img_fill_") as tmp:
+            with _CspProbe(_url(_page(tmp))) as p:
+                p._send("Emulation.setDeviceMetricsOverride",
+                        {"width": width, "height": 1000, "deviceScaleFactor": 1,
+                         "mobile": False})
+                end = time.time() + 15
+                got = p.read(_FILL_JS)
+                while not (got and got[0][3] > 0.4 * width) and time.time() < end:
+                    time.sleep(0.2)
+                    got = p.read(_FILL_JS)
+                time.sleep(0.5)
+                got = p.read(_FILL_JS)
+                assert len(got) == 2, got
+                img_left, img_w, cell_left, cell_w = got[0]
+                assert cell_w > 0.4 * width, got
+                assert abs(img_left - cell_left) <= 1 and abs(img_w - cell_w) <= 1, got
+                # As wide as the graph's cell beside it (Bokeh's 5 px Div
+                # margin a side narrowed it by 10 px).
+                assert len(got[1]) == 2 and abs(got[1][0] - got[1][1]) <= 1, got
+                assert abs(img_w - max(got[1])) <= 1, got
 
     def test_the_image_loads_with_no_violation(self):
         with tempfile.TemporaryDirectory(prefix="dash_img_csp_") as tmp:

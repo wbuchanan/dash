@@ -251,35 +251,200 @@ class TestSetupFrames:
 
 class TestCaptions:
 
-    def test_lengths_and_dash_answer(self):
-        r = _row("a-1", verdict="Differs", summary_="marker symbol")
-        cap, alt = gallery.captions(r, "twoway")
-        assert cap == "scatter mpg weight -- Differs: marker symbol"
-        assert alt == "twoway: scatter mpg weight"
-        r = _row("b-2", verdict="Same")
-        assert gallery.captions(r, "twoway")[0] == "scatter mpg weight -- Same"
-        r = _row("c-3", rc_da=198, first_dash="option foo not allowed", verdict="Differs",
-                 summary_="return code")
-        assert (gallery.captions(r, "twoway")[0]
-                == "scatter mpg weight -- dash r(198): option foo not allowed")
+    def test_the_twoway_image_has_no_caption_and_no_verdict(self):
+        """The command is the panel's (panel_texts), not the picture's: the
+        twoway image has no caption, so no verdict is drawn on a page."""
+        for r in (_row("a-1", verdict="Differs", summary_="marker symbol"),
+                  _row("b-2", verdict="Same"),
+                  _row("c-3", rc_da=198, first_dash="option foo not allowed",
+                       verdict="Differs", summary_="return code"),
+                  _row("e-5", verdict="Close", summary_="x-axis ticks (AX-4)")):
+            cap, alt = gallery.captions(r, "twoway")
+            assert cap == "" and alt == "twoway: scatter mpg weight", r["id"]
         long_cmd = "scatter mpg weight, title(" + "x" * 600 + ")\r\nnote(y)"
         cap, alt = gallery.captions(_row("d-4", cmd=long_cmd), "twoway")
-        assert len(cap) == 400 and cap.endswith("...") and "\n" not in cap
-        assert "\r" not in cap
+        assert cap == "" and "\r" not in alt and "\n" not in alt
         assert len(alt) == 200 and alt.endswith("...")
 
     def test_stata_terms_only(self):
-        r = _row("a-1", verdict="Close", summary_="x-axis ticks, legend keys",
-                 checks=("legend", "x_ticks"), ledger_=("AX-4",))
-        cap, _ = gallery.captions(r, "twoway")
-        assert "x-axis ticks, legend keys" in cap
-        assert "AX-4" not in cap and "x_ticks" not in cap
         for bad in ("x ticks (AX-4)", "plot:PT-13", "glyph_extents", "frame gf2"):
             assert gallery.stata_terms_only(bad) is False, bad
         assert gallery.stata_terms_only("x-axis ticks, legend keys") is True
-        with pytest.raises(ValueError, match="b-2"):
-            gallery.captions(_row("b-2", verdict="Close", summary_="x-axis ticks (AX-4)"),
-                             "twoway")
+
+
+class TestPanelTexts:
+
+    def test_label_command_and_a_refusals_note(self):
+        r = _row("a-1", verdict="Close", summary_="x-axis ticks, legend keys")
+        assert gallery.panel_texts(r, "twoway", "live") == (
+            "Stata on twoway", "scatter mpg weight", "")
+        assert gallery.panel_texts(r, "dash", "live") == (
+            "Stata on dash", "dash scatter mpg weight", "")
+        assert gallery.panel_texts(r, "dash", "static")[2] == ""
+        r = _row("c-3", rc_da=198, first_dash="option foo not allowed")
+        assert gallery.panel_texts(r, "dash", "refused") == (
+            "Stata on dash", "dash scatter mpg weight",
+            "dash r(198): option foo not allowed")
+        # A graph the corpus drew but the page's own session refused.
+        assert gallery.panel_texts(_row("d-4"), "dash", "refused")[2] == (
+            "dash did not draw this graph on this page")
+        long_cmd = "scatter mpg weight, title(" + "x" * 600 + ")\r\nnote(y)"
+        label, cmd, _ = gallery.panel_texts(_row("e-5", cmd=long_cmd), "dash", "live")
+        assert cmd.startswith("dash scatter") and len(cmd) == 400 and cmd.endswith("...")
+        assert "\r" not in cmd and "\n" not in cmd
+        with pytest.raises(ValueError):
+            gallery.panel_texts(r, "stata", "live")
+
+
+# ---- a page as the gallery's page.do builds it ---------------------------------
+
+_SMOKE = os.path.join(_ROOT, "test", "fixtures", "svg_truth_smoke.svg")
+_PANEL_ROWS = (("a-1", "scatter mpg weight", "live"),
+               ("b-2", 'scatter mpg weight, title("<b>&")', "refused"),
+               ("c-3", "scatter mpg weight, msymbol(oh)", "static"))
+
+
+def _panel_rows():
+    rows = [_row(i, cmd=c, rc_da=(198 if k == "refused" else 0),
+                 first_dash=("option foo not allowed" if k == "refused" else None))
+            for i, c, k in _PANEL_ROWS]
+    return rows, {i: k for i, _c, k in _PANEL_ROWS}
+
+
+def gallery_page_html(rows, kinds):
+    """The page dash build writes for the gallery's layout: row k's twoway
+    image t<k> at (k,1) beside its dash graph g<k> (a static dash image d<k>,
+    nothing for a refused row) at (k,2)."""
+    import warnings
+    import numpy as np
+    import pandas as pd
+    from bokeh.io import curdoc
+    sys.path.insert(0, os.path.join(_ROOT, "test"))
+    import dash_render as dr
+    from conftest import make_data_json
+    graphs, images, lay = [], [], []
+    for k, r in enumerate(rows, 1):
+        images.append({"name": "t%d" % k, "path": _SMOKE, "caption": "",
+                       "alt": gallery.captions(r, "twoway")[1], "link": ""})
+        lay.append("t%d:%d,1" % (k, k))
+        kind = kinds[r["id"]]
+        if kind == "live":
+            graphs.append({"name": "g%d" % k,
+                           "graph_options": {"name": "g%d" % k, "scheme": "stcolor"},
+                           "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                                      "options": {}}], "if_expr": "", "in_expr": ""})
+            lay.append("g%d:%d,2" % (k, k))
+        elif kind == "static":
+            images.append({"name": "d%d" % k, "path": _SMOKE, "caption": "",
+                           "alt": "dash: " + r["example"]["cmd"], "link": ""})
+            lay.append("d%d:%d,2" % (k, k))
+    spec = {"graphs": graphs, "kpis": [], "images": images,
+            "build_options": {"layout": " ".join(lay), "link": "", "theme": "",
+                              "title": "dash beside twoway: scatter", "subtitle": "",
+                              "filter": "", "tabs": "",
+                              "registry": " ".join(c.split(":")[0] for c in lay)}}
+    i = np.arange(12, dtype=float)
+    frame = pd.DataFrame({"mpg": 12.0 + i, "weight": 2000.0 + 100.0 * i})
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="dash_gallery_page_") as tmp:
+        sp, dp = os.path.join(tmp, "spec.json"), os.path.join(tmp, "data.json")
+        with open(sp, "w") as fh:
+            json.dump(spec, fh)
+        with open(dp, "w") as fh:
+            json.dump(make_data_json(frame), fh)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            try:
+                return dr.DashRenderer(sp, dp).render()
+            finally:
+                curdoc().clear()
+
+
+@pytest.fixture(scope="module")
+def built_page():
+    rows, kinds = _panel_rows()
+    return gallery_page_html(rows, kinds)
+
+
+def _doc_json(text):
+    import html as _html
+    m = re.search(r'<script type="application/json" id="[^"]+">(.*?)</script>', text, re.S)
+    return json.loads(_html.unescape(m.group(1))), m
+
+
+def _grid(doc):
+    root = list(doc.values())[0]["roots"][0]
+    return [c for c in root["attributes"]["children"] if c.get("name") == "GridPlot"][0]
+
+
+def _styles(model):
+    return dict(model["attributes"]["styles"]["entries"])
+
+
+class TestPanelPage:
+
+    def test_each_cell_is_labelled_above_and_commanded_below(self, tmp_path, built_page):
+        rows, kinds = _panel_rows()
+        path = tmp_path / "scatter.html"
+        path.write_text(built_page, encoding="utf-8")
+        before = {(c[1], c[2]): c[0]["id"] for c in _grid(_doc_json(built_page)[0])
+                  ["attributes"]["children"]}
+        assert gallery.panel_page(str(path), rows, kinds) == 6
+        doc, _ = _doc_json(path.read_text(encoding="utf-8"))
+        cells = {(c[1], c[2]): c[0] for c in _grid(doc)["attributes"]["children"]}
+        assert sorted(cells) == [(0, 0), (0, 1), (1, 0), (1, 1), (2, 0), (2, 1)]
+        for (r, c), panel in cells.items():
+            side = ("twoway", "dash")[c]
+            row = rows[r]
+            assert panel["name"] == "Column", panel["name"]
+            assert panel["attributes"]["name"] == "gallery-panel-" + side
+            kids = panel["attributes"]["children"]
+            assert len(kids) == 3, kids
+            label, cmd, note = gallery.panel_texts(row, side, kinds[row["id"]])
+            assert kids[0]["name"] == "Div" and label in kids[0]["attributes"]["text"]
+            assert kids[-1]["name"] == "Div"
+            text = kids[-1]["attributes"]["text"]
+            assert "<code" in text and gallery.html.escape(cmd) in text, text
+            if (r, c) in before:
+                assert kids[1]["id"] == before[(r, c)]
+            else:  # the refused row's dash side: its note in place of a graph
+                assert (r, c) == (1, 1) and gallery.html.escape(note) in \
+                    kids[1]["attributes"]["text"]
+        assert "<b>&" not in path.read_text(encoding="utf-8")
+        tw, da = _styles(cells[(0, 0)]), _styles(cells[(0, 1)])
+        assert tw["padding"] == da["padding"] and tw["box-sizing"] == "border-box"
+        assert tw["border"].split()[:2] == da["border"].split()[:2]
+        assert tw["background-color"] != da["background-color"]
+        # Both are coloured frames round the picture: twoway's orange, dash's blue.
+        assert tw["background-color"] == "#fdeedf" and tw["border"] == "1px solid #eda25c"
+        assert da["background-color"] == "#e8f1fb" and da["border"] == "1px solid #7fb0e0"
+
+    def test_only_the_layout_changes_and_twice_is_once(self, tmp_path, built_page):
+        rows, kinds = _panel_rows()
+        path = tmp_path / "scatter.html"
+        path.write_text(built_page, encoding="utf-8")
+        gallery.panel_page(str(path), rows, kinds)
+        after = path.read_text(encoding="utf-8")
+        _, m0 = _doc_json(built_page)
+        _, m1 = _doc_json(after)
+        assert built_page[:m0.start(1)] == after[:m1.start(1)]
+        assert built_page[m0.end(1):] == after[m1.end(1):]
+        assert gallery.panel_page(str(path), rows, kinds) == 0
+        assert path.read_text(encoding="utf-8") == after
+
+    def test_a_page_unlike_its_rows_is_refused_and_kept(self, tmp_path, built_page):
+        rows, kinds = _panel_rows()
+        path = tmp_path / "scatter.html"
+        path.write_text(built_page, encoding="utf-8")
+        for bad_rows, bad_kinds in ((rows[:2], kinds),
+                                    ([rows[1], rows[0], rows[2]], kinds),
+                                    (rows, dict(kinds, **{"a-1": "refused"}))):
+            with pytest.raises(ValueError, match="scatter.html"):
+                gallery.panel_page(str(path), bad_rows, bad_kinds)
+            assert path.read_text(encoding="utf-8") == built_page
+        path.write_text("<html></html>", encoding="utf-8")
+        with pytest.raises(ValueError, match="scatter.html"):
+            gallery.panel_page(str(path), rows, kinds)
 
 
 def _page_do(tmp_path, rows, page="scatter"):
@@ -489,15 +654,26 @@ class TestBuildPages:
     def test_each_page_builds_once(self, tmp_path, monkeypatch, cache):
         calls = tmp_path / "calls.txt"
         monkeypatch.setattr(twoway_run, "SLOT_CMD",
-                            _fake_slot(tmp_path, {"*": "##BUILD 0\n"}, calls))
+                            _fake_slot(tmp_path, {"*": "##BUILD 0\n##GRAPH b-2 198\n"},
+                                       calls))
+        panelled = []
+        monkeypatch.setattr(gallery, "panel_page",
+                            lambda path, rows, shown: panelled.append(
+                                (os.path.basename(path), [r["id"] for r in rows],
+                                 dict(shown))))
         page_rows = {"scatter": [_row("a-1"), _row("b-2")], "scatter-2": [_row("c-3")],
                      "line": [_row("d-4", plottype="line")]}
         got = gallery.build_pages(page_rows, str(tmp_path / "run"), str(tmp_path / "out"),
                                   "/repo", jobs=2)
         assert sorted(calls.read_text().split()) == ["line", "scatter", "scatter-2"]
         assert set(got) == {"scatter", "scatter-2", "line"}
-        assert got["scatter"]["shown"] == {"a-1": "live", "b-2": "live"}
+        assert got["scatter"]["shown"] == {"a-1": "live", "b-2": "refused"}
         assert got["line"]["log"]["build"] == 0
+        # Each built page is panelled once, with what it shows.
+        assert sorted(panelled) == [
+            ("line.html", ["d-4"], {"d-4": "live"}),
+            ("scatter-2.html", ["c-3"], {"c-3": "live"}),
+            ("scatter.html", ["a-1", "b-2"], {"a-1": "live", "b-2": "refused"})]
 
     def test_a_failed_build_raises_naming_the_page(self, tmp_path, monkeypatch, cache):
         calls = tmp_path / "calls.txt"
@@ -841,6 +1017,7 @@ class TestMain:
             return {"frames": {}, "images": {}, "graphs": {}, "static": {}, "build": rc,
                     "error": "r(198);" if rc else None}
         monkeypatch.setattr(gallery, "run_page", fake_run_page)
+        monkeypatch.setattr(gallery, "panel_page", lambda *a: 0)
         with pytest.raises(RuntimeError, match="index"):
             gallery.main(["--run", str(run), "--gallery", str(g), "--readme", str(readme),
                           "--ids", str(ids)])

@@ -1022,6 +1022,7 @@ and now matches Stata.
 - A page of many graphs loads in seconds: each graph asked for the whole page to be laid out again, so a page of 60 graphs took 16 s to appear and one of 124 never did; the page is now laid out once however many graphs ask (60 graphs 2.3 s, 100 graphs 5.8 s, in headless Chrome); a page of 16 by() graphs takes 8.7 s, where it took 50 s; the corpus gallery's page of 124 scatter examples loads in 32 s (WP-50)
 - text()'s width() and height() draw the box at the size given: the script that fits the box never compiled in the browser (a line break inside one of its strings), so every fixed box was drawn as wide and tall as its text (WP-50)
 - pcarrow's heads keep their size when the page's layout moves a graph's plot region after it first draws: they were drawn about 5% short on a page whose fonts and spacing the width scale sets (WP-50)
+- A dash image panel is as wide and as tall as the graph's cell beside it at any window width: its picture sat inside the browser's default figure margins (40 px a side) and Bokeh's Div margin (5 px a side), grew no wider than its own width (720 px for a twoway graph), and left a line's gap below it, so on a 2000 px window a twoway picture beside a dash graph was drawn about a quarter smaller (WP-50)
 
 ### Fixed in WP-49
 

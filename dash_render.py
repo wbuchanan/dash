@@ -5341,8 +5341,12 @@ def _dash_image_link_ok(link):
 
 def _dash_image_html(uri, caption, alt, link=""):
     """An image panel's markup: ``<figure class="dash-image" role="group"
-    aria-label=alt><img src=uri alt=alt width="100%"><figcaption>caption
-    </figcaption></figure>``, the caption and alt escaped, no figcaption
+    aria-label=alt style="margin:0"><img src=uri alt=alt width="100%"
+    style="display:block"><figcaption>caption</figcaption></figure>``, the
+    figure without the browser's default margins (40 px a side, which drew
+    the picture narrower than a graph beside it) and the picture a block
+    (an inline one leaves a line's descent below it), the caption and alt
+    escaped, no figcaption
     when the caption is empty, and with *link* the ``<img>`` alone wrapped
     in ``<a href=link>`` (WP-33 33-06).  *uri* must be a base64 SVG data
     address and *link* empty or a page name (``_dash_image_link_ok``),
@@ -5357,29 +5361,36 @@ def _dash_image_html(uri, caption, alt, link=""):
         raise ValueError("dash image: link() takes the file name of a page "
                          "in the same folder")
     a = html.escape(str(alt or ""), quote=True)
-    img = f'<img src="{uri}" alt="{a}" width="100%">'
+    img = f'<img src="{uri}" alt="{a}" width="100%" style="display:block">'
     if link:
         img = f'<a href="{html.escape(link, quote=True)}">{img}</a>'
     cap = str(caption or "")
     fc = (f"<figcaption>{html.escape(cap, quote=True)}</figcaption>"
           if cap else "")
-    return (f'<figure class="dash-image" role="group" aria-label="{a}">'
-            f"{img}{fc}</figure>")
+    return (f'<figure class="dash-image" role="group" aria-label="{a}" '
+            f'style="margin:0">{img}{fc}</figure>')
 
 
 def _dash_image_div(image):
     """One image panel's Div, from a resolved ``images`` entry (WP-33
     33-06): ``_dash_image_html`` in a stretch-width Div with MathJax off,
     named for assistive technology as a KPI card is.  alt() defaults to
-    the caption, else the name.  Both modes build the panel here."""
-    from bokeh.models import Div
+    the caption, else the name.  No margin (Bokeh's Div has 5 px a side)
+    and a block content box, so the picture is as wide as a graph's cell
+    beside it at any width.  Both modes build the panel here."""
+    from bokeh.models import Div, InlineStyleSheet
     im = image if isinstance(image, dict) else {}
     name = str(im.get("name", "") or "")
     caption = str(im.get("caption", "") or "")
     alt = str(im.get("alt", "") or "") or caption or name
+    # BokehJS draws a Div's text in a box styled display:inline-block (3.8
+    # and 3.9), so width="100%" resolved to the picture's own width and a
+    # cell wider than that drew it narrower than a graph beside it.
     div = Div(text=_dash_image_html(im.get("uri", ""), caption, alt,
                                     im.get("link") or ""),
-              sizing_mode="stretch_width", disable_math=True)
+              sizing_mode="stretch_width", disable_math=True, margin=0,
+              stylesheets=[InlineStyleSheet(
+                  css=".bk-clearfix { display: block !important; }")])
     return _dash_aria(div, alt, role="group")
 
 

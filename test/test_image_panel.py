@@ -143,6 +143,15 @@ class TestTheMarkup:
             with pytest.raises(ValueError):
                 dr._dash_image_html(bad, "c", "a")
 
+    def test_the_figure_keeps_no_margin(self):
+        """A <figure>'s default margins (40 px a side) drew the picture
+        narrower than the graph beside it; the panel's figure has none."""
+        h = dr._dash_image_html(_URI, "c", "a")
+        assert h.startswith('<figure class="dash-image" role="group" '
+                            'aria-label="a" style="margin:0">'), h[:120]
+        # A block picture: an inline one leaves a line's descent below it.
+        assert 'width="100%" style="display:block">' in h, h
+
     def test_link_wraps_the_img(self):
         h = dr._dash_image_html(_URI, "c", "a", "scatter.html")
         assert '<a href="scatter.html"><img ' in h
@@ -165,6 +174,13 @@ class TestTheMarkup:
                                 "alt": "", "link": "p.html"})
         assert isinstance(d, Div)
         assert d.disable_math is True and d.sizing_mode == "stretch_width"
+        # No margin round the Div, as none is round a graph's cell beside it.
+        assert d.margin == 0
+        # Bokeh draws a Div's text in a box styled display:inline-block, so
+        # the picture's width="100%" stopped at its own width; the panel's
+        # sheet makes the box a block, the cell's width.
+        css = " ".join(getattr(s, "css", s) for s in d.stylesheets)
+        assert ".bk-clearfix" in css and "display: block !important" in css, css
         # alt() defaults to the caption, else the name.
         assert 'alt="Cap"' in d.text and '<a href="p.html">' in d.text
         assert d.html_attributes == {"role": "group", "aria-label": "Cap"}

@@ -11,7 +11,10 @@ and svg/<id>-dash.svg for every example twoway draws but those of a plot type
 in LEFT_OUT; one dash page per plot type, <plottype>.html (in parts
 <plottype>-2.html, ... when one Stata session cannot hold its rows or frames,
 or when a built page is over PAGE_BYTES_MAX), each row twoway's SVG in an image
-panel beside the live dash graph drawn in the frame of its own setup; and
+panel beside the live dash graph drawn in the frame of its own setup, each
+side then put in a frame of its own by panel_page ("Stata on twoway" above
+and the twoway command below, orange; "Stata on dash" and the dash command,
+blue; no verdict, which corpus.json and the README block keep); and
 index.html, whose panels link to the pages.  Each page is one `dash build'
 in its own Stata session through scripts/stata_slot.sh.  Every page is timed
 in headless Chrome.  Only when every page has built are the SVGs and pages
@@ -280,24 +283,130 @@ def _missing_names(row):
 
 
 def captions(row, kind):
-    """(caption, alt) of a row's twoway image ("twoway") or its static dash image."""
+    """(caption, alt) of a row's twoway image ("twoway") or its static dash
+    image.  The twoway image has no caption: its command is its panel's
+    (panel_texts) and a page shows no verdict, which corpus.json and the
+    README block keep."""
     cmd = row["example"]["cmd"]
-    v = row["verdict"]
     if kind == "static":
         return (_clean("dash's exported SVG (static: dataset not in the cache: %s)"
                        % " ".join(_missing_names(row)), CAPTION_MAX),
                 _clean("dash: " + cmd, ALT_MAX))
-    rc = v.get("rc_dash")
-    if rc not in (0, None):
-        cap = "%s -- dash r(%d): %s" % (cmd, rc, v.get("first_dash") or "")
-    else:
-        said = v.get("verdict") or "not compared"
-        if said in ("Close", "Differs") and v.get("summary"):
-            said += ": " + v["summary"]
-        if not stata_terms_only(said):
-            raise ValueError("gallery: %s's caption names an internal id: %r" % (row["id"], said))
-        cap = "%s -- %s" % (cmd, said)
-    return _clean(cap, CAPTION_MAX), _clean("twoway: " + cmd, ALT_MAX)
+    return "", _clean("twoway: " + cmd, ALT_MAX)
+
+
+# ---- panels -------------------------------------------------------------------
+
+PANEL_LABELS = {"twoway": "Stata on twoway", "dash": "Stata on dash"}
+#: (background, border colour) of each side's panel: a light frame round
+#: the picture, orange for twoway and blue for dash.  The rest is shared, so
+#: both sides keep the same room for their pictures.
+PANEL_COLOURS = {"twoway": ("#fdeedf", "#eda25c"), "dash": ("#e8f1fb", "#7fb0e0")}
+PANEL_STYLES = (("padding", "10px"), ("box-sizing", "border-box"),
+                ("border-radius", "6px"))
+_PANEL_NAME = "gallery-panel-"
+_LABEL_HTML = ('<div style="margin:0 0 6px 0;font:600 15px/1.3 -apple-system,'
+               "BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;"
+               'color:#1f2328">%s</div>')
+_CMD_HTML = ('<code style="display:block;margin:6px 0 0 0;font:13px/1.45 ui-monospace,'
+             'SFMono-Regular,Menlo,Consolas,monospace;color:#1f2328;'
+             'white-space:pre-wrap;overflow-wrap:anywhere">%s</code>')
+_NOTE_HTML = ('<div style="margin:6px 0;font:14px/1.4 -apple-system,BlinkMacSystemFont,'
+              "'Segoe UI',Helvetica,Arial,sans-serif;color:#9a3412\">%s</div>")
+_DOC_RE = re.compile(r'(<script type="application/json" id="[^"]+">)(.*?)(</script>)', re.S)
+
+
+def panel_texts(row, side, kind):
+    """(label, command, note) of a row's "twoway" or "dash" panel.  The note
+    says why a refused row has no dash graph; it is empty otherwise."""
+    if side not in PANEL_LABELS:
+        raise ValueError("gallery: a panel is twoway's or dash's, not %r" % (side,))
+    ex = row["example"]
+    cmd = _clean(ex["cmd"] if side == "twoway" else ex["dash_cmd"], CAPTION_MAX)
+    note = ""
+    if side == "dash" and kind == "refused":
+        v = row["verdict"]
+        rc = v.get("rc_dash")
+        note = ("dash r(%d): %s" % (rc, v.get("first_dash") or "") if rc not in (0, None)
+                else "dash did not draw this graph on this page")
+        note = _clean(note, CAPTION_MAX)
+    return PANEL_LABELS[side], cmd, note
+
+
+def _div(ident, text):
+    return {"type": "object", "name": "Div", "id": ident,
+            "attributes": {"text": text, "sizing_mode": "stretch_width",
+                           "disable_math": True}}
+
+
+def _panel(ident, side, children):
+    bg, edge = PANEL_COLOURS[side]
+    styles = list(PANEL_STYLES) + [("border", "1px solid " + edge), ("background-color", bg)]
+    return {"type": "object", "name": "Column", "id": ident,
+            "attributes": {"name": _PANEL_NAME + side,
+                           "css_classes": ["gallery-panel", _PANEL_NAME + side],
+                           "children": children, "sizing_mode": "stretch_width",
+                           "styles": {"type": "map", "entries": [list(s) for s in styles]}}}
+
+
+def _aria_label(model):
+    attrs = (model.get("attributes") or {}).get("html_attributes") or {}
+    return dict(attrs.get("entries") or []).get("aria-label")
+
+
+def panel_page(path, rows, shown):
+    """Put each cell of a built page in its panel: the label above, the
+    command below, twoway's at column 1 and dash's, shaded, at column 2;
+    a refused row's dash panel holds its note in place of a graph.  Only
+    the page's layout JSON changes (its scripts, and their hashes in the
+    page's Content-Security-Policy, do not).  The number of panels written;
+    0, the page untouched, when it is panelled already.  ValueError naming
+    the page, which is left as it was, when its grid is not rows' (one row
+    each, twoway's image first, a dash cell exactly when the row is not
+    refused)."""
+    name = os.path.basename(path)
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    m = _DOC_RE.search(text)
+    try:
+        docs = json.loads(html.unescape(m.group(2))) if m else None
+        root = list(docs.values())[0]["roots"][0]
+        grid = [c for c in root["attributes"]["children"] if c.get("name") == "GridPlot"][0]
+        cells = grid["attributes"]["children"]
+    except (TypeError, ValueError, KeyError, IndexError, AttributeError):
+        raise ValueError("gallery: %s holds no dash build grid" % name)
+    if any(isinstance(c[0], dict) and str((c[0].get("attributes") or {}).get("name", ""))
+           .startswith(_PANEL_NAME) for c in cells):
+        return 0
+    at = {}
+    for c in cells:
+        if len(c) != 3 or (c[1], c[2]) in at or c[2] not in (0, 1):
+            raise ValueError("gallery: %s's grid is not one twoway and one dash cell a row"
+                             % name)
+        at[(c[1], c[2])] = c[0]
+    want = {(k, 0) for k in range(len(rows))} | {
+        (k, 1) for k, r in enumerate(rows) if shown.get(r["id"]) != "refused"}
+    if set(at) != want:
+        raise ValueError("gallery: %s's grid holds %d cells, not its %d rows' %d"
+                         % (name, len(at), len(rows), len(want)))
+    for k, r in enumerate(rows):
+        if _aria_label(at[(k, 0)]) != captions(r, "twoway")[1]:
+            raise ValueError("gallery: %s's row %d is not %s" % (name, k + 1, r["id"]))
+    out = []
+    for k, r in enumerate(rows):
+        kind = shown.get(r["id"])
+        for col, side in enumerate(("twoway", "dash")):
+            label, cmd, note = panel_texts(r, side, kind)
+            ident = "gallery-%d-%s" % (k + 1, side)
+            inner = at.get((k, col)) or _div(ident + "-note", _NOTE_HTML % html.escape(note))
+            out.append([_panel(ident, side, [
+                _div(ident + "-label", _LABEL_HTML % html.escape(label)), inner,
+                _div(ident + "-command", _CMD_HTML % html.escape(cmd))]), k, col])
+    grid["attributes"]["children"] = out
+    body = html.escape(json.dumps(docs, separators=(",", ":")), quote=False)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(text[:m.start(2)] + body + text[m.end(2):])
+    return len(out)
 
 
 # ---- page do-files ------------------------------------------------------------
@@ -428,6 +537,7 @@ def build_pages(page_rows, run_dir, out_dir, repo, jobs=3):
         for i, k in kinds.items():
             if k == "live" and parsed["graphs"].get(i, 0) != 0:
                 shown[i] = "refused"
+        panel_page(os.path.join(out_dir, page + ".html"), page_rows[page], shown)
         out[page] = {"log": parsed, "shown": shown}
         print("gallery: %s.html built (%d examples)" % (page, len(page_rows[page])))
     return out
