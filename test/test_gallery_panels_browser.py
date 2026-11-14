@@ -73,6 +73,32 @@ def _panelled(tmp):
 
 class TestInChrome:
 
+    def test_frames_of_a_row_are_one_height_when_commands_wrap_apart(self):
+        """A command that wraps to more lines than its neighbour's made its
+        frame taller (19 px a line on the gallery's function page)."""
+        from test_corpus_gallery import _row
+        r = _row("a-1")
+        r["example"]["dash_cmd"] = "dash scatter mpg weight, " + " ".join(
+            'note("line %d of a long command")' % k for k in range(12))
+        rows, kinds = [r], {"a-1": "live"}
+        with tempfile.TemporaryDirectory(prefix="dash_gallery_wrap_") as tmp:
+            path = os.path.join(tmp, "scatter.html")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(gallery_page_html(rows, kinds))
+            assert gallery.panel_page(path, rows, kinds) == 2
+            with _CspProbe(_url(path)) as p:
+                end = time.time() + 20
+                got = p.read(_PANELS_JS)
+                while not (len(got) == 2 and all(g["inner"] and g["inner"][2] > 100
+                                                  for g in got)) and time.time() < end:
+                    time.sleep(0.25)
+                    got = p.read(_PANELS_JS)
+                time.sleep(1.0)
+                got = p.read(_PANELS_JS)
+        tw, da = got
+        assert da["cmd"][1][3] > tw["cmd"][1][3] + 10, (tw["cmd"], da["cmd"])
+        assert abs(tw["panel"][3] - da["panel"][3]) <= 1, (tw["panel"], da["panel"])
+
     @pytest.mark.parametrize("width", [1400, 2000])
     def test_labels_commands_and_equal_sizes(self, width):
         """On a window narrower than twoway's picture (720 px a cell) and on

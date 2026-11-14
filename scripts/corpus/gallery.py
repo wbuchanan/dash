@@ -300,10 +300,12 @@ def captions(row, kind):
 PANEL_LABELS = {"twoway": "Stata on twoway", "dash": "Stata on dash"}
 #: (background, border colour) of each side's panel: a light frame round
 #: the picture, orange for twoway and blue for dash.  The rest is shared, so
-#: both sides keep the same room for their pictures.
+#: both sides keep the same room for their pictures; each frame fills its
+#: row, so a command wrapping to more lines than its neighbour's leaves the
+#: two frames one height.
 PANEL_COLOURS = {"twoway": ("#fdeedf", "#eda25c"), "dash": ("#e8f1fb", "#7fb0e0")}
 PANEL_STYLES = (("padding", "10px"), ("box-sizing", "border-box"),
-                ("border-radius", "6px"))
+                ("border-radius", "6px"), ("height", "100%"))
 _PANEL_NAME = "gallery-panel-"
 _LABEL_HTML = ('<div style="margin:0 0 6px 0;font:600 15px/1.3 -apple-system,'
                "BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;"
