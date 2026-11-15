@@ -101,12 +101,18 @@ def _mls_all(objs):
 
 
 def _iso(ts):
-    return None if pd.isna(ts) else pd.Timestamp(ts).strftime("%Y-%m-%d")
+    # Not strftime("%Y"): glibc writes the year 100 as 100, macOS as 0100
+    # (GitHub's runner, 15nov2026).
+    if pd.isna(ts):
+        return None
+    ts = pd.Timestamp(ts)
+    return f"{ts.year:04d}-{ts.month:02d}-{ts.day:02d}"
 
 
 def _iso_ms(ts):
     ts = pd.Timestamp(ts)
-    return ts.strftime("%Y-%m-%dT%H:%M:%S.") + f"{ts.microsecond // 1000:03d}"
+    return (f"{_iso(ts)}T{ts.hour:02d}:{ts.minute:02d}:{ts.second:02d}."
+            f"{ts.microsecond // 1000:03d}")
 
 
 def _outside(msgs):

@@ -185,7 +185,7 @@ def runs_whole(text):
 def split_min(seconds):
     """The seconds at which a script that can run whole is starred: half
     of one session's balanced load over SESSIONS (D-50-02.b)."""
-    return SPLIT_SHARE * sum(seconds.values()) / SESSIONS
+    return SPLIT_SHARE * math.fsum(seconds.values()) / SESSIONS
 
 
 def starred_by_rule(seconds, text_of):
@@ -228,7 +228,7 @@ def _turn(load, parts, n):
         new = list(load)
         for p, sec in enumerate(parts):
             new[(p + r) % n] += sec
-        key = (round(max(new), 6), round(sum(v * v for v in new), 6), r)
+        key = (round(max(new), 6), round(math.fsum(v * v for v in new), 6), r)
         if best is None or key < best[0]:
             best = (key, r, new)
     return best[1], best[2]
@@ -239,7 +239,7 @@ def _place_split(out, load, split, n, parts):
     with *parts* ({script: [part seconds]}) each gets its turn, without
     them its seconds are shared out evenly (``*``)."""
     if parts is None:
-        share = sum(split.values()) / n
+        share = math.fsum(split.values()) / n
         for s in split:
             out[s] = EVERY
         return [v + share for v in load]
@@ -267,7 +267,9 @@ def assign(seconds, port, n, every=frozenset(), release=frozenset(),
     placed first (see _place_split; *parts* maps each to its part seconds
     for this n, or None to share its seconds out evenly).  The scripts in
     *release* are placed after the others, on their loads: see the
-    module's docstring."""
+    module's docstring.  Its sums are math.fsum, exactly rounded, so the
+    assignment is the same under every Python (3.12 changed what sum()
+    of floats returns, and 3.11 read the table as unbalanced)."""
     if release:
         base = {s: v for s, v in seconds.items() if s not in release}
         out = _assign(base, port, n, every, parts)
@@ -284,7 +286,7 @@ def assign(seconds, port, n, every=frozenset(), release=frozenset(),
                 out[s] = at[0]
                 load[at[0] - 1] += rest[s]
         elif held:
-            units.append((sum(rest[s] for s in held), held))
+            units.append((math.fsum(rest[s] for s in held), held))
         _place_units(out, load, units, n)
         return out
     return _assign(seconds, port, n, every, parts)
@@ -295,7 +297,7 @@ def _assign(seconds, port, n, every=frozenset(), parts=None):
     units = []
     together = sorted(s for s in seconds if s in port and s not in every)
     if together:
-        units.append((sum(seconds[s] for s in together), together))
+        units.append((math.fsum(seconds[s] for s in together), together))
     units += [(seconds[s], [s]) for s in seconds
               if s not in port and s not in every]
     out = {}
@@ -354,7 +356,7 @@ def split_parts(text, n, total=None, secs=None):
         k = min(range(n), key=lambda j: (load[j], j))
         load[k] += sec[i]
     if total is not None:
-        raw = sum(load)
+        raw = math.fsum(load)
         load = ([v * total / raw for v in load] if raw > 0
                 else [total / n] * n)
     return load

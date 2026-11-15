@@ -289,6 +289,12 @@ class TestTheCostIsBounded:
     machine."""
 
     def test_lowess_is_several_times_faster_than_the_old_loop(self):
+        # The old loop's cost was measured here, on macOS: libm's pow and
+        # BLAS's thread pool.  GitHub's Linux runner ran it in 0.15 s and
+        # the new code in 0.12 s (15nov2026): that cost does not show
+        # there, so the ratio says nothing about a regression.
+        if sys.platform != "darwin":
+            pytest.skip("the old lowess loop's cost was measured on macOS")
         x, y = _random(6000, 21)
         t0 = time.perf_counter()
         _old_lowess(x, y)

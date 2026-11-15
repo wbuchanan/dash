@@ -69,6 +69,20 @@ def _public(ns):
     return [k for k in ns if k != "__builtins__"]
 
 
+# Python 3.12 made an invalid escape a SyntaxWarning; 3.11, the floor, says
+# DeprecationWarning (GitHub's runner, 15nov2026).
+_ESCAPE_WARNING = (SyntaxWarning if sys.version_info >= (3, 12)
+                   else DeprecationWarning)
+
+
+def _class_lines(cls):
+    """Where a class sits in its file: ``__firstlineno__`` (Python 3.13+,
+    else None) and its methods' first lines (every version)."""
+    return (getattr(cls, "__firstlineno__", None),
+            sorted(f.__code__.co_firstlineno for f in vars(cls).values()
+                   if isinstance(f, types.FunctionType)))
+
+
 class TestTheBlocksAreTheFile:
 
     @pytest.mark.parametrize("plots", [[plot_for("scatter")],
@@ -113,8 +127,8 @@ class TestTheBlocksAreTheFile:
                    if isinstance(v, type) and v.__module__ == "_loader_a"]
         assert len(classes) >= 3
         for k in classes:
-            assert (vars(got)[k].__firstlineno__
-                    == vars(want)[k].__firstlineno__), k
+            assert (_class_lines(vars(got)[k])
+                    == _class_lines(vars(want)[k])), k
         assert "_loader_a" not in sys.modules
 
 
@@ -215,7 +229,7 @@ class TestTheTextsCompiledWhole:
 
     @pytest.mark.parametrize("load", [1, 2])
     def test_a_warning_is_raised_on_every_load(self, load):
-        with pytest.warns(SyntaxWarning, match="invalid escape sequence"):
+        with pytest.warns(_ESCAPE_WARNING, match="invalid escape sequence"):
             ns = C.exec_app('import os\nx = "\\d"\ny = 2\n', "warns.py", {})
         assert ns["x"] == "\\d" and ns["y"] == 2
 
@@ -298,7 +312,7 @@ class TestTheBlocksOfAnAwkwardText:
         assert got["f"](1) == want["f"](1)
         assert (got["BRANCH"], got["TEXT"]) == (want["BRANCH"], want["TEXT"])
         assert got["K"]().g() == "[3]"
-        assert got["K"].__firstlineno__ == want["K"].__firstlineno__
+        assert _class_lines(got["K"]) == _class_lines(want["K"])
         got_codes, want_codes = _codes(blocks), _codes([whole])
         assert got_codes == want_codes
 

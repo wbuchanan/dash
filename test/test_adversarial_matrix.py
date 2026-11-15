@@ -2609,7 +2609,15 @@ class TestSessionOrigin:
             p = app.port
             assert app.session("http://evil.example:%d" % p) == (101, "ACK")
             assert app.session("http://localhost:%d" % p) == (403, None)
-            assert app.session("http://127.0.0.1:%d" % p) == (403, None)
+            # Tornado 6.6 admits a same-origin handshake (its Origin the
+            # Host it was sent to, 127.0.0.1 here) without asking the
+            # handler's check_origin, so no Bokeh list is read for it
+            # (tornado 6.6.0's release notes; GitHub's runner, 15nov2026).
+            # Before 6.6 it is refused like any other origin.
+            import tornado
+            assert app.session("http://127.0.0.1:%d" % p) == (
+                (101, "ACK") if tornado.version_info >= (6, 6)
+                else (403, None))
             assert app.session("http://evil.example:%d" % (p + 1)) == (
                 403, None)
             said = _launcher_said(app)

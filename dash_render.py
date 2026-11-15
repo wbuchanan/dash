@@ -31932,12 +31932,22 @@ def _lpoly_rot_float(x, y, w, pe, l, u, C) -> float:
     (pe+1)th derivative over [l, u] in raw x.  NaN when the integral is not
     positive or h is not finite.  It reproduces Stata's DRAWN outcome on
     the measured exact-fit rows except D1/D2 (section 11 Evidence).
+
+    h is round-off here, so every step's rounding is fixed: the powers are
+    products (not libm's or SIMD's pow), the sums math.fsum, b = -A g
+    exact rounded once, and X b summed column by column.  A @ g went
+    through the BLAS numpy was built on, and h moved with it: 137.6 on
+    Accelerate, 75.1 on OpenBLAS (GitHub's Linux runner, 15nov2026),
+    which drew 46 of Stata's 50 grid points.
     """
+    from fractions import Fraction
     d = int(pe) + 3
-    X = np.column_stack([x ** k for k in range(d + 1)])
-    G = np.array([[math.fsum(w * X[:, i] * X[:, j]) for j in range(d + 1)]
+    cols = [np.ones_like(x)]
+    for _ in range(d):
+        cols.append(cols[-1] * x)
+    G = np.array([[math.fsum(w * cols[i] * cols[j]) for j in range(d + 1)]
                   for i in range(d + 1)])
-    g = np.array([math.fsum(w * X[:, i] * y) for i in range(d + 1)])
+    g = np.array([math.fsum(w * cols[i] * y) for i in range(d + 1)])
     A = G.copy()
     d0 = np.diag(G).copy()
     remaining = list(range(d + 1))
@@ -31955,13 +31965,23 @@ def _lpoly_rot_float(x, y, w, pe, l, u, C) -> float:
         A[k, :] = row / piv
         A[:, k] = col / piv
         A[k, k] = -1.0 / piv
-    b = (-A) @ g
-    r = y - X @ b
-    W = float(np.sum(w))
-    s2 = float(np.sum(w * r * r)) / W
+    gF = [Fraction(float(v)) for v in g]
+    b = np.array([float(-sum(Fraction(float(A[i, j])) * gF[j]
+                             for j in range(d + 1)))
+                  for i in range(d + 1)])
+    fit = np.zeros_like(y)
+    for k in range(d + 1):
+        fit = fit + cols[k] * b[k]
+    r = y - fit
+    W = math.fsum(w)
+    s2 = math.fsum(w * r * r) / W
     P = np.polynomial.polynomial
     Dc = P.polyder(b, int(pe) + 1)
-    Pi = P.polyint(P.polymul(Dc, Dc))
+    m = len(Dc)
+    sq = np.array([math.fsum(Dc[i] * Dc[k - i]
+                             for i in range(max(0, k - m + 1), min(k, m - 1) + 1))
+                   for k in range(2 * m - 1)])
+    Pi = P.polyint(sq)
     I = float(P.polyval(u, Pi) - P.polyval(l, Pi))
     if not I > 0:
         return float("nan")

@@ -1048,6 +1048,14 @@ def _extractor():
     return mod
 
 
+def _stata_base(mod):
+    """Stata's own ado/base, which the extractor reads, or a skip on a
+    machine without Stata (GitHub's runner)."""
+    if not os.path.isdir(os.path.join(mod.DEFAULT_STATA_BASE, "style")):
+        pytest.skip("Stata's ado/base is not installed here")
+    return mod.DEFAULT_STATA_BASE
+
+
 def _file_directives(path):
     """``(class, key) -> value`` for every directive line of a shipped file,
     read the way SchemeParser reads them (the last token is the value)."""
@@ -1515,7 +1523,7 @@ def test_the_chrome_anchors():
 
 def test_resolve_anglestyle_reads_the_style_file():
     mod = _extractor()
-    r = mod.SchemeResolver(mod.DEFAULT_STATA_BASE)
+    r = mod.SchemeResolver(_stata_base(mod))
     r.load("s2color")
     assert mod.resolve_anglestyle(r, "vertical") == {"name": "vertical",
                                                      "degrees": 90.0}
@@ -1529,7 +1537,7 @@ _AXISSTYLES = [f"{d}_{k}" for d in ("horizontal", "vertical")
 
 def test_axis_style_flags_for_every_axisstyle_file():
     mod = _extractor()
-    r = mod.SchemeResolver(mod.DEFAULT_STATA_BASE)
+    r = mod.SchemeResolver(_stata_base(mod))
     r.load("s2color")
     for name in _AXISSTYLES:
         f = mod.axis_style_flags(r, name)
@@ -1541,7 +1549,7 @@ def test_axis_style_flags_for_every_axisstyle_file():
 
 def test_the_parser_axisstyle_table_is_statas():
     mod = _extractor()
-    r = mod.SchemeResolver(mod.DEFAULT_STATA_BASE)
+    r = mod.SchemeResolver(_stata_base(mod))
     r.load("s2color")
     want = {n: (mod.axis_style_flags(r, n)["line"],
                 mod.axis_style_flags(r, n)["ticks"]) for n in _AXISSTYLES}
@@ -1601,7 +1609,7 @@ def test_the_named_style_walk_follows_scheme_class(tmp_path):
     default is not taken (linked() would take it)."""
     mod = _extractor()
     base = tmp_path / "base"
-    shutil.copytree(os.path.join(mod.DEFAULT_STATA_BASE, "style"),
+    shutil.copytree(os.path.join(_stata_base(mod), "style"),
                     base / "style")
     (base / "s").mkdir()
     (base / "s" / "scheme-zz.scheme").write_text(

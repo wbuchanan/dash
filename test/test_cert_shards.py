@@ -38,6 +38,17 @@ class TestTheRealTable:
     def test_the_table_has_no_problem(self):
         assert S.check(_runner()) == []
 
+    def test_the_table_holds_under_python_311s_float_sum(self, monkeypatch):
+        """Python 3.12 made sum() of floats compensated; 3.11 adds left to
+        right.  On 3.11 the check read the table written under 3.14 as
+        unbalanced for N=5 (GitHub's runner, 15nov2026)."""
+        def left_to_right(values, start=0):
+            for v in values:
+                start = start + v
+            return start
+        monkeypatch.setattr(S, "sum", left_to_right, raising=False)
+        assert S.check(_runner()) == []
+
     def test_every_registered_script_has_one_row(self):
         rows = S.read_table(_runner())
         names = [r[0] for r in rows]

@@ -18,6 +18,7 @@ texts are the fixture ``test/fixtures/pip_refusals.json``
 (``PIP_NO_INDEX=1``), four of them at most.
 """
 import ast
+import codecs
 import importlib
 import importlib.util
 import json
@@ -187,7 +188,9 @@ class TestRunChild:
         r = subprocess.run([sys.executable, "-c", _A4_CODE, LIB, hexbytes],
                            capture_output=True, env=env, check=True)
         got = json.loads(r.stdout.decode("ascii").strip().splitlines()[-1])
-        assert "ascii" in got["enc"].lower()
+        # glibc names the C locale's codeset ANSI_X3.4-1968, ASCII's
+        # standard name (GitHub's runner, 15nov2026); macOS says US-ASCII.
+        assert codecs.lookup(got["enc"]).name == "ascii", got["enc"]
         assert got["control"] == "raised"
         assert got["rc"] == 1
         assert "\u00d7" in got["err"]

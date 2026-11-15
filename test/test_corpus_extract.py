@@ -30,6 +30,18 @@ def _fresh_shipped_names():
     extract._shipped_names.cache_clear()
 
 
+#: Of the datasets Stata ships (ado/base/*/*.dta), the ones these samples
+#: load, as StataNow 19.5 has them; lifeexp2 and lbw are not shipped.
+#: Read from Stata, a machine without it (GitHub's runner, 15nov2026) found
+#: none and wrote webuse for every one.
+_SHIPPED = frozenset({"auto", "cancer", "lifeexp", "uslifeexp2"})
+
+
+@pytest.fixture
+def shipped(monkeypatch):
+    monkeypatch.setattr(extract, "_shipped_names", lambda: _SHIPPED)
+
+
 # ------------------------------------------------------------ help files
 
 class TestHelpLinks:
@@ -217,7 +229,7 @@ _GPDF = (
 
 class TestGpdf:
 
-    def test_commands_and_setup(self):
+    def test_commands_and_setup(self, shipped):
         cmds = extract.gpdf_commands(_GPDF)
         assert [c["cmd"] for c in cmds] == [
             "graph twoway scatter mpg weight",
@@ -606,7 +618,7 @@ class TestGpdfWraps:
                                          "2.1 2.2 2.3 2.4", "end"]
         assert extract.is_schematic(cmds[2]["cmd"])
 
-    def test_arrows_ellipses_and_survival_setup(self):
+    def test_arrows_ellipses_and_survival_setup(self, shipped):
         text = ("                  graph combine — Combine multiple graphs 112\n\n"
                 "       . twoway histogram lexp, fraction\n"
                 "               xsca(alt reverse) horiz\n"
@@ -677,7 +689,7 @@ class TestOwnData:
             is None
         assert extract.setup_vars(["sysuse auto, clear", "encode make, gen(m)"], ds) is None
 
-    def test_infer_setup(self):
+    def test_infer_setup(self, shipped):
         ds = {"auto": ["make", "mpg", "weight", "foreign"], "lifeexp": ["lexp", "gnppc"],
               "uslifeexp2": ["le", "year"]}
         cands = ["uslifeexp2", "auto", "lifeexp"]

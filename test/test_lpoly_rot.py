@@ -522,6 +522,23 @@ class TestRotDegenerate:
         assert n == 18
         assert any(d["id"] == "D3" for d in _T["divergences"])
 
+    @pytest.mark.parametrize("rid,h", [
+        ("auto-ycon-weight--epanechnikov-d0-n74", 141.510237888545),
+        ("auto-ysq-weight--epanechnikov-d3-n74", 941.1263553321861),
+    ])
+    def test_an_exact_fits_round_off_is_the_same_on_every_machine(self, rid,
+                                                                   h):
+        """The exact-fit h is round-off, so it moved with the BLAS numpy
+        was built on: 137.6 here (Accelerate), 75.1 on GitHub's Linux
+        runner (OpenBLAS), which drew 46 of Stata's 50 grid points
+        (15nov2026).  Its arithmetic is now fixed-order, IEEE products,
+        exactly rounded sums and an exact b."""
+        r = _row(rid)
+        x, y, w = _sample(r)
+        d = dr._lpoly_rot_detail(x, y, w, r["degree"], r["kernel"])
+        assert d["route"] == "float"
+        assert d["h"] == pytest.approx(h, rel=1e-12)
+
     def test_an_exact_fit_uses_statas_float_arithmetic(self):
         noise = [r for r in _T["rows"] if r["class"] == "noise"]
         assert len(noise) >= 40
