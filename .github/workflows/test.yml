@@ -9,27 +9,59 @@
 # and neither exists here.  Tests that need Stata, node or headless Chrome
 # skip, so the run is not strict (DEV_STRICT=0); Python 3.11 is the floor
 # (the py311 baseline in test/conftest.py).  No secret is used.
+#
+# The runner has 2 CPUs and about 8 GB.  The first run (14nov2026) started
+# pyproject.toml's eight workers there: it ran out of memory 17 minutes in,
+# at 21%, on pace for more than its hour.  So each job runs two workers,
+# and the suite runs as four jobs side by side, job k collecting only
+# shard k's test files (DASH_SHARD, test/ci_shards.py).  A newer push to
+# the same branch cancels the run it supersedes.
 name: test
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [s3-bugs, main]
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      DASH_SHARD: ${{ matrix.shard }}/4
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Install the development dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "bokeh==3.8.*" "pandas==2.3.*" "numpy==2.3.*" "scipy==1.16.*" pytest pytest-xdist ruff
+          python -m pip install "bokeh==3.8.*" "pandas==2.3.*" "numpy==2.3.*" "scipy==1.16.*" pytest pytest-xdist
       - name: make test-dev
-        run: make test-dev PYTHON=python DEV_STRICT=0 DEV_BASELINE=py311
+        run: make test-dev PYTHON=python DEV_STRICT=0 DEV_BASELINE=py311 PYTEST_ARGS="-n 2"
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install ruff
+        run: python -m pip install ruff
       - name: make lint
         run: make lint PYTHON=python

@@ -24,6 +24,86 @@ def test_available_bytes_reads_vm_stat():
     assert live is None or live > 0
 
 
+_MEMINFO = """MemTotal:        8131072 kB
+MemFree:          912345 kB
+MemAvailable:    5242880 kB
+Buffers:           12345 kB
+"""
+
+
+def test_available_bytes_reads_proc_meminfo():
+    assert mg.available_bytes(meminfo_text=_MEMINFO) == 5 * 2**30
+    assert mg.available_bytes(meminfo_text="nothing here") is None
+
+
+def test_available_bytes_reads_linux_where_vm_stat_is_absent(monkeypatch):
+    """GitHub's Linux runner has no vm_stat, so the guard read None and
+    never acted while eight workers exhausted its 8 GB (14nov2026)."""
+    def no_vm_stat(cmd, **_kw):
+        raise FileNotFoundError(cmd[0])
+    monkeypatch.setattr(mg.subprocess, "run", no_vm_stat)
+    monkeypatch.setattr(mg, "_read_meminfo", lambda: _MEMINFO)
+    assert mg.available_bytes() == 5 * 2**30
+
+
+def test_total_bytes_reads_the_machine():
+    assert mg.total_bytes(sysctl_text="103079215104\n") == 96 * 2**30
+    assert mg.total_bytes(meminfo_text=_MEMINFO) == 8131072 * 1024
+    assert mg.total_bytes(sysctl_text="") is None
+    assert mg.total_bytes(meminfo_text="") is None
+    live = mg.total_bytes()
+    assert live is None or live > 2**30
+
+
+def test_the_floor_scales_with_the_machine():
+    """A fixed 8 GB floor stops an 8 GB machine before its first test."""
+    assert mg.floor_for(96 * 2**30) == 8 * 2**30
+    assert mg.floor_for(8 * 2**30) == int(0.8 * 2**30)
+    assert mg.floor_for(None) == mg.FLOOR_BYTES
+
+
+def test_the_worker_cap_scales_with_the_machine():
+    assert mg.worker_cap(96 * 2**30, 8) == 3 * 2**30
+    assert mg.worker_cap(8 * 2**30, 2) == 2 * 2**30
+    assert mg.worker_cap(None, 2) == mg.WORKER_CAP_BYTES
+    assert mg.worker_cap(4 * 2**30, None) == 2 * 2**30
+
+
+def test_trim_worker_uses_the_machines_cap(monkeypatch):
+    """Two workers on an 8 GB runner are trimmed past 2 GB, not 3 GB."""
+    monkeypatch.setattr(mg, "total_bytes", lambda: 8 * 2**30)
+    monkeypatch.setenv("PYTEST_XDIST_WORKER_COUNT", "2")
+    assert mg.trim_worker(rss=int(2.5 * 2**30)) is True
+    assert mg.trim_worker(rss=int(1.5 * 2**30)) is False
+
+
+def test_the_watchdog_stops_at_the_machines_floor(monkeypatch):
+    """On an 8 GB machine 2 GB available runs on; 0.5 GB stops the run,
+    naming the floor it fell under."""
+    import threading
+    stopped = []
+    stop = threading.Event()
+
+    def fake_stop(avail, floor):
+        stopped.append((avail, floor))
+        stop.set()
+    monkeypatch.setattr(mg, "total_bytes", lambda: 8 * 2**30)
+    monkeypatch.setattr(mg, "_stop", fake_stop)
+    monkeypatch.setattr(mg, "available_bytes", lambda: 2 * 2**30)
+    t = mg.start_watchdog(interval=0.01, stop=stop)
+    t.join(0.1)
+    assert stopped == []
+    monkeypatch.setattr(mg, "available_bytes", lambda: 2**29)
+    t.join(2)
+    stop.set()
+    assert stopped and stopped[0] == (2**29, int(0.8 * 2**30))
+
+
+def test_the_stop_message_names_the_floor():
+    msg = mg._stop_message(2**29, int(0.8 * 2**30))
+    assert "0.5 GB available" in msg and "under the 0.8 GB floor" in msg
+
+
 def test_rss_bytes_reads_this_process():
     assert mg.rss_bytes() > 10 * 2**20
     assert mg.rss_bytes(pid=os.getpid()) > 0

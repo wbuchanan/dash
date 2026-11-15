@@ -168,8 +168,11 @@ def pytest_configure(config):
     tracked and the marker would be unregistered for everyone else -- pytest
     would then warn on every run and ``-m 'not serve'`` would silently select
     nothing.
+
+    It also decides, once, whether this run is a CI shard (DASH_SHARD).
     """
     _start_memory_guard(config)
+    config._dash_shard = _shard_for(config)
     config.addinivalue_line(
         "markers",
         "serve: starts a real `bokeh serve` subprocess; slow. "
@@ -362,14 +365,82 @@ def _batch_file(path):
         return False
 
 
+#: DASH_SHARD=k/N (the CI workflow): a run of the whole suite collects only
+#: shard k's test files (ci_shards.py).
+SHARD_ENV = "DASH_SHARD"
+#: The pid of the process that took DASH_SHARD.  A nested pytest run a test
+#: starts inherits both variables and runs whole, and so do its workers; an
+#: xdist worker (it has ``workerinput``) whose parent is the owner takes the
+#: shard as its controller did.
+SHARD_OWNER_ENV = "DASH_SHARD_OWNER"
+
+
+def _shard_candidates(config):
+    """The test files a run of the whole suite collects, as
+    "test/test_x.py": the batch tier's only when the run keeps it, which
+    --collect-only alone does not decide (it lists the shard a run
+    collects)."""
+    folder = os.path.join(str(config.rootpath), "test")
+    batch = _runs_tier("batch", config.args, config.rootpath,
+                       markexpr=config.getoption("markexpr", ""),
+                       tier=os.environ.get(TIER_ENV, ""))
+    return sorted("test/" + n for n in os.listdir(folder)
+                  if n.startswith("test_") and n.endswith(".py")
+                  and (batch or not _batch_file(os.path.join(folder, n))))
+
+
+def _shard_for(config):
+    """The ci_shards.Shard this run collects, or None: DASH_SHARD is set,
+    the run covers the whole suite (--collect-only lists the shard), and
+    it is not a nested run a test started.  A bad value is a usage
+    error."""
+    value = os.environ.get(SHARD_ENV, "")
+    if not value:
+        return None
+    worker = hasattr(config, "workerinput")
+    owner = os.environ.get(SHARD_OWNER_ENV)
+    if owner not in (None, str(os.getppid() if worker else os.getpid())):
+        return None
+    if not _covers_whole_suite(config.args, config.rootpath,
+                               keyword=config.getoption("keyword", ""),
+                               lastfailed=config.getoption("lf", False)):
+        return None
+    import ci_shards
+    try:
+        k, n = ci_shards.parse(value)
+    except ValueError as e:
+        raise pytest.UsageError("%s=%s: %s" % (SHARD_ENV, value, e))
+    files = _shard_candidates(config)
+    got = ci_shards.assign(files, ci_shards.load_seconds(), n)
+    if not worker:
+        os.environ[SHARD_OWNER_ENV] = str(os.getpid())
+    return ci_shards.Shard(k, n, frozenset(f for f in files if got[f] == k),
+                           len(files))
+
+
+def pytest_report_header(config):
+    """Name the shard a CI job runs."""
+    shard = getattr(config, "_dash_shard", None)
+    if shard:
+        return "%s=%d/%d: %d of %d test files" % (
+            SHARD_ENV, shard.k, shard.n, len(shard.files), shard.of)
+    return None
+
+
 def pytest_ignore_collect(collection_path, config):
     """Leave the batch tier's files uncollected in a run that leaves the
     tier out (WP-50 50-04): make test spent 21 s collecting the 21,937
     tests it then deselected.  ``_deselect_tier`` still drops any batch
-    test marked below module level.  None: pytest decides as usual."""
+    test marked below module level.  A CI shard (DASH_SHARD) leaves the
+    other shards' files uncollected.  None: pytest decides as usual."""
     name = collection_path.name
     if not (name.startswith("test_") and name.endswith(".py")):
         return None
+    shard = getattr(config, "_dash_shard", None)
+    if (shard and os.path.dirname(str(collection_path))
+            == os.path.join(str(config.rootpath), "test")
+            and "test/" + name not in shard.files):
+        return True
     if not _batch_file(str(collection_path)):
         return None
     if _runs_tier(
