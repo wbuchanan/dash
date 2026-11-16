@@ -956,6 +956,7 @@ FUNCTIONS = {
  '_dash_token_matches': 'test/test_serve_token.py::TestTheTokenHelpers::test_the_right_token_matches_and_a_near_miss_does_not',
  '_dash_token_valid': 'test/test_serve_token.py::TestTheTokenHelpers::test_invalid_shapes_are_refused',
  '_dash_tokenized_url': 'test/test_serve_token.py::TestTheTokenHelpers::test_the_tokenized_url',
+ '_dash_tornado_admits_same_origin': 'test/test_serve_token.py::TestTheTokenHelpers::test_tornado_6_6_admits_a_same_origin_handshake',
  '_dash_write_link': 'test/test_serve_token.py::TestTheLauncherPassesTheToken::test_a_link_file_that_cannot_be_private_moves_to_a_private_folder',
  '_dash_ws_payload': 'test/test_serve_token.py::TestTheTokenHelpers::test_the_request_token_is_read_from_query_or_ws_jwt',
  '_dash_session_level': 'test/test_dates.py::TestDateColumnsSurviveTransport::test_a_string_column_is_not_converted_even_with_a_date_format',

@@ -3405,8 +3405,10 @@ the busy text as its page, sent with status 200.
 {cmd:--allow-websocket-origin}, and listens on every interface unless it is
 given {cmd:--address}.
 Under {cmd:bokeh serve} the app still never runs without a key.  Start it as
-{cmd:bokeh serve app.py --allow-websocket-origin 127.0.0.1:5006}: Bokeh
-otherwise admits only {cmd:localhost}, and the link's page stays blank.
+{cmd:bokeh serve app.py --allow-websocket-origin 127.0.0.1:5006}: with a
+Tornado before 6.6, Bokeh otherwise admits only {cmd:localhost}, and the
+link's page stays blank.  Tornado 6.6 and later admit the link's page either
+way (see {ul:Security} below).
 With {cmd:DASH_SERVE_TOKEN} set as above, open
 {cmd:http://127.0.0.1:5006/app?token=}{it:key}.  Without it, the app makes
 one key for the server when the first session is asked for, and at the first
@@ -3433,8 +3435,10 @@ stay open and hold no data.
 {cmd:--address} {it:addr} opens it deliberately
 -- {cmd:--address 0.0.0.0} listens on every interface -- and
 {cmd:--allow-websocket-origin} {it:host:port} then admits the {cmd:Origin}
-values a browser will send from there.  The files {cmd:dash serve} writes are
-readable only by you wherever your disk keeps permissions, and dash notes any
+values a browser will send from there (with a Tornado before 6.6, a browser
+that opened the link at that address needs it too; see below).  The files
+{cmd:dash serve} writes are readable only by you wherever your disk keeps
+permissions, and dash notes any
 location where they are not; see
 {help dash##tempfiles:Temporary files and privacy}.
 
@@ -3445,6 +3449,16 @@ stops a page on another website from driving your dashboard in your browser.
 It is not an access control: a client that is not a browser can omit the
 header or forge an accepted one.  The dashboard's key is the access control: a client without it gets nothing,
 whatever {cmd:Origin} it sends.
+
+{pstd}
+From version 6.6, Tornado, the web server Bokeh runs on, asks that
+allow-list only about a handshake that looks cross-origin.  One its browser
+marks same-origin ({cmd:Sec-Fetch-Site}), or whose {cmd:Origin} names the
+host and port it was sent to, is admitted without it, so a page opened at
+the link's own address always connects.  The allow-list, and
+{cmd:BOKEH_ALLOW_WS_ORIGIN} below, then decide only for pages served from
+somewhere else -- pages on other websites, the ones the list is there to
+stop.  The key is checked either way.
 
 {pstd}
 An origin is admitted only when its host matches an allowed one label for
@@ -3465,9 +3479,10 @@ not written; {helpb dash_setup} installs a verified bokeh.
 {pstd}
 Bokeh's environment variable {cmd:BOKEH_ALLOW_WS_ORIGIN}, when it is set,
 replaces that allow-list: Bokeh admits the origins it names {it:instead of}
-{cmd:localhost}, {cmd:127.0.0.1} and {cmd:--allow-websocket-origin}.  The
-app says so when it starts, naming them, and warns when the variable holds
-{cmd:*}: the origin check then admits every website, and only the
+{cmd:localhost}, {cmd:127.0.0.1} and {cmd:--allow-websocket-origin}.  Under
+Tornado 6.6 and later the page at the link's own address still connects, as
+above.  The app says so when it starts, naming them, and warns when the
+variable holds {cmd:*}: the origin check then admits every website, and only the
 dashboard's key keeps another site's page out.  Unset it to have the app's
 own list apply.
 

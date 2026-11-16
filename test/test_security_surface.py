@@ -114,6 +114,27 @@ class TestServeBindsLoopbackByDefault:
         )
 
 
+    def test_the_help_states_tornado_6_6s_same_origin_rule(self):
+        """Tornado 6.6 admits a websocket handshake from a page at the
+        address it connects to without asking Bokeh's allow-list (GitHub's
+        runner, 15nov2026), so the link's page connects whatever the list
+        or BOKEH_ALLOW_WS_ORIGIN says.  The help said the page stayed blank
+        without --allow-websocket-origin, which holds only before 6.6."""
+        with open(os.path.join(_HERE, "..", "dash.sthlp"),
+                  encoding="utf-8") as fh:
+            h = fh.read()
+        i = h.index("{marker server_mode}")
+        j = h.index("{marker examples}", i)
+        sec = re.sub(r"\s+", " ", h[i:j])
+        for needle in ("Sec-Fetch-Site", "the link's own address"):
+            assert needle in sec, needle
+        sentences = re.split(r"(?<=\.)\s+(?=[A-Z{])", sec)
+        blank = [s for s in sentences if "stays blank" in s]
+        assert blank and all("before 6.6" in s for s in blank), blank
+        env = [p for p in re.split(r"\{pstd\}", sec)
+               if "{cmd:BOKEH_ALLOW_WS_ORIGIN}, when it is set" in p]
+        assert len(env) == 1 and "6.6" in env[0], env
+
     def test_the_help_names_the_key_and_its_limits(self):
         """WP-29 P0.12a: the served dashboard opens only through the link
         that holds its per-launch key, and the help says so -- who can open

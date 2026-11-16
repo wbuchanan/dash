@@ -6959,12 +6959,20 @@ _DASH_KEY_HOLDER = "_dash_serve_key"
 _DASH_LINK_SAID = ("dash: the dashboard opens only through its link, which "
                    "holds a key made for this run; the link is in this file, "
                    "which only you can read:")
-#: P0.12a (K-5): plain bokeh serve admits only localhost, so the
-#: 127.0.0.1 link's websocket is refused unless the operator widens it.
+#: P0.12a (K-5): plain bokeh serve admits only localhost, so under a
+#: tornado before 6.6 the 127.0.0.1 link's websocket is refused unless the
+#: operator widens it.  6.6 admits it unasked (same origin), and the hint
+#: is then not said (_dash_tornado_admits_same_origin).
 _DASH_BS_ORIGIN_HINT = ("dash: under bokeh serve the link's page stays blank "
                         "unless the server was started with "
                         "--allow-websocket-origin 127.0.0.1:%d (Bokeh admits "
                         "only localhost by default).")
+#: The launcher's line after its BOKEH_ALLOW_WS_ORIGIN note, under a
+#: tornado that admits a same-origin handshake unasked.  %s is
+#: tornado.version.
+_DASH_SAME_ORIGIN_NOTE = ("dash: tornado %s admits a websocket from a page "
+                          "at the address it connects to without asking "
+                          "that list, so the link's page still opens.")
 #: P0.12a (round 2, K-9): the warning before the one printed link, when no
 #: folder takes the link file.  %s is an exception's type name only.
 _DASH_LINK_UNWRITTEN = ("dash: WARNING -- the dashboard's link could not be "
@@ -6973,6 +6981,20 @@ _DASH_LINK_UNWRITTEN = ("dash: WARNING -- the dashboard's link could not be "
                         "is now in this output and in any log of it, and "
                         "anyone who can read them can open the dashboard "
                         "while this server runs.")
+
+
+def _dash_tornado_admits_same_origin(version_info=None):
+    """Whether tornado admits a same-origin websocket handshake without
+    asking the handler's check_origin: 6.6.0 and later, which skip it when
+    the browser marks the request same-origin (Sec-Fetch-Site) or its
+    Origin names the Host it was sent to (tornado 6.6.0's release notes;
+    GitHub's runner, 15nov2026).  Bokeh's allow-list -- the app's, or
+    BOKEH_ALLOW_WS_ORIGIN's -- then decides only for a page served from
+    another address.  *version_info* defaults to tornado's own."""
+    if version_info is None:
+        import tornado
+        version_info = tornado.version_info
+    return tuple(version_info[:2]) >= (6, 6)
 
 
 def _dash_new_token():
@@ -7492,7 +7514,8 @@ def _dash_bokeh_serve_key(doc, out=None):
                   " and restart to choose the key.", file=out, flush=True)
             return h.key
         d = _dash_announce_key(url, out=out,
-                               hint=_DASH_BS_ORIGIN_HINT % port)
+                               hint=None if _dash_tornado_admits_same_origin()
+                               else _DASH_BS_ORIGIN_HINT % port)
         if d:
             atexit.register(shutil.rmtree, d, True)
         return h.key
@@ -81900,7 +81923,7 @@ class ServerAppBuilder:
                       "_DASH_JWT_PAYLOAD_MAX", "_DASH_QUERY_RE",
                       "_DASH_REDIRECT_TTL_S", "_DASH_KEY_HOLDER",
                       "_DASH_LINK_SAID", "_DASH_BS_ORIGIN_HINT",
-                      "_DASH_LINK_UNWRITTEN",
+                      "_DASH_SAME_ORIGIN_NOTE", "_DASH_LINK_UNWRITTEN",
                       # WP-30 P1.30: the verified bokeh window.
                       "_DASH_BOKEH_FLOOR", "_DASH_BOKEH_CEIL", "_DASH_BOKEH_VERIFIED",
                       # WP-31 I4: _dash_dep_versions' floors.
@@ -82500,6 +82523,9 @@ class ServerAppBuilder:
                          # Bokeh whose matcher is not (bokeh 3.8).
                          "_dash_strict_match_host",
                          "_dash_harden_origin_check",
+                         # Whether tornado asks that check about a
+                         # same-origin page at all (6.6 does not).
+                         "_dash_tornado_admits_same_origin",
                          "_dash_bokeh_window", "_dash_bokeh_check",
                          # WP-31 I4: the version note of a hand-run app.
                          "_dash_dep_versions", "_dash_hand_run_note",
@@ -87435,6 +87461,8 @@ class ServerAppBuilder:
             "    # (CLAUDE.md rule 15): measured 24sep2026, set to another host",
             "    # it left the page at the address printed below blank, and set",
             "    # to * it let any web site open a session -- with nothing said.",
+            "    # Tornado 6.6 admits that page unasked (same origin), and the",
+            "    # second line says so.",
             "    # Flushed: a server stopped by a signal writes no buffer.",
             "    _dash_env_origins = ''.join(",
             "        _c for _c in os.environ.get('BOKEH_ALLOW_WS_ORIGIN', '')",
@@ -87445,6 +87473,10 @@ class ServerAppBuilder:
             "              'list (localhost and 127.0.0.1 on this port, and '",
             "              '--allow-websocket-origin): ' + _dash_env_origins,",
             "              flush=True)",
+            "        if _dash_tornado_admits_same_origin():",
+            "            import tornado as _dash_tornado",
+            "            print(_DASH_SAME_ORIGIN_NOTE % _dash_tornado.version,",
+            "                  flush=True)",
             "        if any('*' in _o for _o in _dash_env_origins.split(',')):",
             "            print('dash: WARNING -- it holds *, so the websocket '",
             "                  'origin check admits every web site; only the '",

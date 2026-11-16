@@ -372,6 +372,14 @@ def _bs_cmd(app, port, allow_127=True, *extra):
     return cmd + list(extra)
 
 
+def _tornado_admits_same_origin():
+    """Whether the installed tornado admits the link's same-origin page
+    without asking Bokeh's allow-list (6.6 and later), so bokeh serve needs
+    no flag for it and says no hint about one."""
+    import tornado
+    return tornado.version_info >= (6, 6)
+
+
 #: A start whose every tempfile.mkdtemp fails (process-wide; Evidence §7).
 _PATCH = ("import sys, tempfile, runpy\n"
           "def _no(*a, **k):\n"
@@ -790,6 +798,9 @@ class TestTheTokenHelpers:
 
     def test_the_bokeh_serve_key_announces_once_from_a_page_request(
             self, _isolated, monkeypatch):
+        # The hint's tornado; the later ones are the test after the next.
+        import tornado
+        monkeypatch.setattr(tornado, "version_info", (6, 5, 5, 0))
         out = io.StringIO()
         assert dr._dash_bokeh_serve_key(
             types.SimpleNamespace(session_context=None), out=out) is None
@@ -819,10 +830,40 @@ class TestTheTokenHelpers:
         assert len(out.getvalue().splitlines()) == 1
         assert len(_link_dirs(_isolated)) == 1
 
+    @pytest.mark.parametrize("version, hinted", [
+        ((6, 5, 5, 0), True), ((6, 6, 0, 0), False), ((7, 0, 0, 0), False)])
+    def test_the_bokeh_serve_hint_is_said_only_where_tornado_needs_the_flag(
+            self, _isolated, monkeypatch, version, hinted):
+        """A tornado before 6.6 asks Bokeh's allow-list about the link's own
+        127.0.0.1 page, which plain bokeh serve does not list, so the page
+        stays blank without --allow-websocket-origin and the hint says so.
+        6.6 admits a same-origin handshake without asking (its release
+        notes; GitHub's runner, 15nov2026), and the hint was then false."""
+        import tornado
+        monkeypatch.setattr(tornado, "version_info", version)
+        out = io.StringIO()
+        assert dr._dash_token_valid(
+            dr._dash_bokeh_serve_key(_fake_doc(), out=out))
+        lines = out.getvalue().splitlines()
+        assert lines[0] == dr._DASH_LINK_SAID
+        assert lines[1].endswith("link.html")
+        assert lines[2:] == ([dr._DASH_BS_ORIGIN_HINT % 5123] if hinted
+                             else [])
+
+    def test_tornado_6_6_admits_a_same_origin_handshake(self):
+        import tornado
+        f = dr._dash_tornado_admits_same_origin
+        assert [f(v) for v in ((5, 9), (6, 5, 5, 0), (6, 6), (6, 6, 1, 0),
+                               (7, 0, 0, 0))] == [False, False, True, True,
+                                                  True]
+        assert f() is (tornado.version_info >= (6, 6))
+
     def test_the_bokeh_serve_link_that_cannot_be_written_is_printed_once(
             self, _isolated, monkeypatch):
         def _raise(*a, **k):
             raise OSError(errno.ENOSPC, "No space left on device")
+        import tornado
+        monkeypatch.setattr(tornado, "version_info", (6, 5, 5, 0))
         monkeypatch.setattr(dr, "_dash_private_page", _raise)
         out = io.StringIO()
         k = dr._dash_bokeh_serve_key(_fake_doc(), out=out)
@@ -2110,7 +2151,9 @@ class TestBokehServeAlwaysHasAKey:
             assert not plot and "DASH_SERVE_TOKEN" in divs and \
                 "link.html" in divs
             hint = dr._DASH_BS_ORIGIN_HINT % bs.port
-            assert bs.wait_for(lambda s: hint in s)
+            hinted = not _tornado_admits_same_origin()
+            if hinted:
+                assert bs.wait_for(lambda s: hint in s)
             p = link_path_in(bs.said())
             mode, dmode, host, lport, path, key = read_link(p)
             assert (mode, dmode, host, lport, path) == (
@@ -2126,6 +2169,7 @@ class TestBokehServeAlwaysHasAKey:
             assert bs.said().count(dr._DASH_LINK_SAID) == before == 1
             bs.stop()
             assert key not in bs.said()
+            assert (hint in bs.said()) is hinted
             assert not os.path.exists(os.path.dirname(p))
 
     def test_a_websocket_first_session_leaves_the_link_to_the_first_page(
@@ -2145,7 +2189,10 @@ class TestBokehServeAlwaysHasAKey:
     def test_with_the_origin_flag_the_link_opens_the_websocket(
             self, bs_app_path):
         env = {"DASH_SERVE_TOKEN": T}
-        for flag, want in ((True, 101), (False, 403)):
+        # Without the flag the link's page is refused only by a tornado
+        # that asks Bokeh's allow-list about a same-origin page (before 6.6).
+        unflagged = 101 if _tornado_admits_same_origin() else 403
+        for flag, want in ((True, 101), (False, unflagged)):
             with self._start(bs_app_path, env=env, allow_127=flag) as bs:
                 st = _ws(bs.port, "http://127.0.0.1:%d" % bs.port,
                          path="/app")[0]
@@ -2185,12 +2232,19 @@ class TestBokehServeAlwaysHasAKey:
             warn = dr._DASH_LINK_UNWRITTEN % "PermissionError"
             assert bs.wait_for(lambda s: warn in s), bs.said()
             hint = dr._DASH_BS_ORIGIN_HINT % port
-            assert bs.wait_for(lambda s: hint in s)
+            hinted = not _tornado_admits_same_origin()
+            assert bs.wait_for(
+                (lambda s: hint in s) if hinted else
+                (lambda s: any(LINK_RE.fullmatch(ln)
+                               for ln in s.splitlines())))
             lines = list(bs.lines)
             i = lines.index(warn)
             m = LINK_RE.fullmatch(lines[i + 1])
             assert m and m.group(3) == "/app" and int(m.group(2)) == port
-            assert lines[i + 2] == hint
+            if hinted:
+                assert lines[i + 2] == hint
+            else:
+                assert hint not in bs.said()
             key = m.group(4)
             n, _, plot = _pull_rows(u, key)
             assert plot and n == 20

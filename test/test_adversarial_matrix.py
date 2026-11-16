@@ -2632,6 +2632,12 @@ class TestSessionOrigin:
         assert len(note) == 1, said
         assert "instead of" in note[0], note
         assert ("evil.example:%d" % p) in note[0], note
+        # Under tornado 6.6 it adds that the link's page still opens, which
+        # the 127.0.0.1 session above shows.
+        same = [ln for ln in said.splitlines()
+                if ln.startswith("dash: tornado ")]
+        assert same == ([dr._DASH_SAME_ORIGIN_NOTE % tornado.version]
+                        if tornado.version_info >= (6, 6) else []), said
         assert "any web site" not in said, said
         assert "dash: BOKEH_ALLOW_WS_ORIGIN" not in _launcher_said(live_app)
 
