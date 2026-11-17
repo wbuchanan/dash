@@ -1,4 +1,4 @@
-* Filters: the four widget types, and a filter one card ignores.
+* Filters: the four widget types in a sidebar, and a filter one card ignores.
 sysuse nlsw88, clear
 dash clear
 dash kpi mean(wage), title("Mean wage") name(mw) fmt(%9.2f)
@@ -10,4 +10,4 @@ dash build, saving(filters.html, replace) ///
     filter(occupation, type(multi)) ///
     filter(age, type(range)) ///
     filter(grade, type(slider) label("Years of school, at least") exclude(all)) ///
-    layout(bs: mw=6 all=6 / g1=6 g2=6) title("Filters")
+    filterposition(left) layout(bs: mw=6 all=6 / g1=6 g2=6) title("Filters")

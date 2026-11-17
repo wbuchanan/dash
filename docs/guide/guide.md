@@ -121,11 +121,11 @@ A slider or range recomputes the dashboard when you let go of it. Once moved, it
 - `label()` sets the widget's text; without it, the widget shows the variable's label, or its name.
 - `direction(rtl)` runs a slider or range from right to left.
 - A **Reset filters** button puts every widget back where it started.
-- `filterposition(left)` on `dash build` puts the widgets in a sidebar beside the dashboard, instead of a row above it.
+- `filterposition(left)` on `dash build` puts the widgets in a sidebar beside the dashboard, instead of a row above it, as in the example below.
 
 The graphs of a link group draw from one copy of the data, so a filter moves the whole group, unless it excludes every graph in it.
 
-@example filters 610
+@example filters 470
 
 Try it:
 
