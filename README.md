@@ -83,6 +83,9 @@ Every example twoway draws, with its live dash graph, is on the gallery pages: [
 
 ## Documentation
 
+- [The user's guide](https://wbuchanan.github.io/dash/guide/) -- how to use
+  KPI cards, filters, data tables, linked brushing, tabs and the other
+  dashboard features, each with a live example.
 - `help dash` -- the syntax, the differences from `twoway`, and the
   dashboard options.
 - `help dash_setup` -- installing and checking the Python dependencies.

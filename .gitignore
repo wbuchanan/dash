@@ -8,6 +8,8 @@ scripts/__pycache__/*
 # The corpus gallery (WP-33 33-08; built at WP-50's closeout) is committed
 !docs/gallery/*.html
 !docs/gallery/corpus.json
+# The user's guide examples (make guide) are committed too
+!docs/guide/examples/*.html
 .gitnexus
 # Written by examples/serve_dashboard.do where it runs (test/ under certification)
 serve_dashboard_app.py

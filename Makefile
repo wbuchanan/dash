@@ -19,7 +19,7 @@ ifeq ($(origin STATA),command line)
 $(error STATA was renamed STATA_BIN (WP-30); run make $(MAKECMDGOALS) STATA_BIN=$(STATA))
 endif
 
-.PHONY: help check test test-dev test-batch test-release test-all test-floor cert cert-release cert-all gate release hooks truth truth-check lint corpus gallery
+.PHONY: help check test test-dev test-batch test-release test-all test-floor cert cert-release cert-all gate release hooks truth truth-check lint corpus gallery guide
 
 help:
 	@echo "make check     make test, make test-dev and make cert, in that order"
@@ -40,6 +40,7 @@ help:
 	@echo "make truth-check  the fixture guard: every fixture names its generator, carries complete _meta and holds no absolute path"
 	@echo "make corpus    compare every twoway example (help files, g.pdf, examples/, the audit's probes; one per combination of plot types and options) with dash into CORPUS_DIR (default $$TMPDIR/dash_corpus; hours, Stata and Chrome; never part of make test)"
 	@echo "make gallery   write docs/gallery/ (SVG pairs, corpus.json, one dash page per plot type and an index page) and README.md's gallery block from CORPUS_DIR (run at WP-50's closeout)"
+	@echo "make guide     build the user's guide examples: each docs/guide/examples/*.do in batch Stata, its page beside it, and BUILD.md (Stata; never part of make test)"
 	@echo "STATA_BIN=<path> names the console Stata (default /usr/local/bin/stata-mp); STATA_ARCH=auto|none|arm64|x86_64"
 
 check: test test-dev cert
@@ -173,6 +174,13 @@ corpus:
 
 gallery:
 	$(PYTHON) scripts/corpus/gallery.py --run "$(CORPUS_DIR)" --gallery "$(GALLERY_DIR)" --readme README.md --pages-url "$(GALLERY_URL)"
+
+# The user's guide examples: each docs/guide/examples/*.do run in batch Stata,
+# its page kept beside it and BUILD.md rewritten (scripts/guide_examples.py).
+# Run after changing an example, or dash, before publishing; not part of any
+# test target.
+guide:
+	$(PYTHON) scripts/guide_examples.py
 
 # WP-31 I6: ruff with the committed ruff.toml.  ruff is a development tool,
 # not a dependency: RUFF names it, else $(PYTHON) -m ruff, else ruff on PATH.

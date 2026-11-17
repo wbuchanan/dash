@@ -38,6 +38,10 @@ jobs:
           cp -R docs/gallery _site/gallery
           # The landing page, from README.md (standard library only).
           python3 scripts/pages_index.py README.md _site/index.html
+          # The user's guide and its examples (built by make guide).
+          mkdir -p _site/guide/examples
+          cp docs/guide/examples/*.html docs/guide/examples/*.do _site/guide/examples/
+          python3 scripts/pages_index.py --guide docs/guide _site/guide/index.html
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

@@ -97,15 +97,23 @@ def test_the_pages_workflow_publishes_main_after_ci():
 def test_the_pages_site_holds_the_package_and_the_gallery(tmp_path):
     """The step run as GitHub runs it (bash -e): the site's root holds
     stata.toc, dash.pkg and every file dash.pkg lists, as files, the
-    landing page built from README.md, and gallery/ is docs/gallery; a
-    listed file missing fails the step, so a broken package is never
-    published.  The step's python3 is this test's interpreter."""
+    landing page built from README.md, gallery/ is docs/gallery, and
+    guide/ holds the guide built from docs/guide with each example's page
+    and do-file (not BUILD.md); a listed file missing fails the step, so a
+    broken package is never published.  The step's python3 is this test's
+    interpreter."""
     script = _pages_assembly_script(_read(".github", "workflows",
                                           "pages.yml"))
     work = tmp_path / "repo"
     (work / "docs" / "gallery" / "svg").mkdir(parents=True)
     (work / "docs" / "gallery" / "index.html").write_text("<p>g</p>")
     (work / "docs" / "gallery" / "svg" / "a.svg").write_text("<svg/>")
+    (work / "docs" / "guide" / "examples").mkdir(parents=True)
+    (work / "docs" / "guide" / "guide.md").write_text(
+        "# Guide\n\nLead.\n\n## Part\n\n@example demo 300\n")
+    (work / "docs" / "guide" / "examples" / "demo.do").write_text("* Demo: x\n")
+    (work / "docs" / "guide" / "examples" / "demo.html").write_text("<p>d</p>")
+    (work / "docs" / "guide" / "examples" / "BUILD.md").write_text("# rows\n")
     (work / "scripts").mkdir()
     os.symlink(os.path.join(_REPO, "scripts", "pages_index.py"),
                work / "scripts" / "pages_index.py")
@@ -125,7 +133,10 @@ def test_the_pages_site_holds_the_package_and_the_gallery(tmp_path):
     p = assemble()
     assert p.returncode == 0, p.stderr
     site = work / "_site"
-    assert sorted(os.listdir(site)) == sorted(shipped + ["gallery", "index.html"])
+    assert sorted(os.listdir(site)) == sorted(shipped + ["gallery", "guide", "index.html"])
+    assert sorted(os.listdir(site / "guide")) == ["examples", "index.html"]
+    assert sorted(os.listdir(site / "guide" / "examples")) == ["demo.do", "demo.html"]
+    assert 'src="examples/demo.html"' in (site / "guide" / "index.html").read_text()
     for name in shipped:
         assert not (site / name).is_symlink(), name
         assert (site / name).read_bytes() == (work / name).read_bytes()

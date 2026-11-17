@@ -57,6 +57,19 @@ def test_site_url_rewrites_paths_for_the_site(url, want):
     assert pi.site_url(url) == want
 
 
+@pytest.mark.parametrize("url, want", [
+    ("docs/gallery/svg/a.svg", "../gallery/svg/a.svg"),
+    ("https://wbuchanan.github.io/dash/gallery/", "../gallery/"),
+    ("https://wbuchanan.github.io/dash/", "../"),
+    ("https://wbuchanan.github.io/dash/#installation", "../#installation"),
+    ("CHANGELOG.md", _BLOB + "CHANGELOG.md"),
+    ("#filters", "#filters"),
+    ("https://example.org/", "https://example.org/"),
+])
+def test_site_url_climbs_out_of_a_page_one_folder_down(url, want):
+    assert pi.site_url(url, up=1) == want
+
+
 @pytest.mark.parametrize("url", ["javascript:alert(1)", "data:text/html,x",
                                  "JavaScript:x", "vbscript:x", ""])
 def test_site_url_refuses_other_schemes(url):
@@ -85,6 +98,11 @@ def test_site_url_refuses_other_schemes(url):
 ])
 def test_inline_renders_the_readmes_inline_markdown(text, want):
     assert pi.inline(text) == want
+
+
+def test_inline_links_from_a_page_one_folder_down():
+    assert pi.inline("[the gallery](https://wbuchanan.github.io/dash/gallery/)",
+                     up=1) == '<a href="../gallery/">the gallery</a>'
 
 
 @pytest.mark.parametrize("text", ["an ![image](a.png) here", "one *star* here",
@@ -169,13 +187,16 @@ def test_page_leads_with_the_gallery_and_runs_no_script():
     assert "<script" not in page.lower()
     hero = page.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
     assert "<h1" in hero and '<p class="lead">The lead.</p>' in hero
-    assert '<a class="cta" href="gallery/">' in hero
+    # The gallery first and largest, then the guide.
+    assert hero.index('<a class="cta" href="gallery/">') < hero.index(
+        '<a class="cta secondary" href="guide/">')
     # The gallery link comes before every section of the README.
     assert page.index('class="cta" href="gallery/"') < page.index("<h2")
     nav = page.split('<nav aria-label="Site">', 1)[1].split("</nav>", 1)[0]
     assert re.findall(r'href="([^"]+)"', nav) == [
-        "./", "gallery/", "#installation", "#documentation",
+        "./", "gallery/", "guide/", "#installation", "#documentation",
         "https://github.com/wbuchanan/dash"]
+    assert "aria-current" not in nav and "<body>\n" in page and "<main>" in page
     assert "Body text." in page and "The lead." not in page.split("</section>", 1)[1]
 
 
@@ -191,10 +212,96 @@ def test_page_policy_names_its_one_stylesheet_by_hash():
     assert " style=" not in page
 
 
+def test_page_policy_names_its_one_stylesheet_by_hash_and_frames_nothing():
+    assert "frame-src" not in pi.page(_MD)
+
+
 def test_page_refuses_a_readme_without_a_title_and_lead():
     for md in ("Just text.", "# Title only", "# Title\n\n## Section"):
         with pytest.raises(ValueError):
             pi.page(md)
+
+
+# ---- the guide --------------------------------------------------------------
+
+_DEMO = '* Demo plots: one graph & a "card".\nsysuse auto, clear\ndash scatter mpg weight\n'
+
+
+def test_example_html_shows_the_code_beside_the_live_page():
+    assert pi.example_html("demo", 420, _DEMO).split("\n") == [
+        '<figure class="example" id="example-demo">',
+        "<figcaption>Example: Demo plots</figcaption>",
+        '<pre><code class="language-stata">* Demo plots: one graph &amp; a "card".',
+        "sysuse auto, clear",
+        "dash scatter mpg weight</code></pre>",
+        '<iframe src="examples/demo.html" title="Live example: Demo plots" '
+        'height="420" loading="lazy"></iframe>',
+        '<p class="example-links"><a href="examples/demo.html">Open this '
+        "dashboard on its own</a> &middot; "
+        '<a href="examples/demo.do" download>Download demo.do</a></p>',
+        "</figure>"]
+
+
+def test_read_examples_reads_each_do_file(tmp_path):
+    (tmp_path / "b-2.do").write_text("* Bee: x\n", encoding="utf-8")
+    (tmp_path / "a.do").write_text("* Ay: y\n", encoding="utf-8")
+    (tmp_path / "a.html").write_text("<p>page</p>", encoding="utf-8")
+    assert pi.read_examples(str(tmp_path)) == {"a": "* Ay: y\n", "b-2": "* Bee: x\n"}
+    (tmp_path / "c.do").write_text("sysuse auto\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="c.do"):
+        pi.read_examples(str(tmp_path))
+
+
+def test_render_draws_an_example_where_the_guide_asks():
+    blocks = pi.render("Intro.\n\n@example demo 420\n\nAfter.", examples={"demo": _DEMO},
+                       source="guide.md")
+    assert blocks == [("p", "<p>Intro.</p>"),
+                      ("example", pi.example_html("demo", 420, _DEMO)),
+                      ("p", "<p>After.</p>")]
+
+
+@pytest.mark.parametrize("md, examples, why", [
+    ("@example demo 420", None, "line 1: an example belongs in the guide"),
+    ("@example nope 420", {"demo": _DEMO}, "line 1: no example nope"),
+    ("@example demo 40", {"demo": _DEMO},
+     "line 1: an example's frame takes a height from 100 to 3000"),
+    ("@example demo tall", {"demo": _DEMO}, "line 1: "),
+    ("Text\n@example demo 420", {"demo": _DEMO}, "line 2: an example must follow"),
+])
+def test_render_refuses_an_example_it_cannot_draw(md, examples, why):
+    with pytest.raises(ValueError, match="guide.md " + re.escape(why)):
+        pi.render(md, examples=examples, source="guide.md")
+
+
+_GUIDE = "\n".join([
+    "# The guide", "", "What it covers.", "", "## First steps", "", "Read [this](#more).",
+    "", "@example demo 420", "", "## More", "",
+    "See [the gallery](https://wbuchanan.github.io/dash/gallery/)."])
+
+
+def test_guide_page_lists_its_sections_and_frames_its_examples():
+    page = pi.guide_page(_GUIDE, {"demo": _DEMO})
+    assert "<title>The guide</title>" in page and "<script" not in page.lower()
+    assert '<p class="lead">What it covers.</p>' in page
+    contents = page.split('<nav class="contents" aria-label="Contents">', 1)[1].split(
+        "</nav>", 1)[0]
+    assert re.findall(r'<a href="([^"]+)">([^<]+)</a>', contents) == [
+        ("#first-steps", "First steps"), ("#more", "More")]
+    assert page.index("Contents") < page.index("<h2")
+    nav = page.split('<nav aria-label="Site">', 1)[1].split("</nav>", 1)[0]
+    assert re.findall(r'href="([^"]+)"', nav) == [
+        "../", "../gallery/", "./", "https://github.com/wbuchanan/dash"]
+    assert '<a href="./" aria-current="page">Guide</a>' in nav
+    assert '<a href="../gallery/">the gallery</a>' in page
+    assert pi.example_html("demo", 420, _DEMO) in page
+    assert '<body class="wide">' in page and "<main>" in page
+    csp = re.search(r'Content-Security-Policy" content="([^"]+)"', page).group(1)
+    assert "frame-src 'self'; " in csp and "default-src 'none'" in csp
+
+
+def test_guide_page_refuses_a_guide_without_a_title_and_lead():
+    with pytest.raises(ValueError, match="guide.md"):
+        pi.guide_page("## No title\n\nText.", {})
 
 
 # ---- main -------------------------------------------------------------------
@@ -209,6 +316,20 @@ def test_main_writes_the_page_and_says_why_it_cannot(tmp_path, capsys):
     assert pi.main([str(src), str(out)]) == 1
     assert "README.md line 5" in capsys.readouterr().err
     assert pi.main([str(src)]) == 2
+
+
+def test_main_writes_the_guide_from_its_folder(tmp_path, capsys):
+    folder = tmp_path / "guide"
+    (folder / "examples").mkdir(parents=True)
+    (folder / "guide.md").write_text(_GUIDE, encoding="utf-8")
+    (folder / "examples" / "demo.do").write_text(_DEMO, encoding="utf-8")
+    out = tmp_path / "site-guide.html"
+    assert pi.main(["--guide", str(folder), str(out)]) == 0
+    assert out.read_text(encoding="utf-8") == pi.guide_page(_GUIDE, {"demo": _DEMO})
+    (folder / "guide.md").write_text(_GUIDE + "\n\n> quoted\n", encoding="utf-8")
+    assert pi.main(["--guide", str(folder), str(out)]) == 1
+    assert "guide.md line 15" in capsys.readouterr().err
+    assert pi.main(["--guide", str(folder)]) == 2
 
 
 # ---- the README itself ------------------------------------------------------
@@ -233,6 +354,8 @@ def test_the_readme_builds_a_page_for_the_site():
             assert "docs/" + href in tracked, href
         elif href.startswith("#"):
             assert 'id="%s"' % href[1:] in page, href
+        elif href == "guide/":
+            assert os.path.exists(os.path.join(_ROOT, "docs", "guide", "guide.md"))
         else:
             assert (href in ("./", "gallery/")
                     or href.startswith(("https://", "mailto:"))), href
