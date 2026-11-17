@@ -741,13 +741,19 @@ _PLAIN_DIGESTS = {
         # 58a868b2....  With every CustomJS's code masked the digests equal
         # the tree at 186fe9c's in all four: callback JS text only; the
         # same under both Pythons.
-        "1c4db286986cbe04fade13c719f2a8a7168f13efa298b335346b4903e74627ab",
+        # WP-50 guide fix (ddd97071): the layout queue's script clears a
+        # whole canvas layer, unshifted: 1c4db286... -> d8f680c5... (saved)
+        # and 0f7c5cf0... -> a3281b51... (served); yaxis2 6fc9c785... ->
+        # f4af7b2e... and 58a868b2... -> 3ede5064....  With every model's
+        # code masked the digests equal 055bb0f9's in all four: callback
+        # JS text only; the same under both Pythons.
+        "d8f680c56d9406876851febd2e44d8616bba245e947f59bf7aff933d3b603478",
     ("saved", "yaxis2"):
-        "6fc9c78527c6be9928cd21c7b28d6683bcb3656b1bdfbe54c39e0c1306ad3b90",
+        "f4af7b2ed9cdbb9b008820a0ea6876937414482e987d6a69f1a7393a468e119c",
     ("served", "plain"):
-        "0f7c5cf08ff087562dfb06e90b9ff4c90dcfa2101c294751d9931bc601d61039",
+        "a3281b512bb13b8b89eb7c280ca631becfea4afaeb0cf4f8fb182b1251598ebc",
     ("served", "yaxis2"):
-        "58a868b2487cf503474c46bbe82a64e7211afe3a0cfcd33757aa12089e5163bd",
+        "3ede5064fba7148d49327d6a91ab3a665d2ec45f5ff412e0a4c68196a90b4a22",
 }
 
 
