@@ -96,32 +96,42 @@ def test_the_pages_workflow_publishes_main_after_ci():
 @pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
 def test_the_pages_site_holds_the_package_and_the_gallery(tmp_path):
     """The step run as GitHub runs it (bash -e): the site's root holds
-    stata.toc, dash.pkg and every file dash.pkg lists, as files, and
-    gallery/ is docs/gallery; a listed file missing fails the step, so a
-    broken package is never published."""
+    stata.toc, dash.pkg and every file dash.pkg lists, as files, the
+    landing page built from README.md, and gallery/ is docs/gallery; a
+    listed file missing fails the step, so a broken package is never
+    published.  The step's python3 is this test's interpreter."""
     script = _pages_assembly_script(_read(".github", "workflows",
                                           "pages.yml"))
     work = tmp_path / "repo"
     (work / "docs" / "gallery" / "svg").mkdir(parents=True)
     (work / "docs" / "gallery" / "index.html").write_text("<p>g</p>")
     (work / "docs" / "gallery" / "svg" / "a.svg").write_text("<svg/>")
+    (work / "scripts").mkdir()
+    os.symlink(os.path.join(_REPO, "scripts", "pages_index.py"),
+               work / "scripts" / "pages_index.py")
+    os.symlink(os.path.join(_REPO, "README.md"), work / "README.md")
     shipped = ["stata.toc", "dash.pkg", *_pkg_files()]
     for name in shipped:
         os.symlink(os.path.join(_REPO, name), work / name)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    os.symlink(sys.executable, bin_dir / "python3")
+    env = dict(os.environ, PATH=str(bin_dir) + os.pathsep + os.environ["PATH"])
 
     def assemble():
-        return subprocess.run(["bash", "-e", "-c", script], cwd=work,
+        return subprocess.run(["bash", "-e", "-c", script], cwd=work, env=env,
                               capture_output=True, text=True)
 
     p = assemble()
     assert p.returncode == 0, p.stderr
     site = work / "_site"
-    assert sorted(os.listdir(site)) == sorted(shipped + ["gallery"])
+    assert sorted(os.listdir(site)) == sorted(shipped + ["gallery", "index.html"])
     for name in shipped:
         assert not (site / name).is_symlink(), name
         assert (site / name).read_bytes() == (work / name).read_bytes()
     assert (site / "gallery" / "index.html").read_text() == "<p>g</p>"
     assert (site / "gallery" / "svg" / "a.svg").read_text() == "<svg/>"
+    assert '<a class="cta" href="gallery/">' in (site / "index.html").read_text()
 
     shutil.rmtree(site)
     os.remove(work / shipped[-1])

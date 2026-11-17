@@ -26,6 +26,10 @@ sys.path.insert(0, _ROOT)
 
 from scripts.corpus import gallery, ledger, summary, twoway_run  # noqa: E402
 
+#: Where GitHub Pages serves docs/gallery (.github/workflows/pages.yml), the
+#: link make gallery writes into README.md's block.
+_GALLERY_URL = "https://wbuchanan.github.io/dash/gallery/"
+
 _TW_SVG = ('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="60">'
            '<clipPath id="r9"><rect width="5" height="5"/></clipPath>'
            '<path clip-path="url(#r9)" d="M0 0L10 10"/></svg>')
@@ -1107,6 +1111,9 @@ class TestTheMakefile:
             assert stage in rules["corpus"][1], stage
         assert "gallery.py" in rules["gallery"][1]
         assert "--readme README.md" in rules["gallery"][1]
+        # The README links the gallery where Pages serves it (17nov2026).
+        assert '--pages-url "$(GALLERY_URL)"' in rules["gallery"][1]
+        assert re.search(r"^GALLERY_URL \?= %s$" % re.escape(_GALLERY_URL), mk, re.M)
         for gate in ("check", "test", "test-dev", "test-all", "cert", "gate", "release"):
             prereq, recipe = rules[gate]
             assert not re.search(r"\b(corpus|gallery)\b", prereq), gate
@@ -1180,4 +1187,5 @@ class TestTheCommittedGallery:
             corpus = json.load(fh)
         ids = gallery.read_ids(os.path.join(_ROOT, "scripts", "corpus", "readme_examples.txt"))
         assert 10 <= len(ids) <= 14
-        assert gallery.replace_block(readme, gallery.readme_block(corpus, ids)) == readme
+        block = gallery.readme_block(corpus, ids, pages_url=_GALLERY_URL)
+        assert gallery.replace_block(readme, block) == readme

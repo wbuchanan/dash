@@ -78,7 +78,7 @@ These pairs were drawn on 14nov2026 at dash commit 0a6498a; each verdict is the 
 <p><img src="docs/gallery/svg/help-twoway_rarea-2d21b873-twoway.svg" alt="twoway: twoway rarea high low date in 1/57" width="49%"> <img src="docs/gallery/svg/help-twoway_rarea-2d21b873-dash.svg" alt="dash: twoway rarea high low date in 1/57" width="49%"><br><code>twoway rarea high low date in 1/57</code><br><b>Close</b>: margins, line width</p>
 <p><img src="docs/gallery/svg/help-twoway_pcarrow-1360a22e-twoway.svg" alt="twoway: twoway pcarrow y1 x1 y2 x2 , aspect(1) mlabel(time) mlabvposition(pos) headlabel plotregion(margin(vlarge))" width="49%"> <img src="docs/gallery/svg/help-twoway_pcarrow-1360a22e-dash.svg" alt="dash: twoway pcarrow y1 x1 y2 x2 , aspect(1) mlabel(time) mlabvposition(pos) headlabel plotregion(margin(vlarge))" width="49%"><br><code>twoway pcarrow y1 x1 y2 x2 , aspect(1) mlabel(time) mlabvposition(pos) headlabel plotregion(margin(vlarge))</code><br><b>Close</b>: margins</p>
 
-Every example twoway draws, with its live dash graph, is on the gallery pages: [docs/gallery/index.html](docs/gallery/index.html) (open them from a downloaded copy of the folder, or on the project's GitHub Pages site once the maintainer turns it on).
+Every example twoway draws, with its live dash graph, is on the gallery pages: [https://wbuchanan.github.io/dash/gallery/](https://wbuchanan.github.io/dash/gallery/).
 <!-- dash-gallery:end -->
 
 ## Documentation

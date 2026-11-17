@@ -158,6 +158,9 @@ truth-check:
 # part of make test, make test-all, make check or make cert.
 CORPUS_DIR ?= $(or $(TMPDIR),/tmp)/dash_corpus
 GALLERY_DIR ?= $(CURDIR)/docs/gallery
+# Where GitHub Pages serves docs/gallery (.github/workflows/pages.yml): the
+# README block's link to the gallery pages.
+GALLERY_URL ?= https://wbuchanan.github.io/dash/gallery/
 corpus:
 	@mkdir -p "$(CORPUS_DIR)"
 	$(PYTHON) scripts/corpus/extract.py --out "$(CORPUS_DIR)"
@@ -169,7 +172,7 @@ corpus:
 	@echo "make corpus: results in $(CORPUS_DIR)"
 
 gallery:
-	$(PYTHON) scripts/corpus/gallery.py --run "$(CORPUS_DIR)" --gallery "$(GALLERY_DIR)" --readme README.md
+	$(PYTHON) scripts/corpus/gallery.py --run "$(CORPUS_DIR)" --gallery "$(GALLERY_DIR)" --readme README.md --pages-url "$(GALLERY_URL)"
 
 # WP-31 I6: ruff with the committed ruff.toml.  ruff is a development tool,
 # not a dependency: RUFF names it, else $(PYTHON) -m ruff, else ruff on PATH.
