@@ -216,3 +216,60 @@ def test_no_page_defines_a_visual_override(mode):
     html = bkb._page(mode, spec)
     defined = re.findall(r"--bk-[A-Za-z0-9_-]+\s*:", html)
     assert defined == [], defined
+
+
+#: The dark pixels in the top device row of each figure canvas layer.
+_TOP_ROW_INK_JS = r"""(() => {
+  const out = [];
+  const walk = (root) => {
+    for (const c of root.querySelectorAll("canvas")) {
+      if (c.width < 300 || c.height < 100) { continue; }
+      const ctx = c.getContext("2d");
+      if (ctx == null) { continue; }
+      const d = ctx.getImageData(0, 0, c.width, 1).data;
+      let n = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] > 40 && d[i] + d[i + 1] + d[i + 2] < 500) { n++; }
+      }
+      out.push(n);
+    }
+    for (const el of root.querySelectorAll("*")) {
+      if (el.shadowRoot) { walk(el.shadowRoot); }
+    }
+  };
+  walk(document);
+  return out;
+})()"""
+
+
+@pytest.mark.parametrize("mode", ("saved", "served"))
+def test_a_repaint_leaves_nothing_of_the_paint_before_it(mode, tmp_path):
+    """BokehJS clears a canvas layer after shifting it half a pixel for
+    crisp lines (``CanvasLayer.prepare``), so a clear missed the layer's
+    top row and left column of device pixels -- at a pixel ratio of 2,
+    wholly.  The width scale (D66) sets a graph's fonts after its first
+    paint and lays it out in the next tick, so one paint draws the title
+    at its new size in its old, shorter panel, reaching above the
+    canvas's top edge; the row it left there was the cut copy of the
+    title above a one-graph page's graph (the user's guide's tooltip and
+    data table examples, 17nov2026).  Once the page has settled the top
+    row of every canvas holds no ink."""
+    spec = bk._spec([bk._graph("g0", bk._ONE,
+                               {"title": '"Point at a car"'})])
+    page = tmp_path / ("%s_clear.html" % mode)
+    page.write_text(bkb._page(mode, spec), encoding="utf-8")
+    blank = tmp_path / "blank.html"
+    blank.write_text("<html><body></body></html>", encoding="utf-8")
+    probe = dash_run.CorpusProbe(
+        str(blank), timeout=300,
+        ready="document.readyState === 'complete'").__enter__()
+    try:
+        probe._send("Emulation.setDeviceMetricsOverride",
+                    {"width": 1200, "height": 900, "deviceScaleFactor": 2,
+                     "mobile": False})
+        probe.navigate(str(page))
+        probe.eval_async(_SETTLE_JS)
+        ink = probe._eval(_TOP_ROW_INK_JS)
+    finally:
+        probe.__exit__(None, None, None)
+    assert ink and all(n == 0 for n in ink), ink

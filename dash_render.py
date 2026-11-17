@@ -31097,6 +31097,31 @@ const dash_batch = globalThis.dashBatchLayouts
         if (V != null && typeof V.prototype._get_css_value === "function") {
           V.prototype._get_css_value = function () { return ""; };
         }
+        // BokehJS clears a canvas layer after prepare() has shifted it
+        // half a pixel for crisp lines, so the clear missed the layer's
+        // top row and left column of device pixels (all of them at a
+        // pixel ratio of 2).  A paint between the width scale's sizes
+        // and their layout draws a title above its panel, and the row
+        // it left stayed on the page.  The whole layer is cleared,
+        // unshifted.
+        try {
+          const C = Bokeh.require("core/util/canvas").CanvasLayer;
+          if (C != null && typeof C.prototype.clear === "function") {
+            const own_clear = C.prototype.clear;
+            C.prototype.clear = function () {
+              const ctx = this.ctx, t = this.target;
+              if (typeof CanvasRenderingContext2D === "undefined"
+                  || !(ctx instanceof CanvasRenderingContext2D)
+                  || t == null || typeof ctx.resetTransform !== "function") {
+                return own_clear.call(this);
+              }
+              const m = ctx.getTransform();
+              ctx.resetTransform();
+              try { ctx.clearRect(0, 0, t.width, t.height); }
+              finally { ctx.setTransform(m); }
+            };
+          }
+        } catch (e) { /* Bokeh's own clear */ }
         L.prototype.dashBatched = true;
       }
     } catch (e) { /* layouts stay immediate */ }
@@ -78761,6 +78786,12 @@ class DashRenderer:
 
         # 3. Filter widgets
         for fw_idx, widget in enumerate(filter_row_widgets):
+            if filter_position == "left":
+                # In the sidebar each widget takes its column's width: a
+                # slider kept BokehJS's 300 px and ran past a column two
+                # twelfths of the page wide, under the first graph.  The
+                # filter bar above the grid keeps each widget's own.
+                widget.sizing_mode = "stretch_width"
             all_models.append(widget)
             model_keys.append(f"__fw_{fw_idx}__")
 

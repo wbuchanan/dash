@@ -26,3 +26,17 @@ def test_the_batched_scripts_wrap_their_code():
         code = getattr(dr, name)
         assert code.startswith(dr._DASH_RELAYOUT_JS), name
         assert "return dash_batch(() => {" in code and code.endswith("});\n"), name
+
+
+def test_the_queue_clears_a_canvas_layer_whole():
+    """BokehJS clears a canvas layer after shifting it half a pixel
+    (CanvasLayer.prepare), which missed the layer's top row and left
+    column of device pixels; the queue's script makes clear() wipe the
+    whole layer unshifted, for the other canvases kept as they were
+    (test_page_load_layouts.py reads the page in Chrome)."""
+    js = dr._DASH_RELAYOUT_JS
+    assert 'Bokeh.require("core/util/canvas").CanvasLayer' in js
+    assert "C.prototype.clear = function" in js
+    assert "ctx.resetTransform();" in js
+    assert "ctx.clearRect(0, 0, t.width, t.height);" in js
+    assert "return own_clear.call(this);" in js

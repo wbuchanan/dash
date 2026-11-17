@@ -756,7 +756,11 @@ _SAVED_DIGEST = (
     # model's values in one setv where it has no by(), and BokehJS's
     # --bk- visual reads answer "" (callback JS text only), the same
     # under both Pythons.
-    "4e76d32bde8f3fe3f0df9aff3e397b904ce6b61a98ccffcdd6b3dcb93ec478db")
+    # old -> new: 4e76d32 -> 1812d1f: the layout queue's script clears a
+    # whole canvas layer, unshifted (BokehJS's half-pixel clear left the
+    # paint before in the top row: a cut copy of a one-graph page's
+    # title; callback JS text only), the same under both Pythons.
+    "1812d1f9209746a4e6416b8b5e43fa2fbb04f8dd0813ac0327dd47e9577ac403")
 
 
 # ===========================================================================
